@@ -1,3 +1,9 @@
 package de.sciss.fscape
 
-trait Module
+trait Module {
+
+}
+
+trait ModuleInstance {
+  def module: Module
+}
