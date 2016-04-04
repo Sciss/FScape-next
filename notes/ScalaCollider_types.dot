@@ -1,0 +1,55 @@
+digraph types {
+  node [shape=record];
+
+  Product [color=gray];
+  GE [style=bold,label="{ GE | - rate: MaybeRate | - expand: UGenInLike }"];
+  UGenInLike [color=red];
+  UGenIn [color=red,label="{ UGenIn | - override rate: Rate }"];
+  Constant [style=bold,color=blue];
+  UGenProxy [color=red,label="{ UGenProxy | - source: UGen | - outputIndex: Int }"];
+  UGenOutProxy [color=blue,label="{ UGenOutProxy | - override source: UGen_MultiOut }"];
+  UGen [color=red,label="{ UGen | - name: String | - rate: Rate | - inputs: Seq[UGenIn] | - outputRates: Seq[Rate] }"];
+  UGen_SingleOut [label="UGen.SingleOut"];
+  UGen_ZeroOut [label="UGen.ZeroOut"];
+  UGen_MultiOut [label="UGen.MultiOut"];
+  UGenInGroup [color=red];
+  Control [color=blue];
+  GESeq [color=blue];
+  UGenInSeq [color=blue];
+  Lazy [label="{ Lazy | - force(UGenGraph.Builder): Unit }"]
+  Lazy_Expander [label="{ Lazy.Expander[U] | - expand: U }"];
+  UGenSource [color=red,label="{ UGenSource[U] | - name: String | - makeUGen(Seq[UGenIn]): U }"]
+  UGenSource_ZeroOut [label="{ UGenSource.ZeroOut | - U = Unit }"];
+  UGenSource_SomeOut [label="{ UGenSource.SomeOut | - U = UGenInLike }"];
+  SinOsc [style=bold,shape=box3d,color=blue,label="SinOsc ..."];
+  Out [style=bold,shape=box3d,color=blue,label="Out ..."];
+  GE_Lazy [label="{ GE.Lazy | - U = UGenInLike }"];
+
+  Product -> GE;
+  Product -> UGen;
+  Product -> Lazy;
+  GE -> UGenInLike;
+  GE -> GESeq;
+  GE -> UGenInSeq;
+  GE -> GE_Lazy;
+  GE_Lazy -> UGenSource_SomeOut;
+  UGenInLike -> UGenIn;
+  UGenInLike -> UGenInGroup;
+  UGenInGroup -> Control;
+  UGenInGroup -> UGen_MultiOut;
+  UGenIn -> Constant;
+  UGenIn -> UGenProxy;
+  UGenProxy -> UGen_SingleOut;
+  UGenProxy -> UGenOutProxy;
+  UGen -> UGen_ZeroOut;
+  UGen -> UGen_SingleOut;
+  UGen -> UGen_MultiOut;
+
+  Lazy -> Lazy_Expander;
+  Lazy_Expander -> GE_Lazy;
+  Lazy_Expander -> UGenSource;
+  UGenSource -> UGenSource_ZeroOut;
+  UGenSource -> UGenSource_SomeOut;
+  UGenSource_ZeroOut -> Out;
+  UGenSource_SomeOut -> SinOsc;
+}

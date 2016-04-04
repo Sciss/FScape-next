@@ -4,7 +4,7 @@ organization  := "de.sciss"
 
 version       := "2.0.0-SNAPSHOT"
 
-scalaVersion  := "2.11.7"
+scalaVersion  := "2.11.8"
 
 licenses      := Seq("GPL v2+" -> url("http://www.gnu.org/licenses/gpl-2.0.txt"))
 
