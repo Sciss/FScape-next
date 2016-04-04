@@ -1,5 +1,5 @@
 /*
- *  DiskOut.scala
+ *  UGenIn.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2016 Hanns Holger Rutz. All rights reserved.
@@ -12,8 +12,8 @@
  */
 
 package de.sciss.fscape
-package ugen
 
-class DiskOut extends UGen {
-
+/** This is similar to `UGenIn` in ScalaCollider. */
+trait UGenIn extends GE {
+  final private[fscape] def expand: UGenIn = this
 }

@@ -1,9 +1,6 @@
 package de.sciss.fscape
 
-import java.io.File
-
 import de.sciss.fscape
-import de.sciss.synth.io.AudioFileSpec
 
 object GenOverlap {
   trait Config {
@@ -25,20 +22,6 @@ object ApplyWindow {
 }
 case class ApplyWindow(in: GE_, window: GE_, windowSize: GE_) extends GE_ {
   def run(): ApplyWindow.Process = ???
-}
-
-//object FFT {
-//  trait Process extends fscape.Process
-//}
-//case class FFT(in: GE_, fftSize: GE_) extends GE_ {
-//  def run(): FFT.Process = ???
-//}
-
-object WriteFile {
-  trait Process extends fscape.Process_
-}
-case class WriteFile(in: GE_, out: File, spec: AudioFileSpec) {
-  def run(): WriteFile.Process = ???
 }
 
 object Percussion {

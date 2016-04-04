@@ -1,5 +1,5 @@
 /*
- *  DiskOut.scala
+ *  DiskIn.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2016 Hanns Holger Rutz. All rights reserved.
@@ -12,8 +12,11 @@
  */
 
 package de.sciss.fscape
-package ugen
+package graph
 
-class DiskOut extends UGen {
-
+case class DiskIn(path: String) extends UGenSource.SingleOut {
+  protected def makeSignal: UGenIn = {
+    val p = new ugen.DiskIn
+    p.output
+  }
 }

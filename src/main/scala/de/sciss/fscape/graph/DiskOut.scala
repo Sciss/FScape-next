@@ -12,8 +12,8 @@
  */
 
 package de.sciss.fscape
-package ugen
+package graph
 
-class DiskOut extends UGen {
-
+case class DiskOut(path: String, in: GE) extends UGenSource.ZeroOut {
+  protected def makeSignal: Unit = new ugen.DiskOut
 }

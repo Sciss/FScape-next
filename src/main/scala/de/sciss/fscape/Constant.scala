@@ -1,5 +1,5 @@
 /*
- *  DiskOut.scala
+ *  Constant.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2016 Hanns Holger Rutz. All rights reserved.
@@ -12,8 +12,7 @@
  */
 
 package de.sciss.fscape
-package ugen
 
-class DiskOut extends UGen {
-
-}
+case class ConstantInt   (i: Int)    extends UGenIn
+case class ConstantLong  (n: Long)   extends UGenIn
+case class ConstantDouble(d: Double) extends UGenIn

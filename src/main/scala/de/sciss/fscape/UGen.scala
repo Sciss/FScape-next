@@ -1,5 +1,5 @@
 /*
- *  DiskOut.scala
+ *  UGen.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2016 Hanns Holger Rutz. All rights reserved.
@@ -12,8 +12,8 @@
  */
 
 package de.sciss.fscape
-package ugen
 
-class DiskOut extends UGen {
-
+trait UGen {
+  // constructor
+  Module.builder.addUGen(this)
 }

@@ -1,5 +1,5 @@
 /*
- *  DiskOut.scala
+ *  Real1FFT.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2016 Hanns Holger Rutz. All rights reserved.
@@ -14,6 +14,9 @@
 package de.sciss.fscape
 package ugen
 
-class DiskOut extends UGen {
+/** Test */
+case class UGenInImpl() extends UGenIn
 
+class Real1FFT extends UGen {
+  val output = UGenInImpl()
 }
