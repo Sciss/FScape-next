@@ -1,5 +1,9 @@
-package de.sciss.fscape.module
+package de.sciss.fscape
+package module
 
-class Real1DFFT {
+/** Test */
+case class SignalImpl() extends Signal
 
+class Real1DFFT extends Module {
+  val output = SignalImpl()
 }

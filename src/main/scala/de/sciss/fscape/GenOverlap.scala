@@ -16,41 +16,41 @@ object GenOverlap {
 
   }
 }
-case class GenOverlap(in: GE, windowSize: GE, stepSize: GE) extends GE {
+case class GenOverlap(in: GE_, windowSize: GE_, stepSize: GE_) extends GE_ {
   def run(): GenOverlap.Process = ???
 }
 
 object ApplyWindow {
   trait Process extends fscape.Process_
 }
-case class ApplyWindow(in: GE, window: GE, windowSize: GE) extends GE {
+case class ApplyWindow(in: GE_, window: GE_, windowSize: GE_) extends GE_ {
   def run(): ApplyWindow.Process = ???
 }
 
 //object FFT {
 //  trait Process extends fscape.Process
 //}
-//case class FFT(in: GE, fftSize: GE) extends GE {
+//case class FFT(in: GE_, fftSize: GE_) extends GE_ {
 //  def run(): FFT.Process = ???
 //}
 
 object WriteFile {
   trait Process extends fscape.Process_
 }
-case class WriteFile(in: GE, out: File, spec: AudioFileSpec) {
+case class WriteFile(in: GE_, out: File, spec: AudioFileSpec) {
   def run(): WriteFile.Process = ???
 }
 
 object Percussion {
   trait Process extends fscape.Process_
 }
-case class Percussion(in: GE) extends GE {
+case class Percussion(in: GE_) extends GE_ {
   def run(): Percussion.Process = ???
 }
 
 trait Process_
 
-trait GE {
+trait GE_ {
 //  def asDemandInt    : Demand[Int]
 //  def asDemandBoolean: Demand[Boolean]
 //  def run(): Process

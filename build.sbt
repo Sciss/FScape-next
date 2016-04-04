@@ -15,5 +15,6 @@ libraryDependencies ++= Seq(
   "de.sciss"            %% "numbers"          % "0.1.1",
   "de.sciss"            %% "processor"        % "0.4.0",
   "de.sciss"            %% "scalaaudiofile"   % "1.4.5",
+  "de.sciss"            %% "fileutil"         % "1.1.1",
   "com.nativelibs4java" %% "scalaxy-streams"  % "0.3.4" % "provided"
 )
