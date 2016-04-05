@@ -21,19 +21,36 @@ object Graph {
   }
 
   /** This is analogous to `SynthGraph.Builder` in ScalaCollider. */
-  def builder : Builder  = ???
+  def builder: Builder  = builders.get()
+
+  private[this] val builders = new ThreadLocal[Builder] {
+    override protected def initialValue = BuilderDummy
+  }
+
+  private[this] object BuilderDummy extends Builder {
+    def addLazy(x: Lazy): Unit = ()
+  }
 
   def apply(thunk: => Any): Graph = {
-    ???
-    //    val b   = new BuilderImpl
-    //    val old = builders.get()
-    //    builders.set(b)
-    //    try {
-    //      thunk
-    //      b.build
-    //    } finally {
-    //      builders.set(old) // BuilderDummy
-    //    }
+    val b   = new BuilderImpl
+    val old = builders.get()
+    builders.set(b)
+    try {
+      thunk
+      b.build
+    } finally {
+      builders.set(old) // BuilderDummy
+    }
+  }
+
+  private[this] final class BuilderImpl extends Builder {
+    private val lazies = Vec.newBuilder[Lazy]
+
+    override def toString = s"fscape.Graph.Builder@${hashCode.toHexString}"
+
+    def build = Graph(lazies.result())
+
+    def addLazy(g: Lazy): Unit = lazies += g
   }
 }
 

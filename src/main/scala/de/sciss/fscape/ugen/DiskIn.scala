@@ -32,14 +32,15 @@ object DiskIn {
 
     object output extends UGenIn {
       def readDouble(frames: Frames, off: Int, len: Int): Int = {
-        var rem = len
+        val res = math.min(len, af.numFrames - af.position).toInt
+        var rem = res
         while (rem > 0) {
           val chunk = math.min(bufSz, rem)
           af.read(buf, 0, chunk)
           Util.copy(buf, 0, frames, off, chunk)
           rem -= chunk
         }
-        ???
+        res
       }
     }
 
