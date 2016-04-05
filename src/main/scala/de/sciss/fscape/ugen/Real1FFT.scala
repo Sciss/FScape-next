@@ -14,8 +14,20 @@
 package de.sciss.fscape
 package ugen
 
-class Real1FFT extends UGen {
-  val output = ???
+object Real1FFT {
+  def apply(in: UGenIn, size: UGenIn, padding: UGenIn = 0): Real1FFT =
+    new Impl(in = in, size = size, padding = padding)
 
-  def dispose(): Unit = ???
+  private final class Impl(in: UGenIn, size: UGenIn, padding: UGenIn) extends Real1FFT {
+    object output extends UGenIn {
+      def readDouble(frames: Frames, off: Int, len: Int): Int = {
+        ???
+      }
+    }
+
+    def dispose() = ()
+  }
+}
+sealed trait Real1FFT extends UGen {
+  def output: UGenIn
 }

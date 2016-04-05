@@ -21,9 +21,9 @@ object Graph {
   }
 
   /** This is analogous to `SynthGraph.Builder` in ScalaCollider. */
-  def builder: Builder  = builders.get()
+  def builder: Builder  = builderRef.get()
 
-  private[this] val builders = new ThreadLocal[Builder] {
+  private[this] val builderRef = new ThreadLocal[Builder] {
     override protected def initialValue = BuilderDummy
   }
 
@@ -33,13 +33,13 @@ object Graph {
 
   def apply(thunk: => Any): Graph = {
     val b   = new BuilderImpl
-    val old = builders.get()
-    builders.set(b)
+    val old = builderRef.get()
+    builderRef.set(b)
     try {
       thunk
       b.build
     } finally {
-      builders.set(old) // BuilderDummy
+      builderRef.set(old) // BuilderDummy
     }
   }
 
@@ -57,6 +57,6 @@ object Graph {
 final case class Graph(sources: Vec[Lazy] /* , controlProxies: Set[ControlProxyLike] */) {
   def isEmpty : Boolean  = sources.isEmpty // && controlProxies.isEmpty
   def nonEmpty: Boolean  = !isEmpty
-  def expand: Module = ???
+  def expand: Module = Module.build(this)
 }
 

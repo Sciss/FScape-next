@@ -14,9 +14,11 @@
 package de.sciss.fscape
 package graph
 
-case class DiskIn(path: String) extends UGenSource.SingleOut {
+import de.sciss.file.File
+
+case class DiskIn(file: File) extends UGenSource.SingleOut {
   protected def makeSignal: UGenIn = {
-    val p = ugen.DiskIn(path)
+    val p = ugen.DiskIn(file)
     p.output
   }
 }

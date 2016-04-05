@@ -14,18 +14,19 @@
 package de.sciss.fscape
 package ugen
 
+import de.sciss.file._
 import de.sciss.synth.io.AudioFile
 
 import scala.concurrent.blocking
 
 object DiskIn {
-  def apply(path: String): DiskIn = {
-    val af = blocking(AudioFile.openRead(path))
-    new Impl(path, af)
+  def apply(file: File): DiskIn = {
+    val af = blocking(AudioFile.openRead(file))
+    new Impl(file, af)
   }
 
-  private final class Impl(path: String, af: AudioFile) extends DiskIn {
-    override def toString = s"DiskIn($path)@${hashCode.toHexString}"
+  private final class Impl(file: File, af: AudioFile) extends DiskIn {
+    override def toString = s"DiskIn(${file.path})@${hashCode.toHexString}"
 
     private[this] val bufSz = 8192
     private[this] val buf   = af.buffer(bufSz)

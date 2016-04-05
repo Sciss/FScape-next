@@ -14,6 +14,19 @@
 package de.sciss.fscape
 package ugen
 
-class DiskOut extends UGen {
-  def dispose(): Unit = ???
+import de.sciss.file.File
+import de.sciss.synth.io.{AudioFile, AudioFileSpec}
+
+import scala.concurrent.blocking
+
+object DiskOut {
+  def apply(file: File, spec: AudioFileSpec, in: UGenIn): DiskOut = {
+    val af = blocking(AudioFile.openWrite(file, spec))
+    new Impl(file = file, af = af, in = in)
+  }
+
+  private final class Impl(file: File, af: AudioFile, in: UGenIn) extends DiskOut {
+    def dispose(): Unit = af.cleanUp()
+  }
 }
+sealed trait DiskOut extends UGen
