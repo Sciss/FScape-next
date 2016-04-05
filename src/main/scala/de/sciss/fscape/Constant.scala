@@ -13,6 +13,16 @@
 
 package de.sciss.fscape
 
-case class ConstantInt   (i: Int)    extends UGenIn
-case class ConstantLong  (n: Long)   extends UGenIn
-case class ConstantDouble(d: Double) extends UGenIn
+sealed trait Constant extends GE with UGenIn {
+  private[fscape] def expand: UGenIn = this
+
+  protected def toDouble: Double
+
+  final def readDouble(frames: Frames, off: Int, len: Int): Int = {
+    Util.fill(frames, off, len, toDouble)
+    len
+  }
+}
+final case class ConstantInt   (i: Int)    extends Constant { def toDouble = i.toDouble }
+final case class ConstantLong  (n: Long)   extends Constant { def toDouble = n.toDouble }
+final case class ConstantDouble(d: Double) extends Constant { def toDouble = d          }

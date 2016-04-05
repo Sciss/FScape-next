@@ -16,4 +16,6 @@ package de.sciss.fscape
 trait UGen {
   // constructor
   Module.builder.addUGen(this)
+
+  def dispose(): Unit
 }

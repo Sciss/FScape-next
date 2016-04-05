@@ -14,6 +14,8 @@
 package de.sciss.fscape
 
 /** This is similar to `UGenIn` in ScalaCollider. */
-trait UGenIn extends GE {
-  final private[fscape] def expand: UGenIn = this
+trait UGenIn /* extends GE */ {
+  // final private[fscape] def expand: UGenIn = this
+
+  def readDouble(frames: Frames, off: Int, len: Int): Int
 }

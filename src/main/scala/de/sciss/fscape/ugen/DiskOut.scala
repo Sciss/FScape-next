@@ -15,5 +15,5 @@ package de.sciss.fscape
 package ugen
 
 class DiskOut extends UGen {
-
+  def dispose(): Unit = ???
 }

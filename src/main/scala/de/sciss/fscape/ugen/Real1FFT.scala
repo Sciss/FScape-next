@@ -14,9 +14,8 @@
 package de.sciss.fscape
 package ugen
 
-/** Test */
-case class UGenInImpl() extends UGenIn
-
 class Real1FFT extends UGen {
-  val output = UGenInImpl()
+  val output = ???
+
+  def dispose(): Unit = ???
 }

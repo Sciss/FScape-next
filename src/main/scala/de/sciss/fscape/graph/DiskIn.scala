@@ -16,7 +16,7 @@ package graph
 
 case class DiskIn(path: String) extends UGenSource.SingleOut {
   protected def makeSignal: UGenIn = {
-    val p = new ugen.DiskIn
+    val p = ugen.DiskIn(path)
     p.output
   }
 }
