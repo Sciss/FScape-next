@@ -6,9 +6,12 @@ import akka.stream.scaladsl.{GraphDSL, Source}
 import de.sciss.file._
 
 object DiskIn {
-  def apply(file: File)(implicit b: GraphDSL.Builder[NotUsed]): Source[Double, NotUsed] = {
+  def apply(file: File)(implicit b: GraphDSL.Builder[NotUsed]): Outlet[Double] /* Source[Double, NotUsed] */ = {
     val source = new AudioFileSource(file)
-    b.add(source)
-    Source.fromGraph(source)
+    // b.add(Source.fromGraph(source))
+    // Source.unfoldResourceAsync()
+    // Source.fromGraph(source)
+    // source.out
+    b.add(source).out
   }
 }

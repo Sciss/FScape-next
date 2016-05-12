@@ -1,17 +1,30 @@
+/*
+ *  AudioFileSource.scala
+ *  (FScape)
+ *
+ *  Copyright (c) 2001-2016 Hanns Holger Rutz. All rights reserved.
+ *
+ *  This software is published under the GNU General Public License v2+
+ *
+ *
+ *  For further information, please contact Hanns Holger Rutz at
+ *  contact@sciss.de
+ */
+
 package de.sciss.fscape.stream
 
 import akka.stream.ActorAttributes.SupervisionStrategy
 import akka.stream.Attributes._
 import akka.stream.stage.{GraphStage, GraphStageLogic, OutHandler}
 import akka.stream.{ActorAttributes, Attributes, Outlet, SourceShape, Supervision}
-import de.sciss.file.File
+import de.sciss.file._
 import de.sciss.synth.io
 
 import scala.annotation.tailrec
 import scala.util.control.NonFatal
 
 // similar to internal `UnfoldResourceSource`
-final class AudioFileSource(f: File) extends GraphStage[SourceShape[Double]] {
+final class AudioFileSource(f: File) extends GraphStage[SourceShape[Double]] { source =>
   val out = Outlet[Double]("AudioFileSource.out")
   
   override val shape = SourceShape(out)
@@ -34,6 +47,7 @@ final class AudioFileSource(f: File) extends GraphStage[SourceShape[Double]] {
     setHandler(out, this)
 
     override def preStart(): Unit = {
+      println(s"${new java.util.Date()} $source - preStart()")
       af          = io.AudioFile.openRead(f)
       buf         = af.buffer(bufSize)
       bufOff      = 0
@@ -43,6 +57,7 @@ final class AudioFileSource(f: File) extends GraphStage[SourceShape[Double]] {
     
     @tailrec
     final override def onPull(): Unit = {
+      // println("onPull")
       var resumingMode = false
       try {
         val bufEmpty = bufOff == bufLen
@@ -50,7 +65,9 @@ final class AudioFileSource(f: File) extends GraphStage[SourceShape[Double]] {
         else {
           if (bufEmpty) {
             val chunkLen = math.min(bufSize, af.numFrames - framesRead).toInt
+            // println(s"$source - read - framesRead = $framesRead")
             af.read(buf, 0, chunkLen)
+            framesRead += chunkLen
             bufLen = chunkLen
             bufOff = 0
           }
@@ -72,21 +89,25 @@ final class AudioFileSource(f: File) extends GraphStage[SourceShape[Double]] {
       if (resumingMode) onPull()
     }
 
-    override def onDownstreamFinish(): Unit = closeStage()
+    override def onDownstreamFinish(): Unit = {
+      println(s"${new java.util.Date()} $source - onDownstreamFinish()")
+      closeStage()
+    }
 
     private def restartState(): Unit = {
       af.close()
       preStart()
     }
 
-    private def closeStage(): Unit =
+    private def closeStage(): Unit = {
+      println(s"${new java.util.Date()} $source - closeStage()")
       try {
         af.close()
         completeStage()
       } catch {
         case NonFatal(ex) => failStage(ex)
       }
-
+    }
   }
-  override def toString = "AudioFileSource"
+  override def toString = s"AudioFileSource(${f.name})"
 }
