@@ -21,7 +21,7 @@ object Module {
     def visit[U](ref: AnyRef, init: => U): U
   }
 
-  private[this] trait AbstractBuilder extends Builder {
+  private trait AbstractBuilder extends Builder {
     def build: Module
   }
 
@@ -57,7 +57,7 @@ object Module {
     }
   }
 
-  private[this] final class BuilderImpl extends AbstractBuilder {
+  private final class BuilderImpl extends AbstractBuilder {
     private[this] var ugens     = Vector.empty[UGen]
     private[this] var sourceMap = Map.empty[AnyRef, Any]
 

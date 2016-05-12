@@ -13,6 +13,11 @@
 
 package de.sciss.fscape
 
+object UGen {
+  trait Leaf extends UGen {
+
+  }
+}
 trait UGen {
   // constructor
   Module.builder.addUGen(this)
