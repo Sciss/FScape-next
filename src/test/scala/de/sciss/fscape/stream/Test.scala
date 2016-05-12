@@ -7,7 +7,8 @@ import de.sciss.file._
 import de.sciss.synth.io.AudioFileSpec
 
 object Test extends App {
-  val fIn   = userHome / "Music" / "work" / "mentasm-199a3aa1.aif"
+  // val fIn   = userHome / "Music" / "work" / "mentasm-199a3aa1.aif"
+  val fIn   = userHome / "Music" / "work" / "B19h39m45s23jan2015.wav"
   val fOut  = userHome / "Music" / "work" / "_killme.aif"
 
   val graph = GraphDSL.create() { implicit b =>
