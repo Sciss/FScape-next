@@ -2,7 +2,7 @@ package de.sciss.fscape.stream
 
 import akka.actor.ActorSystem
 import akka.stream.scaladsl.{GraphDSL, RunnableGraph, Sink, Source}
-import akka.stream.{ActorMaterializer, ClosedShape}
+import akka.stream.{ActorMaterializer, ActorMaterializerSettings, ClosedShape}
 import de.sciss.file._
 import de.sciss.synth.io.AudioFileSpec
 
@@ -40,6 +40,11 @@ object Test extends App {
 
   implicit val system = ActorSystem()
   implicit val mat    = ActorMaterializer()
+//    ActorMaterializerSettings(system)
+//      .withInputBuffer(
+//        initialSize = 8192,
+//        maxSize     = 8192))
+
   val rg = RunnableGraph.fromGraph(graph)
   rg.run()
   println("Running.")

@@ -21,11 +21,11 @@ object PureTest extends App {
     val chunkSize = math.min(bufSize, afIn.numFrames - framesRead).toInt
     afIn.read(buf, 0, chunkSize)
     var i = 0
-    while (i < chunkSize ) {
+    while (i < chunkSize) {
       val c2 = math.min(fftSize, chunkSize - i)
       var k = 0
       while (k < c2) {
-        fftBuf(k) = buf(0)(k).toDouble
+        fftBuf(k) = buf(0)(k + i).toDouble
         k += 1
       }
       while (k < fftSize) {
@@ -35,7 +35,7 @@ object PureTest extends App {
       fft.realForward(fftBuf)
       k = 0
       while (k < c2) {
-        buf(0)(k) = fftBuf(k).toFloat
+        buf(0)(k + i) = fftBuf(k).toFloat
         k += 1
       }
       i += c2
