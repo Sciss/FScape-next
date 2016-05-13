@@ -1,8 +1,8 @@
 package de.sciss.fscape.stream
 
 import akka.actor.ActorSystem
-import akka.stream.{ActorMaterializer, ClosedShape, Outlet}
 import akka.stream.scaladsl.{GraphDSL, RunnableGraph, Sink, Source}
+import akka.stream.{ActorMaterializer, ClosedShape}
 import de.sciss.file._
 import de.sciss.synth.io.AudioFileSpec
 
@@ -13,7 +13,7 @@ object Test extends App {
 
   val graph = GraphDSL.create() { implicit b =>
     val in  = DiskIn(file = fIn)
-    val fft = in // Real1FFT(in, size = 1024)
+    val fft = Real1FFT(in, size = 1024)
     DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = fft)
     ClosedShape
   }

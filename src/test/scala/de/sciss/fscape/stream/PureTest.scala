@@ -2,6 +2,7 @@ package de.sciss.fscape.stream
 
 import de.sciss.file._
 import de.sciss.synth.io.{AudioFile, AudioFileSpec}
+import edu.emory.mathcs.jtransforms.fft.DoubleFFT_1D
 
 object PureTest extends App {
   val fIn   = userHome / "Music" / "work" / "B19h39m45s23jan2015.wav"
@@ -13,9 +14,33 @@ object PureTest extends App {
   val bufSize = 8192
   val buf   = afIn.buffer(bufSize)
   var framesRead = 0L
+  val fftSize = 1024
+  val fft = new DoubleFFT_1D(fftSize)
+  val fftBuf = new Array[Double](fftSize)
   while (framesRead < afIn.numFrames) {
     val chunkSize = math.min(bufSize, afIn.numFrames - framesRead).toInt
     afIn.read(buf, 0, chunkSize)
+    var i = 0
+    while (i < chunkSize ) {
+      val c2 = math.min(fftSize, chunkSize - i)
+      var k = 0
+      while (k < c2) {
+        fftBuf(k) = buf(0)(k).toDouble
+        k += 1
+      }
+      while (k < fftSize) {
+        fftBuf(k) = 0.0
+        k += 1
+      }
+      fft.realForward(fftBuf)
+      k = 0
+      while (k < c2) {
+        buf(0)(k) = fftBuf(k).toFloat
+        k += 1
+      }
+      i += c2
+    }
+
     framesRead += chunkSize
     afOut.write(buf, 0, chunkSize)
   }
