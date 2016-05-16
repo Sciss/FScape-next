@@ -116,7 +116,14 @@ object Real1FFT {
       private[this] var outSent       = true
       private[this] var inRead        = true
 
-      private[this] var canRead       = false
+      private[this] var shouldInitFFT = ??? : Boolean // true
+
+      @inline
+      private def canRead       = inRemain == 0
+      @inline
+      private def shouldRead    = !inRead && canRead
+      @inline
+      private def canPrepareFFT = fftOutRemain == 0
 
       @tailrec
       private def process(): Unit = {
@@ -124,7 +131,7 @@ object Real1FFT {
         // in that case we run this method again.
         var iterate = false
 
-        if (!inRead && inRemain == 0) {
+        if (shouldRead) {
           if (bufIn != null) ctrl.returnBufD(bufIn)
           bufIn     = grab(inIn)
           inRemain  = bufIn.size
@@ -149,12 +156,12 @@ object Real1FFT {
           iterate   = true
         }
 
-        if (fftOutRemain == 0) {
+        if (canPrepareFFT) {
           val chunk = math.min(size - fftInOff, inRemain)
           val flush = inRemain == 0 && isClosed(inIn) && fftInOff > 0
           if (chunk > 0 || flush) {
 
-            if (fftInOff == 0 /* size */) { // begin new block
+            if (shouldInitFFT /* fftInOff == 0 */ /* size */) { // begin new block
               size    = ???
               padding = ???
               val n = math.max(1, size + padding)
