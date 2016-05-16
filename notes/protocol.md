@@ -18,3 +18,22 @@ The same: two passes
 
 If we modulate `warp`, that affects `transLen`, `inputStep`, `outputStep`, `outputLen`, `fltLen`, `b0init`.
 However, since `warp` is clipped to -0.98 ... +0.98, we can re-allocate all buffers.
+
+# Real1FFT
+
+    case class Real1FFT(in: GE, size: GE, padding: GE = 0)
+    
+## Logic
+
+    inIn: Inlet[BufD], inSize: Inlet[BufI], inPadding: Inlet[BufI]
+    bufIn: BufD, bufSize: BufI, bufPadding: BufI
+    
+- `onPush`: `pending--`
+- when `pending` becomes zero, we can check if we are ready to grab all
+- that check is that `inOff == bufIn.size` (previous buffer content was all transformed)
+- if `false` do nothing
+- if `true`, call `grab` on all inlets (except the aux ones if they have been closed)
+- check if we can write to the fft-buf
+- that check is `fftOutOff == fftSize`
+- if `false` do nothing
+- if `true` 

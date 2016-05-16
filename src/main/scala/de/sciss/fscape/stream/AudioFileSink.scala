@@ -32,8 +32,8 @@ final class AudioFileSink(f: File, spec: io.AudioFileSpec)
   override val shape = SinkShape(in)
   // override def initialAttributes: Attributes = DefaultAttributes.unfoldResourceSink
 
-  private[this] val IODispatcher = ActorAttributes.Dispatcher("akka.stream.default-blocking-io-dispatcher")
-  override def initialAttributes: Attributes = name("unfoldResourceSink") and IODispatcher
+//  private[this] val IODispatcher = ActorAttributes.Dispatcher("akka.stream.default-blocking-io-dispatcher")
+//  override def initialAttributes: Attributes = name("unfoldResourceSink") and IODispatcher
 
   def createLogic(inheritedAttributes: Attributes) = new GraphStageLogic(shape) with InHandler {
     private[this] lazy val decider = inheritedAttributes.get[SupervisionStrategy].map(_.decider)

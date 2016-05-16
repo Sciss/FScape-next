@@ -39,13 +39,14 @@ object Test extends App {
   }
 
   implicit val system = ActorSystem()
-  implicit val mat    = ActorMaterializer()
+  implicit val mat    = ActorMaterializer(
 //    ActorMaterializerSettings(system)
 //      .withInputBuffer(
-//        initialSize = 8192,
-//        maxSize     = 8192))
+//        initialSize = 1024,
+//        maxSize     = 1024)
+  )
 
-  val rg = RunnableGraph.fromGraph(graph)
-  rg.run()
+  val rg  = RunnableGraph.fromGraph(graph)
+  val res = rg.run()
   println("Running.")
 }

@@ -30,8 +30,8 @@ final class AudioFileSource(f: File) extends GraphStage[SourceShape[Double]] { s
   override val shape = SourceShape(out)
   // override def initialAttributes: Attributes = DefaultAttributes.unfoldResourceSource
   
-  private[this] val IODispatcher = ActorAttributes.Dispatcher("akka.stream.default-blocking-io-dispatcher")
-  override def initialAttributes: Attributes = name("unfoldResourceSource") and IODispatcher
+//  private[this] val IODispatcher = ActorAttributes.Dispatcher("akka.stream.default-blocking-io-dispatcher")
+//  override def initialAttributes: Attributes = name("unfoldResourceSource") and IODispatcher
 
   def createLogic(inheritedAttributes: Attributes) = new GraphStageLogic(shape) with OutHandler {
     private[this] lazy val decider = inheritedAttributes.get[SupervisionStrategy].map(_.decider)
