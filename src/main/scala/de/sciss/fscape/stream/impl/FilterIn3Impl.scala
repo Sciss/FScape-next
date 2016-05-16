@@ -17,6 +17,7 @@ import akka.stream.FanInShape3
 import akka.stream.stage.{GraphStageLogic, InHandler, OutHandler}
 import de.sciss.fscape.stream.{BufLike, Control}
 
+/** Building block for `FanInShape3` type graph stage logic. */
 trait FilterIn3Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: BufLike, Out >: Null <: BufLike] {
   _: GraphStageLogic =>
 
