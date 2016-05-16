@@ -11,9 +11,13 @@ object Test extends App {
   val fIn   = userHome / "Music" / "work" / "B19h39m45s23jan2015.wav"
   val fOut  = userHome / "Music" / "work" / "_killme.aif"
 
+  implicit val ctrl = Control(1024)
+
   val graph = GraphDSL.create() { implicit b =>
-    val in  = DiskIn(file = fIn)
-    val fft = Real1FFT(in, size = 1024)
+    val in      = DiskIn(file = fIn)
+    val size    = b.add(Source.single(BufI(666))).out
+    val padding = b.add(Source.single(BufI(  0))).out
+    val fft     = Real1FFT(in, size = size, padding = padding)
     DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = fft)
     ClosedShape
   }

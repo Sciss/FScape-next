@@ -13,12 +13,11 @@
 
 package de.sciss.fscape.stream
 
-import java.{util => ju}
-
 import akka.NotUsed
 import akka.stream.scaladsl.GraphDSL
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
-import akka.stream.{Attributes, FanInShape3, Graph, Inlet, Outlet}
+import akka.stream.{Attributes, FanInShape3, Inlet, Outlet}
+import de.sciss.fscape.Util
 import edu.emory.mathcs.jtransforms.fft.DoubleFFT_1D
 
 import scala.annotation.tailrec
@@ -52,15 +51,14 @@ object Real1FFT {
     res.outlet
   }
 
-  final class BufD(val buf: Array[Double], @volatile var size: Int)
-  final class BufI(val buf: Array[Int]   , @volatile var size: Int)
-
-  trait Control {
-    def borrowBufD(): BufD
-    def borrowBufI(): BufI
-
-    def returnBufD(buf: BufD): Unit
-    def returnBufI(buf: BufI): Unit
+  def apply(in: Outlet[BufD], size: Outlet[BufI], padding: Outlet[BufI])
+           (implicit b: GraphDSL.Builder[NotUsed], ctrl: Control): Outlet[BufD] = {
+    val stage = new Impl(ctrl)
+    import GraphDSL.Implicits._
+    in      ~> stage.shape.in0
+    size    ~> stage.shape.in1
+    padding ~> stage.shape.in2
+    stage.shape.out
   }
 
   private final class Impl(ctrl: Control) extends GraphStage[FanInShape3[BufD, BufI, BufI, BufD]] {
@@ -73,182 +71,205 @@ object Real1FFT {
     val shape = new FanInShape3(in0 = inIn, in1 = inSize, in2 = inPadding, out = out)
 
     def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new GraphStageLogic(shape) {
-      private[this] var fft: DoubleFFT_1D = _
-      private[this] var pending: Int = _
+
+      private[this] var fft       : DoubleFFT_1D  = _
+      private[this] var fftBuf    : Array[Double] = _
 
       private[this] var bufIn     : BufD = _
       private[this] var bufSize   : BufI = _
       private[this] var bufPadding: BufI = _
       private[this] var bufOut    : BufD = _
 
-      private[this] var size      : Int  = 0
+      private[this] var size      : Int  = _
       private[this] var padding   : Int  = _
 
-      private[this] var fftBuf    : Array[Double] = _
-      private[this] var fftInOff  : Int  = 0  // regarding `fftBuf`
-      private[this] var fftOutOff : Int  = 0  // regarding `fftBuf`
-      private[this] var inOff     : Int  = 0  // regarding `bufIn`
-      private[this] var outOff    : Int  = 0  // regarding `bufOut`
-      private[this] var fftSize   : Int  = 0  // refreshed as `size + padding`
+      private[this] var fftInOff      = 0  // regarding `fftBuf`
+      private[this] var fftInRemain   = 0
+      private[this] var fftOutOff     = 0  // regarding `fftBuf`
+      private[this] var fftOutRemain  = 0
+      private[this] var inOff         = 0  // regarding `bufIn`
+      private[this] var inRemain      = 0
+      private[this] var outOff        = 0  // regarding `bufOut`
+      private[this] var outRemain     = 0
+      private[this] var fftSize       = 0  // refreshed as `size + padding`
+
+      private[this] var outSent       = true
+      private[this] var isNextFFT     = true
+      private[this] var canRead       = false
 
       override def preStart(): Unit = {
         pull(inIn)
         pull(inSize)
         pull(inPadding)
-        pending = 3
       }
 
-      private def decPending(): Unit = {
-        pending -= 1
-        if (pending == 0) process()
+      @inline
+      private[this] def shouldRead    = inRemain == 0 && canRead
+      @inline
+      private[this] def canPrepareFFT = fftOutRemain == 0
+
+      private def updateCanRead(): Unit = {
+        canRead = isAvailable(inIn) &&
+          (isClosed(inSize)    || isAvailable(inSize)) &&
+          (isClosed(inPadding) || isAvailable(inPadding))
+        if (shouldRead) process()
       }
 
-      /*
+      private def freeInputBuffers(): Unit = {
+        if (bufIn != null) {
+          ctrl.returnBufD(bufIn)
+          bufIn = null
+        }
+        if (bufSize != null) {
+          ctrl.returnBufI(bufSize)
+          bufSize = null
+        }
+        if (bufPadding != null) {
+          ctrl.returnBufI(bufPadding)
+          bufPadding = null
+        }
+      }
 
-        if (fft-read full) reset-fft-buf
-
-       */
-
-      private[this] var inRemain      = 0
-      private[this] var fftInRemain   = 0
-      private[this] var fftOutRemain  = 0
-      private[this] var outRemain     = 0
-      private[this] var outSent       = true
-      private[this] var inRead        = true
-
-      private[this] var shouldInitFFT = ??? : Boolean // true
-
-      @inline
-      private def canRead       = inRemain == 0
-      @inline
-      private def shouldRead    = !inRead && canRead
-      @inline
-      private def canPrepareFFT = fftOutRemain == 0
+      private def freeOutputBuffers(): Unit =
+        if (bufOut != null) {
+          ctrl.returnBufD(bufOut)
+          bufOut = null
+        }
 
       @tailrec
       private def process(): Unit = {
         // becomes `true` if state changes,
         // in that case we run this method again.
-        var iterate = false
+        var stateChange = false
 
         if (shouldRead) {
-          if (bufIn != null) ctrl.returnBufD(bufIn)
+          freeInputBuffers()
           bufIn     = grab(inIn)
           inRemain  = bufIn.size
           inOff     = 0
           pull(inIn)
 
-          if (bufSize != null) ctrl.returnBufI(bufSize)
-          if (isClosed(inSize)) {
-            bufSize = null
-          } else {
+          if (!isClosed(inSize)) {
             bufSize = grab(inSize)
+            pull(inSize)
           }
 
-          if (bufPadding != null) ctrl.returnBufI(bufPadding)
-          if (isClosed(inPadding)) {
-            bufPadding = null
-          } else {
+          if (!isClosed(inPadding)) {
             bufPadding = grab(inPadding)
+            pull(inPadding)
           }
 
-          inRead    = true
-          iterate   = true
+          stateChange = true
         }
 
         if (canPrepareFFT) {
-          val chunk = math.min(size - fftInOff, inRemain)
-          val flush = inRemain == 0 && isClosed(inIn) && fftInOff > 0
-          if (chunk > 0 || flush) {
-
-            if (shouldInitFFT /* fftInOff == 0 */ /* size */) { // begin new block
-              size    = ???
-              padding = ???
-              val n = math.max(1, size + padding)
-              if (n != fftSize) {
-                fftSize = n
-                fft     = new DoubleFFT_1D (n)
-                fftBuf  = new Array[Double](n)
-              }
-              fftInOff = 0
+          if (isNextFFT) {
+            if (bufSize != null && inOff < bufSize.size) {
+              size = bufSize.buf(inOff)
             }
+            if (bufPadding != null && inOff < bufPadding.size) {
+              padding = bufPadding.buf(inOff)
+            }
+            val n = math.max(1, size + padding)
+            if (n != fftSize) {
+              fftSize = n
+              fft     = new DoubleFFT_1D (n)
+              fftBuf  = new Array[Double](n)
+            }
+            fftInOff    = 0
+            fftInRemain = size
+            isNextFFT   = false
+            stateChange = true
+          }
 
-            System.arraycopy(bufIn.buf, inOff, fftBuf, fftInOff, chunk)
-            inOff    += chunk
-            inRemain -= chunk
-            fftInOff += chunk
+          val chunk = math.min(fftInRemain, inRemain)
+          val flushFFT = inRemain == 0 && isClosed(inIn) && fftInOff > 0
+          if (chunk > 0 || flushFFT) {
 
-            if (fftInOff == size || flush) {
-              ju.Arrays.fill(fftBuf, fftInOff, fftSize, 0.0)
+            Util.copy(bufIn.buf, inOff, fftBuf, fftInOff, chunk)
+            inOff       += chunk
+            inRemain    -= chunk
+            fftInOff    += chunk
+            fftInRemain -= chunk
+
+            if (fftInOff == size || flushFFT) {
+              Util.fill(fftBuf, fftInOff, fftSize - fftInOff, 0.0)
               fft.realForward(fftBuf)
-              fftInOff      = 0
-              fftOutRemain  = fftSize
               fftOutOff     = 0
-              iterate       = true
+              fftOutRemain  = fftSize
+              isNextFFT     = true
             }
+
+            stateChange = true
           }
         }
 
         if (fftOutRemain > 0) {
           if (outSent) {
-            bufOut    = ctrl.borrowBufD()
-            outRemain = bufOut.size
-            outOff    = 0
-            outSent   = false
+            bufOut        = ctrl.borrowBufD()
+            outRemain     = bufOut.size
+            outOff        = 0
+            outSent       = false
+            stateChange   = true
           }
 
           val chunk = math.min(fftOutRemain, outRemain)
           if (chunk > 0) {
-            System.arraycopy(fftBuf, fftOutOff, bufOut.buf, outOff, chunk)
+            Util.copy(fftBuf, fftOutOff, bufOut.buf, outOff, chunk)
             fftOutOff    += chunk
             fftOutRemain -= chunk
             outOff       += chunk
             outRemain    -= chunk
-            iterate       = true
+            stateChange   = true
           }
         }
 
-        val flush = ???
-        if (!outSent && (outRemain == 0 || flush) && isAvailable(out)) {
-          bufOut.size = outOff
-          push(out, bufOut) // XXX
-          iterate   = true
-          outSent   = true
+        val flushOut = isClosed(inIn) && inRemain == 0 && fftInOff == 0 && fftOutRemain == 0
+        if (!outSent && (outRemain == 0 || flushOut) && isAvailable(out)) {
+          if (outOff > 0) {
+            bufOut.size = outOff
+            push(out, bufOut)
+          } else {
+            ctrl.returnBufD(bufOut)
+          }
+          bufOut      = null
+          outSent     = true
+          stateChange = true
         }
 
-        if (iterate) process()
+        if (flushOut && outSent) completeStage()
+        else if (stateChange) process()
       }
 
       setHandler(inIn, new InHandler {
-        def onPush(): Unit = {
-          bufIn = grab(inIn)
-          decPending()
-        }
+        def onPush(): Unit = updateCanRead()
+
+        override def onUpstreamFinish(): Unit = process() // may lead to `flushOut`
       })
 
       setHandler(inSize, new InHandler {
-        def onPush(): Unit = {
-          bufSize = grab(inSize)
-          decPending()
-        }
+        def onPush(): Unit = updateCanRead()
 
         override def onUpstreamFinish(): Unit = ()  // keep running
       })
 
       setHandler(inPadding, new InHandler {
-        def onPush(): Unit = {
-          bufPadding = grab(inPadding)
-          decPending()
-        }
+        def onPush(): Unit = updateCanRead()
 
         override def onUpstreamFinish(): Unit = ()  // keep running
       })
 
       setHandler(out, new OutHandler {
-        def onPull(): Unit = ???
+        def onPull(): Unit = process()
 
         override def onDownstreamFinish(): Unit = super.onDownstreamFinish()
       })
+
+      override def postStop(): Unit = {
+        freeInputBuffers()
+        freeOutputBuffers()
+        fft = null
+      }
     }
   }
 }

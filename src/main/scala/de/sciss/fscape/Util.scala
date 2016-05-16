@@ -18,6 +18,9 @@ object Util {
     }
   }
 
+  def copy(in: Array[Double], inOff: Int, out: Array[Double], outOff: Int, len: Int): Unit =
+    System.arraycopy(in, inOff, out, outOff, len)
+
   def fill(out: Array[Array[Double]], off: Int, len: Int, value: Double): Unit = {
     var ch = 0
     while (ch < out.length) {
@@ -29,6 +32,15 @@ object Util {
         i += 1
       }
       ch += 1
+    }
+  }
+
+  def fill(out: Array[Double], off: Int, len: Int, value: Double): Unit = {
+    var i     = off
+    val stop  = i + len
+    while (i < stop) {
+      out(i) = value
+      i += 1
     }
   }
 }
