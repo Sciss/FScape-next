@@ -20,19 +20,10 @@ import de.sciss.file.File
 import de.sciss.synth.io.AudioFileSpec
 
 object DiskOut {
-  def apply(file: File, spec: AudioFileSpec, in: Outlet /* Signal */[Double])(implicit b: GraphDSL.Builder[NotUsed]): Unit = {
-    val sink = new AudioFileSink(file, spec)
-    // import GraphDSL.Implicits._
-    // val sinkG = Sink.fromGraph(sink)
-    // in.asInstanceOf[Flow[Double, Double, NotUsed]] ~> sinkG
-    // in.to(sink)
-    // b.add(sink)
-    import GraphDSL.Implicits._
-    in ~> sink
-  }
-
   def apply(file: File, spec: AudioFileSpec, in: Outlet[BufD])
            (implicit b: GraphDSL.Builder[NotUsed], ctrl: Control): Unit = {
-    ???
+    val sink = new AudioFileSink(file, spec, ctrl)
+    import GraphDSL.Implicits._
+    in ~> sink
   }
 }

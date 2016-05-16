@@ -21,12 +21,12 @@ object Util {
   def copy(in: Array[Double], inOff: Int, out: Array[Double], outOff: Int, len: Int): Unit =
     System.arraycopy(in, inOff, out, outOff, len)
 
-  def fill(out: Array[Array[Double]], off: Int, len: Int, value: Double): Unit = {
+  def fill(buf: Array[Array[Double]], off: Int, len: Int, value: Double): Unit = {
     var ch = 0
-    while (ch < out.length) {
+    while (ch < buf.length) {
       var i     = off
       val stop  = i + len
-      val a     = out(ch)
+      val a     = buf(ch)
       while (i < stop) {
         a(i) = value
         i += 1
@@ -35,11 +35,20 @@ object Util {
     }
   }
 
-  def fill(out: Array[Double], off: Int, len: Int, value: Double): Unit = {
+  def fill(buf: Array[Double], off: Int, len: Int, value: Double): Unit = {
     var i     = off
     val stop  = i + len
     while (i < stop) {
-      out(i) = value
+      buf(i) = value
+      i += 1
+    }
+  }
+
+  def mul(buf: Array[Double], off: Int, len: Int, value: Double): Unit = {
+    var i     = off
+    val stop  = i + len
+    while (i < stop) {
+      buf(i) *= value
       i += 1
     }
   }

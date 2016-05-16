@@ -16,6 +16,7 @@ package de.sciss.fscape.stream
 import akka.stream.stage.{GraphStage, GraphStageLogic, OutHandler}
 import akka.stream.{ActorAttributes, Attributes, Outlet, SourceShape}
 import de.sciss.file._
+import de.sciss.fscape.stream.{logStream => log}
 import de.sciss.synth.io
 
 import scala.util.control.NonFatal
@@ -42,13 +43,14 @@ final class AudioFileSource(f: File, ctrl: Control)
     setHandler(out, this)
 
     override def preStart(): Unit = {
-      println(s"${new java.util.Date()} $source - preStart()")
+      log(s"$source - preStart()")
       af          = io.AudioFile.openRead(f)
       bufSize     = ctrl.bufSize
       buf         = af.buffer(bufSize)
     }
 
     override def postStop(): Unit = {
+      log(s"$source - postStop()")
       buf = null
       try {
         af.close()
@@ -72,6 +74,7 @@ final class AudioFileSource(f: File, ctrl: Control)
           b(i) = a(i).toDouble
           i += 1
         }
+        bufOut.size = chunk
         push(out, bufOut)
       }
     }

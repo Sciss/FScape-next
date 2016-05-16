@@ -13,102 +13,72 @@
 
 package de.sciss.fscape.stream
 
-import akka.stream.ActorAttributes.SupervisionStrategy
-import akka.stream.Attributes._
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler}
-import akka.stream.{ActorAttributes, Attributes, Inlet, SinkShape, Supervision}
+import akka.stream.{ActorAttributes, Attributes, Inlet, SinkShape}
 import de.sciss.file._
+import de.sciss.fscape.stream.{logStream => log}
 import de.sciss.synth.io
 
-import scala.annotation.tailrec
 import scala.util.control.NonFatal
 
-// similar to internal `UnfoldResourceSink`
-final class AudioFileSink(f: File, spec: io.AudioFileSpec) 
-  extends GraphStage[SinkShape[Double]] { sink =>
+final class AudioFileSink(f: File, spec: io.AudioFileSpec, ctrl: Control)
+  extends GraphStage[SinkShape[BufD]] { sink =>
   
-  val in = Inlet[Double]("AudioFileSink.in")
+  private[this] val in = Inlet[BufD]("AudioFileSink.in")
 
   override val shape = SinkShape(in)
-  // override def initialAttributes: Attributes = DefaultAttributes.unfoldResourceSink
 
-//  private[this] val IODispatcher = ActorAttributes.Dispatcher("akka.stream.default-blocking-io-dispatcher")
-//  override def initialAttributes: Attributes = name("unfoldResourceSink") and IODispatcher
+  override def initialAttributes: Attributes =
+    Attributes.name(toString) and
+    ActorAttributes.Dispatcher("akka.stream.default-blocking-io-dispatcher")
 
   def createLogic(inheritedAttributes: Attributes) = new GraphStageLogic(shape) with InHandler {
-    private[this] lazy val decider = inheritedAttributes.get[SupervisionStrategy].map(_.decider)
-      .getOrElse(Supervision.stoppingDecider)
 
-    private[this] var af: io.AudioFile = _
-    private[this] var buf: io.Frames = _
-    private[this] final val bufSize = 8192
-    private[this] var bufOff: Int = _
-    private[this] var framesWritten: Long = _
+    private[this] var af      : io.AudioFile = _
+    private[this] var buf     : io.Frames = _
+    private[this] var bufSize : Int = _
+
+    private[this] var framesWritten = 0L
 
     setHandler(in, this)
 
     override def preStart(): Unit = {
-      println(s"${new java.util.Date()} $sink - preStart()")
+      log(s"$sink - preStart()")
+      require(spec.numChannels == 1, s"$this: Currently only monophonic files supported")
       af            = io.AudioFile.openWrite(f, spec)
+      bufSize       = ctrl.bufSize
       buf           = af.buffer(bufSize)
-      bufOff        = 0
-      framesWritten = 0L
       pull(in)
     }
 
-    @tailrec
-    final override def onPush(): Unit = {
-      // println("onPush")
-      var resumingMode = false
+    override def postStop(): Unit = {
+      log(s"$sink - postStop()")
+      buf = null
       try {
-        val bufFull = bufOff == bufSize
-        if (bufFull) flush()
-        val d = grab(in)
-        buf(0)(bufOff) = d.toFloat // XXX TODO --- how to handle channels
-        bufOff += 1
-        pull(in)
-
-      } catch {
-        case NonFatal(ex) => decider(ex) match {
-          case Supervision.Stop =>
-            af.close()
-            failStage(ex)
-          case Supervision.Restart =>
-            restartState()
-            resumingMode = true
-          case Supervision.Resume =>
-            resumingMode = true
-        }
-      }
-      if (resumingMode) onPush()
-    }
-
-    override def onUpstreamFinish(): Unit = {
-      println(s"${new java.util.Date()} $sink.onUpstreamFinish()")
-      closeStage()
-    }
-
-    private def restartState(): Unit = {
-      af.close()
-      preStart()
-    }
-
-    private def flush(): Unit =
-      if (bufOff > 0) {
-        af.write(buf, 0, bufOff)
-        // println(s"$sink - flush ${af.file.orNull.name} - ${af.position}")
-        bufOff = 0
-      }
-
-    private def closeStage(): Unit = {
-      println(s"${new java.util.Date()} $sink - closeStage()")
-      try {
-        flush()
         af.close()
-        completeStage()
       } catch {
-        case NonFatal(ex) => failStage(ex)
+        case NonFatal(ex) => // XXX TODO --- what?
       }
+    }
+
+    override def onPush(): Unit = {
+      val bufIn = grab(in)
+      val chunk = bufIn.size
+      if (buf == null || buf(0).length < chunk) {
+        buf = af.buffer(chunk)
+      }
+      var i = 0
+      val a = bufIn.buf
+      val b = buf(0)
+      while (i < chunk) {
+        b(i) = a(i).toFloat
+        i += 1
+      }
+      af.write(buf, 0, chunk)
+      framesWritten += chunk
+
+      ctrl.returnBufD(bufIn)
+      pull(in)
     }
   }
   override def toString = s"AudioFileSink(${f.name})"

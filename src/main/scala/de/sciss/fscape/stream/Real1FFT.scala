@@ -23,42 +23,15 @@ import edu.emory.mathcs.jtransforms.fft.DoubleFFT_1D
 import scala.annotation.tailrec
 
 object Real1FFT {
-  def apply(in: Outlet /* Signal */[Double], size: Int /* Signal[Int] */, padding: Int /* Signal[Int] */ = 0)
-           (implicit b: GraphDSL.Builder[NotUsed]): Outlet /* Signal */[Double] = {
-
-    val fftSize = size + padding
-
-    import GraphDSL.Implicits._
-
-    val res = in.grouped(size).statefulMapConcat[Double] { () =>
-      val fft = new DoubleFFT_1D(fftSize)
-      val arr = new Array[Double](fftSize)
-
-      seq =>
-        var i = 0
-        seq.foreach { d =>
-          arr(i) = d
-          i += 1
-        }
-        while (i < fftSize) {
-          arr(i) = 0.0
-          i += 1
-        }
-        fft.realForward(arr)
-        arr.toVector
-    }
-
-    res.outlet
-  }
-
   def apply(in: Outlet[BufD], size: Outlet[BufI], padding: Outlet[BufI])
            (implicit b: GraphDSL.Builder[NotUsed], ctrl: Control): Outlet[BufD] = {
-    val stage = new Impl(ctrl)
+    val stage0  = new Impl(ctrl)
+    val stage   = b.add(stage0)
     import GraphDSL.Implicits._
-    in      ~> stage.shape.in0
-    size    ~> stage.shape.in1
-    padding ~> stage.shape.in2
-    stage.shape.out
+    in      ~> stage.in0
+    size    ~> stage.in1
+    padding ~> stage.in2
+    stage.out
   }
 
   private final class Impl(ctrl: Control) extends GraphStage[FanInShape3[BufD, BufI, BufI, BufD]] {
@@ -106,7 +79,7 @@ object Real1FFT {
       @inline
       private[this] def shouldRead    = inRemain == 0 && canRead
       @inline
-      private[this] def canPrepareFFT = fftOutRemain == 0
+      private[this] def canPrepareFFT = fftOutRemain == 0 && bufIn != null
 
       private def updateCanRead(): Unit = {
         canRead = isAvailable(inIn) &&
@@ -147,18 +120,19 @@ object Real1FFT {
           bufIn     = grab(inIn)
           inRemain  = bufIn.size
           inOff     = 0
-          pull(inIn)
+          tryPull(inIn)
 
-          if (!isClosed(inSize)) {
+          if (isAvailable(inSize)) {
             bufSize = grab(inSize)
-            pull(inSize)
+            tryPull(inSize)
           }
 
-          if (!isClosed(inPadding)) {
+          if (isAvailable(inPadding)) {
             bufPadding = grab(inPadding)
-            pull(inPadding)
+            tryPull(inPadding)
           }
 
+          canRead     = false
           stateChange = true
         }
 
@@ -182,8 +156,8 @@ object Real1FFT {
             stateChange = true
           }
 
-          val chunk = math.min(fftInRemain, inRemain)
-          val flushFFT = inRemain == 0 && isClosed(inIn) && fftInOff > 0
+          val chunk     = math.min(fftInRemain, inRemain)
+          val flushFFT  = inRemain == 0 && fftInOff > 0 && isClosed(inIn)
           if (chunk > 0 || flushFFT) {
 
             Util.copy(bufIn.buf, inOff, fftBuf, fftInOff, chunk)
@@ -195,6 +169,7 @@ object Real1FFT {
             if (fftInOff == size || flushFFT) {
               Util.fill(fftBuf, fftInOff, fftSize - fftInOff, 0.0)
               fft.realForward(fftBuf)
+              Util.mul(fftBuf, 0, fftSize, 2.0 / fftSize) // scale correctly
               fftOutOff     = 0
               fftOutRemain  = fftSize
               isNextFFT     = true
@@ -224,7 +199,7 @@ object Real1FFT {
           }
         }
 
-        val flushOut = isClosed(inIn) && inRemain == 0 && fftInOff == 0 && fftOutRemain == 0
+        val flushOut = inRemain == 0 && fftInOff == 0 && fftOutRemain == 0 && isClosed(inIn)
         if (!outSent && (outRemain == 0 || flushOut) && isAvailable(out)) {
           if (outOff > 0) {
             bufOut.size = outOff
