@@ -114,18 +114,39 @@ object Real1FFT {
       private[this] var fftOutRemain  = 0
       private[this] var outRemain     = 0
       private[this] var outSent       = true
+      private[this] var inRead        = true
+
+      private[this] var canRead       = false
 
       @tailrec
       private def process(): Unit = {
+        // becomes `true` if state changes,
+        // in that case we run this method again.
         var iterate = false
 
-        if (inRemain == 0) {
-          if (isAvailable(inIn)) {
-            bufIn     = grab(inIn)
-            inRemain  = bufIn.size
-            inOff     = 0
-            pull(inIn) // XXX
+        if (!inRead && inRemain == 0) {
+          if (bufIn != null) ctrl.returnBufD(bufIn)
+          bufIn     = grab(inIn)
+          inRemain  = bufIn.size
+          inOff     = 0
+          pull(inIn)
+
+          if (bufSize != null) ctrl.returnBufI(bufSize)
+          if (isClosed(inSize)) {
+            bufSize = null
+          } else {
+            bufSize = grab(inSize)
           }
+
+          if (bufPadding != null) ctrl.returnBufI(bufPadding)
+          if (isClosed(inPadding)) {
+            bufPadding = null
+          } else {
+            bufPadding = grab(inPadding)
+          }
+
+          inRead    = true
+          iterate   = true
         }
 
         if (fftOutRemain == 0) {
@@ -184,53 +205,11 @@ object Real1FFT {
         if (!outSent && (outRemain == 0 || flush) && isAvailable(out)) {
           bufOut.size = outOff
           push(out, bufOut) // XXX
-          iterate = true
-          outSent = true
+          iterate   = true
+          outSent   = true
         }
 
         if (iterate) process()
-      }
-
-      private def process_NOT(): Unit = {
-        if (fftInOff == size) { // begin new block
-          size    = ???
-          padding = ???
-          val n = math.max(1, size + padding)
-          if (n != fftSize) {
-            fftSize = n
-            fft     = new DoubleFFT_1D (n)
-            fftBuf  = new Array[Double](n)
-          }
-          fftInOff = 0
-        }
-
-        val chunk = math.min(size - fftInOff, bufIn.size - inOff)
-        if (chunk > 0) {
-          System.arraycopy(bufIn.buf, inOff, fftBuf, fftInOff, chunk)
-          inOff  += chunk
-          fftInOff += chunk
-
-          if (inOff == bufIn.size) {
-            if (isClosed(inIn)) {
-              // fill up remaining fft-buf
-              ju.Arrays.fill(fftBuf, fftInOff, size, 0.0)
-              fftInOff = size
-            } else {
-              pull(inIn)
-            }
-          }
-
-          if (fftInOff == size) {
-            ju.Arrays.fill(fftBuf, size, fftSize, 0.0)
-            fft.realForward(fftBuf)
-
-          }
-        }
-
-
-        if (isClosed(inIn))
-
-        ???
       }
 
       setHandler(inIn, new InHandler {
