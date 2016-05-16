@@ -1,6 +1,12 @@
 package de.sciss.fscape.stream
 
-final class BufD(val buf: Array[Double], @volatile var size: Int, val borrowed: Boolean)
+trait BufLike {
+  def release()(implicit ctrl: Control): Unit
+}
+
+final class BufD(val buf: Array[Double], @volatile var size: Int, val borrowed: Boolean) extends BufLike {
+  def release()(implicit ctrl: Control): Unit = ctrl.returnBufD(this)
+}
 
 object BufI {
   def apply(elems: Int*): BufI = {
@@ -8,4 +14,6 @@ object BufI {
     new BufI(arr, size = arr.length, borrowed = false)
   }
 }
-final class BufI(val buf: Array[Int]   , @volatile var size: Int, val borrowed: Boolean)
+final class BufI(val buf: Array[Int], @volatile var size: Int, val borrowed: Boolean) extends BufLike {
+  def release()(implicit ctrl: Control): Unit = ctrl.returnBufI(this)
+}
