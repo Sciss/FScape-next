@@ -15,6 +15,7 @@ libraryDependencies ++= Seq(
   "de.sciss"            %% "scalaaudiofile"           % "1.4.5",
   "de.sciss"            %% "fileutil"                 % "1.1.1",
   "de.sciss"            %% "scalaaudiofile"           % "1.4.5",
+  "de.sciss"            %% "swingplus"                % "0.2.1",
   // "com.typesafe.akka"   %% "akka-stream-experimental" % "2.0.4",
   "com.typesafe.akka"   %% "akka-stream"              % "2.4.4",
   "com.nativelibs4java" %% "scalaxy-streams"          % "0.3.4" % "provided"

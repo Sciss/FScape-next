@@ -19,6 +19,7 @@ import de.sciss.file._
 import de.sciss.fscape.stream.{logStream => log}
 import de.sciss.synth.io
 
+import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal
 
 final class AudioFileSink(f: File, spec: io.AudioFileSpec, ctrl: Control)
@@ -32,22 +33,31 @@ final class AudioFileSink(f: File, spec: io.AudioFileSpec, ctrl: Control)
     Attributes.name(toString) and
     ActorAttributes.Dispatcher("akka.stream.default-blocking-io-dispatcher")
 
-  def createLogic(inheritedAttributes: Attributes) = new GraphStageLogic(shape) with InHandler {
+  def createLogic(inheritedAttributes: Attributes) = new GraphStageLogic(shape) with InHandler { logic =>
 
     private[this] var af      : io.AudioFile = _
     private[this] var buf     : io.Frames = _
-    private[this] var bufSize : Int = _
 
     private[this] var framesWritten = 0L
+
+    private /* [this] */ val result = Promise[Long]()
 
     setHandler(in, this)
 
     override def preStart(): Unit = {
+      val asyncCancel = getAsyncCallback[Unit] { _ =>
+        val ex = Cancelled()
+        if (result.tryFailure(ex)) failStage(ex)
+      }
+      ctrl.addLeaf(new Leaf {
+        def result: Future[Any] = logic.result.future
+
+        def cancel(): Unit = asyncCancel.invoke(())
+      })
+
       log(s"$sink - preStart()")
       require(spec.numChannels == 1, s"$this: Currently only monophonic files supported")
-      af            = io.AudioFile.openWrite(f, spec)
-      bufSize       = ctrl.bufSize
-      buf           = af.buffer(bufSize)
+      af = io.AudioFile.openWrite(f, spec)
       pull(in)
     }
 
@@ -56,8 +66,9 @@ final class AudioFileSink(f: File, spec: io.AudioFileSpec, ctrl: Control)
       buf = null
       try {
         af.close()
+        result.trySuccess(framesWritten)
       } catch {
-        case NonFatal(ex) => // XXX TODO --- what?
+        case NonFatal(ex) => result.tryFailure(ex)
       }
     }
 
@@ -74,12 +85,24 @@ final class AudioFileSink(f: File, spec: io.AudioFileSpec, ctrl: Control)
         b(i) = a(i).toFloat
         i += 1
       }
-      af.write(buf, 0, chunk)
-      framesWritten += chunk
-
-      ctrl.returnBufD(bufIn)
+      try {
+        af.write(buf, 0, chunk)
+        framesWritten += chunk
+      } catch {
+        case NonFatal(ex) =>
+          result.failure(ex)
+          failStage(ex)
+      } finally {
+        ctrl.returnBufD(bufIn)
+      }
       pull(in)
     }
+
+    override def onUpstreamFailure(ex: Throwable): Unit = {
+      result.failure(ex)
+      super.onUpstreamFailure(ex)
+    }
   }
+
   override def toString = s"AudioFileSink(${f.name})"
 }

@@ -4,21 +4,26 @@ import akka.actor.ActorSystem
 import akka.stream.scaladsl.{GraphDSL, RunnableGraph, Source}
 import akka.stream.{ActorMaterializer, ActorMaterializerSettings, ClosedShape}
 import de.sciss.file._
+import de.sciss.fscape.gui.SimpleGUI
 import de.sciss.synth.io.AudioFileSpec
+
+import scala.concurrent.ExecutionContext
+import scala.swing.Swing
 
 object Test extends App {
   showStreamLog = true
 
-  val fIn   = userHome / "Music" / "work" / "mentasm-199a3aa1.aif"
-  // val fIn   = userHome / "Music" / "work" / "B19h39m45s23jan2015.wav"
+  // val fIn   = userHome / "Music" / "work" / "mentasm-199a3aa1.aif"
+  val fIn   = userHome / "Music" / "work" / "B19h39m45s23jan2015.wav"
   val fOut  = userHome / "Music" / "work" / "_killme.aif"
 
+  import ExecutionContext.Implicits.global
   implicit val ctrl = Control(600)
 
   val graph = GraphDSL.create() { implicit b =>
     val in      = DiskIn(file = fIn)
-    val size    = b.add(Source.single(BufI(1024))).out
-    val padding = b.add(Source.single(BufI(   0))).out
+    val size    = b.add(Source.single(BufI(65536))).out
+    val padding = b.add(Source.single(BufI(    0))).out
     val fft     = Real1FFT(in, size = size, padding = padding)
     DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = fft)
     ClosedShape
@@ -54,5 +59,10 @@ object Test extends App {
 
   val rg  = RunnableGraph.fromGraph(graph)
   val res = rg.run()
+
+  Swing.onEDT {
+    SimpleGUI(ctrl)
+  }
+
   println("Running.")
 }

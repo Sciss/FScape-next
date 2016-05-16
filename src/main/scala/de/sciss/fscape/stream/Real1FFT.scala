@@ -31,6 +31,7 @@ object Real1FFT {
     in      ~> stage.in0
     size    ~> stage.in1
     padding ~> stage.in2
+
     stage.out
   }
 
@@ -236,8 +237,6 @@ object Real1FFT {
 
       setHandler(out, new OutHandler {
         def onPull(): Unit = process()
-
-        override def onDownstreamFinish(): Unit = super.onDownstreamFinish()
       })
 
       override def postStop(): Unit = {
