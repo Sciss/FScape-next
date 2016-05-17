@@ -44,6 +44,9 @@ object Sliding {
   private final class Window(val buf: Array[Double]) {
     var offIn   = 0
     var offOut  = 0
+
+    def inRemain    : Int = buf.length - offIn
+    def availableOut: Int = offIn - offOut
   }
 
   private final class Stage(ctrl: Control) extends GraphStage[FanInShape3[BufD, BufI, BufI, BufD]] {
@@ -76,8 +79,17 @@ object Sliding {
 
     @inline
     private[this] def shouldRead     = inRemain   == 0 && canRead
+
+    /*
+      back-pressure algorithm:
+      - never begin a step if windows.head is full
+      - for example with a constant step size of 1/4 window size,
+        this means we halt processing input after window size
+        input frames (i.e. with four windows in memory).
+     */
     @inline
-    private[this] def canPrepareStep = stepRemain == 0 && bufIn0 != null
+    private[this] def canPrepareStep = stepRemain == 0 && bufIn0 != null &&
+      (windows.isEmpty || windows.head.inRemain > 0)
 
     @tailrec
     protected def process(): Unit = {
@@ -120,7 +132,7 @@ object Sliding {
         val chunkIn     = math.min(inRemain, stepRemain)
         if (chunkIn > 0) {
           windows.foreach { win =>
-            val chunkWin  = math.min(win.buf.length - win.offIn, chunkIn)
+            val chunkWin  = math.min(win.inRemain, chunkIn)
             if (chunkWin > 0) {
               Util.copy(bufIn0.buf, inOff, win.buf, win.offIn, chunkWin)
               win.offIn += chunkWin
@@ -135,8 +147,7 @@ object Sliding {
 
         // copy windows to output
         val win           = windows.head
-        val winOutRemain  = win.offIn - win.offOut
-        val chunkOut      = math.min(winOutRemain, outRemain)
+        val chunkOut      = math.min(win.availableOut, outRemain)
         if (chunkOut > 0) {
           Util.copy(win.buf, win.offOut, bufOut.buf, outOff, chunkOut)
           win.offOut   += chunkOut
