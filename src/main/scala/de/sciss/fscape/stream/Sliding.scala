@@ -44,10 +44,11 @@ object Sliding {
   private final class Window(val buf: Array[Double]) {
     var offIn   = 0
     var offOut  = 0
+    var size    = buf.length
 
-    def inRemain    : Int = buf.length - offIn
+    def inRemain    : Int = size  - offIn
     def availableOut: Int = offIn - offOut
-    def outRemain   : Int = buf.length - offOut
+    def outRemain   : Int = size  - offOut
   }
 
   private final class Stage(ctrl: Control) extends GraphStage[FanInShape3[BufD, BufI, BufI, BufD]] {
@@ -92,19 +93,12 @@ object Sliding {
     private[this] def canPrepareStep = stepRemain == 0 && bufIn0 != null &&
       (windows.isEmpty || windows.head.inRemain > 0)
 
-    private var WRITTEN = 0L
-
     @tailrec
     protected def process(): Unit = {
       var stateChange = false
 
-      if (WRITTEN >= 881400 /* 880800 */) {
-        println(s"PROCESS $WRITTEN")
-      }
-
       // read inlets
       if (shouldRead) {
-WRITTEN += inOff
         readIns()
         inOff       = 0
         inRemain    = bufIn0.size // if (inRemain == 48)
@@ -156,11 +150,19 @@ WRITTEN += inOff
         // copy window to output
         val win           = windows.head
         val flushWin      = inRemain == 0 && isClosed(shape.in0)
-        //   if there other windows coming,
-        //   we should zero-pad the window upon flush
-        //   in order to guarantee the expected window size
-        if (flushWin && windows.size > 1) {
-          win.offIn = win.buf.length  // factual zero padding
+        if (flushWin) {
+          if (windows.size == 1) {
+            //   if there are no other windows coming,
+            //   we must make sure `outRemain` is shortened.
+            outRemain = math.min(outRemain, win.offIn)
+            win.size  = win.offIn
+
+          } else {
+            //   if there are other windows coming,
+            //   we should zero-pad the window upon flush
+            //   in order to guarantee the expected window size
+            win.offIn = win.size  // factual zero padding
+          }
         }
         val chunkOut = math.min(win.availableOut, outRemain)
         if (chunkOut > 0 || flushWin) {
@@ -168,8 +170,11 @@ WRITTEN += inOff
           win.offOut   += chunkOut
           outOff       += chunkOut
           outRemain    -= chunkOut
-          if (win.outRemain == 0) windows = windows.tail
-          stateChange   = true
+          val dropWin   = win.outRemain == 0
+          if (dropWin) windows = windows.tail
+          if (chunkOut > 0 || dropWin) {
+            stateChange   = true
+          }
         }
       }
 
