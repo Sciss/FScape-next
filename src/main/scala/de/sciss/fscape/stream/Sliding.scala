@@ -92,15 +92,22 @@ object Sliding {
     private[this] def canPrepareStep = stepRemain == 0 && bufIn0 != null &&
       (windows.isEmpty || windows.head.inRemain > 0)
 
+    private var WRITTEN = 0L
+
     @tailrec
     protected def process(): Unit = {
       var stateChange = false
 
+      if (WRITTEN >= 881400 /* 880800 */) {
+        println(s"PROCESS $WRITTEN")
+      }
+
       // read inlets
       if (shouldRead) {
+WRITTEN += inOff
         readIns()
         inOff       = 0
-        inRemain    = bufIn0.size
+        inRemain    = bufIn0.size // if (inRemain == 48)
         stateChange = true
       }
 
