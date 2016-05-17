@@ -41,7 +41,10 @@ object Sliding {
     stage.out
   }
 
-  private final class Window(val buf: Array[Double], var off: Int)
+  private final class Window(val buf: Array[Double]) {
+    var offIn   = 0
+    var offOut  = 0
+  }
 
   private final class Stage(ctrl: Control) extends GraphStage[FanInShape3[BufD, BufI, BufI, BufD]] {
     val shape = new FanInShape3(
@@ -80,31 +83,31 @@ object Sliding {
     protected def process(): Unit = {
       var stateChange = false
 
+      // read inlets
       if (shouldRead) {
         readIns()
         inOff       = 0
         inRemain    = bufIn0.size
         stateChange = true
       }
-      if (canPrepareStep) {
-        if (isNextStep) {
-          if (bufIn1 != null && inOff < bufIn1.size) {
-            size = math.max(1, bufIn1.buf(inOff))
-          }
-          if (bufIn2 != null && inOff < bufIn2.size) {
-            step = math.max(1, math.min(size, bufIn2.buf(inOff)))
-          }
-          stepRemain = step
-          val win = new Window(new Array[Double](size), off = 0)
-          windows :+= win
-          isNextStep  = false
-          stateChange = true
-        }
 
-        ???
+      // create new window
+      if (canPrepareStep && isNextStep) {
+        if (bufIn1 != null && inOff < bufIn1.size) {
+          size = math.max(1, bufIn1.buf(inOff))
+        }
+        if (bufIn2 != null && inOff < bufIn2.size) {
+          step = math.max(1, math.min(size, bufIn2.buf(inOff)))
+        }
+        stepRemain  = step
+        val win     = new Window(new Array[Double](size))
+        windows   :+= win
+        isNextStep  = false
+        stateChange = true
       }
 
       if (windows.nonEmpty) {
+        // create new output buffer
         if (outSent) {
           bufOut        = ctrl.borrowBufD()
           outRemain     = bufOut.size
@@ -113,19 +116,39 @@ object Sliding {
           stateChange   = true
         }
 
-        val win       = windows.head
-        val winRemain = win.buf.length - win.off
-        val chunk     = math.min(winRemain, outRemain)
-        if (chunk > 0) {
-          Util.copy(win.buf, win.off, bufOut.buf, outOff, chunk)
-          win.off      += chunk
-          outOff       += chunk
-          outRemain    -= chunk
-          if (win.off == win.buf.length) windows = windows.tail
+        // copy input to windows
+        val chunkIn     = math.min(inRemain, stepRemain)
+        if (chunkIn > 0) {
+          windows.foreach { win =>
+            val chunkWin  = math.min(win.buf.length - win.offIn, chunkIn)
+            if (chunkWin > 0) {
+              Util.copy(bufIn0.buf, inOff, win.buf, win.offIn, chunkWin)
+              win.offIn += chunkWin
+            }
+          }
+          inOff        += chunkIn
+          inRemain     -= chunkIn
+          stepRemain   -= chunkIn
+          if (stepRemain == 0) isNextStep = true
+          stateChange   = true
+        }
+
+        // copy windows to output
+        val win           = windows.head
+        val winOutRemain  = win.offIn - win.offOut
+        val chunkOut      = math.min(winOutRemain, outRemain)
+        if (chunkOut > 0) {
+          Util.copy(win.buf, win.offOut, bufOut.buf, outOff, chunkOut)
+          win.offOut   += chunkOut
+          outOff       += chunkOut
+          outRemain    -= chunkOut
+          val flushWin  = ??? : Boolean
+          if (win.offOut == win.buf.length || flushWin) windows = windows.tail
           stateChange   = true
         }
       }
 
+      // write outlet
       val flushOut = inRemain == 0 && windows.isEmpty && isClosed(shape.in0)
       if (!outSent && (outRemain == 0 || flushOut) && isAvailable(shape.out)) {
         if (outOff > 0) {
