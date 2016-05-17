@@ -47,6 +47,7 @@ object Sliding {
 
     def inRemain    : Int = buf.length - offIn
     def availableOut: Int = offIn - offOut
+    def outRemain   : Int = buf.length - offOut
   }
 
   private final class Stage(ctrl: Control) extends GraphStage[FanInShape3[BufD, BufI, BufI, BufD]] {
@@ -145,16 +146,22 @@ object Sliding {
           stateChange   = true
         }
 
-        // copy windows to output
+        // copy window to output
         val win           = windows.head
-        val chunkOut      = math.min(win.availableOut, outRemain)
-        if (chunkOut > 0) {
+        val flushWin      = inRemain == 0 && isClosed(shape.in0)
+        //   if there other windows coming,
+        //   we should zero-pad the window upon flush
+        //   in order to guarantee the expected window size
+        if (flushWin && windows.size > 1) {
+          win.offIn = win.buf.length  // factual zero padding
+        }
+        val chunkOut = math.min(win.availableOut, outRemain)
+        if (chunkOut > 0 || flushWin) {
           Util.copy(win.buf, win.offOut, bufOut.buf, outOff, chunkOut)
           win.offOut   += chunkOut
           outOff       += chunkOut
           outRemain    -= chunkOut
-          val flushWin  = ??? : Boolean
-          if (win.offOut == win.buf.length || flushWin) windows = windows.tail
+          if (win.outRemain == 0) windows = windows.tail
           stateChange   = true
         }
       }
