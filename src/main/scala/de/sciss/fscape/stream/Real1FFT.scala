@@ -77,7 +77,7 @@ object Real1FFT {
     }
 
     @inline
-    private[this] def shouldRead    = inRemain == 0 && canRead
+    private[this] def shouldRead    = inRemain     == 0 && canRead
     @inline
     private[this] def canPrepareFFT = fftOutRemain == 0 && bufIn0 != null
 

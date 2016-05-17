@@ -17,6 +17,7 @@ import akka.NotUsed
 import akka.stream.{Attributes, FanInShape3, Inlet, Outlet}
 import akka.stream.scaladsl.GraphDSL
 import akka.stream.stage.{GraphStage, GraphStageLogic}
+import de.sciss.fscape.Util
 import de.sciss.fscape.stream.impl.FilterIn3Impl
 
 import scala.annotation.tailrec
@@ -57,38 +58,89 @@ object Sliding {
                             protected val ctrl: Control)
     extends GraphStageLogic(shape) with FilterIn3Impl[BufD, BufI, BufI, BufD] {
 
-    private[this] var inOff       = 0  // regarding `bufIn`
-    private[this] var inRemain    = 0
-    private[this] var stepRemain  = 0
+    private[this] var inOff         = 0  // regarding `bufIn`
+    private[this] var inRemain      = 0
+    private[this] var stepRemain    = 0
+    private[this] var outOff        = 0  // regarding `bufOut`
+    private[this] var outRemain     = 0
 
     private[this] var size  : Int  = _
     private[this] var step  : Int  = _
+    private[this] var windows = Vector.empty[Window]
+
+    private[this] var isNextStep    = true
+    private[this] var outSent       = true
 
     @inline
-    private[this] def isNextStep = stepRemain == 0 && bufIn0 != null
+    private[this] def shouldRead     = inRemain   == 0 && canRead
+    @inline
+    private[this] def canPrepareStep = stepRemain == 0 && bufIn0 != null
 
     @tailrec
     protected def process(): Unit = {
       var stateChange = false
 
-      if (canRead) {
+      if (shouldRead) {
         readIns()
-        inOff     = 0
-        inRemain  = bufIn0.size
+        inOff       = 0
+        inRemain    = bufIn0.size
+        stateChange = true
       }
-      if (isNextStep) {
-        if (bufIn1 != null && inOff < bufIn1.size) {
-          size = math.max(1, bufIn1.buf(inOff))
+      if (canPrepareStep) {
+        if (isNextStep) {
+          if (bufIn1 != null && inOff < bufIn1.size) {
+            size = math.max(1, bufIn1.buf(inOff))
+          }
+          if (bufIn2 != null && inOff < bufIn2.size) {
+            step = math.max(1, math.min(size, bufIn2.buf(inOff)))
+          }
+          stepRemain = step
+          val win = new Window(new Array[Double](size), off = 0)
+          windows :+= win
+          isNextStep  = false
+          stateChange = true
         }
-        if (bufIn2 != null && inOff < bufIn2.size) {
-          step = math.max(1, math.min(size, bufIn2.buf(inOff)))
-        }
-        stepRemain = step
-        val win = new Window(new Array[Double](size), off = 0)
+
         ???
       }
 
-      if (stateChange) process()
+      if (windows.nonEmpty) {
+        if (outSent) {
+          bufOut        = ctrl.borrowBufD()
+          outRemain     = bufOut.size
+          outOff        = 0
+          outSent       = false
+          stateChange   = true
+        }
+
+        val win       = windows.head
+        val winRemain = win.buf.length - win.off
+        val chunk     = math.min(winRemain, outRemain)
+        if (chunk > 0) {
+          Util.copy(win.buf, win.off, bufOut.buf, outOff, chunk)
+          win.off      += chunk
+          outOff       += chunk
+          outRemain    -= chunk
+          if (win.off == win.buf.length) windows = windows.tail
+          stateChange   = true
+        }
+      }
+
+      val flushOut = inRemain == 0 && windows.isEmpty && isClosed(shape.in0)
+      if (!outSent && (outRemain == 0 || flushOut) && isAvailable(shape.out)) {
+        if (outOff > 0) {
+          bufOut.size = outOff
+          push(shape.out, bufOut)
+        } else {
+          bufOut.release()(ctrl)
+        }
+        bufOut      = null
+        outSent     = true
+        stateChange = true
+      }
+
+      if (flushOut && outSent) completeStage()
+      else if (stateChange) process()
     }
   }
 }
