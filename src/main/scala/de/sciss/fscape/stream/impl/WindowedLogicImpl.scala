@@ -20,7 +20,7 @@ import de.sciss.fscape.stream.BufLike
 import scala.annotation.tailrec
 
 trait WindowedLogicImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, Shape <: FanInShape[Out]]
-  extends FilterInImpl[Out, Shape] {
+  extends FilterInImpl[Shape] {
 
   _: GraphStageLogic =>
 

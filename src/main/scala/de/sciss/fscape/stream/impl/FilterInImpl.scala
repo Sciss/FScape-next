@@ -13,16 +13,16 @@
 
 package de.sciss.fscape.stream.impl
 
-import akka.stream.FanInShape
+import akka.stream.Shape
 import akka.stream.stage.GraphStageLogic
-import de.sciss.fscape.stream.{BufLike, Control}
+import de.sciss.fscape.stream.Control
 
-trait FilterInImpl[Out >: Null <: BufLike, Shape <: FanInShape[Out]] {
+trait FilterInImpl[S <: Shape] {
   _: GraphStageLogic =>
 
   // ---- abstract ----
 
-  protected def shape: Shape
+  protected def shape: S
 
   protected def ctrl: Control
 

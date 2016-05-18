@@ -19,7 +19,7 @@ import de.sciss.fscape.stream.BufLike
 
 /** Building block for `FanInShape2` type graph stage logic. */
 trait FilterIn2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, Out >: Null <: BufLike]
-  extends FilterInImpl[Out, FanInShape2[In0, In1, Out]] {
+  extends FilterInImpl[FanInShape2[In0, In1, Out]] {
   _: GraphStageLogic =>
 
   // ---- impl ----
