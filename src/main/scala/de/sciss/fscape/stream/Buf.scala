@@ -2,6 +2,8 @@ package de.sciss.fscape.stream
 
 trait BufLike {
   def release()(implicit ctrl: Control): Unit
+
+  /* @volatile */ var size: Int
 }
 
 final class BufD(val buf: Array[Double], @volatile var size: Int, val borrowed: Boolean) extends BufLike {
