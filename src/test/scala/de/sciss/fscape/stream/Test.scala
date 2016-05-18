@@ -39,17 +39,25 @@ object Test extends App {
 //    ClosedShape
 //  }
 
+//  val graph = GraphDSL.create() { implicit b =>
+//    val in      = DiskIn(file = fIn)
+//    val size1   = b.add(Source.single(BufI(1024))).out
+//    val padding1= b.add(Source.single(BufI(   0))).out
+//    val size2   = b.add(Source.single(BufI(1024))).out
+//    val padding2= b.add(Source.single(BufI(   0))).out
+//    //    val fft     = Real1FFT (in = in , size = size1, padding = padding1)
+//    //    val ifft    = Real1IFFT(in = fft, size = size2, padding = padding2)
+//    val fft     = Real1FullFFT (in = in , size = size1, padding = padding1)
+//    val ifft    = Real1FullIFFT(in = fft, size = size2, padding = padding2)
+//    DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = ifft)
+//    ClosedShape
+//  }
+
   val graph = GraphDSL.create() { implicit b =>
     val in      = DiskIn(file = fIn)
-    val size1   = b.add(Source.single(BufI(1024))).out
-    val padding1= b.add(Source.single(BufI(   0))).out
-    val size2   = b.add(Source.single(BufI(1024))).out
-    val padding2= b.add(Source.single(BufI(   0))).out
-//    val fft     = Real1FFT (in = in , size = size1, padding = padding1)
-//    val ifft    = Real1IFFT(in = fft, size = size2, padding = padding2)
-    val fft     = Real1FullFFT (in = in , size = size1, padding = padding1)
-    val ifft    = Real1FullIFFT(in = fft, size = size2, padding = padding2)
-    DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = ifft)
+    val size    = b.add(Source.single(BufI(1024))).out
+    val sig     = ReverseWindow(in = in, size = size)
+    DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig)
     ClosedShape
   }
 
