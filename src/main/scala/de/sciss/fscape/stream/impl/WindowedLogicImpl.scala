@@ -83,20 +83,22 @@ trait WindowedLogicImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, Shape <:
 
       val chunk     = math.min(writeToWinRemain, inRemain)
       val flushIn   = inRemain == 0 && writeToWinOff > 0 && isClosed(in0)
-      if (chunk > 0) {
-        copyInputToWindow(inOff = inOff, writeToWinOff = writeToWinOff, chunk = chunk)
-        inOff            += chunk
-        inRemain         -= chunk
-        writeToWinOff    += chunk
-        writeToWinRemain -= chunk
-        stateChange       = true
-      }
+      if (chunk > 0 || flushIn) {
+        if (chunk > 0) {
+          copyInputToWindow(inOff = inOff, writeToWinOff = writeToWinOff, chunk = chunk)
+          inOff            += chunk
+          inRemain         -= chunk
+          writeToWinOff    += chunk
+          writeToWinRemain -= chunk
+          stateChange       = true
+        }
 
-      if (chunk > 0 && (writeToWinRemain == 0 || flushIn)) {
-        readFromWinRemain = processWindow(writeToWinOff = writeToWinOff)
-        readFromWinOff    = 0
-        isNextWindow      = true
-        stateChange       = true
+        if (writeToWinRemain == 0 || flushIn) {
+          readFromWinRemain = processWindow(writeToWinOff = writeToWinOff)
+          readFromWinOff    = 0
+          isNextWindow      = true
+          stateChange       = true
+        }
       }
     }
 

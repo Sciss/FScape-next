@@ -167,8 +167,8 @@ final class Real1FullIFFTLogicImpl(shape: FanInShape3[BufD, BufI, BufI, BufD], c
   protected def performFFT(fft: DoubleFFT_1D, fftBuf: Array[Double]): Unit = {
     // fft.realInverseFull(fftBuf, false)
     fft.complexInverse(fftBuf, false)
-    var i = 1
-    var j = 2
+    var i = 0
+    var j = 0
     while (j < fftBuf.length) {
       fftBuf(i) = fftBuf(j) * 0.5
       i += 1
