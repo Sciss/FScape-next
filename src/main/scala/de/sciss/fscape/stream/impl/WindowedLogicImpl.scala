@@ -26,11 +26,11 @@ trait WindowedLogicImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, Shape <:
 
   // ---- abstract ----
 
-  protected def startNextWindow(): Int
+  protected def startNextWindow(inOff: Int): Int
 
   protected def in0: Inlet[In0]
 
-  protected def copyInputToWindow (inOff: Int, writeToWinOff: Int, chunk: Int): Unit
+  protected def copyInputToWindow(inOff: Int, writeToWinOff: Int, chunk: Int): Unit
 
   protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit
 
@@ -38,10 +38,10 @@ trait WindowedLogicImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, Shape <:
 
   protected def allocOutBuf(): Out
 
-  // ---- impl ----
+  protected var bufIn0: In0
+  protected var bufOut: Out
 
-  protected final var bufIn0: In0 = _
-  protected final var bufOut: Out = _
+  // ---- impl ----
 
   private[this] final var writeToWinOff     = 0
   private[this] final var writeToWinRemain  = 0
@@ -56,7 +56,7 @@ trait WindowedLogicImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, Shape <:
   private[this] final var isNextWindow      = true
 
   @inline
-  private[this] final def shouldRead        = inRemain     == 0 && canRead
+  private[this] final def shouldRead        = inRemain          == 0 && canRead
   @inline
   private[this] final def canWriteToWindow  = readFromWinRemain == 0 && bufIn0 != null
 
@@ -75,7 +75,7 @@ trait WindowedLogicImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, Shape <:
 
     if (canWriteToWindow) {
       if (isNextWindow) {
-        writeToWinRemain  = startNextWindow()
+        writeToWinRemain  = startNextWindow(inOff = inOff)
         writeToWinOff     = 0
         isNextWindow      = false
         stateChange       = true
