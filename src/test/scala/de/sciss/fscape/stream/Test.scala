@@ -3,7 +3,7 @@ package de.sciss.fscape.stream
 import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.stream.scaladsl.{GraphDSL, RunnableGraph, Source}
-import akka.stream.{ActorMaterializer, ActorMaterializerSettings, ClosedShape, Outlet}
+import akka.stream.{ActorMaterializer, ActorMaterializerSettings, ClosedShape, Outlet, OverflowStrategy}
 import de.sciss.file._
 import de.sciss.fscape.gui.SimpleGUI
 import de.sciss.synth.io.AudioFileSpec
@@ -21,7 +21,8 @@ object Test extends App {
   val fOut2 = userHome / "Music" / "work" / "_killme2.aif"
 
   import ExecutionContext.Implicits.global
-  implicit val ctrl = Control(1024)
+  val blockSize = 1024
+  implicit val ctrl = Control(blockSize)
 
 //  val graph = GraphDSL.create() { implicit b =>
 //    val in      = DiskIn(file = fIn)
@@ -73,10 +74,12 @@ object Test extends App {
     val winStep     = fftSize / 4
     val inW         = Sliding      (in = in , size = const(fftSize), step    = const(winStep))
     val fft         = Real1FullFFT (in = inW, size = const(fftSize), padding = const(0))
-    val (pos, neg)  = UnzipWindow  (in = fft, size = const(fftSize))
-    // val negRev      = ReverseWindow(in = neg, size = const(fftSize), clump   = const(2))
+    val (pos0, neg) = UnzipWindow  (in = fft, size = const(fftSize))
+    import GraphDSL.Implicits._
+    val pos         = pos0.buffer(size = fftSize/blockSize, overflowStrategy = OverflowStrategy.backpressure).outlet
+    val negRev      = ReverseWindow(in = neg, size = const(fftSize), clump   = const(2))
 
-    val foo         = BinaryOp(op = BinaryOp.Times, a = pos, b = neg /* negRev */)
+    val foo         = BinaryOp(op = BinaryOp.Times, a = pos, b = negRev)
 //    val foo         = BinaryOp(op = BinaryOp.Times, a = fft, b = const(0.5))
     val sig         = Real1FullIFFT(in = foo, size = const(fftSize), padding = const(0))
     DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig)
