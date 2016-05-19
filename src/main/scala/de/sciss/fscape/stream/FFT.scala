@@ -16,7 +16,7 @@ package de.sciss.fscape.stream
 import akka.NotUsed
 import akka.stream.Outlet
 import akka.stream.scaladsl.GraphDSL
-import de.sciss.fscape.stream.impl.{Real1FFTStageImpl, Real1FullFFTStageImpl, Real1FullIFFTStageImpl, Real1IFFTStageImpl}
+import de.sciss.fscape.stream.impl.{Complex1FFTStageImpl, Complex1IFFTStageImpl, Real1FFTStageImpl, Real1FullFFTStageImpl, Real1FullIFFTStageImpl, Real1IFFTStageImpl}
 
 /** Real (positive spectrum) forward Short Time Fourier Transform.
   * The counter-part of it is `Real1IFFT`.
@@ -56,4 +56,22 @@ object Real1FullIFFT {
   def apply(in: Outlet[BufD], size: Outlet[BufI], padding: Outlet[BufI])
            (implicit b: GraphDSL.Builder[NotUsed], ctrl: Control): Outlet[BufD] =
     new Real1FullIFFTStageImpl(ctrl).connect(in = in, size = size, padding = padding)
+}
+
+/** Complex forward Short Time Fourier Transform.
+  * The counter-part of it is `Complex1IFFT`.
+  */
+object Complex1FFT {
+  def apply(in: Outlet[BufD], size: Outlet[BufI], padding: Outlet[BufI])
+           (implicit b: GraphDSL.Builder[NotUsed], ctrl: Control): Outlet[BufD] =
+    new Complex1FFTStageImpl(ctrl).connect(in = in, size = size, padding = padding)
+}
+
+/** Complex inverse Short Time Fourier Transform.
+  * The is the counter-part to `Complex1FFT`.
+  */
+object Complex1IFFT {
+  def apply(in: Outlet[BufD], size: Outlet[BufI], padding: Outlet[BufI])
+           (implicit b: GraphDSL.Builder[NotUsed], ctrl: Control): Outlet[BufD] =
+    new Complex1IFFTStageImpl(ctrl).connect(in = in, size = size, padding = padding)
 }

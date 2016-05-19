@@ -18,13 +18,14 @@ import akka.stream.scaladsl.GraphDSL
 import akka.stream.stage.{GraphStage, GraphStageLogic}
 import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
 import de.sciss.fscape.stream.impl.FilterIn1Impl
-import de.sciss.numbers.{DoubleFunctions => rd, DoubleFunctions2 => rd2}
 
 import scala.annotation.switch
 
 /** Unary operator assuming stream is complex signal (real and imaginary interleaved).
   * Outputs another complex stream even if the operator yields a purely real-valued result
   * (ex. `abs`).
+  *
+  * XXX TODO - need more ops such as conjugate, polar-to-cartesian, ...
   */
 object ComplexUnaryOp {
   def apply(op: Op, in: Outlet[BufD])
@@ -47,7 +48,7 @@ object ComplexUnaryOp {
 //      case Signum     .id => Signum
       case Squared    .id => Squared
       case Cubed      .id => Cubed
-      case Sqrt       .id => Sqrt
+//      case Sqrt       .id => Sqrt
       case Exp        .id => Exp
       case Reciprocal .id => Reciprocal
 //      case Midicps    .id => Midicps
@@ -167,19 +168,13 @@ object ComplexUnaryOp {
       while (i < inStop) {
         val inRe  = in(i); i += 1
         val inIm  = in(i); i += 1
-        val outRe = ??? : Double // inRe * inRe - inIm * inIm
-        val outIm = ??? : Double // inRe * inIm * 2
+        val tmpRe = inRe * inRe - inIm * inIm
+        val tmpIm = inRe * inIm * 2
+        val outRe = tmpRe * inRe - tmpIm * inIm   // XXX TODO -- can we simplify this?
+        val outIm = tmpRe * inIm + inRe  * tmpIm
         out(j) = outRe; j += 1
         out(j) = outIm; j += 1
       }
-    }
-  }
-
-  case object Sqrt extends Op {
-    final val id = 14
-
-    def apply(in: Array[Double], inOff: Int, out: Array[Double], outOff: Int, len: Int): Unit = {
-      ???
     }
   }
 
@@ -187,7 +182,21 @@ object ComplexUnaryOp {
     final val id = 15
 
     def apply(in: Array[Double], inOff: Int, out: Array[Double], outOff: Int, len: Int): Unit = {
-      ???
+      // Mag  (out) = Exp(Re(in))
+      // Phase(out) = Im(in)
+      val inStop = inOff + (len << 1)
+      var i = inOff
+      var j = outOff
+      while (i < inStop) {
+        val inRe    = in(i); i += 1
+        val inIm    = in(i); i += 1
+        val outMag  = math.exp(inRe)
+        val outPhase= inIm
+        val outRe   = outMag * math.cos(outPhase)
+        val outIm   = outMag * math.sin(outPhase)
+        out(j) = outRe; j += 1
+        out(j) = outIm; j += 1
+      }
     }
   }
 
@@ -195,32 +204,65 @@ object ComplexUnaryOp {
     final val id = 16
 
     def apply(in: Array[Double], inOff: Int, out: Array[Double], outOff: Int, len: Int): Unit = {
-      ???
+      // Re(out) =  Re(in) / (Re(in)^2 + Im(in)^2)
+      // Im(out) = -Im(in) / (Re(in)^2 + Im(in)^2)
+      val inStop = inOff + (len << 1)
+      var i = inOff
+      var j = outOff
+      while (i < inStop) {
+        val inRe    = in(i); i += 1
+        val inIm    = in(i); i += 1
+        val div     = inRe * inRe + inIm * inIm
+        val outRe   =  inRe / div
+        val outIm   = -inIm / div
+        out(j) = outRe; j += 1
+        out(j) = outIm; j += 1
+      }
     }
   }
 
   case object Log extends Op {
     final val id = 25
 
-    def apply(in: Array[Double], inOff: Int, out: Array[Double], outOff: Int, len: Int): Unit = {
-      ???
+    def apply(in: Array[Double], inOff: Int, out: Array[Double], outOff: Int, len: Int): Unit =
+      base(in = in, inOff = inOff, out = out, outOff = outOff, len = len, mul = 1.0)
+
+    private[ComplexUnaryOp] def base(in: Array[Double], inOff: Int, out: Array[Double], outOff: Int, len: Int,
+                                     mul: Double): Unit = {
+      // Re(out) = Log(Mag(in))
+      // Im(out) = Phase(in)
+      val inStop = inOff + (len << 1)
+      var i = inOff
+      var j = outOff
+      while (i < inStop) {
+        val inRe    = in(i); i += 1
+        val inIm    = in(i); i += 1
+        val inMag   = math.sqrt(inRe * inRe + inIm * inIm)
+        val inPhase = math.atan2(inIm, inRe)
+        val outRe   = math.log(inMag) * mul
+        val outIm   = inPhase         * mul
+        out(j) = outRe; j += 1
+        out(j) = outIm; j += 1
+      }
     }
   }
 
   case object Log2 extends Op {
     final val id = 26
 
-    def apply(in: Array[Double], inOff: Int, out: Array[Double], outOff: Int, len: Int): Unit = {
-      ???
-    }
+    private[this] final val Ln2R = 1.0 / math.log(2)
+
+    def apply(in: Array[Double], inOff: Int, out: Array[Double], outOff: Int, len: Int): Unit =
+      Log.base(in = in, inOff = inOff, out = out, outOff = outOff, len = len, mul = Ln2R)
   }
 
   case object Log10 extends Op {
     final val id = 27
 
-    def apply(in: Array[Double], inOff: Int, out: Array[Double], outOff: Int, len: Int): Unit = {
-      ???
-    }
+    private[this] final val Ln10R = 1.0 / math.log(10)
+
+    def apply(in: Array[Double], inOff: Int, out: Array[Double], outOff: Int, len: Int): Unit =
+      Log.base(in = in, inOff = inOff, out = out, outOff = outOff, len = len, mul = Ln10R)
   }
 
   private final class Stage(op: Op, ctrl: Control) extends GraphStage[FlowShape[BufD, BufD]] {
@@ -268,26 +310,17 @@ object ComplexUnaryOp {
         stateChange   = true
       }
 
-      val chunk = math.min(inRemain, outRemain)
+      val chunk = math.min(inRemain, outRemain) & ~1  // must be even
       if (chunk > 0) {
-        var inOffI  = inOff
-        var outOffI = outOff
-        val inStop  = inOffI + chunk
-        val in      = bufIn .buf
-        val out     = bufOut.buf
-        while (inOffI < inStop) {
-          ??? // out(outOffI) = op(in(inOffI))
-          inOffI  += 1
-          outOffI += 1
-        }
-        inOff        = inOffI
+        op(in = bufIn.buf, inOff = inOff, out = bufOut.buf, outOff = outOff, len = chunk >> 1)
+        inOff       += chunk
         inRemain    -= chunk
-        outOff       = outOffI
+        outOff      += chunk
         outRemain   -= chunk
         stateChange  = true
       }
 
-      val flushOut = inRemain == 0 && isClosed(shape.in)
+      val flushOut = inRemain <= 1 && isClosed(shape.in)  // flush also if inRemain == 1
       if (!outSent && (outRemain == 0 || flushOut) && isAvailable(shape.out)) {
         if (outOff > 0) {
           bufOut.size = outOff

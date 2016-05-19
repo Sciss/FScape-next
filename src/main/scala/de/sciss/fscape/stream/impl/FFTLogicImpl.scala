@@ -1,3 +1,16 @@
+/*
+ *  FFTLogicImpl.scala
+ *  (FScape)
+ *
+ *  Copyright (c) 2001-2016 Hanns Holger Rutz. All rights reserved.
+ *
+ *  This software is published under the GNU General Public License v2+
+ *
+ *
+ *  For further information, please contact Hanns Holger Rutz at
+ *  contact@sciss.de
+ */
+
 package de.sciss.fscape.stream.impl
 
 import akka.NotUsed
@@ -129,9 +142,8 @@ final class Real1IFFTLogicImpl(shape: FanInShape3[BufD, BufI, BufI, BufD], ctrl:
   protected val fftInSizeFactor  = 1
   protected val fftOutSizeFactor = 1
 
-  protected def performFFT(fft: DoubleFFT_1D, fftBuf: Array[Double]): Unit = {
+  protected def performFFT(fft: DoubleFFT_1D, fftBuf: Array[Double]): Unit =
     fft.realInverse(fftBuf, false)
-  }
 }
 
 final class Real1FullFFTStageImpl(ctrl: Control) extends FFTStageImpl {
@@ -175,4 +187,38 @@ final class Real1FullIFFTLogicImpl(shape: FanInShape3[BufD, BufI, BufI, BufD], c
       j += 2
     }
   }
+}
+
+final class Complex1FFTStageImpl(ctrl: Control) extends FFTStageImpl {
+  val name = "Complex1FFT"
+
+  def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new Complex1FFTLogicImpl(shape, ctrl)
+}
+
+final class Complex1FFTLogicImpl(shape: FanInShape3[BufD, BufI, BufI, BufD], ctrl: Control)
+  extends FFTLogicImpl(shape, ctrl) {
+
+  protected val fftInSizeFactor  = 2
+  protected val fftOutSizeFactor = 2
+
+  protected def performFFT(fft: DoubleFFT_1D, fftBuf: Array[Double]): Unit = {
+    fft.complexForward(fftBuf)
+    Util.mul(fftBuf, 0, fftBuf.length, 1.0 / fftSize) // scale correctly
+  }
+}
+
+final class Complex1IFFTStageImpl(ctrl: Control) extends FFTStageImpl {
+  val name = "Complex1IFFT"
+
+  def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new Complex1IFFTLogicImpl(shape, ctrl)
+}
+
+final class Complex1IFFTLogicImpl(shape: FanInShape3[BufD, BufI, BufI, BufD], ctrl: Control)
+  extends FFTLogicImpl(shape, ctrl) {
+
+  protected val fftInSizeFactor  = 2
+  protected val fftOutSizeFactor = 2
+
+  protected def performFFT(fft: DoubleFFT_1D, fftBuf: Array[Double]): Unit =
+    fft.complexInverse(fftBuf, false)
 }
