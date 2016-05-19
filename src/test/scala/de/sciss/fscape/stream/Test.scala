@@ -68,35 +68,76 @@ object Test extends App {
   def const(i: Int   )(implicit b: GraphDSL.Builder[NotUsed]): Outlet[BufI] = b.add(Source.single(BufI(i))).out
   def const(d: Double)(implicit b: GraphDSL.Builder[NotUsed]): Outlet[BufD] = b.add(Source.single(BufD(d))).out
 
-//  val graph = GraphDSL.create() { implicit b =>
-//    val in          = DiskIn(file = fIn)
-//    val fftSize     = 131072
-//    val winStep     = fftSize / 4
-//    val inW         = Sliding       (in = in , size = const(fftSize), step    = const(winStep))
-//    val fft         = Real1FullFFT  (in = inW, size = const(fftSize), padding = const(0))
-//    val log         = ComplexUnaryOp(in = fft, op = ComplexUnaryOp.Log)
-//    val logClip     = BinaryOp      (a  = log, b = const(-80), op = BinaryOp.Max)
-//
-//    val (pos0, neg) = UnzipWindow   (in = fft, size = const(fftSize))
-//    import GraphDSL.Implicits._
-//    val pos         = pos0.buffer(size = fftSize/blockSize, overflowStrategy = OverflowStrategy.backpressure).outlet
-//    val negRev      = ReverseWindow(in = neg, size = const(fftSize), clump   = const(2))
-//
-//    val foo         = BinaryOp(op = BinaryOp.Times, a = pos, b = negRev)
-//    //    val foo         = BinaryOp(op = BinaryOp.Times, a = fft, b = const(0.5))
-//    val sig         = Real1FullIFFT(in = foo, size = const(fftSize), padding = const(0))
-//    DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig)
-//    ClosedShape
-//  }
-
   val graph = GraphDSL.create() { implicit b =>
-    val in      = DiskIn(file = fIn)
-    val fftSize = 4096
-    val fft     = Complex1FFT (in = in , size = const(fftSize), padding = const(0))
-    val sig     = Complex1IFFT(in = fft, size = const(fftSize), padding = const(0))
+    // 'analysis'
+    val in          = DiskIn(file = fIn)
+    val fftSize     = 131072
+    val winStep     = fftSize / 4
+    val inW         = Sliding       (in = in  , size = const(fftSize), step    = const(winStep))
+    val fft         = Real1FullFFT  (in = inW , size = const(fftSize), padding = const(0))
+
+    // 'percussion'
+    val log         = ComplexUnaryOp(in = fft , op = ComplexUnaryOp.Log)
+    val logC        = BinaryOp      (a  = log , b = const(-80), op = BinaryOp.Max)
+    val cep         = Complex1IFFT  (in = logC, size = const(fftSize), padding = const(0))
+    val (pos0, neg) = UnzipWindow   (in = cep , size = const(fftSize))
+    import GraphDSL.Implicits._
+    val pos         = pos0.buffer(size = fftSize/blockSize, overflowStrategy = OverflowStrategy.backpressure).outlet
+    val negR        = ReverseWindow (in = neg , size = const(fftSize), clump   = const(2))
+
+    /*
+
+    positive window: A = Re, B = im
+    negative window: C = Re, D = im  (reversed order, i.e. from low to high frequencies)
+
+    A' = A * crr + C * ccr
+    C' = C * clr + A * car
+    B' = B * cri + D * cci
+    D' = D * cli + B * cai
+
+     */
+
+    val (aIn, bIn)  = UnzipWindow   (in = pos , size = const(1))
+    val (cIn, dIn)  = UnzipWindow   (in = negR, size = const(1))
+
+    val crr =  0; val cri =  0
+    val clr = +1; val cli = +1
+    val ccr = +1; val cci = -1
+    val car = +1; val cai = -1
+
+    val am1         = BinaryOp(op = BinaryOp.Times, a = aIn, b = const(crr))
+    val am2         = BinaryOp(op = BinaryOp.Times, a = cIn, b = const(ccr))
+    val aOut        = BinaryOp(op = BinaryOp.Plus , a = am1, b = am2)
+
+    val bm1         = BinaryOp(op = BinaryOp.Times, a = bIn, b = const(cri))
+    val bm2         = BinaryOp(op = BinaryOp.Times, a = dIn, b = const(cci))
+    val bOut        = BinaryOp(op = BinaryOp.Plus , a = bm1, b = bm2)
+
+    val cm1         = BinaryOp(op = BinaryOp.Times, a = cIn, b = const(clr))
+    val cm2         = BinaryOp(op = BinaryOp.Times, a = aIn, b = const(car))
+    val cOut        = BinaryOp(op = BinaryOp.Plus , a = cm1, b = cm2)
+
+    val posOut      = ??? : Outlet[BufD]  // ZipWindow(size = const(1))
+    val negOutR     = ??? : Outlet[BufD]  // ZipWindow(size = const(1))
+    val negOut      = ReverseWindow (in = negOutR, size = const(fftSize), clump = const(2))
+    val logOut      = ??? : Outlet[BufD]  // ZipWindow(size = const(fftSize))
+    val fftOut      = ComplexUnaryOp(in = logOut, op = ComplexUnaryOp.Exp)
+    val outW        = Real1FullIFFT(in = fftOut, size = const(fftSize), padding = const(0))
+
+    // 'synthesis'
+    val sig         = outW  // XXX TODO: apply window function and overlap-add
     DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig)
     ClosedShape
   }
+
+//  val graph = GraphDSL.create() { implicit b =>
+//    val in      = DiskIn(file = fIn)
+//    val fftSize = 4096
+//    val fft     = Complex1FFT (in = in , size = const(fftSize), padding = const(0))
+//    val sig     = Complex1IFFT(in = fft, size = const(fftSize), padding = const(0))
+//    DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig)
+//    ClosedShape
+//  }
 
 //  val graph = GraphDSL.create() { implicit b =>
 //    val in      = DiskIn(file = fIn)
