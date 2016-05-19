@@ -87,7 +87,7 @@ trait FilterIn3Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null 
 
   private[this] def updateCanRead(): Unit = {
     val sh = shape
-    _canRead = isAvailable(shape.in0) &&
+    _canRead = isAvailable(sh.in0) &&
       (isClosed(sh.in1) || isAvailable(sh.in1)) &&
       (isClosed(sh.in2) || isAvailable(sh.in2))
     if (_canRead) process()
