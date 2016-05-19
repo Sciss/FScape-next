@@ -45,7 +45,6 @@ final class UnzipWindowStageImpl(numOutputs: Int, ctrl: Control) extends GraphSt
   def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new UnzipWindowLogicImpl(shape, ctrl)
 }
 
-// XXX TODO --- factor out common elements with FilterIn2Impl
 final class UnzipWindowLogicImpl(shape: UnzipWindowShape, ctrl: Control) extends GraphStageLogic(shape) {
   private[this] var bufIn0: BufD = _
   private[this] var bufIn1: BufI = _
@@ -58,6 +57,13 @@ final class UnzipWindowLogicImpl(shape: UnzipWindowShape, ctrl: Control) extends
 
   private[this] var isNextWindow      = true
 
+  /*
+      We maintain buffers for each outlet.
+      This way we can circulate fast and
+      many times per outlet before having
+      to flash a particular outlet
+      (imagine the case of winSize == 1)
+   */
   private[this] val outputs: Array[Output]  = shape.outlets.map(new Output(_))(breakOut)
   private[this] val numOutputs              = outputs.length
   private[this] var outIndex                = numOutputs - 1
@@ -69,11 +75,13 @@ final class UnzipWindowLogicImpl(shape: UnzipWindowShape, ctrl: Control) extends
   @inline
   private[this] def shouldNext  = isNextWindow && bufIn0 != null
 
-  private final class Output(val let: Outlet[BufD]) {
+  private final class Output(val let: Outlet[BufD]) extends OutHandler {
     var buf: BufD = _
     var off       = 0
     var remain    = 0
     var sent      = true
+
+    def onPull(): Unit = process()
   }
 
   override def preStart(): Unit = {
@@ -153,9 +161,9 @@ final class UnzipWindowLogicImpl(shape: UnzipWindowShape, ctrl: Control) extends
       stateChange   = true
     }
 
-    val out = outputs(outIndex)
-
-    if (winRemain > 0) {
+    val inWinRem = math.min(inRemain, winRemain)
+    if (inWinRem > 0) {
+      val out = outputs(outIndex)
       if (out.sent) {
         out.buf       = allocOutBuf()
         out.remain    = out.buf.size
@@ -164,7 +172,7 @@ final class UnzipWindowLogicImpl(shape: UnzipWindowShape, ctrl: Control) extends
         stateChange   = true
       }
 
-      val chunk = math.min(winRemain, out.remain)
+      val chunk = math.min(inWinRem, out.remain)
       if (chunk > 0) {
         Util.copy(bufIn0.buf, inOff, out.buf.buf, out.off, chunk)
         inOff      += chunk
@@ -172,25 +180,33 @@ final class UnzipWindowLogicImpl(shape: UnzipWindowShape, ctrl: Control) extends
         out.off    += chunk
         out.remain -= chunk
         winRemain  -= chunk
+        if (winRemain == 0) {
+          isNextWindow = true
+        }
         stateChange = true
       }
     }
 
-    val flushOut = inRemain == 0 && isClosed(shape.in0)
-    if (!out.sent && (out.remain == 0 || flushOut) && isAvailable(out.let)) {
-      if (out.off > 0) {
-        out.buf.size = out.off
-        push(out.let, out.buf)
-      } else {
-        out.buf.release()(ctrl)
+    val flush = inRemain == 0 && isClosed(shape.in0)
+    var idx = 0
+    while (idx < numOutputs) {
+      val out = outputs(outIndex)
+      if (!out.sent && (out.remain == 0 || flush) && isAvailable(out.let)) {
+        if (out.off > 0) {
+          out.buf.size = out.off
+          push(out.let, out.buf)
+        } else {
+          out.buf.release()(ctrl)
+        }
+        out.buf     = null
+        out.sent    = true
+        stateChange = true
       }
-      out.buf     = null
-      out.sent    = true
-      stateChange = true
+      idx += 1
     }
 
-    if      (flushOut && ??? /* out.sent */) completeStage()
-    else if (stateChange)          process()
+    if      (flush && outputs.forall(_.sent)) completeStage()
+    else if (stateChange)                     process()
   }
 
   setHandler(shape.in0, new InHandler {
@@ -205,9 +221,5 @@ final class UnzipWindowLogicImpl(shape: UnzipWindowShape, ctrl: Control) extends
     override def onUpstreamFinish(): Unit = ()  // keep running
   })
 
-  private[this] val outH = new OutHandler {
-    def onPull(): Unit = process()
-  }
-
-  shape.outlets.foreach(setHandler(_, outH))
+  outputs.foreach(out => setHandler(out.let, out))
 }

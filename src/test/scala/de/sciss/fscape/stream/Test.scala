@@ -17,6 +17,7 @@ object Test extends App {
   // val fIn   = userHome / "Music" / "work" / "fft_test.aif"
   //  val fIn   = userHome / "Music" / "work" / "B19h39m45s23jan2015.wav"
   val fOut  = userHome / "Music" / "work" / "_killme.aif"
+  val fOut2 = userHome / "Music" / "work" / "_killme2.aif"
 
   import ExecutionContext.Implicits.global
   implicit val ctrl = Control(397)
@@ -53,11 +54,20 @@ object Test extends App {
 //    ClosedShape
 //  }
 
+//  val graph = GraphDSL.create() { implicit b =>
+//    val in      = DiskIn(file = fIn)
+//    val size    = b.add(Source.single(BufI(1024))).out
+//    val sig     = ReverseWindow(in = in, size = size)
+//    DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig)
+//    ClosedShape
+//  }
+
   val graph = GraphDSL.create() { implicit b =>
     val in      = DiskIn(file = fIn)
     val size    = b.add(Source.single(BufI(1024))).out
-    val sig     = ReverseWindow(in = in, size = size)
-    DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig)
+    val (sig1, sig2) = UnzipWindow(in = in, size = size)
+    DiskOut(file = fOut , spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig1)
+    DiskOut(file = fOut2, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig2)
     ClosedShape
   }
 
