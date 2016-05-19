@@ -99,17 +99,14 @@ trait FilterIn3Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null 
     override def onUpstreamFinish(): Unit = process() // may lead to `flushOut`
   })
 
-  setHandler(shape.in1, new InHandler {
+  private[this] final val inIH = new InHandler {
     def onPush(): Unit = updateCanRead()
 
     override def onUpstreamFinish(): Unit = ()  // keep running
-  })
+  }
 
-  setHandler(shape.in2, new InHandler {
-    def onPush(): Unit = updateCanRead()
-
-    override def onUpstreamFinish(): Unit = ()  // keep running
-  })
+  setHandler(shape.in1, inIH)
+  setHandler(shape.in2, inIH)
 
   setHandler(shape.out, new OutHandler {
     def onPull(): Unit = process()
