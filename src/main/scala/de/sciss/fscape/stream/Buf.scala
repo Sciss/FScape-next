@@ -6,6 +6,12 @@ trait BufLike {
   /* @volatile */ var size: Int
 }
 
+object BufD {
+  def apply(elems: Double*): BufD = {
+    val arr = elems.toArray
+    new BufD(arr, size = arr.length, borrowed = false)
+  }
+}
 final class BufD(val buf: Array[Double], @volatile var size: Int, val borrowed: Boolean) extends BufLike {
   def release()(implicit ctrl: Control): Unit = ctrl.returnBufD(this)
 }
