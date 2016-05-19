@@ -65,10 +65,10 @@ final class ZipWindowLogicImpl(shape: ZipWindowShape, ctrl: Control) extends Gra
   private[this] val numInputs             = inputs.length
   private[this] var inIndex               = numInputs - 1
 
-  private[this] var size                  = -1  // negative indicates not yet initialized
+  private[this] var size : Int = _
 
   @inline
-  private[this] def shouldNext  = isNextWindow && size > 0
+  private[this] def shouldNext  = isNextWindow && sizeOff < sizeRemain // size > 0
 
   private final class Input(val let: Inlet[BufD]) extends InHandler {
     var buf: BufD = _
