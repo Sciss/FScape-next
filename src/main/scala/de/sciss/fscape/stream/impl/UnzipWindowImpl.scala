@@ -190,7 +190,7 @@ final class UnzipWindowLogicImpl(shape: UnzipWindowShape, ctrl: Control) extends
     val flush = inRemain == 0 && isClosed(shape.in0)
     var idx = 0
     while (idx < numOutputs) {
-      val out = outputs(outIndex)
+      val out = outputs(idx)
       if (!out.sent && (out.remain == 0 || flush) && isAvailable(out.let)) {
         if (out.off > 0) {
           out.buf.size = out.off

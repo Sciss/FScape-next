@@ -64,7 +64,7 @@ object Test extends App {
 
   val graph = GraphDSL.create() { implicit b =>
     val in      = DiskIn(file = fIn)
-    val size    = b.add(Source.single(BufI(1024))).out
+    val size    = b.add(Source.single(BufI(2 /* 1024 */))).out
     val (sig1, sig2) = UnzipWindow(in = in, size = size)
     DiskOut(file = fOut , spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig1)
     DiskOut(file = fOut2, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig2)
