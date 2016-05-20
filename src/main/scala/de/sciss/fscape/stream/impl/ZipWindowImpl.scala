@@ -65,10 +65,10 @@ final class ZipWindowLogicImpl(shape: ZipWindowShape, ctrl: Control) extends Gra
   private[this] val numInputs             = inputs.length
   private[this] var inIndex               = numInputs - 1
 
-  private[this] var size : Int = _
+  private[this] var size = -1 // negative signalizes non-yet-initialized
 
   @inline
-  private[this] def shouldNext  = isNextWindow && sizeOff < sizeRemain // size > 0
+  private[this] def shouldNext  = isNextWindow && (size > 0 || sizeOff < sizeRemain)
 
   private final class Input(val let: Inlet[BufD]) extends InHandler {
     var buf: BufD = _
@@ -77,6 +77,7 @@ final class ZipWindowLogicImpl(shape: ZipWindowShape, ctrl: Control) extends Gra
     var sent      = true
 
     def read(): Unit = {
+      println(s"in.read($let)")
       tryFree()
       buf      = grab(let)
       off      = 0
@@ -127,6 +128,7 @@ final class ZipWindowLogicImpl(shape: ZipWindowShape, ctrl: Control) extends Gra
     }
 
   private def readSize(): Unit = {
+    println("readSize()")
     if (bufIn1 != null) bufIn1.release()(ctrl)
     bufIn1      = grab(shape.size)
     sizeOff     = 0
@@ -140,12 +142,14 @@ final class ZipWindowLogicImpl(shape: ZipWindowShape, ctrl: Control) extends Gra
     // becomes `true` if state changes,
     // in that case we run this method again.
     var stateChange = false
+    println("process()")
 
     if (sizeRemain == 0 && isAvailable(shape.size)) readSize()
 
     if (shouldNext) {
       inIndex += 1
       if (inIndex == numInputs) inIndex = 0
+      println(s"shouldNext($inIndex)")
       if (sizeOff < sizeRemain) {
         size = math.max(1, bufIn1.buf(sizeOff))
       }
@@ -159,6 +163,7 @@ final class ZipWindowLogicImpl(shape: ZipWindowShape, ctrl: Control) extends Gra
 
     val inWinRem = math.min(in.remain, winRemain)
     if (inWinRem > 0) {
+      println(s"inWinRem($inWinRem)")
       if (outSent) {
         bufOut        = allocOutBuf()
         outRemain     = bufOut.size
@@ -168,19 +173,22 @@ final class ZipWindowLogicImpl(shape: ZipWindowShape, ctrl: Control) extends Gra
       }
 
       val chunk0  = math.min(inWinRem, outRemain)
-      val chunk   = if (isClosed(shape.size)) chunk0 else math.min(chunk0, sizeRemain)
+      val chunk   = if (sizeRemain == 0 && isClosed(shape.size)) chunk0 else math.min(chunk0, sizeRemain)
       if (chunk > 0) {
+        println(s"chunk($chunk) << ${in.off}, ${in.remain}, $outOff, $outRemain, $winRemain")
         Util.copy(in.buf.buf, in.off, bufOut.buf, outOff, chunk)
         in.off     += chunk
         in.remain  -= chunk
         outOff     += chunk
         outRemain  -= chunk
         winRemain  -= chunk
-        if (!isClosed(shape.size)) {
+        println(s"chunk($chunk) >> ${in.off}, ${in.remain}, $outOff, $outRemain, $winRemain")
+        if (sizeRemain > 0) {
           sizeOff    += chunk
           sizeRemain -= chunk
         }
         if (winRemain == 0) {
+          println("isNextWindow = true")
           isNextWindow = true
         }
         stateChange = true
@@ -189,6 +197,7 @@ final class ZipWindowLogicImpl(shape: ZipWindowShape, ctrl: Control) extends Gra
 
     val flush = in.remain == 0 && isClosed(in.let)
     if (!outSent && (outRemain == 0 || flush) && isAvailable(shape.out)) {
+      println(s"push($outOff)")
       if (outOff > 0) {
         bufOut.size = outOff
         push(shape.out, bufOut)

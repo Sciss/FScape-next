@@ -70,7 +70,9 @@ object Test extends App {
 
   val graph = GraphDSL.create() { implicit b =>
     val in      = DiskIn(file = fIn)
-    val seq     = UnzipWindowN(numOutputs = 3, in = in, size = const(100))
+    val seq0    = UnzipWindowN(numOutputs = 3, in = in, size = const(100))
+    import GraphDSL.Implicits._
+    val seq     = seq0 // .map(_.buffer(3, OverflowStrategy.backpressure).outlet)
     val sig     = ZipWindowN(in = seq, size = const(100))
     DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig)
     ClosedShape
