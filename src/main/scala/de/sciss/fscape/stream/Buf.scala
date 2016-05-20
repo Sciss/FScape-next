@@ -35,7 +35,7 @@ object BufD {
 final class BufD private(val buf: Array[Double], @volatile var size: Int, borrowed: Boolean)
   extends BufLike {
 
-  private[this] val allocCount = new AtomicInteger(1)
+  private[this] val allocCount = if (borrowed) new AtomicInteger(1) else null
 
   def acquire()(implicit ctrl: Control): Unit = if (borrowed)
     allocCount.getAndIncrement()
@@ -57,7 +57,7 @@ object BufI {
   }
 }
 final class BufI private(val buf: Array[Int], @volatile var size: Int, borrowed: Boolean) extends BufLike {
-  private[this] val allocCount = new AtomicInteger(1)
+  private[this] val allocCount = if (borrowed) new AtomicInteger(1) else null
 
   def acquire()(implicit ctrl: Control): Unit = if (borrowed)
     allocCount.getAndIncrement()

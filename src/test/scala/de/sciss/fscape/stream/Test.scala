@@ -2,7 +2,7 @@ package de.sciss.fscape.stream
 
 import akka.NotUsed
 import akka.actor.ActorSystem
-import akka.stream.scaladsl.{Broadcast, GraphDSL, RunnableGraph, Sink, Source}
+import akka.stream.scaladsl.{GraphDSL, RunnableGraph, Source}
 import akka.stream.{ActorMaterializer, ActorMaterializerSettings, ClosedShape, Outlet, OverflowStrategy}
 import de.sciss.file._
 import de.sciss.fscape.gui.SimpleGUI
@@ -110,50 +110,44 @@ object Test extends App {
     val (aIn, bIn)  = UnzipWindow   (in = pos , size = const(1))
     val (cIn, dIn)  = UnzipWindow   (in = negR, size = const(1))
 
+    // 'variant 1'
 //    val crr =  0; val cri =  0
 //    val clr = +1; val cli = +1
 //    val ccr = +1; val cci = -1
 //    val car = +1; val cai = -1
 
+    // 'bypass'
     val crr = +1; val cri = +1
     val clr = +1; val cli = +1
     val ccr =  0; val cci =  0
     val car =  0; val cai =  0
 
-    val aInB        = b add Broadcast[BufD](2)
-    aIn ~> aInB.in
-    val bInB        = b add Broadcast[BufD](2)
-    bIn ~> bInB.in
-    val cInB        = b add Broadcast[BufD](2)
-    cIn ~> cInB.in
-    val dInB        = b add Broadcast[BufD](2)
-    dIn ~> dInB.in
+    // 'variant 2'
+//    val crr = +1; val cri = +1
+//    val clr =  0; val cli =  0
+//    val ccr = +1; val cci = -1
+//    val car = +1; val cai = -1
 
-    val am1         = BinaryOp(op = BinaryOp.Times, a = aInB.out(0), b = const(crr))
-    // val am2         = BinaryOp(op = BinaryOp.Times, a = cInB.out(0), b = const(ccr))
-    val aOut        = BinaryOp(op = BinaryOp.Plus , a = am1, b = const(0) /* am2 */)
+    val aInB        = BroadcastBuf(aIn, 2)
+    val bInB        = BroadcastBuf(bIn, 2)
+    val cInB        = BroadcastBuf(cIn, 2)
+    val dInB        = BroadcastBuf(dIn, 2)
 
-    val bm1         = BinaryOp(op = BinaryOp.Times, a = bInB.out(0), b = const(cri))
-    // val bm2         = BinaryOp(op = BinaryOp.Times, a = dInB.out(0), b = const(cci))
-    val bOut        = BinaryOp(op = BinaryOp.Plus , a = bm1, b = const(0) /* bm2 */)
+    val am1         = BinaryOp(op = BinaryOp.Times, a = aInB(0), b = const(crr))
+    val am2         = BinaryOp(op = BinaryOp.Times, a = cInB(0), b = const(ccr))
+    val aOut        = BinaryOp(op = BinaryOp.Plus , a = am1, b = am2)
 
-    val cm1         = BinaryOp(op = BinaryOp.Times, a = cInB.out(1), b = const(clr))
-    // val cm2         = BinaryOp(op = BinaryOp.Times, a = aInB.out(1), b = const(car))
-    val cOut        = BinaryOp(op = BinaryOp.Plus , a = cm1, b = const(0) /* cm2 */)
+    val bm1         = BinaryOp(op = BinaryOp.Times, a = bInB(0), b = const(cri))
+    val bm2         = BinaryOp(op = BinaryOp.Times, a = dInB(0), b = const(cci))
+    val bOut        = BinaryOp(op = BinaryOp.Plus , a = bm1, b = bm2)
 
-    val dm1         = BinaryOp(op = BinaryOp.Times, a = dInB.out(1), b = const(cli))
-    // val dm2         = BinaryOp(op = BinaryOp.Times, a = bInB.out(1), b = const(cai))
-    val dOut        = BinaryOp(op = BinaryOp.Plus , a = dm1, b = const(0) /* dm2 */)
+    val cm1         = BinaryOp(op = BinaryOp.Times, a = cInB(1), b = const(clr))
+    val cm2         = BinaryOp(op = BinaryOp.Times, a = aInB(1), b = const(car))
+    val cOut        = BinaryOp(op = BinaryOp.Plus , a = cm1, b = cm2)
 
-//    am2 ~> Sink.ignore
-//    bm2 ~> Sink.ignore
-//    cm2 ~> Sink.ignore
-//    dm2 ~> Sink.ignore
-
-    aInB.out(1) ~> Sink.ignore
-    bInB.out(1) ~> Sink.ignore
-    cInB.out(0) ~> Sink.ignore
-    dInB.out(0) ~> Sink.ignore
+    val dm1         = BinaryOp(op = BinaryOp.Times, a = dInB(1), b = const(cli))
+    val dm2         = BinaryOp(op = BinaryOp.Times, a = bInB(1), b = const(cai))
+    val dOut        = BinaryOp(op = BinaryOp.Plus , a = dm1, b = dm2)
 
 //    val aOut = BinaryOp(op = BinaryOp.Times, a = aIn, b = const(crr))
 //    val bOut = BinaryOp(op = BinaryOp.Times, a = bIn, b = const(cri))
@@ -161,7 +155,8 @@ object Test extends App {
 //    val dOut = BinaryOp(op = BinaryOp.Times, a = dIn, b = const(cli))
 
     val posOut      = ZipWindow(a = aOut, b = bOut, size = const(1))
-    val negOutR     = ZipWindow(a = cOut, b = dOut, size = const(1))
+    val negOutR0    = ZipWindow(a = cOut, b = dOut, size = const(1))
+    val negOutR     = negOutR0.buffer(size = fftSize/blockSize, overflowStrategy = OverflowStrategy.backpressure).outlet
     val negOut      = ReverseWindow (in = negOutR, size = const(fftSize), clump = const(2))
     val logOut      = ZipWindow(a = posOut, b = negOut, size = const(fftSize))
     val freq        = Complex1FFT   (in = logOut, size = const(fftSize), padding = const(0))

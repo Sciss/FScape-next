@@ -18,7 +18,7 @@ import akka.stream.{Attributes, Inlet, Outlet, UniformFanOutShape}
 import de.sciss.fscape.stream.{BufLike, Control}
 
 /** Variant of Akka's built-in `Broadcast` that properly allocates buffers. */
-final class BroadcastBufStageImpl[B <: BufLike](numOutputs: Int, eagerCancel: Boolean, ctrl: Control)
+final class BroadcastBufStageImpl[B <: BufLike](numOutputs: Int, eagerCancel: Boolean)(implicit ctrl: Control)
   extends GraphStage[UniformFanOutShape[B, B]] {
   
   override def initialAttributes = Attributes.name(toString)
@@ -29,12 +29,13 @@ final class BroadcastBufStageImpl[B <: BufLike](numOutputs: Int, eagerCancel: Bo
   )
 
   def createLogic(inheritedAttributes: Attributes): GraphStageLogic =
-    new BroadcastBufLogicImpl(shape = shape, eagerCancel = eagerCancel, ctrl = ctrl)
+    new BroadcastBufLogicImpl(shape = shape, eagerCancel = eagerCancel)
 
   override def toString = "BroadcastBuf"
 }
 
-final class BroadcastBufLogicImpl[B <: BufLike](shape: UniformFanOutShape[B, B], eagerCancel: Boolean, ctrl: Control)
+final class BroadcastBufLogicImpl[B <: BufLike](shape: UniformFanOutShape[B, B], eagerCancel: Boolean)
+                                               (implicit ctrl: Control)
   extends GraphStageLogic(shape) with InHandler {
 
   private[this] val numOutputs    = shape.outArray.length
@@ -46,17 +47,26 @@ final class BroadcastBufLogicImpl[B <: BufLike](shape: UniformFanOutShape[B, B],
 
   def onPush(): Unit = {
     pendingCount  = sinksRunning
-    val elem      = grab(shape.in)
+    val buf       = grab(shape.in)
 
+    // for N non-closed outputs,
+    // we call `acquire` N times.
+    // Initially the buffer will have
+    // an allocation count of one.
+    // Finally we call `release`,
+    // so the final allocation count
+    // will be N.
     var idx = 0
     while (idx < numOutputs) {
       val out = shape.out(idx)
       if (!isClosed(out)) {
-        push(out, elem)
+        buf.acquire()
+        push(out, buf)
         pending(idx) = true
       }
       idx += 1
     }
+    buf.release()
   }
 
   private def tryPull(): Unit =
