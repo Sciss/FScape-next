@@ -43,6 +43,7 @@ trait FilterIn1Impl[In >: Null <: BufLike, Out >: Null <: BufLike]
     freeInputBuffers()
     val sh    = shape
     bufIn     = grab(sh.in)
+    bufIn.assertAllocated()
     tryPull(sh.in)
     _canRead = false
   }

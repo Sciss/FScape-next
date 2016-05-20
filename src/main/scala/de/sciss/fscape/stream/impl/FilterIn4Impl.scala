@@ -51,6 +51,7 @@ trait FilterIn4Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null 
     freeInputBuffers()
     val sh    = shape
     bufIn0    = grab(sh.in0)
+    bufIn0.assertAllocated()
     tryPull(sh.in0)
 
     if (isAvailable(sh.in1)) {

@@ -17,7 +17,9 @@ import java.util.concurrent.atomic.AtomicInteger
 
 trait BufLike {
   def release()(implicit ctrl: Control): Unit
-  def acquire()(implicit ctrl: Control): Unit
+  def acquire(): Unit
+
+  def assertAllocated(): Unit
 
   /* @volatile */ var size: Int
 }
@@ -37,11 +39,18 @@ final class BufD private(val buf: Array[Double], @volatile var size: Int, borrow
 
   private[this] val allocCount = if (borrowed) new AtomicInteger(1) else null
 
-  def acquire()(implicit ctrl: Control): Unit = if (borrowed)
-    allocCount.getAndIncrement()
+  def assertAllocated(): Unit = require(!borrowed || allocCount.get() > 0)
 
-  def release()(implicit ctrl: Control): Unit = if (borrowed)
-    if (allocCount.decrementAndGet() == 0) ctrl.returnBufD(this)
+  def acquire(): Unit = if (borrowed) {
+    /* val oldCount = */ allocCount.getAndIncrement()
+    // require(oldCount >= 0)
+  }
+
+  def release()(implicit ctrl: Control): Unit = if (borrowed) {
+    val newCount = allocCount.decrementAndGet()
+    require(newCount >= 0)
+    if (newCount == 0) ctrl.returnBufD(this)
+  }
 
   override def toString = s"BufD(size = $size)"
 }
@@ -59,11 +68,16 @@ object BufI {
 final class BufI private(val buf: Array[Int], @volatile var size: Int, borrowed: Boolean) extends BufLike {
   private[this] val allocCount = if (borrowed) new AtomicInteger(1) else null
 
-  def acquire()(implicit ctrl: Control): Unit = if (borrowed)
+  def assertAllocated(): Unit = require(!borrowed || allocCount.get() > 0)
+
+  def acquire(): Unit = if (borrowed)
     allocCount.getAndIncrement()
 
-  def release()(implicit ctrl: Control): Unit = if (borrowed)
-    if (allocCount.decrementAndGet() == 0) ctrl.returnBufI(this)
+  def release()(implicit ctrl: Control): Unit = if (borrowed) {
+    val newCount = allocCount.decrementAndGet()
+    require(newCount >= 0)
+    if (newCount == 0) ctrl.returnBufI(this)
+  }
 
   override def toString = s"BufI(size = $size)"
 }

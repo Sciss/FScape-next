@@ -29,7 +29,10 @@ object Control {
 
     def borrowBufD(): BufD = {
       val res0 = queueD.poll()
-      if (res0 == null) BufD.alloc(bufSize) else res0
+      if (res0 == null) BufD.alloc(bufSize) else {
+        res0.acquire()
+        res0
+      }
     }
 
     def returnBufD(buf: BufD): Unit =
@@ -37,7 +40,10 @@ object Control {
 
     def borrowBufI(): BufI = {
       val res0 = queueI.poll()
-      if (res0 == null) BufI.alloc(bufSize) else res0
+      if (res0 == null) BufI.alloc(bufSize) else {
+        res0.acquire()
+        res0
+      }
     }
 
     def returnBufI(buf: BufI): Unit =

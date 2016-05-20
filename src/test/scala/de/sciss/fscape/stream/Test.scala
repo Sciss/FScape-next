@@ -83,13 +83,13 @@ object Test extends App {
     // 'analysis'
     val in          = DiskIn(file = fIn)
     val fftSize     = 131072
-    val winStep     = fftSize / 4
+    val winStep     = fftSize // / 4
     val inW         = Sliding       (in = in  , size = const(fftSize), step    = const(winStep))
     val fft         = Real1FullFFT  (in = inW , size = const(fftSize), padding = const(0))
 
     // 'percussion'
     val log         = ComplexUnaryOp(in = fft , op = ComplexUnaryOp.Log)
-    val logC        = BinaryOp      (a  = log , b = const(/* -60 */ -80), op = BinaryOp.Max)
+    val logC        = BinaryOp      (a  = log , b = const(-56 /* -80 */), op = BinaryOp.Max)
     val cep         = Complex1IFFT  (in = logC, size = const(fftSize), padding = const(0))
     val (pos0, neg0) = UnzipWindow   (in = cep , size = const(fftSize))
     import GraphDSL.Implicits._
