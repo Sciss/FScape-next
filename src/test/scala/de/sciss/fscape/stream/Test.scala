@@ -15,6 +15,7 @@ object Test extends App {
   showStreamLog = true
 
   val fIn   = userHome / "Music" / "work" / "mentasm-199a3aa1.aif"
+  val fIn2  = userHome / "Music" / "work" / "_killme5.aif"
   // val fIn   = userHome / "Music" / "work" / "fft_test.aif"
   //  val fIn   = userHome / "Music" / "work" / "B19h39m45s23jan2015.wav"
   val fOut  = userHome / "Music" / "work" / "_killme.aif"
@@ -79,10 +80,12 @@ object Test extends App {
 //    ClosedShape
 //  }
 
-  val graph = GraphDSL.create() { implicit b =>
+  lazy val graph = GraphDSL.create() { implicit b =>
     // 'analysis'
     val in          = DiskIn(file = fIn)
+    // val in          = DiskIn(file = fIn2)
     val fftSize     = 131072
+    // val fftSize     = 8192
     val winStep     = fftSize // / 4
     val inW         = Sliding       (in = in  , size = const(fftSize), step    = const(winStep))
     val fft         = Real1FullFFT  (in = inW , size = const(fftSize), padding = const(0))
@@ -183,7 +186,49 @@ object Test extends App {
     ClosedShape
   }
 
-//  val graph = GraphDSL.create() { implicit b =>
+  lazy val graphNEW = GraphDSL.create() { implicit b =>
+    // 'analysis'
+    val in          = DiskIn(file = fIn2)
+    val fftSize     = 8192 // 131072
+    val winStep     = fftSize // / 4
+    val inW         = Sliding       (in = in  , size = const(fftSize), step    = const(winStep))
+    val fft         = Real1FullFFT  (in = inW , size = const(fftSize), padding = const(0))
+
+    // 'percussion'
+    val log         = ComplexUnaryOp(in = fft , op = ComplexUnaryOp.Log)
+    val logC        = log // BinaryOp      (in1  = log , in2 = const(-56 /* -80 */), op = BinaryOp.Max)
+    val cep         = Complex1IFFT  (in = logC, size = const(fftSize), padding = const(0))
+
+    // 'variant 1'
+    //    val crr =  0; val cri =  0
+    //    val clr = +1; val cli = +1
+    //    val ccr = +1; val cci = -1
+    //    val car = +1; val cai = -1
+
+    // 'bypass'
+    //    val crr = +1; val cri = +1
+    //    val clr = +1; val cli = +1
+    //    val ccr =  0; val cci =  0
+    //    val car =  0; val cai =  0
+
+    // 'variant 2'
+    val crr = +1; val cri = +1
+    val clr =  0; val cli =  0
+    val ccr = +1; val cci = -1
+    val car = +1; val cai = -1
+
+    val cepOut      = FoldCepstrum  (in = cep, size = const(fftSize))
+    val freq        = Complex1FFT   (in = cepOut, size = const(fftSize), padding = const(0))
+    val fftOut      = ComplexUnaryOp(in = freq  , op = ComplexUnaryOp.Exp)
+
+    // 'synthesis'
+    val outW        = Real1FullIFFT (in = fftOut, size = const(fftSize), padding = const(0))
+    val sig         = outW  // XXX TODO: apply window function and overlap-add
+    DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig)
+    ClosedShape
+  }
+
+  //  val graph = GraphDSL.create() { implicit b =>
 //    val in      = DiskIn(file = fIn)
 //    val sig     = ResizeWindow(in = in, size = const(1000), start = const(-200), stop = const(200))
 //    DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig)

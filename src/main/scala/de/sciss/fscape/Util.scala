@@ -35,6 +35,9 @@ object Util {
     }
   }
 
+  def clear(buf: Array[Double], off: Int, len: Int): Unit =
+    fill(buf, off = off, len = len, value = 0.0)
+
   def fill(buf: Array[Double], off: Int, len: Int, value: Double): Unit = {
     var i     = off
     val stop  = i + len
