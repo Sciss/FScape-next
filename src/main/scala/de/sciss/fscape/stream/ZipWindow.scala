@@ -40,7 +40,7 @@ object ZipWindowN {
     */
   def apply(in: ISeq[Outlet[BufD]], size: Outlet[BufI])
            (implicit b: GraphDSL.Builder[NotUsed], ctrl: Control): Outlet[BufD] = {
-    val stage0  = new ZipWindowStageImpl(numInputs = in.size, ctrl = ctrl)
+    val stage0  = new ZipWindowStageImpl(numInputs = in.size)
     val stage   = b.add(stage0)
     import GraphDSL.Implicits._
     (in zip stage.inputs).foreach { case (output, input) =>

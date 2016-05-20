@@ -22,7 +22,7 @@ import de.sciss.synth.io.AudioFileSpec
 object DiskOut {
   def apply(file: File, spec: AudioFileSpec, in: Outlet[BufD])
            (implicit b: GraphDSL.Builder[NotUsed], ctrl: Control): Unit = {
-    val sink = new AudioFileSink(file, spec, ctrl)
+    val sink = new AudioFileSink(file, spec)
     import GraphDSL.Implicits._
     in ~> sink
   }

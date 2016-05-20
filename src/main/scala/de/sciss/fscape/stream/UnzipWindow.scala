@@ -42,7 +42,7 @@ object UnzipWindowN {
     */
   def apply(numOutputs: Int, in: Outlet[BufD], size: Outlet[BufI])
            (implicit b: GraphDSL.Builder[NotUsed], ctrl: Control): Vec[Outlet[BufD]] = {
-    val stage0  = new UnzipWindowStageImpl(numOutputs = numOutputs, ctrl = ctrl)
+    val stage0  = new UnzipWindowStageImpl(numOutputs = numOutputs)
     val stage   = b.add(stage0)
     import GraphDSL.Implicits._
     in   ~> stage.in0

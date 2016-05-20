@@ -29,19 +29,19 @@ object Control {
 
     def borrowBufD(): BufD = {
       val res0 = queueD.poll()
-      if (res0 == null) new BufD(new Array[Double](bufSize), size = bufSize, borrowed = true) else res0
+      if (res0 == null) BufD.alloc(bufSize) else res0
     }
 
     def returnBufD(buf: BufD): Unit =
-      if (buf.borrowed) queueD.offer(buf) // XXX TODO -- limit size?
+      queueD.offer(buf) // XXX TODO -- limit size?
 
     def borrowBufI(): BufI = {
       val res0 = queueI.poll()
-      if (res0 == null) new BufI(new Array[Int](bufSize), size = bufSize, borrowed = true) else res0
+      if (res0 == null) BufI.alloc(bufSize) else res0
     }
 
     def returnBufI(buf: BufI): Unit =
-      if (buf.borrowed) queueI.offer(buf) // XXX TODO -- limit size?
+      queueI.offer(buf) // XXX TODO -- limit size?
 
     def addLeaf(l: Leaf): Unit = leaves ::= l
 

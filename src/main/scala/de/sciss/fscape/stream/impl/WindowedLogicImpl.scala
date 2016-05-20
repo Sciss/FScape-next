@@ -128,7 +128,7 @@ trait WindowedLogicImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, Shape <:
         bufOut.size = outOff
         push(shape.out, bufOut)
       } else {
-        bufOut.release()(ctrl)
+        bufOut.release()
       }
       bufOut      = null
       outSent     = true

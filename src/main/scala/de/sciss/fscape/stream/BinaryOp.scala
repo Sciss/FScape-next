@@ -25,7 +25,7 @@ import scala.annotation.switch
 object BinaryOp {
   def apply(op: Op, a: Outlet[BufD], b: Outlet[BufD])
            (implicit builder: GraphDSL.Builder[NotUsed], ctrl: Control): Outlet[BufD] = {
-    val stage0  = new Stage(op, ctrl)
+    val stage0  = new Stage(op)
     val stage   = builder.add(stage0)
     import GraphDSL.Implicits._
     a ~> stage.in0
@@ -338,19 +338,21 @@ object BinaryOp {
   // case object Rrand          extends Op( 47 )
   // case object ExpRRand       extends Op( 48 )
 
-  private final class Stage(op: Op, ctrl: Control) extends GraphStage[FanInShape2[BufD, BufD, BufD]] {
+  private final class Stage(op: Op)(implicit ctrl: Control)
+    extends GraphStage[FanInShape2[BufD, BufD, BufD]] {
+
     val shape = new FanInShape2(
       in0 = Inlet [BufD]("BinaryOp.a"  ),
       in1 = Inlet [BufD]("BinaryOp.b"  ),
       out = Outlet[BufD]("BinaryOp.out")
     )
 
-    def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new Logic(op, shape, ctrl)
+    def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new Logic(op, shape)
   }
 
   private final class Logic(op: Op,
-                            protected val shape: FanInShape2[BufD, BufD, BufD],
-                            protected val ctrl: Control)
+                            protected val shape: FanInShape2[BufD, BufD, BufD])
+                           (implicit protected val ctrl: Control)
     extends GraphStageLogic(shape)
       with FilterIn2Impl[BufD, BufD, BufD] {
 
@@ -416,7 +418,7 @@ object BinaryOp {
           bufOut.size = outOff
           push(shape.out, bufOut)
         } else {
-          bufOut.release()(ctrl)
+          bufOut.release()
         }
         bufOut      = null
         outSent     = true

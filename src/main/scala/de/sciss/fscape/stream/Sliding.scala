@@ -31,7 +31,7 @@ object Sliding {
     */
   def apply(in: Outlet[BufD], size: Outlet[BufI], step: Outlet[BufI])
            (implicit b: GraphDSL.Builder[NotUsed], ctrl: Control): Outlet[BufD] = {
-    val stage0  = new Stage(ctrl)
+    val stage0  = new Stage
     val stage   = b.add(stage0)
     import GraphDSL.Implicits._
     in   ~> stage.in0
@@ -51,7 +51,9 @@ object Sliding {
     def outRemain   : Int = size  - offOut
   }
 
-  private final class Stage(ctrl: Control) extends GraphStage[FanInShape3[BufD, BufI, BufI, BufD]] {
+  private final class Stage(implicit ctrl: Control)
+    extends GraphStage[FanInShape3[BufD, BufI, BufI, BufD]] {
+
     val shape = new FanInShape3(
       in0 = Inlet [BufD]("Sliding.in"  ),
       in1 = Inlet [BufI]("Sliding.size"),
@@ -59,11 +61,11 @@ object Sliding {
       out = Outlet[BufD]("Sliding.out" )
     )
 
-    def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new Logic(shape, ctrl)
+    def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new Logic(shape)
   }
 
-  private final class Logic(protected val shape: FanInShape3[BufD, BufI, BufI, BufD],
-                            protected val ctrl: Control)
+  private final class Logic(protected val shape: FanInShape3[BufD, BufI, BufI, BufD])
+                           (implicit protected val ctrl: Control)
     extends GraphStageLogic(shape) with FilterIn3Impl[BufD, BufI, BufI, BufD] {
 
     private[this] var inOff         = 0  // regarding `bufIn`
@@ -185,7 +187,7 @@ object Sliding {
           bufOut.size = outOff
           push(shape.out, bufOut)
         } else {
-          bufOut.release()(ctrl)
+          bufOut.release()
         }
         bufOut      = null
         outSent     = true

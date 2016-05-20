@@ -25,7 +25,7 @@ import scala.annotation.switch
 object UnaryOp {
   def apply(op: Op, in: Outlet[BufD])
            (implicit builder: GraphDSL.Builder[NotUsed], ctrl: Control): Outlet[BufD] = {
-    val stage0  = new Stage(op, ctrl)
+    val stage0  = new Stage(op)
     val stage   = builder.add(stage0)
     import GraphDSL.Implicits._
     in ~> stage.in
@@ -290,18 +290,20 @@ object UnaryOp {
 //    def apply(a: Double): Double = rd2.scurve(a)
 //  }
 
-  private final class Stage(op: Op, ctrl: Control) extends GraphStage[FlowShape[BufD, BufD]] {
+  private final class Stage(op: Op)(implicit ctrl: Control)
+    extends GraphStage[FlowShape[BufD, BufD]] {
+
     val shape = new FlowShape(
       in  = Inlet [BufD]("UnaryOp.in" ),
       out = Outlet[BufD]("UnaryOp.out")
     )
 
-    def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new Logic(op, shape, ctrl)
+    def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new Logic(op, shape)
   }
 
   private final class Logic(op: Op,
-                            protected val shape: FlowShape[BufD, BufD],
-                            protected val ctrl: Control)
+                            protected val shape: FlowShape[BufD, BufD])
+                           (implicit protected val ctrl: Control)
     extends GraphStageLogic(shape)
       with FilterIn1Impl[BufD, BufD] {
 
@@ -360,7 +362,7 @@ object UnaryOp {
           bufOut.size = outOff
           push(shape.out, bufOut)
         } else {
-          bufOut.release()(ctrl)
+          bufOut.release()
         }
         bufOut      = null
         outSent     = true

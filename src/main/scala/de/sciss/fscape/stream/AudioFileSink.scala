@@ -22,7 +22,7 @@ import de.sciss.synth.io
 import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal
 
-final class AudioFileSink(f: File, spec: io.AudioFileSpec, ctrl: Control)
+final class AudioFileSink(f: File, spec: io.AudioFileSpec)(implicit ctrl: Control)
   extends GraphStage[SinkShape[BufD]] { sink =>
   
   private[this] val in = Inlet[BufD]("AudioFileSink.in")
@@ -93,7 +93,7 @@ final class AudioFileSink(f: File, spec: io.AudioFileSpec, ctrl: Control)
           result.failure(ex)
           failStage(ex)
       } finally {
-        ctrl.returnBufD(bufIn)
+        bufIn.release()
       }
       pull(in)
     }

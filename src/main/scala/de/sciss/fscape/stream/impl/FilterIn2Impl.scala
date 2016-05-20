@@ -59,18 +59,18 @@ trait FilterIn2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, Out >: Null 
 
   protected final def freeInputBuffers(): Unit = {
     if (bufIn0 != null) {
-      bufIn0.release()(ctrl)
+      bufIn0.release()
       bufIn0 = null
     }
     if (bufIn1 != null) {
-      bufIn1.release()(ctrl)
+      bufIn1.release()
       bufIn1 = null
     }
   }
 
   protected final def freeOutputBuffers(): Unit =
     if (bufOut != null) {
-      bufOut.release()(ctrl)
+      bufOut.release()
       bufOut = null
     }
 

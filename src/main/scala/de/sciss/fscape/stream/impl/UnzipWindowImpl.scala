@@ -35,17 +35,21 @@ case class UnzipWindowShape(in0: Inlet[BufD], in1: Inlet[BufI], outlets: ISeq[Ou
   }
 }
 
-final class UnzipWindowStageImpl(numOutputs: Int, ctrl: Control) extends GraphStage[UnzipWindowShape] {
+final class UnzipWindowStageImpl(numOutputs: Int)(implicit ctrl: Control)
+  extends GraphStage[UnzipWindowShape] {
+
   val shape = UnzipWindowShape(
     in0     = Inlet[BufD]("UnzipWindow.in"),
     in1     = Inlet[BufI]("UnzipWindow.size"),
     outlets = Vector.tabulate(numOutputs)(idx => Outlet[BufD](s"UnzipWindow.out$idx"))
   )
 
-  def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new UnzipWindowLogicImpl(shape, ctrl)
+  def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new UnzipWindowLogicImpl(shape)
 }
 
-final class UnzipWindowLogicImpl(shape: UnzipWindowShape, ctrl: Control) extends GraphStageLogic(shape) {
+final class UnzipWindowLogicImpl(shape: UnzipWindowShape)(implicit ctrl: Control)
+  extends GraphStageLogic(shape) {
+
   private[this] var bufIn0: BufD = _
   private[this] var bufIn1: BufI = _
 
@@ -111,11 +115,11 @@ final class UnzipWindowLogicImpl(shape: UnzipWindowShape, ctrl: Control) extends
 
   private def freeInputBuffers(): Unit = {
     if (bufIn0 != null) {
-      bufIn0.release()(ctrl)
+      bufIn0.release()
       bufIn0 = null
     }
     if (bufIn1 != null) {
-      bufIn1.release()(ctrl)
+      bufIn1.release()
       bufIn1 = null
     }
   }
@@ -123,7 +127,7 @@ final class UnzipWindowLogicImpl(shape: UnzipWindowShape, ctrl: Control) extends
   private def freeOutputBuffers(): Unit =
     outputs.foreach { out =>
       if (out.buf != null) {
-        out.buf.release()(ctrl)
+        out.buf.release()
         out.buf = null
       }
     }
@@ -196,7 +200,7 @@ final class UnzipWindowLogicImpl(shape: UnzipWindowShape, ctrl: Control) extends
           out.buf.size = out.off
           push(out.let, out.buf)
         } else {
-          out.buf.release()(ctrl)
+          out.buf.release()
         }
         out.buf     = null
         out.sent    = true

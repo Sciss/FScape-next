@@ -37,17 +37,21 @@ case class ZipWindowShape(inputs: ISeq[Inlet[BufD]], size: Inlet[BufI], out: Out
   }
 }
 
-final class ZipWindowStageImpl(numInputs: Int, ctrl: Control) extends GraphStage[ZipWindowShape] {
+final class ZipWindowStageImpl(numInputs: Int)(implicit ctrl: Control)
+  extends GraphStage[ZipWindowShape] {
+
   val shape = ZipWindowShape(
     inputs  = Vector.tabulate(numInputs)(idx => Inlet[BufD](s"ZipWindow.in$idx")),
     size    = Inlet [BufI]("ZipWindow.size"),
     out     = Outlet[BufD]("ZipWindow.out" )
   )
 
-  def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new ZipWindowLogicImpl(shape, ctrl)
+  def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new ZipWindowLogicImpl(shape)
 }
 
-final class ZipWindowLogicImpl(shape: ZipWindowShape, ctrl: Control) extends GraphStageLogic(shape) {
+final class ZipWindowLogicImpl(shape: ZipWindowShape)(implicit ctrl: Control)
+  extends GraphStageLogic(shape) {
+
   private[this] var bufOut: BufD = _
   private[this] var bufIn1: BufI = _
 
@@ -101,7 +105,7 @@ final class ZipWindowLogicImpl(shape: ZipWindowShape, ctrl: Control) extends Gra
 
     def tryFree(): Unit =
       if (buf != null) {
-        buf.release()(ctrl)
+        buf.release()
         buf = null
       }
 
@@ -119,14 +123,14 @@ final class ZipWindowLogicImpl(shape: ZipWindowShape, ctrl: Control) extends Gra
   private def freeInputBuffers(): Unit = {
     inputs.foreach(_.tryFree())
     if (bufIn1 != null) {
-      bufIn1.release()(ctrl)
+      bufIn1.release()
       bufIn1 = null
     }
   }
 
   private def freeOutputBuffers(): Unit =
     if (bufOut != null) {
-      bufOut.release()(ctrl)
+      bufOut.release()
       bufOut = null
     }
 
@@ -138,7 +142,7 @@ final class ZipWindowLogicImpl(shape: ZipWindowShape, ctrl: Control) extends Gra
 
   private def readSize(): Unit = {
     // println("readSize()")
-    if (bufIn1 != null) bufIn1.release()(ctrl)
+    if (bufIn1 != null) bufIn1.release()
     bufIn1      = grab(shape.size)
     tryPull(shape.size)
     sizeOff     = 0
@@ -214,7 +218,7 @@ final class ZipWindowLogicImpl(shape: ZipWindowShape, ctrl: Control) extends Gra
         bufOut.size = outOff
         push(shape.out, bufOut)
       } else {
-        bufOut.release()(ctrl)
+        bufOut.release()
       }
       bufOut      = null
       outSent     = true

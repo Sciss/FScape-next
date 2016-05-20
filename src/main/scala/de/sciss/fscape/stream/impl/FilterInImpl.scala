@@ -24,7 +24,7 @@ trait FilterInImpl[S <: Shape] {
 
   protected def shape: S
 
-  protected def ctrl: Control
+  implicit protected def ctrl: Control
 
   protected def process(): Unit
 
