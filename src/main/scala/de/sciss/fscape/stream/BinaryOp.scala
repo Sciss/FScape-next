@@ -23,13 +23,13 @@ import de.sciss.numbers.{DoubleFunctions => rd, DoubleFunctions2 => rd2}
 import scala.annotation.switch
 
 object BinaryOp {
-  def apply(op: Op, a: Outlet[BufD], b: Outlet[BufD])
+  def apply(op: Op, in1: Outlet[BufD], in2: Outlet[BufD])
            (implicit builder: GraphDSL.Builder[NotUsed], ctrl: Control): Outlet[BufD] = {
     val stage0  = new Stage(op)
     val stage   = builder.add(stage0)
     import GraphDSL.Implicits._
-    a ~> stage.in0
-    b ~> stage.in1
+    in1 ~> stage.in0
+    in2 ~> stage.in1
     stage.out
   }
 

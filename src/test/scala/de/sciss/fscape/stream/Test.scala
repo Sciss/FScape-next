@@ -89,7 +89,7 @@ object Test extends App {
 
     // 'percussion'
     val log         = ComplexUnaryOp(in = fft , op = ComplexUnaryOp.Log)
-    val logC        = BinaryOp      (a  = log , b = const(-56 /* -80 */), op = BinaryOp.Max)
+    val logC        = BinaryOp      (in1  = log , in2 = const(-56 /* -80 */), op = BinaryOp.Max)
     val cep         = Complex1IFFT  (in = logC, size = const(fftSize), padding = const(0))
     val (pos0, neg0) = UnzipWindow   (in = cep , size = const(fftSize))
     import GraphDSL.Implicits._
@@ -146,21 +146,21 @@ object Test extends App {
     val cInB        = BroadcastBuf(cIn, 2)
     val dInB        = BroadcastBuf(dIn, 2)
 
-    val am1         = BinaryOp(op = BinaryOp.Times, a = aInB(0), b = const(crr))
-    val am2         = BinaryOp(op = BinaryOp.Times, a = cInB(0), b = const(ccr))
-    val aOut        = BinaryOp(op = BinaryOp.Plus , a = am1, b = am2)
+    val am1         = BinaryOp(op = BinaryOp.Times, in1 = aInB(0), in2 = const(crr))
+    val am2         = BinaryOp(op = BinaryOp.Times, in1 = cInB(0), in2 = const(ccr))
+    val aOut        = BinaryOp(op = BinaryOp.Plus , in1 = am1, in2 = am2)
 
-    val bm1         = BinaryOp(op = BinaryOp.Times, a = bInB(0), b = const(cri))
-    val bm2         = BinaryOp(op = BinaryOp.Times, a = dInB(0), b = const(cci))
-    val bOut        = BinaryOp(op = BinaryOp.Plus , a = bm1, b = bm2)
+    val bm1         = BinaryOp(op = BinaryOp.Times, in1 = bInB(0), in2 = const(cri))
+    val bm2         = BinaryOp(op = BinaryOp.Times, in1 = dInB(0), in2 = const(cci))
+    val bOut        = BinaryOp(op = BinaryOp.Plus , in1 = bm1, in2 = bm2)
 
-    val cm1         = BinaryOp(op = BinaryOp.Times, a = cInB(1), b = const(clr))
-    val cm2         = BinaryOp(op = BinaryOp.Times, a = aInB(1), b = const(car))
-    val cOut        = BinaryOp(op = BinaryOp.Plus , a = cm1, b = cm2)
+    val cm1         = BinaryOp(op = BinaryOp.Times, in1 = cInB(1), in2 = const(clr))
+    val cm2         = BinaryOp(op = BinaryOp.Times, in1 = aInB(1), in2 = const(car))
+    val cOut        = BinaryOp(op = BinaryOp.Plus , in1 = cm1, in2 = cm2)
 
-    val dm1         = BinaryOp(op = BinaryOp.Times, a = dInB(1), b = const(cli))
-    val dm2         = BinaryOp(op = BinaryOp.Times, a = bInB(1), b = const(cai))
-    val dOut        = BinaryOp(op = BinaryOp.Plus , a = dm1, b = dm2)
+    val dm1         = BinaryOp(op = BinaryOp.Times, in1 = dInB(1), in2 = const(cli))
+    val dm2         = BinaryOp(op = BinaryOp.Times, in1 = bInB(1), in2 = const(cai))
+    val dOut        = BinaryOp(op = BinaryOp.Plus , in1 = dm1, in2 = dm2)
 
     val posOut0     = ZipWindow(a = aOut, b = bOut, size = const(1))
     val negOutR0    = ZipWindow(a = cOut, b = dOut, size = const(1))
