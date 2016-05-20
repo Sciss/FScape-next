@@ -35,7 +35,7 @@ object ReverseWindow {
     */
   def apply(in: Outlet[BufD], size: Outlet[BufI], clump: Outlet[BufI])
            (implicit b: GraphDSL.Builder[NotUsed], ctrl: Control): Outlet[BufD] = {
-    val stage0  = new Stage(ctrl)
+    val stage0  = new Stage
     val stage   = b.add(stage0)
     import GraphDSL.Implicits._
     in    ~> stage.in0
@@ -45,7 +45,9 @@ object ReverseWindow {
     stage.out
   }
 
-  private final class Stage(ctrl: Control) extends GraphStage[FanInShape3[BufD, BufI, BufI, BufD]] {
+  private final class Stage(implicit ctrl: Control)
+    extends GraphStage[FanInShape3[BufD, BufI, BufI, BufD]] {
+
     val shape = new FanInShape3(
       in0 = Inlet [BufD]("ReverseWindow.in"   ),
       in1 = Inlet [BufI]("ReverseWindow.size" ),
@@ -53,12 +55,12 @@ object ReverseWindow {
       out = Outlet[BufD]("ReverseWindow.out"  )
     )
 
-    def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new Logic(shape, ctrl)
+    def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new Logic(shape)
   }
 
   // XXX TODO -- abstract over data type (BufD vs BufI)?
-  private final class Logic(protected val shape: FanInShape3[BufD, BufI, BufI, BufD],
-                            protected val ctrl: Control)
+  private final class Logic(protected val shape: FanInShape3[BufD, BufI, BufI, BufD])
+                           (implicit protected val ctrl: Control)
     extends GraphStageLogic(shape)
       with WindowedLogicImpl[BufD, BufD, FanInShape3[BufD, BufI, BufI, BufD]]
       with FilterIn3Impl                            [BufD, BufI, BufI, BufD] {

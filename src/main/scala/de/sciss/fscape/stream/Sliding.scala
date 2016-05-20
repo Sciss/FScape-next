@@ -22,7 +22,10 @@ import de.sciss.fscape.stream.impl.FilterIn3Impl
 
 import scala.annotation.tailrec
 
-/** Sliding overlapping window. */
+/** Sliding overlapping window.
+  *
+  * XXX TODO: should support `step &gt; size` (dropping from input)
+  */
 object Sliding {
   /**
     * @param in     the signal to window

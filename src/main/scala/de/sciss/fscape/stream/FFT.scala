@@ -20,11 +20,16 @@ import de.sciss.fscape.stream.impl.{Complex1FFTStageImpl, Complex1IFFTStageImpl,
 
 /** Real (positive spectrum) forward Short Time Fourier Transform.
   * The counter-part of it is `Real1IFFT`.
+  *
+  * Useful page: http://calculator.vhex.net/calculator/fast-fourier-transform-calculator-fft/1d-discrete-fourier-transform
   */
 object Real1FFT {
   def apply(in: Outlet[BufD], size: Outlet[BufI], padding: Outlet[BufI])
-           (implicit b: GraphDSL.Builder[NotUsed], ctrl: Control): Outlet[BufD] =
+           (implicit b: GraphDSL.Builder[NotUsed], ctrl: Control): Outlet[BufD] = {
+    // XXX TODO:
+    println("WARNING: Real1FFT --- returned packed format") // (Re(DC), Re(Ny), Re(1), Im(1) etc.
     new Real1FFTStageImpl(ctrl).connect(in = in, size = size, padding = padding)
+  }
 }
 
 /** Real (positive spectrum) inverse Short Time Fourier Transform.
