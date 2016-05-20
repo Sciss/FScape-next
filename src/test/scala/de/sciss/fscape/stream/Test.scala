@@ -68,15 +68,15 @@ object Test extends App {
   def const(i: Int   )(implicit b: GraphDSL.Builder[NotUsed]): Outlet[BufI] = b.add(Source.single(BufI(i))).out
   def const(d: Double)(implicit b: GraphDSL.Builder[NotUsed]): Outlet[BufD] = b.add(Source.single(BufD(d))).out
 
-  val graph = GraphDSL.create() { implicit b =>
-    val in      = DiskIn(file = fIn)
-    val seq0    = UnzipWindowN(numOutputs = 3, in = in, size = const(100))
-    import GraphDSL.Implicits._
-    val seq     = seq0 // .map(_.buffer(3, OverflowStrategy.backpressure).outlet)
-    val sig     = ZipWindowN(in = seq, size = const(100))
-    DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig)
-    ClosedShape
-  }
+//  val graph = GraphDSL.create() { implicit b =>
+//    val in      = DiskIn(file = fIn)
+//    val seq0    = UnzipWindowN(numOutputs = 3, in = in, size = const(100))
+//    import GraphDSL.Implicits._
+//    val seq     = seq0 // .map(_.buffer(3, OverflowStrategy.backpressure).outlet)
+//    val sig     = ZipWindowN(in = seq, size = const(100))
+//    DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig)
+//    ClosedShape
+//  }
 
 //  val graph = GraphDSL.create() { implicit b =>
 //    // 'analysis'

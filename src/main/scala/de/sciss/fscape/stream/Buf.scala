@@ -14,6 +14,8 @@ object BufD {
 }
 final class BufD(val buf: Array[Double], @volatile var size: Int, val borrowed: Boolean) extends BufLike {
   def release()(implicit ctrl: Control): Unit = ctrl.returnBufD(this)
+
+  override def toString = s"BufD(size = $size)"
 }
 
 object BufI {
@@ -24,4 +26,6 @@ object BufI {
 }
 final class BufI(val buf: Array[Int], @volatile var size: Int, val borrowed: Boolean) extends BufLike {
   def release()(implicit ctrl: Control): Unit = ctrl.returnBufI(this)
+
+  override def toString = f"BufI(size = $size)"
 }
