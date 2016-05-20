@@ -201,9 +201,9 @@ object Test extends App {
 
     // 'percussion'
     val log         = ComplexUnaryOp(in = fft , op = ComplexUnaryOp.Log)
-    val logC        = BinaryOp      (in1  = log , in2 = const(-80), op = BinaryOp.Max)
-    val cep0        = Complex1IFFT  (in = logC, size = const(fftSize), padding = const(0))
-    val cep         = BinaryOp      (in1 = cep0 , in2 = const(1.0/fftSize), op = BinaryOp.Times)
+    val logC        = BinaryOp      (in1 = log , in2  = const(-80), op = BinaryOp.Max)
+    val cep0        = Complex1IFFT  (in  = logC, size = const(fftSize), padding = const(0))
+    val cep         = BinaryOp      (in1 = cep0, in2  = const(1.0/fftSize), op = BinaryOp.Times)
 
     // 'variant 1'
     //    val crr =  0; val cri =  0
@@ -231,7 +231,10 @@ object Test extends App {
 
     // 'synthesis'
     val outW        = Real1FullIFFT (in = fftOut, size = const(fftSize), padding = const(0))
-    val sig         = outW  // XXX TODO: apply window function and overlap-add
+    val sig0        = outW  // XXX TODO: apply window function and overlap-add
+
+    // XXX TODO --- what's this gain factor?
+    val sig         = BinaryOp      (in1 = sig0, in2 = const(1.0/16), op = BinaryOp.Times)
     DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig)
     ClosedShape
   }
