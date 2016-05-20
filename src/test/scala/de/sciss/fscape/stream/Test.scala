@@ -14,7 +14,9 @@ import scala.swing.Swing
 object Test extends App {
   showStreamLog = true
 
-  val fIn   = userHome / "Music" / "work" / "mentasm-199a3aa1.aif"
+  // val fIn   = userHome / "Music" / "work" / "mentasm-199a3aa1.aif"
+  val fIn   = userHome / "Documents" / "projects" / "Unlike" / "audio_work" / "mentasm-e8646341-63dcf8a8.aif"
+
   val fIn2  = userHome / "Music" / "work" / "_killme5.aif"
   // val fIn   = userHome / "Music" / "work" / "fft_test.aif"
   //  val fIn   = userHome / "Music" / "work" / "B19h39m45s23jan2015.wav"
@@ -80,20 +82,21 @@ object Test extends App {
 //    ClosedShape
 //  }
 
-  lazy val graph = GraphDSL.create() { implicit b =>
+  lazy val graphOLD = GraphDSL.create() { implicit b =>
     // 'analysis'
-    val in          = DiskIn(file = fIn)
-    // val in          = DiskIn(file = fIn2)
-    val fftSize     = 131072
-    // val fftSize     = 8192
+//    val in          = DiskIn(file = fIn)
+    val in          = DiskIn(file = fIn2)
+//    val fftSize     = 131072
+    val fftSize     = 32768 // 8192
     val winStep     = fftSize // / 4
     val inW         = Sliding       (in = in  , size = const(fftSize), step    = const(winStep))
     val fft         = Real1FullFFT  (in = inW , size = const(fftSize), padding = const(0))
 
     // 'percussion'
     val log         = ComplexUnaryOp(in = fft , op = ComplexUnaryOp.Log)
-    val logC        = BinaryOp      (in1  = log , in2 = const(-56 /* -80 */), op = BinaryOp.Max)
-    val cep         = Complex1IFFT  (in = logC, size = const(fftSize), padding = const(0))
+    val logC        = BinaryOp      (in1 = log , in2 = const(-56 /* -80 */), op = BinaryOp.Max)
+    val cep0        = Complex1IFFT  (in  = logC, size = const(fftSize), padding = const(0))
+    val cep         = BinaryOp      (in1 = cep0 , in2 = const(1.0/fftSize), op = BinaryOp.Times)
     val (pos0, neg0) = UnzipWindow   (in = cep , size = const(fftSize))
     import GraphDSL.Implicits._
     val pos1        = ResizeWindow  (in = pos0, size = const(fftSize), start = const(0), stop = const(2)) // 'add nyquist'
@@ -176,7 +179,8 @@ object Test extends App {
     val negOutR     = negOutR1 // .buffer(size = fftSize/blockSize, overflowStrategy = OverflowStrategy.backpressure).outlet
     val negOut      = ReverseWindow (in = negOutR, size = const(fftSize), clump = const(2))
     val logOut      = ZipWindow(a = posOut, b = negOut, size = const(fftSize))
-    val freq        = Complex1FFT   (in = logOut, size = const(fftSize), padding = const(0))
+    val freq0       = Complex1FFT   (in = logOut, size = const(fftSize), padding = const(0))
+    val freq        = BinaryOp      (in1 = freq0 , in2 = const(fftSize), op = BinaryOp.Times)
     val fftOut      = ComplexUnaryOp(in = freq  , op = ComplexUnaryOp.Exp)
 
     // 'synthesis'
@@ -186,18 +190,20 @@ object Test extends App {
     ClosedShape
   }
 
-  lazy val graphNEW = GraphDSL.create() { implicit b =>
+  lazy val graph = GraphDSL.create() { implicit b =>
     // 'analysis'
-    val in          = DiskIn(file = fIn2)
-    val fftSize     = 8192 // 131072
+    val in          = DiskIn(file = fIn)
+    val fftSize     = 131072 // 32768 // 8192
     val winStep     = fftSize // / 4
     val inW         = Sliding       (in = in  , size = const(fftSize), step    = const(winStep))
-    val fft         = Real1FullFFT  (in = inW , size = const(fftSize), padding = const(0))
+    val fft0        = Real1FullFFT  (in = inW , size = const(fftSize), padding = const(0))
+    val fft         = fft0 // ComplexUnaryOp(in = fft0, op = ComplexUnaryOp.Conj)
 
     // 'percussion'
     val log         = ComplexUnaryOp(in = fft , op = ComplexUnaryOp.Log)
-    val logC        = log // BinaryOp      (in1  = log , in2 = const(-56 /* -80 */), op = BinaryOp.Max)
-    val cep         = Complex1IFFT  (in = logC, size = const(fftSize), padding = const(0))
+    val logC        = BinaryOp      (in1  = log , in2 = const(-80), op = BinaryOp.Max)
+    val cep0        = Complex1IFFT  (in = logC, size = const(fftSize), padding = const(0))
+    val cep         = BinaryOp      (in1 = cep0 , in2 = const(1.0/fftSize), op = BinaryOp.Times)
 
     // 'variant 1'
     //    val crr =  0; val cri =  0
@@ -218,7 +224,9 @@ object Test extends App {
     val car = +1; val cai = -1
 
     val cepOut      = FoldCepstrum  (in = cep, size = const(fftSize))
-    val freq        = Complex1FFT   (in = cepOut, size = const(fftSize), padding = const(0))
+    val freq0       = Complex1FFT   (in = cepOut, size = const(fftSize), padding = const(0))
+    val freq1       = BinaryOp      (in1 = freq0, in2 = const(fftSize), op = BinaryOp.Times)
+    val freq        = freq1 // ComplexUnaryOp(in = freq1, op = ComplexUnaryOp.Conj)
     val fftOut      = ComplexUnaryOp(in = freq  , op = ComplexUnaryOp.Exp)
 
     // 'synthesis'

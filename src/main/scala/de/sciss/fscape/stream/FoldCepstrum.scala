@@ -76,6 +76,8 @@ object FoldCepstrum {
     protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit =
       Util.copy(winBuf, readFromWinOff, bufOut.buf, outOff, chunk)
 
+//    private var DEBUG = true
+
     protected def processWindow(writeToWinOff: Int): Int = {
       // 'variant 1'
       //    val crr =  0; val cri =  0
@@ -94,6 +96,16 @@ object FoldCepstrum {
       val clr =  0; val cli =  0
       val ccr = +1; val cci = -1
       val car = +1; val cai = -1
+
+//      if (DEBUG) {
+//        import de.sciss.file._
+//        import de.sciss.synth.io._
+//        val afBefore = AudioFile.openWrite(userHome/"Music"/"work"/"_NEXT_BEFORE.aif",
+//          AudioFileSpec(numChannels = 1, sampleRate = 44100.0))
+//        val afBuf = Array(winBuf.map(_.toFloat))
+//        afBefore.write(afBuf)
+//        afBefore.close()
+//      }
 
       val arr = winBuf
       arr(0) = arr(0) * crr
@@ -121,6 +133,18 @@ object FoldCepstrum {
       i += 1
       arr(i) = arr(i) * (cci + cli)
       // i += 1
+
+//      if (DEBUG) {
+//        import de.sciss.file._
+//        import de.sciss.synth.io._
+//        val afAfter = AudioFile.openWrite(userHome/"Music"/"work"/"_NEXT_AFTER.aif",
+//          AudioFileSpec(numChannels = 1, sampleRate = 44100.0))
+//        val afBuf = Array(winBuf.map(_.toFloat))
+//        afAfter.write(afBuf)
+//        afAfter.close()
+//
+//        DEBUG = false
+//      }
 
       szC
     }

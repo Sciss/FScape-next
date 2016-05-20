@@ -158,9 +158,34 @@ final class Real1FullFFTLogicImpl(shape: FanInShape3[BufD, BufI, BufI, BufD], ct
   protected val fftInSizeFactor  = 1
   protected val fftOutSizeFactor = 2
 
+//  private var DEBUG = true
+
   protected def performFFT(fft: DoubleFFT_1D, fftBuf: Array[Double]): Unit = {
+//    if (DEBUG) {
+//      import de.sciss.file._
+//      import de.sciss.synth.io._
+//      val afBefore = AudioFile.openWrite(userHome/"Music"/"work"/"_NEXT_FFT_IN.aif",
+//        AudioFileSpec(numChannels = 1, sampleRate = 44100.0))
+//      val afBuf = Array(fftBuf.map(_.toFloat))
+//      afBefore.write(afBuf, 0, fftBuf.length)
+//      afBefore.close()
+//    }
+
     fft.realForwardFull(fftBuf)
+    // fft.realForward(fftBuf)
     Util.mul(fftBuf, 0, fftBuf.length, 2.0 / fftSize) // scale correctly
+
+//    if (DEBUG) {
+//      import de.sciss.file._
+//      import de.sciss.synth.io._
+//      val afAfter = AudioFile.openWrite(userHome/"Music"/"work"/"_NEXT_FFT.aif",
+//        AudioFileSpec(numChannels = 1, sampleRate = 44100.0))
+//      val afBuf = Array(fftBuf.map(_.toFloat))
+//      afAfter.write(afBuf)
+//      afAfter.close()
+//
+//      DEBUG = false
+//    }
   }
 }
 

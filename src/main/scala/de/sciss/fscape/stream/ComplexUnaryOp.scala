@@ -75,6 +75,7 @@ object ComplexUnaryOp {
       //      case Softclip   .id => Softclip
       //      case Ramp       .id => Ramp
       //      case Scurve     .id => Scurve
+      case Conj       .id => Conj
     }
   }
 
@@ -263,6 +264,24 @@ object ComplexUnaryOp {
 
     def apply(in: Array[Double], inOff: Int, out: Array[Double], outOff: Int, len: Int): Unit =
       Log.base(in = in, inOff = inOff, out = out, outOff = outOff, len = len, mul = Ln10R)
+  }
+
+  case object Conj extends Op {
+    final val id = 100
+
+    def apply(in: Array[Double], inOff: Int, out: Array[Double], outOff: Int, len: Int): Unit = {
+      val inStop = inOff + (len << 1)
+      var i = inOff
+      var j = outOff
+      while (i < inStop) {
+        val inRe    = in(i); i += 1
+        val inIm    = in(i); i += 1
+        val outRe   = inRe
+        val outIm   = -inIm
+        out(j) = outRe; j += 1
+        out(j) = outIm; j += 1
+      }
+    }
   }
 
   private final class Stage(op: Op)(implicit ctrl: Control)
