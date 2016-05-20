@@ -79,109 +79,116 @@ object Test extends App {
 //    ClosedShape
 //  }
 
-//  val graph = GraphDSL.create() { implicit b =>
-//    // 'analysis'
-//    val in          = DiskIn(file = fIn)
-//    val fftSize     = 131072
-//    val winStep     = fftSize / 4
-//    val inW         = Sliding       (in = in  , size = const(fftSize), step    = const(winStep))
-//    val fft         = Real1FullFFT  (in = inW , size = const(fftSize), padding = const(0))
-//
-//    // 'percussion'
-//    val log         = ComplexUnaryOp(in = fft , op = ComplexUnaryOp.Log)
-//    val logC        = BinaryOp      (a  = log , b = const(-80), op = BinaryOp.Max)
-//    val cep         = Complex1IFFT  (in = logC, size = const(fftSize), padding = const(0))
-//    val (pos0, neg) = UnzipWindow   (in = cep , size = const(fftSize))
-//    import GraphDSL.Implicits._
-//    val pos1        = pos0.buffer(size = fftSize/blockSize, overflowStrategy = OverflowStrategy.backpressure).outlet
-//    val negR1       = ReverseWindow (in = neg , size = const(fftSize), clump = const(2))
-//
-//    val posB = BroadcastBuf(pos1, 2)
-//    val pos  = posB(0)
-//
-//    val negRB = BroadcastBuf(negR1, 2)
-//    val negR = negRB(0)
-//
+  val graph = GraphDSL.create() { implicit b =>
+    // 'analysis'
+    val in          = DiskIn(file = fIn)
+    val fftSize     = 131072
+    val winStep     = fftSize / 4
+    val inW         = Sliding       (in = in  , size = const(fftSize), step    = const(winStep))
+    val fft         = Real1FullFFT  (in = inW , size = const(fftSize), padding = const(0))
+
+    // 'percussion'
+    val log         = ComplexUnaryOp(in = fft , op = ComplexUnaryOp.Log)
+    val logC        = BinaryOp      (a  = log , b = const(/* -60 */ -80), op = BinaryOp.Max)
+    val cep         = Complex1IFFT  (in = logC, size = const(fftSize), padding = const(0))
+    val (pos0, neg0) = UnzipWindow   (in = cep , size = const(fftSize))
+    import GraphDSL.Implicits._
+    val pos1        = ResizeWindow  (in = pos0, size = const(fftSize), start = const(0), stop = const(2)) // 'add nyquist'
+    val neg1        = ResizeWindow  (in = neg0, size = const(fftSize), start = const(0), stop = const(2)) // 'add dc'
+
+    val pos2        = pos1.buffer(size = (fftSize + 2)/blockSize, overflowStrategy = OverflowStrategy.backpressure).outlet
+    val negR2       = ReverseWindow (in = neg1 , size = const(fftSize + 2), clump = const(2))
+
+    // val posB = BroadcastBuf(pos2, 2)
+    val pos  = pos2 // posB(0)
+
+    // val negRB = BroadcastBuf(negR2, 2)
+    val negR = negR2 // negRB(0)
+
 //    DiskOut(file = fOut2, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = posB (1))
 //    DiskOut(file = fOut3, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = negRB(1))
-//
-//    /*
-//
-//    positive window: A = Re, B = im
-//    negative window: C = Re, D = im  (reversed order, i.e. from low to high frequencies)
-//
-//    A' = A * crr + C * ccr
-//    C' = C * clr + A * car
-//    B' = B * cri + D * cci
-//    D' = D * cli + B * cai
-//
-//     */
-//
-//    val (aIn, bIn)  = UnzipWindow   (in = pos , size = const(1))
-//    val (cIn, dIn)  = UnzipWindow   (in = negR, size = const(1))
-//
-//    // 'variant 1'
-////    val crr =  0; val cri =  0
-////    val clr = +1; val cli = +1
-////    val ccr = +1; val cci = -1
-////    val car = +1; val cai = -1
-//
-//    // 'bypass'
-////    val crr = +1; val cri = +1
-////    val clr = +1; val cli = +1
-////    val ccr =  0; val cci =  0
-////    val car =  0; val cai =  0
-//
-//    // 'variant 2'
-//    val crr = +1; val cri = +1
-//    val clr =  0; val cli =  0
+
+    /*
+
+    positive window: A = Re, B = im
+    negative window: C = Re, D = im  (reversed order, i.e. from low to high frequencies)
+
+    A' = A * crr + C * ccr
+    C' = C * clr + A * car
+    B' = B * cri + D * cci
+    D' = D * cli + B * cai
+
+     */
+
+    val (aIn, bIn)  = UnzipWindow   (in = pos , size = const(1))
+    val (cIn, dIn)  = UnzipWindow   (in = negR, size = const(1))
+
+    // 'variant 1'
+//    val crr =  0; val cri =  0
+//    val clr = +1; val cli = +1
 //    val ccr = +1; val cci = -1
 //    val car = +1; val cai = -1
-//
-//    val aInB        = BroadcastBuf(aIn, 2)
-//    val bInB        = BroadcastBuf(bIn, 2)
-//    val cInB        = BroadcastBuf(cIn, 2)
-//    val dInB        = BroadcastBuf(dIn, 2)
-//
-//    val am1         = BinaryOp(op = BinaryOp.Times, a = aInB(0), b = const(crr))
-//    val am2         = BinaryOp(op = BinaryOp.Times, a = cInB(0), b = const(ccr))
-//    val aOut        = BinaryOp(op = BinaryOp.Plus , a = am1, b = am2)
-//
-//    val bm1         = BinaryOp(op = BinaryOp.Times, a = bInB(0), b = const(cri))
-//    val bm2         = BinaryOp(op = BinaryOp.Times, a = dInB(0), b = const(cci))
-//    val bOut        = BinaryOp(op = BinaryOp.Plus , a = bm1, b = bm2)
-//
-//    val cm1         = BinaryOp(op = BinaryOp.Times, a = cInB(1), b = const(clr))
-//    val cm2         = BinaryOp(op = BinaryOp.Times, a = aInB(1), b = const(car))
-//    val cOut        = BinaryOp(op = BinaryOp.Plus , a = cm1, b = cm2)
-//
-//    val dm1         = BinaryOp(op = BinaryOp.Times, a = dInB(1), b = const(cli))
-//    val dm2         = BinaryOp(op = BinaryOp.Times, a = bInB(1), b = const(cai))
-//    val dOut        = BinaryOp(op = BinaryOp.Plus , a = dm1, b = dm2)
-//
-//    val posOut0     = ZipWindow(a = aOut, b = bOut, size = const(1))
-//    val negOutR0    = ZipWindow(a = cOut, b = dOut, size = const(1))
-//    val posOut      = posOut0.buffer(size = fftSize/blockSize, overflowStrategy = OverflowStrategy.backpressure).outlet
-//    val negOutR     = negOutR0 // .buffer(size = fftSize/blockSize, overflowStrategy = OverflowStrategy.backpressure).outlet
-//    val negOut      = ReverseWindow (in = negOutR, size = const(fftSize), clump = const(2))
-//    val logOut      = ZipWindow(a = posOut, b = negOut, size = const(fftSize))
-//    val freq        = Complex1FFT   (in = logOut, size = const(fftSize), padding = const(0))
-//    val fftOut      = ComplexUnaryOp(in = freq  , op = ComplexUnaryOp.Exp)
-//
-//    // 'synthesis'
-//    val outW        = Real1FullIFFT (in = fftOut, size = const(fftSize), padding = const(0))
-//    val sig         = outW  // XXX TODO: apply window function and overlap-add
-//    DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig)
-//    ClosedShape
-//  }
 
-  val graph = GraphDSL.create() { implicit b =>
-    val in      = DiskIn(file = fIn)
-    val sig     = ResizeWindow(in = in, size = const(1000), start = const(-200), stop = const(0))
+    // 'bypass'
+//    val crr = +1; val cri = +1
+//    val clr = +1; val cli = +1
+//    val ccr =  0; val cci =  0
+//    val car =  0; val cai =  0
+
+    // 'variant 2'
+    val crr = +1; val cri = +1
+    val clr =  0; val cli =  0
+    val ccr = +1; val cci = -1
+    val car = +1; val cai = -1
+
+    val aInB        = BroadcastBuf(aIn, 2)
+    val bInB        = BroadcastBuf(bIn, 2)
+    val cInB        = BroadcastBuf(cIn, 2)
+    val dInB        = BroadcastBuf(dIn, 2)
+
+    val am1         = BinaryOp(op = BinaryOp.Times, a = aInB(0), b = const(crr))
+    val am2         = BinaryOp(op = BinaryOp.Times, a = cInB(0), b = const(ccr))
+    val aOut        = BinaryOp(op = BinaryOp.Plus , a = am1, b = am2)
+
+    val bm1         = BinaryOp(op = BinaryOp.Times, a = bInB(0), b = const(cri))
+    val bm2         = BinaryOp(op = BinaryOp.Times, a = dInB(0), b = const(cci))
+    val bOut        = BinaryOp(op = BinaryOp.Plus , a = bm1, b = bm2)
+
+    val cm1         = BinaryOp(op = BinaryOp.Times, a = cInB(1), b = const(clr))
+    val cm2         = BinaryOp(op = BinaryOp.Times, a = aInB(1), b = const(car))
+    val cOut        = BinaryOp(op = BinaryOp.Plus , a = cm1, b = cm2)
+
+    val dm1         = BinaryOp(op = BinaryOp.Times, a = dInB(1), b = const(cli))
+    val dm2         = BinaryOp(op = BinaryOp.Times, a = bInB(1), b = const(cai))
+    val dOut        = BinaryOp(op = BinaryOp.Plus , a = dm1, b = dm2)
+
+    val posOut0     = ZipWindow(a = aOut, b = bOut, size = const(1))
+    val negOutR0    = ZipWindow(a = cOut, b = dOut, size = const(1))
+
+    val posOut1     = ResizeWindow(in = posOut0 , size = const(fftSize + 2), start = const(0), stop = const(-2))
+    // here `start` because we do this before reversal
+    val negOutR1    = ResizeWindow(in = negOutR0, size = const(fftSize + 2), start = const(2), stop = const( 0))
+
+    val posOut      = posOut1.buffer(size = fftSize/blockSize, overflowStrategy = OverflowStrategy.backpressure).outlet
+    val negOutR     = negOutR1 // .buffer(size = fftSize/blockSize, overflowStrategy = OverflowStrategy.backpressure).outlet
+    val negOut      = ReverseWindow (in = negOutR, size = const(fftSize), clump = const(2))
+    val logOut      = ZipWindow(a = posOut, b = negOut, size = const(fftSize))
+    val freq        = Complex1FFT   (in = logOut, size = const(fftSize), padding = const(0))
+    val fftOut      = ComplexUnaryOp(in = freq  , op = ComplexUnaryOp.Exp)
+
+    // 'synthesis'
+    val outW        = Real1FullIFFT (in = fftOut, size = const(fftSize), padding = const(0))
+    val sig         = outW  // XXX TODO: apply window function and overlap-add
     DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig)
     ClosedShape
   }
 
+//  val graph = GraphDSL.create() { implicit b =>
+//    val in      = DiskIn(file = fIn)
+//    val sig     = ResizeWindow(in = in, size = const(1000), start = const(-200), stop = const(200))
+//    DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig)
+//    ClosedShape
+//  }
 
 //  val graph = GraphDSL.create() { implicit b =>
 //    val in      = DiskIn(file = fIn)

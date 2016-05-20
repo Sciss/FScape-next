@@ -98,6 +98,8 @@ object ResizeWindow {
         winBuf = new Array[Double](winKeepSize)
       }
       winOutSize = math.max(1, winInSize - (startPos + startNeg) + (stopPos + stopNeg))
+
+      // println(s"next: winKeepSize $winKeepSize, winOutSize $winOutSize, winInSize $winInSize")
       winInSize
     }
 
@@ -122,19 +124,27 @@ object ResizeWindow {
       if (zeroStart > 0) {
         Util.fill(arr, outOff, zeroStart, 0.0)
       }
-      val winOff1   = readFromWinOff + zeroStart
+      val winOff1   = readFromWinOff + zeroStart + startNeg
       val outOff1   = outOff + zeroStart
       val chunk1    = chunk - zeroStart
       val chunk2    = math.min(chunk1, math.max(0, winKeepSize - winOff1))
       if (chunk2 > 0) {
-        Util.copy(winBuf, winOff1, bufOut.buf, outOff1, chunk2)
+        Util.copy(winBuf, winOff1, arr, outOff1, chunk2)
+//        var i = outOff1
+//        val j = i + chunk2
+//        while (i < j) {
+//          arr(i) = if ((i % 2) == 0) 0.5 else -0.5
+//          i += 1
+//        }
       }
 
-      val zeroStop  = chunk2 - chunk1
+      val zeroStop  = chunk - (chunk2 + zeroStart) // - chunk1
       if (zeroStop > 0) {
         val outOff2 = outOff1 + chunk2
         Util.fill(arr, outOff2, zeroStop, 0.0)
       }
+
+      // println(f"out: winOff $readFromWinOff%4d, outOff $outOff%4d, chunk $chunk%4d >> zeroStart $zeroStart%4d, zeroStop $zeroStop%4d")
     }
 
     protected def processWindow(writeToWinOff: Int): Int = winOutSize
