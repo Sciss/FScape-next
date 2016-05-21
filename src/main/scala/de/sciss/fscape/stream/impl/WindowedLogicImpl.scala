@@ -68,7 +68,7 @@ trait WindowedLogicImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, Shape <:
     // becomes `true` if state changes,
     // in that case we run this method again.
     var stateChange = false
-    logStream(s"process() $this; inValid = $inValid")
+    logStream(s"process() $this")
 
     if (shouldRead) {
       readIns()
@@ -78,7 +78,6 @@ trait WindowedLogicImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, Shape <:
       logStream(s"readIns(); inRemain = ${inAvailable()}")
     }
 
-    logStream(s"canWriteToWindow? $canWriteToWindow")
     if (canWriteToWindow) {
       if (isNextWindow) {
         writeToWinRemain  = startNextWindow(inOff = inOff)

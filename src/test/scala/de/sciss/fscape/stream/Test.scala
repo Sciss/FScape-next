@@ -12,7 +12,7 @@ import scala.concurrent.ExecutionContext
 import scala.swing.Swing
 
 object Test extends App {
-  showStreamLog = true
+  // showStreamLog = true
 
   // val fIn   = userHome / "Music" / "work" / "mentasm-199a3aa1.aif"
   val fIn   = userHome / "Documents" / "projects" / "Unlike" / "audio_work" / "mentasm-e8646341-63dcf8a8.aif"
@@ -28,7 +28,7 @@ object Test extends App {
   val blockSize = 1024
   implicit val ctrl = Control(blockSize)
 
-  lazy val graph = GraphDSL.create() { implicit b =>
+  lazy val graphFFT = GraphDSL.create() { implicit b =>
     val in      = DiskIn(file = fIn)
     val size    = b.add(Source.single(BufI(65536))).out
     val padding = b.add(Source.single(BufI(    0))).out
@@ -190,7 +190,7 @@ object Test extends App {
     ClosedShape
   }
 
-  lazy val graphPERC = GraphDSL.create() { implicit b =>
+  lazy val graph = GraphDSL.create() { implicit b =>
     // 'analysis'
     val in          = DiskIn(file = fIn)
     val fftSize     = 131072 // 32768 // 8192

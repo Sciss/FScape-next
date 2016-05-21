@@ -81,7 +81,7 @@ trait FilterIn2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, Out >: Null 
   final def updateCanRead(): Unit = {
     val sh = shape
     _canRead = isAvailable(sh.in0) &&
-      ((isClosed(sh.in1) && bufIn1 != null) || isAvailable(sh.in1))
+      ((isClosed(sh.in1) && _inValid) || isAvailable(sh.in1))
   }
 
   new ProcessInHandlerImpl (shape.in0, this)

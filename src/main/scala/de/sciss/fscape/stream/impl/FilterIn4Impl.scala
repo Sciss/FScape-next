@@ -104,9 +104,9 @@ trait FilterIn4Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null 
   final def updateCanRead(): Unit = {
     val sh = shape
     _canRead = isAvailable(sh.in0) &&
-      ((isClosed(sh.in1) && bufIn1 != null) || isAvailable(sh.in1)) &&
-      ((isClosed(sh.in2) && bufIn2 != null) || isAvailable(sh.in2)) &&
-      ((isClosed(sh.in3) && bufIn3 != null) || isAvailable(sh.in3))
+      ((isClosed(sh.in1) && _inValid) || isAvailable(sh.in1)) &&
+      ((isClosed(sh.in2) && _inValid) || isAvailable(sh.in2)) &&
+      ((isClosed(sh.in3) && _inValid) || isAvailable(sh.in3))
   }
 
   new ProcessInHandlerImpl (shape.in0, this)
