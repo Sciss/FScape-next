@@ -67,7 +67,7 @@ trait GenIn3Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: 
     }
 
     _inValid = true
-    _canRead = false
+    updateCanRead() // _canRead = false
   }
 
   protected final def freeInputBuffers(): Unit = {
