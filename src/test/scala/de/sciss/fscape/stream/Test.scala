@@ -234,7 +234,7 @@ object Test extends App {
     val sig0        = outW  // XXX TODO: apply window function and overlap-add
 
     // XXX TODO --- what's this gain factor?
-    val sig         = BinaryOp      (in1 = sig0, in2 = const(1.0/16), op = BinaryOp.Times)
+    val sig         = BinaryOp      (in1 = sig0, in2 = const(1.0/2097152), op = BinaryOp.Times)
     DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig)
     ClosedShape
   }
