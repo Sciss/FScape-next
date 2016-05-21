@@ -190,8 +190,8 @@ object GenWindow {
     private[this] var _shape : Shape  = Hann  // arbitrary default
     private[this] var param  : Double = _
 
-    protected def shouldComplete(): Boolean = false         // never
-    protected def inAvailable   (): Int     = ctrl.bufSize  // arbitrary
+    protected def shouldComplete(): Boolean = false    // never
+    protected def inAvailable   (): Int     = Int.MaxValue // XXX TODO --- should allow >32 bit
 
     protected def startNextWindow(inOff: Int): Int = {
 //      val oldSize = winSize

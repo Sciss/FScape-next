@@ -342,8 +342,8 @@ object BinaryOp {
     extends GraphStage[FanInShape2[BufD, BufD, BufD]] {
 
     val shape = new FanInShape2(
-      in0 = Inlet [BufD]("BinaryOp.a"  ),
-      in1 = Inlet [BufD]("BinaryOp.b"  ),
+      in0 = Inlet [BufD]("BinaryOp.in1"),
+      in1 = Inlet [BufD]("BinaryOp.in2"),
       out = Outlet[BufD]("BinaryOp.out")
     )
 

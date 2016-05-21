@@ -44,13 +44,19 @@ final class AuxInHandlerImpl[A, S <: Shape](in: Inlet[A], logic: InOutImpl[S])
 
   def onPush(): Unit = {
     logStream(s"onPush($in)")
+    testRead()
+  }
+
+  private[this] def testRead(): Unit = {
     logic.updateCanRead()
     if (logic.canRead) logic.process()
   }
 
   override def onUpstreamFinish(): Unit = {
     logStream(s"onUpstreamFinish($in)")
-    if (!logic.inValid && !logic.isInAvailable(in)) {
+    if (logic.inValid || logic.isInAvailable(in)) {
+      testRead()
+    } else {
       println(s"inValid Aux $logic")
       logic.completeStage()
     }

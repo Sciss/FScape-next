@@ -37,7 +37,7 @@ object Test extends App {
     ClosedShape
   }
 
-  lazy val graph = GraphDSL.create() { implicit b =>
+  lazy val graphWin = GraphDSL.create() { implicit b =>
     val in      = DiskIn(file = fIn)
     val fftSize = 32768 // 8192
     val winIn   = GenWindow(size = const(fftSize), shape = const(GenWindow.Hann.id), param = const(0.0))
@@ -200,7 +200,7 @@ object Test extends App {
     ClosedShape
   }
 
-  lazy val graphCEPS = GraphDSL.create() { implicit b =>
+  lazy val graph = GraphDSL.create() { implicit b =>
     // 'analysis'
     val in          = DiskIn(file = fIn)
     val fftSize     = 131072 // 32768 // 8192
