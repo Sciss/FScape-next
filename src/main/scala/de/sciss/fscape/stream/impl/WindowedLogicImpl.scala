@@ -11,11 +11,11 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape.stream.impl
+package de.sciss.fscape.stream
+package impl
 
 import akka.stream.FanInShape
 import akka.stream.stage.GraphStageLogic
-import de.sciss.fscape.stream.BufLike
 
 import scala.annotation.tailrec
 
@@ -68,25 +68,30 @@ trait WindowedLogicImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, Shape <:
     // becomes `true` if state changes,
     // in that case we run this method again.
     var stateChange = false
+    logStream(s"process() $this; inValid = $inValid")
 
     if (shouldRead) {
       readIns()
       inRemain    = inAvailable()
       inOff       = 0
       stateChange = true
+      logStream(s"readIns(); inRemain = ${inAvailable()}")
     }
 
+    logStream(s"canWriteToWindow? $canWriteToWindow")
     if (canWriteToWindow) {
       if (isNextWindow) {
         writeToWinRemain  = startNextWindow(inOff = inOff)
         writeToWinOff     = 0
         isNextWindow      = false
         stateChange       = true
+        logStream(s"startNextWindow(); writeToWinRemain = $writeToWinRemain")
       }
 
       val chunk     = math.min(writeToWinRemain, inRemain)
       val flushIn   = inRemain == 0 && writeToWinOff > 0 && shouldComplete()
       if (chunk > 0 || flushIn) {
+        logStream(s"writeToWindow(); inOff = $inOff, writeToWinOff = $writeToWinOff, chunk = $chunk")
         if (chunk > 0) {
           copyInputToWindow(inOff = inOff, writeToWinOff = writeToWinOff, chunk = chunk)
           inOff            += chunk
@@ -101,6 +106,7 @@ trait WindowedLogicImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, Shape <:
           readFromWinOff    = 0
           isNextWindow      = true
           stateChange       = true
+          logStream(s"processWindow(); readFromWinRemain = $readFromWinRemain")
         }
       }
     }
@@ -112,10 +118,12 @@ trait WindowedLogicImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, Shape <:
         outOff        = 0
         outSent       = false
         stateChange   = true
+        logStream(s"allocOutBuf(); outRemain = $outRemain")
       }
 
       val chunk = math.min(readFromWinRemain, outRemain)
       if (chunk > 0) {
+        logStream(s"readFromWindow(); readFromWinOff = $readFromWinOff, outOff = $outOff, chunk = $chunk")
         copyWindowToOutput(readFromWinOff = readFromWinOff, outOff = outOff, chunk = chunk)
         readFromWinOff    += chunk
         readFromWinRemain -= chunk
@@ -127,6 +135,7 @@ trait WindowedLogicImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, Shape <:
 
     val flushOut = inRemain == 0 && writeToWinOff == 0 && readFromWinRemain == 0 && shouldComplete()
     if (!outSent && (outRemain == 0 || flushOut) && isAvailable(shape.out)) {
+      logStream(s"sendOut(); outOff = $outOff")
       if (outOff > 0) {
         bufOut.size = outOff
         push(shape.out, bufOut)

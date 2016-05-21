@@ -11,7 +11,8 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape.stream.impl
+package de.sciss.fscape.stream
+package impl
 
 import akka.stream.stage.{InHandler, OutHandler}
 import akka.stream.{Inlet, Outlet, Shape}
@@ -19,11 +20,13 @@ import akka.stream.{Inlet, Outlet, Shape}
 final class ProcessInHandlerImpl[A, S <: Shape](in: Inlet[A], logic: InOutImpl[S])
   extends InHandler {
   def onPush(): Unit = {
+    logStream(s"onPush($in)")
     logic.updateCanRead()
     if (logic.canRead) logic.process()
   }
 
-  override def onUpstreamFinish(): Unit =
+  override def onUpstreamFinish(): Unit = {
+    logStream(s"onUpstreamFinish($in)")
     if (logic.inValid) logic.process() // may lead to `flushOut`
     else {
       if (!logic.isInAvailable(in)) {
@@ -31,6 +34,7 @@ final class ProcessInHandlerImpl[A, S <: Shape](in: Inlet[A], logic: InOutImpl[S
         logic.completeStage()
       }
     }
+  }
 
   logic.setInHandler(in, this)
 }
@@ -39,15 +43,18 @@ final class AuxInHandlerImpl[A, S <: Shape](in: Inlet[A], logic: InOutImpl[S])
   extends InHandler {
 
   def onPush(): Unit = {
+    logStream(s"onPush($in)")
     logic.updateCanRead()
     if (logic.canRead) logic.process()
   }
 
-  override def onUpstreamFinish(): Unit =
+  override def onUpstreamFinish(): Unit = {
+    logStream(s"onUpstreamFinish($in)")
     if (!logic.inValid && !logic.isInAvailable(in)) {
-       println(s"inValid Aux $logic")
-       logic.completeStage()
+      println(s"inValid Aux $logic")
+      logic.completeStage()
     }
+  }
 
   logic.setInHandler(in, this)
 }
@@ -55,7 +62,10 @@ final class AuxInHandlerImpl[A, S <: Shape](in: Inlet[A], logic: InOutImpl[S])
 final class ProcessOutHandlerImpl[A, S <: Shape](out: Outlet[A], logic: InOutImpl[S])
   extends OutHandler {
 
-  def onPull(): Unit = logic.process()
+  def onPull(): Unit = {
+    logStream(s"onPull($out)")
+    logic.process()
+  }
 
   logic.setOutHandler(out, this)
 }
