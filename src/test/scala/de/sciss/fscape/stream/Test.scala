@@ -37,6 +37,16 @@ object Test extends App {
     ClosedShape
   }
 
+  lazy val graph = GraphDSL.create() { implicit b =>
+    val in      = DiskIn(file = fIn)
+    val fftSize = 32768 // 8192
+    val winIn   = GenWindow(size = const(fftSize), shape = const(GenWindow.Hann.id), param = const(0.0))
+    val winOut  = BinaryOp(in1 = in, in2 = winIn, op = BinaryOp.Times)
+    val sig     = winOut
+    DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig)
+    ClosedShape
+  }
+
 //  val graph = GraphDSL.create() { implicit b =>
 //    val in      = DiskIn(file = fIn)
 //    val size    = b.add(Source.single(BufI(500))).out
@@ -190,7 +200,7 @@ object Test extends App {
     ClosedShape
   }
 
-  lazy val graph = GraphDSL.create() { implicit b =>
+  lazy val graphCEPS = GraphDSL.create() { implicit b =>
     // 'analysis'
     val in          = DiskIn(file = fIn)
     val fftSize     = 131072 // 32768 // 8192
@@ -234,7 +244,11 @@ object Test extends App {
     val sig0        = outW  // XXX TODO: apply window function and overlap-add
 
     // XXX TODO --- what's this gain factor?
-    val sig         = BinaryOp      (in1 = sig0, in2 = const(1.0/2097152), op = BinaryOp.Times)
+    val gain        = BinaryOp      (in1 = sig0, in2 = const(1.0/2097152), op = BinaryOp.Times)
+    val winIn       = GenWindow(size = const(fftSize), shape = const(GenWindow.Hann.id), param = const(0.0))
+    val winOut      = BinaryOp(in1 = gain, in2 = winIn, op = BinaryOp.Times)
+    val sig         = winOut    // XXX TODO: overlap-add
+
     DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig)
     ClosedShape
   }
