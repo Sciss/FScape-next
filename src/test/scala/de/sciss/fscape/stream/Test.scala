@@ -28,14 +28,14 @@ object Test extends App {
   val blockSize = 1024
   implicit val ctrl = Control(blockSize)
 
-//  val graph = GraphDSL.create() { implicit b =>
-//    val in      = DiskIn(file = fIn)
-//    val size    = b.add(Source.single(BufI(65536))).out
-//    val padding = b.add(Source.single(BufI(    0))).out
-//    val fft     = Real1FFT(in, size = size, padding = padding)
-//    DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = fft)
-//    ClosedShape
-//  }
+  lazy val graph = GraphDSL.create() { implicit b =>
+    val in      = DiskIn(file = fIn)
+    val size    = b.add(Source.single(BufI(65536))).out
+    val padding = b.add(Source.single(BufI(    0))).out
+    val fft     = Real1FFT(in, size = size, padding = padding)
+    DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = fft)
+    ClosedShape
+  }
 
 //  val graph = GraphDSL.create() { implicit b =>
 //    val in      = DiskIn(file = fIn)
@@ -190,7 +190,7 @@ object Test extends App {
     ClosedShape
   }
 
-  lazy val graph = GraphDSL.create() { implicit b =>
+  lazy val graphPERC = GraphDSL.create() { implicit b =>
     // 'analysis'
     val in          = DiskIn(file = fIn)
     val fftSize     = 131072 // 32768 // 8192
