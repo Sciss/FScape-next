@@ -14,7 +14,7 @@
 package de.sciss.fscape.stream.impl
 
 import akka.stream.FanInShape3
-import akka.stream.stage.{GraphStageLogic, InHandler, OutHandler}
+import akka.stream.stage.GraphStageLogic
 import de.sciss.fscape.stream.BufLike
 
 /** Building block for generators with `FanInShape2` type graph stage logic.
@@ -33,8 +33,10 @@ trait GenIn3Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: 
   protected final var bufOut: Out = _
 
   private[this] final var _canRead = false
+  private[this] final var _inValid = false
 
   final def canRead: Boolean = _canRead
+  final def inValid: Boolean = _inValid
 
   override def preStart(): Unit = {
     val sh = shape
@@ -64,6 +66,7 @@ trait GenIn3Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: 
       tryPull(sh.in2)
     }
 
+    _inValid = true
     _canRead = false
   }
 
@@ -88,29 +91,19 @@ trait GenIn3Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: 
       bufOut = null
     }
 
-  private[this] def updateCanRead(): Unit = {
+  final def updateCanRead(): Unit = {
     val sh = shape
     // XXX TODO -- actually we should require that we have
     // acquired at least one buffer of each inlet. that could
     // be checked in `onUpstreamFinish` which should probably
     // close the stage if not a single buffer had been read!
-    _canRead = (isClosed(sh.in0) || isAvailable(sh.in0)) &&
-               (isClosed(sh.in1) || isAvailable(sh.in1)) &&
-               (isClosed(sh.in2) || isAvailable(sh.in2))
-    if (_canRead) process()
+    _canRead = ((isClosed(sh.in0) && _inValid) || isAvailable(sh.in0)) &&
+               ((isClosed(sh.in1) && _inValid) || isAvailable(sh.in1)) &&
+               ((isClosed(sh.in2) && _inValid) || isAvailable(sh.in2))
   }
 
-  private[this] val inH = new InHandler {
-    def onPush(): Unit = updateCanRead()
-
-    override def onUpstreamFinish(): Unit = ()
-  }
-
-  setHandler(shape.in0, inH)
-  setHandler(shape.in1, inH)
-  setHandler(shape.in2, inH)
-
-  setHandler(shape.out, new OutHandler {
-    def onPull(): Unit = process()
-  })
+  new AuxInHandlerImpl     (shape.in0, this)
+  new AuxInHandlerImpl     (shape.in1, this)
+  new AuxInHandlerImpl     (shape.in2, this)
+  new ProcessOutHandlerImpl(shape.out, this)
 }
