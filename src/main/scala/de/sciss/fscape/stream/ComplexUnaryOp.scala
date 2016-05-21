@@ -313,7 +313,7 @@ object ComplexUnaryOp {
     @inline
     private[this] def shouldRead = inRemain == 0 && canRead
 
-    protected def process(): Unit = {
+    def process(): Unit = {
       var stateChange = false
 
       if (shouldRead) {

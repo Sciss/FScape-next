@@ -34,7 +34,7 @@ trait GenIn3Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: 
 
   private[this] final var _canRead = false
 
-  protected final def canRead: Boolean = _canRead
+  final def canRead: Boolean = _canRead
 
   override def preStart(): Unit = {
     val sh = shape

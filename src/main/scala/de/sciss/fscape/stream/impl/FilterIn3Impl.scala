@@ -14,7 +14,7 @@
 package de.sciss.fscape.stream.impl
 
 import akka.stream.FanInShape3
-import akka.stream.stage.{GraphStageLogic, InHandler, OutHandler}
+import akka.stream.stage.GraphStageLogic
 import de.sciss.fscape.stream.BufLike
 
 /** Building block for `FanInShape3` type graph stage logic. */
@@ -30,8 +30,10 @@ trait FilterIn3Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null 
   protected final var bufOut: Out = _
 
   private[this] final var _canRead = false
+  private[this] final var _inValid = false
 
-  protected final def canRead: Boolean = _canRead
+  final def canRead: Boolean = _canRead
+  final def inValid: Boolean = _inValid
 
   override def preStart(): Unit = {
     val sh = shape
@@ -52,10 +54,6 @@ trait FilterIn3Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null 
     bufIn0.assertAllocated()
     tryPull(sh.in0)
 
-    // XXX TODO -- actually we should require that we have
-    // acquired at least one buffer of each inlet. that could
-    // be checked in `onUpstreamFinish` which should probably
-    // close the stage if not a single buffer had been read!
     if (isAvailable(sh.in1)) {
       bufIn1 = grab(sh.in1)
       tryPull(sh.in1)
@@ -66,6 +64,7 @@ trait FilterIn3Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null 
       tryPull(sh.in2)
     }
 
+    _inValid = true
     _canRead = false
   }
 
@@ -90,30 +89,15 @@ trait FilterIn3Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null 
       bufOut = null
     }
 
-  private[this] def updateCanRead(): Unit = {
+  final def updateCanRead(): Unit = {
     val sh = shape
     _canRead = isAvailable(sh.in0) &&
-      (isClosed(sh.in1) || isAvailable(sh.in1)) &&
-      (isClosed(sh.in2) || isAvailable(sh.in2))
-    if (_canRead) process()
+      ((isClosed(sh.in1) && bufIn1 != null) || isAvailable(sh.in1)) &&
+      ((isClosed(sh.in2) && bufIn2 != null) || isAvailable(sh.in2))
   }
 
-  setHandler(shape.in0, new InHandler {
-    def onPush(): Unit = updateCanRead()
-
-    override def onUpstreamFinish(): Unit = process() // may lead to `flushOut`
-  })
-
-  private[this] final val inIH = new InHandler {
-    def onPush(): Unit = updateCanRead()
-
-    override def onUpstreamFinish(): Unit = ()  // keep running
-  }
-
-  setHandler(shape.in1, inIH)
-  setHandler(shape.in2, inIH)
-
-  setHandler(shape.out, new OutHandler {
-    def onPull(): Unit = process()
-  })
+  new ProcessInHandlerImpl (shape.in0, this)
+  new AuxInHandlerImpl     (shape.in1, this)
+  new AuxInHandlerImpl     (shape.in2, this)
+  new ProcessOutHandlerImpl(shape.out, this)
 }

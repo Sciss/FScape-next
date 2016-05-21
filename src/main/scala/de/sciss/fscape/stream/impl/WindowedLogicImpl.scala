@@ -28,7 +28,11 @@ trait WindowedLogicImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, Shape <:
 
   protected def startNextWindow(inOff: Int): Int
 
+  /** If crucial inputs have been closed. */
   protected def shouldComplete(): Boolean
+
+  /** Number of samples available from input buffers. */
+  protected def inAvailable(): Int
 
   protected def copyInputToWindow(inOff: Int, writeToWinOff: Int, chunk: Int): Unit
 
@@ -38,7 +42,6 @@ trait WindowedLogicImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, Shape <:
 
   protected def allocOutBuf(): Out
 
-  protected var bufIn0: In0
   protected var bufOut: Out
 
   // ---- impl ----
@@ -58,17 +61,17 @@ trait WindowedLogicImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, Shape <:
   @inline
   private[this] final def shouldRead        = inRemain          == 0 && canRead
   @inline
-  private[this] final def canWriteToWindow  = readFromWinRemain == 0 && bufIn0 != null
+  private[this] final def canWriteToWindow  = readFromWinRemain == 0 && inValid
 
   @tailrec
-  protected final def process(): Unit = {
+  final def process(): Unit = {
     // becomes `true` if state changes,
     // in that case we run this method again.
     var stateChange = false
 
     if (shouldRead) {
       readIns()
-      inRemain    = bufIn0.size
+      inRemain    = inAvailable()
       inOff       = 0
       stateChange = true
     }

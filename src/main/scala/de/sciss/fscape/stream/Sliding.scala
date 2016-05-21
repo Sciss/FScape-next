@@ -99,7 +99,7 @@ object Sliding {
       (windows.isEmpty || windows.head.inRemain > 0)
 
     @tailrec
-    protected def process(): Unit = {
+    def process(): Unit = {
       var stateChange = false
 
       // read inlets

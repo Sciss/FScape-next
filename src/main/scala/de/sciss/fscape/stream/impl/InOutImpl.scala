@@ -13,8 +13,8 @@
 
 package de.sciss.fscape.stream.impl
 
-import akka.stream.Shape
-import akka.stream.stage.GraphStageLogic
+import akka.stream.{Inlet, Outlet, Shape}
+import akka.stream.stage.{GraphStageLogic, InHandler, OutHandler}
 import de.sciss.fscape.stream.Control
 
 trait InOutImpl[S <: Shape] {
@@ -26,11 +26,29 @@ trait InOutImpl[S <: Shape] {
 
   implicit protected def ctrl: Control
 
-  protected def process(): Unit
+  def process(): Unit
 
-  protected def canRead: Boolean
+  /** Whether all inputs are available or have been closed and buffered. */
+  def canRead: Boolean
+
+  /** Whether all input buffers are valid. */
+  def inValid: Boolean
+
+  def updateCanRead(): Unit
 
   protected def readIns(): Unit
+
+  /** Exposed from `GraphStageLogic` API. */
+  def completeStage(): Unit
+
+  /** Exposed from protected `GraphStageLogic` API. */
+  final def isInAvailable[A](in: Inlet[A]): Boolean = isAvailable(in)
+
+  /** Exposed from protected `GraphStageLogic` API. */
+  final def setInHandler[A](in: Inlet[A], h: InHandler): Unit = setHandler(in, h)
+
+  /** Exposed from protected `GraphStageLogic` API. */
+  final def setOutHandler[A](out: Outlet[A], h: OutHandler): Unit = setHandler(out, h)
 
   protected def freeInputBuffers (): Unit
   protected def freeOutputBuffers(): Unit

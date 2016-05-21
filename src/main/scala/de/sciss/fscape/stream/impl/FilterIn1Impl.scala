@@ -14,7 +14,7 @@
 package de.sciss.fscape.stream.impl
 
 import akka.stream.FlowShape
-import akka.stream.stage.{GraphStageLogic, InHandler, OutHandler}
+import akka.stream.stage.GraphStageLogic
 import de.sciss.fscape.stream.BufLike
 
 /** Building block for `FanInShape2` type graph stage logic. */
@@ -28,8 +28,10 @@ trait FilterIn1Impl[In >: Null <: BufLike, Out >: Null <: BufLike]
   protected final var bufOut: Out = _
 
   private[this] final var _canRead = false
+  private[this] final var _inValid = false
 
-  protected final def canRead: Boolean = _canRead
+  final def canRead: Boolean = _canRead
+  final def inValid: Boolean = _inValid
 
   override def preStart(): Unit =
     pull(shape.in)
@@ -45,6 +47,7 @@ trait FilterIn1Impl[In >: Null <: BufLike, Out >: Null <: BufLike]
     bufIn     = grab(sh.in)
     bufIn.assertAllocated()
     tryPull(sh.in)
+    _inValid = true
     _canRead = false
   }
 
@@ -60,18 +63,9 @@ trait FilterIn1Impl[In >: Null <: BufLike, Out >: Null <: BufLike]
       bufOut = null
     }
 
-  private[this] def updateCanRead(): Unit = {
+  final def updateCanRead(): Unit =
     _canRead = isAvailable(shape.in)
-    if (_canRead) process()
-  }
 
-  setHandler(shape.in, new InHandler {
-    def onPush(): Unit = updateCanRead()
-
-    override def onUpstreamFinish(): Unit = process() // may lead to `flushOut`
-  })
-
-  setHandler(shape.out, new OutHandler {
-    def onPull(): Unit = process()
-  })
+  new ProcessInHandlerImpl (shape.in , this)
+  new ProcessOutHandlerImpl(shape.out, this)
 }
