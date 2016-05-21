@@ -18,7 +18,7 @@ import akka.stream.scaladsl.GraphDSL
 import akka.stream.stage.{GraphStage, GraphStageLogic}
 import akka.stream.{Attributes, FanInShape4, Inlet, Outlet}
 import de.sciss.fscape.Util
-import de.sciss.fscape.stream.impl.{FilterIn4Impl, WindowedLogicImpl}
+import de.sciss.fscape.stream.impl.{FilterIn4Impl, WindowedFilterLogicImpl}
 
 object ResizeWindow {
   /** Resizes the windowed input signal by trimming each
@@ -62,7 +62,7 @@ object ResizeWindow {
   private final class Logic(protected val shape: FanInShape4[BufD, BufI, BufI, BufI, BufD])
                            (implicit protected val ctrl: Control)
     extends GraphStageLogic(shape)
-      with WindowedLogicImpl[BufD, BufD, FanInShape4[BufD, BufI, BufI, BufI, BufD]]
+      with WindowedFilterLogicImpl[BufD, BufD, FanInShape4[BufD, BufI, BufI, BufI, BufD]]
       with FilterIn4Impl                            [BufD, BufI, BufI, BufI, BufD] {
 
     protected val in0: Inlet[BufD] = shape.in0

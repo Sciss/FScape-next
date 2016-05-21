@@ -18,7 +18,7 @@ import akka.stream.scaladsl.GraphDSL
 import akka.stream.stage.{GraphStage, GraphStageLogic}
 import akka.stream.{Attributes, FanInShape3, Inlet, Outlet}
 import de.sciss.fscape.Util
-import de.sciss.fscape.stream.impl.{FilterIn3Impl, WindowedLogicImpl}
+import de.sciss.fscape.stream.impl.{FilterIn3Impl, WindowedFilterLogicImpl}
 
 /** Reverses contents of windowed input. */
 object ReverseWindow {
@@ -62,7 +62,7 @@ object ReverseWindow {
   private final class Logic(protected val shape: FanInShape3[BufD, BufI, BufI, BufD])
                            (implicit protected val ctrl: Control)
     extends GraphStageLogic(shape)
-      with WindowedLogicImpl[BufD, BufD, FanInShape3[BufD, BufI, BufI, BufD]]
+      with WindowedFilterLogicImpl[BufD, BufD, FanInShape3[BufD, BufI, BufI, BufD]]
       with FilterIn3Impl                            [BufD, BufI, BufI, BufD] {
 
     protected val in0: Inlet[BufD] = shape.in0

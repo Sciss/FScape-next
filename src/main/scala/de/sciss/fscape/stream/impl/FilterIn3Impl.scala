@@ -19,7 +19,7 @@ import de.sciss.fscape.stream.BufLike
 
 /** Building block for `FanInShape3` type graph stage logic. */
 trait FilterIn3Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: BufLike, Out >: Null <: BufLike]
-  extends FilterInImpl[FanInShape3[In0, In1, In2, Out]] {
+  extends InOutImpl[FanInShape3[In0, In1, In2, Out]] {
   _: GraphStageLogic =>
 
   // ---- impl ----
@@ -52,6 +52,10 @@ trait FilterIn3Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null 
     bufIn0.assertAllocated()
     tryPull(sh.in0)
 
+    // XXX TODO -- actually we should require that we have
+    // acquired at least one buffer of each inlet. that could
+    // be checked in `onUpstreamFinish` which should probably
+    // close the stage if not a single buffer had been read!
     if (isAvailable(sh.in1)) {
       bufIn1 = grab(sh.in1)
       tryPull(sh.in1)

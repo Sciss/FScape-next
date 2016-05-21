@@ -1,5 +1,5 @@
 /*
- *  FilterIn4Impl.scala
+ *  GenIn3Impl.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2016 Hanns Holger Rutz. All rights reserved.
@@ -13,13 +13,16 @@
 
 package de.sciss.fscape.stream.impl
 
-import akka.stream.FanInShape4
+import akka.stream.FanInShape3
 import akka.stream.stage.{GraphStageLogic, InHandler, OutHandler}
 import de.sciss.fscape.stream.BufLike
 
-/** Building block for `FanInShape3` type graph stage logic. */
-trait FilterIn4Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: BufLike, In3 >: Null <: BufLike, Out >: Null <: BufLike]
-  extends InOutImpl[FanInShape4[In0, In1, In2, In3, Out]] {
+/** Building block for generators with `FanInShape2` type graph stage logic.
+  * A generator keeps producing output until down-stream is closed, and does
+  * not care about upstream inlets being closed.
+  */
+trait GenIn3Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: BufLike, Out >: Null <: BufLike]
+  extends InOutImpl[FanInShape3[In0, In1, In2, Out]] {
   _: GraphStageLogic =>
 
   // ---- impl ----
@@ -27,7 +30,6 @@ trait FilterIn4Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null 
   protected final var bufIn0: In0 = _
   protected final var bufIn1: In1 = _
   protected final var bufIn2: In2 = _
-  protected final var bufIn3: In3 = _
   protected final var bufOut: Out = _
 
   private[this] final var _canRead = false
@@ -39,7 +41,6 @@ trait FilterIn4Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null 
     pull(sh.in0)
     pull(sh.in1)
     pull(sh.in2)
-    pull(sh.in3)
   }
 
   override def postStop(): Unit = {
@@ -49,28 +50,18 @@ trait FilterIn4Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null 
 
   protected final def readIns(): Unit = {
     freeInputBuffers()
-    val sh    = shape
-    bufIn0    = grab(sh.in0)
-    bufIn0.assertAllocated()
-    tryPull(sh.in0)
-
-    // XXX TODO -- actually we should require that we have
-    // acquired at least one buffer of each inlet. that could
-    // be checked in `onUpstreamFinish` which should probably
-    // close the stage if not a single buffer had been read!
+    val sh = shape
+    if (isAvailable(sh.in0)) {
+      bufIn0 = grab(sh.in0)
+      tryPull(sh.in0)
+    }
     if (isAvailable(sh.in1)) {
       bufIn1 = grab(sh.in1)
       tryPull(sh.in1)
     }
-
     if (isAvailable(sh.in2)) {
       bufIn2 = grab(sh.in2)
       tryPull(sh.in2)
-    }
-
-    if (isAvailable(sh.in3)) {
-      bufIn3 = grab(sh.in3)
-      tryPull(sh.in3)
     }
 
     _canRead = false
@@ -89,10 +80,6 @@ trait FilterIn4Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null 
       bufIn2.release()
       bufIn2 = null
     }
-    if (bufIn3 != null) {
-      bufIn3.release()
-      bufIn3 = null
-    }
   }
 
   protected final def freeOutputBuffers(): Unit =
@@ -103,28 +90,25 @@ trait FilterIn4Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null 
 
   private[this] def updateCanRead(): Unit = {
     val sh = shape
-    _canRead = isAvailable(sh.in0) &&
-      (isClosed(sh.in1) || isAvailable(sh.in1)) &&
-      (isClosed(sh.in2) || isAvailable(sh.in2)) &&
-      (isClosed(sh.in3) || isAvailable(sh.in3))
+    // XXX TODO -- actually we should require that we have
+    // acquired at least one buffer of each inlet. that could
+    // be checked in `onUpstreamFinish` which should probably
+    // close the stage if not a single buffer had been read!
+    _canRead = (isClosed(sh.in0) || isAvailable(sh.in0)) &&
+               (isClosed(sh.in1) || isAvailable(sh.in1)) &&
+               (isClosed(sh.in2) || isAvailable(sh.in2))
     if (_canRead) process()
   }
 
-  setHandler(shape.in0, new InHandler {
+  private[this] val inH = new InHandler {
     def onPush(): Unit = updateCanRead()
 
-    override def onUpstreamFinish(): Unit = process() // may lead to `flushOut`
-  })
-
-  private[this] final val inIH = new InHandler {
-    def onPush(): Unit = updateCanRead()
-
-    override def onUpstreamFinish(): Unit = ()  // keep running
+    override def onUpstreamFinish(): Unit = ()
   }
 
-  setHandler(shape.in1, inIH)
-  setHandler(shape.in2, inIH)
-  setHandler(shape.in3, inIH)
+  setHandler(shape.in0, inH)
+  setHandler(shape.in1, inH)
+  setHandler(shape.in2, inH)
 
   setHandler(shape.out, new OutHandler {
     def onPull(): Unit = process()

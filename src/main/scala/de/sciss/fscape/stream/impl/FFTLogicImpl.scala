@@ -51,7 +51,7 @@ abstract class FFTStageImpl extends GraphStage[FanInShape3[BufD, BufI, BufI, Buf
 abstract class FFTLogicImpl(protected val shape: FanInShape3[BufD, BufI, BufI, BufD],
                             protected val ctrl: Control)
   extends GraphStageLogic(shape)
-    with WindowedLogicImpl[BufD, BufD, FanInShape3[BufD, BufI, BufI, BufD]]
+    with WindowedFilterLogicImpl[BufD, BufD, FanInShape3[BufD, BufI, BufI, BufD]]
     with FilterIn3Impl                            [BufD, BufI, BufI, BufD] {
 
   // ---- abstract ----

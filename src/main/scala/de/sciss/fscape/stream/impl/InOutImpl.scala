@@ -1,5 +1,5 @@
 /*
- *  FilterInImpl.scala
+ *  InOutImpl.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2016 Hanns Holger Rutz. All rights reserved.
@@ -17,7 +17,7 @@ import akka.stream.Shape
 import akka.stream.stage.GraphStageLogic
 import de.sciss.fscape.stream.Control
 
-trait FilterInImpl[S <: Shape] {
+trait InOutImpl[S <: Shape] {
   _: GraphStageLogic =>
 
   // ---- abstract ----

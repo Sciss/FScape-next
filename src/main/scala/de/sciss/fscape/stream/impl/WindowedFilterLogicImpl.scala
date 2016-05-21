@@ -1,5 +1,5 @@
 /*
- *  WindowedLogicImpl.scala
+ *  WindowedFilterLogicImpl.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2016 Hanns Holger Rutz. All rights reserved.
@@ -13,13 +13,13 @@
 
 package de.sciss.fscape.stream.impl
 
-import akka.stream.FanInShape
 import akka.stream.stage.GraphStageLogic
+import akka.stream.{FanInShape, Inlet}
 import de.sciss.fscape.stream.BufLike
 
 import scala.annotation.tailrec
 
-trait WindowedLogicImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, Shape <: FanInShape[Out]]
+trait WindowedFilterLogicImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, Shape <: FanInShape[Out]]
   extends InOutImpl[Shape] {
 
   _: GraphStageLogic =>
@@ -28,7 +28,7 @@ trait WindowedLogicImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, Shape <:
 
   protected def startNextWindow(inOff: Int): Int
 
-  protected def shouldComplete(): Boolean
+  protected def in0: Inlet[In0]
 
   protected def copyInputToWindow(inOff: Int, writeToWinOff: Int, chunk: Int): Unit
 
@@ -82,7 +82,7 @@ trait WindowedLogicImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, Shape <:
       }
 
       val chunk     = math.min(writeToWinRemain, inRemain)
-      val flushIn   = inRemain == 0 && writeToWinOff > 0 && shouldComplete()
+      val flushIn   = inRemain == 0 && writeToWinOff > 0 && isClosed(in0)
       if (chunk > 0 || flushIn) {
         if (chunk > 0) {
           copyInputToWindow(inOff = inOff, writeToWinOff = writeToWinOff, chunk = chunk)
@@ -122,7 +122,7 @@ trait WindowedLogicImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, Shape <:
       }
     }
 
-    val flushOut = inRemain == 0 && writeToWinOff == 0 && readFromWinRemain == 0 && shouldComplete()
+    val flushOut = inRemain == 0 && writeToWinOff == 0 && readFromWinRemain == 0 && isClosed(in0)
     if (!outSent && (outRemain == 0 || flushOut) && isAvailable(shape.out)) {
       if (outOff > 0) {
         bufOut.size = outOff
