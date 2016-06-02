@@ -21,7 +21,7 @@ trait BufLike {
 
   def assertAllocated(): Unit
 
-  /* @volatile */ var size: Int
+  var size: Int
 }
 
 object BufD {
@@ -34,7 +34,7 @@ object BufD {
     new BufD(new Array[Double](size), size = size, borrowed = true)
   }
 }
-final class BufD private(val buf: Array[Double], @volatile var size: Int, borrowed: Boolean)
+final class BufD private(val buf: Array[Double], var size: Int, borrowed: Boolean)
   extends BufLike {
 
   private[this] val allocCount = if (borrowed) new AtomicInteger(1) else null
@@ -65,7 +65,7 @@ object BufI {
     new BufI(new Array[Int](size), size = size, borrowed = true)
   }
 }
-final class BufI private(val buf: Array[Int], @volatile var size: Int, borrowed: Boolean) extends BufLike {
+final class BufI private(val buf: Array[Int], var size: Int, borrowed: Boolean) extends BufLike {
   private[this] val allocCount = if (borrowed) new AtomicInteger(1) else null
 
   def assertAllocated(): Unit = require(!borrowed || allocCount.get() > 0)

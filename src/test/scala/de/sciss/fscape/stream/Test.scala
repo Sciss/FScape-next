@@ -204,7 +204,7 @@ object Test extends App {
     // 'analysis'
     val in          = DiskIn(file = fIn)
     val fftSize     = 131072 // 32768 // 8192
-    val winStep     = fftSize // / 4
+    val winStep     = fftSize / 4
     val inW         = Sliding       (in = in  , size = const(fftSize), step    = const(winStep))
     val fft0        = Real1FullFFT  (in = inW , size = const(fftSize), padding = const(0))
     val fft         = fft0 // ComplexUnaryOp(in = fft0, op = ComplexUnaryOp.Conj)
@@ -227,7 +227,7 @@ object Test extends App {
     //    val ccr =  0; val cci =  0
     //    val car =  0; val cai =  0
 
-    // 'variant 2'
+    // 'variant 2'; XXX TODO --- `FoldCepstrum` should have these parameters
     val crr = +1; val cri = +1
     val clr =  0; val cli =  0
     val ccr = +1; val cci = -1
@@ -247,7 +247,7 @@ object Test extends App {
     val gain        = BinaryOp      (in1 = sig0, in2 = const(1.0/2097152), op = BinaryOp.Times)
     val winIn       = GenWindow(size = const(fftSize), shape = const(GenWindow.Hann.id), param = const(0.0))
     val winOut      = BinaryOp(in1 = gain, in2 = winIn, op = BinaryOp.Times)
-    val sig         = winOut    // XXX TODO: overlap-add
+    val sig         = OverlapAdd(winOut, size = const(fftSize), step = const(winStep))
 
     DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig)
     ClosedShape

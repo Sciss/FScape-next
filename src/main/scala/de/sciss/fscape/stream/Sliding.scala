@@ -67,6 +67,8 @@ object Sliding {
     def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new Logic(shape)
   }
 
+  // XXX TODO --- we should try to see if this can be implemented
+  // on top of windowed-logic-impl which would make it much simpler
   private final class Logic(protected val shape: FanInShape3[BufD, BufI, BufI, BufD])
                            (implicit protected val ctrl: Control)
     extends GraphStageLogic(shape) with FilterIn3Impl[BufD, BufI, BufI, BufD] {

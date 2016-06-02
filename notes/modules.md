@@ -97,3 +97,35 @@ Probably having a working implementation of this module addresses most problems
 Which may be created from syntactic sugar. The problem is `Graph` does not exhibit a particular outlet.
 Therefore, the syntactic sugar should distinguish function return types like `play { }` in ScalaCollider.
 Then we could have simply different objects such as `ISelectZero` and `ISelectOne`.
+
+## Overlap-Add
+
+The counter-part to `Sliding`.
+Can we use `WindowLogicImpl`?
+
+    |xxxxx|xxxxx|xxxxx|xxxxx|
+    
+    |xxxxx
+       |xxxxx
+          |xxxxx
+             |xxxxx|
+    
+- `startNextWindow` returns `winSize` (NO: returns `step`)
+- `copyInputToWindow` - consume `winSize` samples; as in `Sliding` we maintain a list of "open" windows,
+  and here we append to all of them
+- `processWindow` - a no-op? returns `step`
+  ; this becomes `readFromWinRemain` and determines the number of frames
+  that must be transported to the outlet before a going back to `copyInputToWindow`,
+  thus controls the back pressure.
+- `copyWindowToOutput` - output `step` samples; summing the content of the list of "open" windows
+- `startNextWindow`  (loop -- remain at `winSize`)
+
+How to support `step > winSize`
+
+    |xxxxx
+            |xxxxx
+                    |xxxxx
+                            |xxxxx  |
+
+It looks actually like this should already be supported with the above algorithm, except that
+we need to take care to add zero padding in `copyWindowToOutput`.
