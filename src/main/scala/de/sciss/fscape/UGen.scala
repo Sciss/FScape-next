@@ -20,23 +20,24 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.language.implicitConversions
 import scala.runtime.ScalaRunTime
 
-/** The raw UGen information as it is found in a final `UGenGraph`. */
-trait RawUGen {
-  def name      : String
-  def numInputs : Int
-  def numOutputs: Int
-}
+///** The raw UGen information as it is found in a final `UGenGraph`. */
+//trait RawUGen {
+//  def numInputs : Int
+//  def numOutputs: Int
+//}
 
 /** A UGen during graph building process is a more
   * rich thing than `RawUGen`: it implements equality
   * based on `isIndividual` status and may be omitted
   * from the final graph based on `hasSideEffect` status.
   */
-sealed trait UGen extends RawUGen with Product {
+sealed trait UGen extends Product {
   // initialize this first, so that debug printing in `addUGen` can use the hash code
   override val hashCode: Int = if (isIndividual) super.hashCode() else ScalaRunTime._hashCode(this)
 
   override def toString: String = inputs.mkString(s"$name(", ", ", ")")
+
+  def name      : String
 
   def inputs      : Vec[UGenIn]
 
