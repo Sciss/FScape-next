@@ -7,7 +7,7 @@ object GraphTest extends App {
   val fIn   = userHome / "Documents" / "projects" / "Unlike" / "audio_work" / "mentasm-e8646341-63dcf8a8.aif"
   val fOut  = userHome / "Music" / "work" / "_killme.aif"
 
-  lazy val g = Graph {
+  val g = Graph {
     import graph._
 
     // 'analysis'
@@ -41,4 +41,7 @@ object GraphTest extends App {
 
     DiskOut(file = fOut, spec = AudioFileSpec(numChannels = sig.size, sampleRate = 44100), in = sig)
   }
+
+  val process = g.expand
+  process.run()
 }

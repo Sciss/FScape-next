@@ -154,9 +154,11 @@ object GenWindow {
   // XXX TODO --- we should add some standard SuperCollider curve shapes like Welch
 }
 final case class GenWindow(size: GE, shape: GE, param: GE = 0.0) extends UGenSource.SingleOut {
-  protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = ???
+  protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
+    unwrap(Vector(size.expand, shape.expand, param.expand))
 
-  protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike = ???
+  protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
+    UGen.SingleOut(this, args)
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamIn = ???
 }

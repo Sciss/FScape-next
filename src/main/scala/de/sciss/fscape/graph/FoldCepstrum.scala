@@ -21,9 +21,13 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 final case class FoldCepstrum(in: GE, size: GE,
             crr: GE, cri: GE, clr: GE, cli: GE,
             ccr: GE, cci: GE, car: GE, cai: GE) extends UGenSource.SingleOut {
-  protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = ???
 
-  protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike = ???
+  protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
+    unwrap(Vector(in.expand, size.expand,
+      crr.expand, cri.expand, clr.expand, cli.expand, ccr.expand, cci.expand, car.expand, cai.expand))
+
+  protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
+    UGen.SingleOut(this, args)
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamIn = ???
 }
