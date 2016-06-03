@@ -11,23 +11,31 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape
-package ugen
-package impl
+package de.sciss.fscape.graph.impl
+
+import de.sciss.fscape.{UGen, UGenIn, UGenSource}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-final class ZeroOutImpl(val name: String, val inputs: Vec[UGenIn], val isIndividual: Boolean,
-                        val specialIndex: Int)
-  extends UGen.ZeroOut
+final class ZeroOutImpl(source: UGenSource.ZeroOut, val inputs: Vec[UGenIn], val isIndividual: Boolean)
+  extends UGen.ZeroOut {
 
-final class SingleOutImpl(val name: String, val inputs: Vec[UGenIn], val isIndividual: Boolean,
-                          val hasSideEffect: Boolean, val specialIndex: Int)
-  extends UGen.SingleOut
+  def name: String = source.name
+}
 
-final class MultiOutImpl(val name: String, val numOutputs: Int, val inputs: Vec[UGenIn],
-                         val isIndividual: Boolean, val hasSideEffect: Boolean, val specialIndex: Int)
-  extends UGen.MultiOut
+final class SingleOutImpl(source: UGenSource.SingleOut, val inputs: Vec[UGenIn], val isIndividual: Boolean,
+                          val hasSideEffect: Boolean)
+  extends UGen.SingleOut {
+
+  def name: String = source.name
+}
+
+final class MultiOutImpl(source: UGenSource.MultiOut, val numOutputs: Int, val inputs: Vec[UGenIn],
+                         val isIndividual: Boolean, val hasSideEffect: Boolean)
+  extends UGen.MultiOut {
+
+  def name: String = source.name
+}
 
 //// side-effect: receiving messages from clients!
 //// and more importantly: control ugens created from proxies are not wired, so they would

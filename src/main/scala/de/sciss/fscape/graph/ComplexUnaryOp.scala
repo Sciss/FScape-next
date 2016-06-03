@@ -14,6 +14,8 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.stream.StreamIn
+
 import scala.annotation.switch
 import scala.collection.immutable.{IndexedSeq => Vec}
 
@@ -276,4 +278,6 @@ final case class ComplexUnaryOp(op: ComplexUnaryOp.Op, in: GE) extends UGenSourc
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike = ???
 
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = ???
+
+  private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamIn = ???
 }

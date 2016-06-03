@@ -24,7 +24,7 @@ import de.sciss.synth.io
 import scala.util.control.NonFatal
 
 // similar to internal `UnfoldResourceSource`
-final class AudioFileSource(f: File, numChannels: Int, ctrl: Control)
+final class AudioFileSource(f: File, numChannels: Int)(implicit ctrl: Control)
   extends GraphStage[UniformSourceShape[BufD]] { source =>
 
   override val shape = UniformSourceShape(Vector.tabulate(numChannels)(ch => OutD(s"AudioFileSource.out$ch")))

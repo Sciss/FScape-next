@@ -16,9 +16,12 @@ package de.sciss.fscape.stream
 import java.util.concurrent.ConcurrentLinkedQueue
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.language.implicitConversions
 
 object Control {
   def apply(bufSize: Int)(implicit exec: ExecutionContext): Control = new Impl(bufSize)
+
+  implicit def fromBuilder(implicit b: Builder): Control = b.control
 
   private final class Impl(val bufSize: Int)(implicit exec: ExecutionContext) extends Control {
     override def toString = s"Control@${hashCode().toHexString}"

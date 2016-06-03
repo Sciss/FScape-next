@@ -13,7 +13,6 @@
 
 package de.sciss.fscape.stream
 
-import akka.stream.scaladsl.GraphDSL
 import akka.stream.stage.{GraphStage, GraphStageLogic}
 import akka.stream.{Attributes, FanInShape3}
 import de.sciss.dsp.Util.Pi2
@@ -22,13 +21,12 @@ import de.sciss.fscape.stream.impl.{GenIn3Impl, WindowedLogicImpl}
 import scala.annotation.switch
 
 object GenWindow {
-  def apply(size: OutI, shape: OutI, param: OutD)(implicit b: GBuilder, ctrl: Control): OutD = {
+  def apply(size: OutI, shape: OutI, param: OutD)(implicit b: Builder): OutD = {
     val stage0  = new Stage
-    val stage   = b.add(stage0)
-    import GraphDSL.Implicits._
-    size  ~> stage.in0
-    shape ~> stage.in1
-    param ~> stage.in2
+    val stage   = b.add(stage0) 
+    b.connect(size  , stage.in0)
+    b.connect(shape , stage.in1)
+    b.connect(param , stage.in2)
     stage.out
   }
 

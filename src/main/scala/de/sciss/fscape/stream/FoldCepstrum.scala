@@ -13,7 +13,6 @@
 
 package de.sciss.fscape.stream
 
-import akka.stream.scaladsl.GraphDSL
 import akka.stream.stage.{GraphStage, GraphStageLogic}
 import akka.stream.{Attributes, FanInShape10}
 import de.sciss.fscape.Util
@@ -22,21 +21,19 @@ import de.sciss.fscape.stream.impl.{FilterIn10Impl, WindowedFilterLogicImpl}
 object FoldCepstrum {
   def apply(in: OutD, size: OutI,
             crr: OutD, cri: OutD, clr: OutD, cli: OutD,
-            ccr: OutD, cci: OutD, car: OutD, cai: OutD)(implicit b: GBuilder, ctrl: Control): OutD = {
+            ccr: OutD, cci: OutD, car: OutD, cai: OutD)(implicit b: Builder): OutD = {
     val stage0  = new Stage
     val stage   = b.add(stage0)
-    import GraphDSL.Implicits._
-    in   ~> stage.in0
-    size ~> stage.in1
-    crr  ~> stage.in2
-    cri  ~> stage.in3
-    clr  ~> stage.in4
-    cli  ~> stage.in5
-    ccr  ~> stage.in6
-    cci  ~> stage.in7
-    car  ~> stage.in8
-    cai  ~> stage.in9
-
+    b.connect(in   , stage.in0)
+    b.connect(size , stage.in1)
+    b.connect(crr  , stage.in2)
+    b.connect(cri  , stage.in3)
+    b.connect(clr  , stage.in4)
+    b.connect(cli  , stage.in5)
+    b.connect(ccr  , stage.in6)
+    b.connect(cci  , stage.in7)
+    b.connect(car  , stage.in8)
+    b.connect(cai  , stage.in9)
     stage.out
   }
 

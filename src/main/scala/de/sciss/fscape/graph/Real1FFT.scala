@@ -14,6 +14,8 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.stream.StreamIn
+
 import scala.collection.immutable.{IndexedSeq => Vec}
 
 /** Real-valued one-dimensional forward fast fourier transform.
@@ -27,4 +29,6 @@ case class Real1FFT(in: GE, size: GE, padding: GE = 0) extends UGenSource.Single
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike = ???
 
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = ???
+
+  private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamIn = ???
 }

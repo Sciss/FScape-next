@@ -13,10 +13,12 @@
 
 package de.sciss.fscape
 
+import de.sciss.fscape.stream.{Control, GBuilder, StreamIn}
+
 import scala.collection.immutable.{IndexedSeq => Vec}
 
 object UGenSource {
-  trait ZeroOut extends UGenSource[Unit] {
+  trait ZeroOut extends UGenSource[Unit, Unit] {
     final protected def rewrap(args: Vec[UGenInLike], exp: Int)(implicit b: UGenGraph.Builder): Unit = {
       var i = 0
       while (i < exp) {
@@ -26,19 +28,21 @@ object UGenSource {
     }
   }
 
-  trait SingleOut extends SomeOut
-  trait MultiOut  extends SomeOut
+  trait SingleOut extends SomeOut[StreamIn]
+  trait MultiOut  extends SomeOut[Vec[StreamIn]]
 
-  protected sealed trait SomeOut extends UGenSource[UGenInLike] with GE.Lazy {
+  protected sealed trait SomeOut[S] extends UGenSource[UGenInLike, S] with GE.Lazy {
     final protected def rewrap(args: Vec[UGenInLike], exp: Int)(implicit b: UGenGraph.Builder): UGenInLike =
       ugen.UGenInGroup(Vec.tabulate(exp)(i => unwrap(args.map(_.unwrap(i)))))
   }
 }
 
-sealed trait UGenSource[U] extends Lazy.Expander[U] {
+sealed trait UGenSource[U, S] extends Lazy.Expander[U] {
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): U
 
   final def name: String = productPrefix
+
+  private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): S
 
   final protected def unwrap(args: Vec[UGenInLike])(implicit b: UGenGraph.Builder): U = {
     var uIns    = Vec.empty[UGenIn]

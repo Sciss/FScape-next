@@ -13,7 +13,6 @@
 
 package de.sciss.fscape.stream
 
-import akka.stream.scaladsl.GraphDSL
 import akka.stream.stage.{GraphStage, GraphStageLogic}
 import akka.stream.{Attributes, FanInShape4}
 import de.sciss.fscape.Util
@@ -32,14 +31,13 @@ object ResizeWindow {
     * @param start  the delta window size at the output window's beginning
     * @param stop   the delta window size at the output window's ending
     */
-  def apply(in: OutD, size: OutI, start: OutI, stop: OutI)(implicit b: GBuilder, ctrl: Control): OutD = {
+  def apply(in: OutD, size: OutI, start: OutI, stop: OutI)(implicit b: Builder): OutD = {
     val stage0  = new Stage
     val stage   = b.add(stage0)
-    import GraphDSL.Implicits._
-    in    ~> stage.in0
-    size  ~> stage.in1
-    start ~> stage.in2
-    stop  ~> stage.in3
+    b.connect(in    , stage.in0)
+    b.connect(size  , stage.in1)
+    b.connect(start , stage.in2)
+    b.connect(stop  , stage.in3)
 
     stage.out
   }

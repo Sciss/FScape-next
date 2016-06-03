@@ -13,7 +13,6 @@
 
 package de.sciss.fscape.stream
 
-import akka.stream.scaladsl.GraphDSL
 import akka.stream.stage.{GraphStage, GraphStageLogic}
 import akka.stream.{Attributes, FanInShape3}
 import de.sciss.fscape.Util
@@ -32,13 +31,12 @@ object ReverseWindow {
     *               sampled at each beginning of a new window and held constant
     *               during the window.
     */
-  def apply(in: OutD, size: OutI, clump: OutI)(implicit b: GBuilder, ctrl: Control): OutD = {
+  def apply(in: OutD, size: OutI, clump: OutI)(implicit b: Builder): OutD = {
     val stage0  = new Stage
     val stage   = b.add(stage0)
-    import GraphDSL.Implicits._
-    in    ~> stage.in0
-    size  ~> stage.in1
-    clump ~> stage.in2
+    b.connect(in    , stage.in0)
+    b.connect(size  , stage.in1)
+    b.connect(clump , stage.in2)
 
     stage.out
   }

@@ -14,17 +14,15 @@
 package de.sciss.fscape.stream
 
 import akka.stream.Outlet
-import akka.stream.scaladsl.GraphDSL
 import de.sciss.fscape.stream.impl.BroadcastBufStageImpl
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
 object BroadcastBuf {
-  def apply[B <: BufLike](in: Outlet[B], numOutputs: Int)(implicit b: GBuilder, ctrl: Control): Vec[Outlet[B]] = {
+  def apply[B <: BufLike](in: Outlet[B], numOutputs: Int)(implicit b: Builder): Vec[Outlet[B]] = {
     val stage0 = new BroadcastBufStageImpl[B](numOutputs = numOutputs, eagerCancel = true)
     val stage  = b.add(stage0)
-    import GraphDSL.Implicits._
-    in ~> stage.in
+    b.connect(in, stage.in)
     stage.outArray.toIndexedSeq
   }
 }

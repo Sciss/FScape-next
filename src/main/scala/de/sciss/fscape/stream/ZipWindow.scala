@@ -13,7 +13,6 @@
 
 package de.sciss.fscape.stream
 
-import akka.stream.scaladsl.GraphDSL
 import de.sciss.fscape.stream.impl.ZipWindowStageImpl
 
 import scala.collection.immutable.{Seq => ISeq}
@@ -25,7 +24,7 @@ object ZipWindow {
     * @param b      the second signal to zip
     * @param size   the window size. this is clipped to be `&lt;= 1`
     */
-  def apply(a: OutD, b: OutD, size: OutI)(implicit builder: GBuilder, ctrl: Control): OutD =
+  def apply(a: OutD, b: OutD, size: OutI)(implicit builder: Builder): OutD =
     ZipWindowN(in = Vector(a, b), size = size)
 }
 
@@ -35,14 +34,13 @@ object ZipWindowN {
     * @param in         the signals to zip
     * @param size       the window size. this is clipped to be `&lt;= 1`
     */
-  def apply(in: ISeq[OutD], size: OutI)(implicit b: GBuilder, ctrl: Control): OutD = {
+  def apply(in: ISeq[OutD], size: OutI)(implicit b: Builder): OutD = {
     val stage0  = new ZipWindowStageImpl(numInputs = in.size)
     val stage   = b.add(stage0)
-    import GraphDSL.Implicits._
     (in zip stage.inputs).foreach { case (output, input) =>
-      output ~> input
+      b.connect(output, input)
     }
-    size ~> stage.size
+    b.connect(size, stage.size)
     stage.out
   }
 }

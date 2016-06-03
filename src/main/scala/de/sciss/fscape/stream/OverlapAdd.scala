@@ -13,7 +13,6 @@
 
 package de.sciss.fscape.stream
 
-import akka.stream.scaladsl.GraphDSL
 import akka.stream.stage.{GraphStage, GraphStageLogic}
 import akka.stream.{Attributes, FanInShape3}
 import de.sciss.fscape.Util
@@ -30,14 +29,12 @@ object OverlapAdd {
     * @param step   the step size. this is clipped to be `&lt;= 1`. If it is greater
     *               than `size`, parts of the input will be correctly skipped.
     */
-  def apply(in: OutD, size: OutI, step: OutI)(implicit b: GBuilder, ctrl: Control): OutD = {
+  def apply(in: OutD, size: OutI, step: OutI)(implicit b: Builder): OutD = {
     val stage0  = new Stage
     val stage   = b.add(stage0)
-    import GraphDSL.Implicits._
-    in   ~> stage.in0
-    size ~> stage.in1
-    step ~> stage.in2
-
+    b.connect(in   , stage.in0)
+    b.connect(size , stage.in1)
+    b.connect(step , stage.in2)
     stage.out
   }
 

@@ -13,7 +13,6 @@
 
 package de.sciss.fscape.stream
 
-import akka.stream.scaladsl.GraphDSL
 import akka.stream.stage.{GraphStage, GraphStageLogic}
 import akka.stream.{Attributes, FlowShape}
 import de.sciss.fscape.stream.impl.FilterIn1Impl
@@ -27,11 +26,10 @@ import scala.annotation.switch
   * XXX TODO - need more ops such as conjugate, polar-to-cartesian, ...
   */
 object ComplexUnaryOp {
-  def apply(op: Op, in: OutD)(implicit builder: GBuilder, ctrl: Control): OutD = {
+  def apply(op: Op, in: OutD)(implicit b: Builder): OutD = {
     val stage0  = new Stage(op)
-    val stage   = builder.add(stage0)
-    import GraphDSL.Implicits._
-    in ~> stage.in
+    val stage   = b.add(stage0)
+    b.connect(in, stage.in)
     stage.out
   }
 

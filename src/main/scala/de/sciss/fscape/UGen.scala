@@ -13,7 +13,7 @@
 
 package de.sciss.fscape
 
-import de.sciss.fscape.ugen.impl.{MultiOutImpl, SingleOutImpl, ZeroOutImpl}
+import de.sciss.fscape.graph.impl.{MultiOutImpl, SingleOutImpl, ZeroOutImpl}
 
 import scala.annotation.switch
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -68,10 +68,9 @@ sealed trait UGen extends Product {
 
 object UGen {
   object SingleOut {
-    def apply(name: String, inputs: Vec[UGenIn], isIndividual: Boolean = false,
+    def apply(source: UGenSource.SingleOut, inputs: Vec[UGenIn], isIndividual: Boolean = false,
               hasSideEffect: Boolean = false, specialIndex: Int = 0)(implicit b: UGenGraph.Builder): SingleOut = {
-      val res = new SingleOutImpl(name, inputs, isIndividual = isIndividual, hasSideEffect = hasSideEffect,
-        specialIndex = specialIndex)
+      val res = new SingleOutImpl(source, inputs, isIndividual = isIndividual, hasSideEffect = hasSideEffect)
       b.addUGen(res)
       res
     }
@@ -86,9 +85,9 @@ object UGen {
   }
 
   object ZeroOut {
-    def apply(name: String, inputs: Vec[UGenIn], isIndividual: Boolean = false,
-              specialIndex: Int = 0)(implicit b: UGenGraph.Builder): ZeroOut = {
-      val res = new ZeroOutImpl(name, inputs, isIndividual = isIndividual, specialIndex = specialIndex)
+    def apply(source: UGenSource.ZeroOut, inputs: Vec[UGenIn], isIndividual: Boolean = false)
+             (implicit b: UGenGraph.Builder): ZeroOut = {
+      val res = new ZeroOutImpl(source, inputs, isIndividual = isIndividual)
       b.addUGen(res)
       res
     }
@@ -99,11 +98,11 @@ object UGen {
   }
 
   object MultiOut {
-    def apply(name: String, inputs: Vec[UGenIn], numOutputs: Int,
-              isIndividual: Boolean = false, hasSideEffect: Boolean = false, specialIndex: Int = 0)
+    def apply(source: UGenSource.MultiOut, inputs: Vec[UGenIn], numOutputs: Int,
+              isIndividual: Boolean = false, hasSideEffect: Boolean = false)
              (implicit b: UGenGraph.Builder): MultiOut = {
-      val res = new MultiOutImpl(name, numOutputs = numOutputs, inputs = inputs, isIndividual = isIndividual,
-        hasSideEffect = hasSideEffect, specialIndex = specialIndex)
+      val res = new MultiOutImpl(source, numOutputs = numOutputs, inputs = inputs, isIndividual = isIndividual,
+        hasSideEffect = hasSideEffect)
       b.addUGen(res)
       res
     }

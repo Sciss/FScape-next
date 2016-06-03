@@ -21,10 +21,10 @@ import de.sciss.fscape.stream.impl.{Complex1FFTStageImpl, Complex1IFFTStageImpl,
   * Useful page: http://calculator.vhex.net/calculator/fast-fourier-transform-calculator-fft/1d-discrete-fourier-transform
   */
 object Real1FFT {
-  def apply(in: OutD, size: OutI, padding: OutI)(implicit b: GBuilder, ctrl: Control): OutD = {
+  def apply(in: OutD, size: OutI, padding: OutI)(implicit b: Builder): OutD = {
     // XXX TODO:
     println("WARNING: Real1FFT --- returned packed format") // (Re(DC), Re(Ny), Re(1), Im(1) etc.
-    new Real1FFTStageImpl(ctrl).connect(in = in, size = size, padding = padding)
+    new Real1FFTStageImpl().connect(in = in, size = size, padding = padding)
   }
 }
 
@@ -32,8 +32,8 @@ object Real1FFT {
   * The counter-part of `Real1FFT`.
   */
 object Real1IFFT {
-  def apply(in: OutD, size: OutI, padding: OutI)(implicit b: GBuilder, ctrl: Control): OutD =
-    new Real1IFFTStageImpl(ctrl).connect(in = in, size = size, padding = padding)
+  def apply(in: OutD, size: OutI, padding: OutI)(implicit b: Builder): OutD =
+    new Real1IFFTStageImpl().connect(in = in, size = size, padding = padding)
 }
 
 /** Real (full spectrum) forward Short Time Fourier Transform.
@@ -42,8 +42,8 @@ object Real1IFFT {
   * The counter-part of it is `Real1FullIFFT`.
   */
 object Real1FullFFT {
-  def apply(in: OutD, size: OutI, padding: OutI)(implicit b: GBuilder, ctrl: Control): OutD =
-    new Real1FullFFTStageImpl(ctrl).connect(in = in, size = size, padding = padding)
+  def apply(in: OutD, size: OutI, padding: OutI)(implicit b: Builder): OutD =
+    new Real1FullFFTStageImpl().connect(in = in, size = size, padding = padding)
 }
 
 /** Real (full spectrum) inverse Short Time Fourier Transform.
@@ -52,22 +52,22 @@ object Real1FullFFT {
   * drops the imaginary part.
   */
 object Real1FullIFFT {
-  def apply(in: OutD, size: OutI, padding: OutI)(implicit b: GBuilder, ctrl: Control): OutD =
-    new Real1FullIFFTStageImpl(ctrl).connect(in = in, size = size, padding = padding)
+  def apply(in: OutD, size: OutI, padding: OutI)(implicit b: Builder): OutD =
+    new Real1FullIFFTStageImpl().connect(in = in, size = size, padding = padding)
 }
 
 /** Complex forward Short Time Fourier Transform.
   * The counter-part of it is `Complex1IFFT`.
   */
 object Complex1FFT {
-  def apply(in: OutD, size: OutI, padding: OutI)(implicit b: GBuilder, ctrl: Control): OutD =
-    new Complex1FFTStageImpl(ctrl).connect(in = in, size = size, padding = padding)
+  def apply(in: OutD, size: OutI, padding: OutI)(implicit b: Builder): OutD =
+    new Complex1FFTStageImpl().connect(in = in, size = size, padding = padding)
 }
 
 /** Complex inverse Short Time Fourier Transform.
   * The is the counter-part to `Complex1FFT`.
   */
 object Complex1IFFT {
-  def apply(in: OutD, size: OutI, padding: OutI)(implicit b: GBuilder, ctrl: Control): OutD =
-    new Complex1IFFTStageImpl(ctrl).connect(in = in, size = size, padding = padding)
+  def apply(in: OutD, size: OutI, padding: OutI)(implicit b: Builder): OutD =
+    new Complex1IFFTStageImpl().connect(in = in, size = size, padding = padding)
 }

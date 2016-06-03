@@ -28,7 +28,9 @@ object StreamTest extends App {
   val blockSize = 1024
   implicit val ctrl = Control(blockSize)
 
-  lazy val graphFFT = GraphDSL.create() { implicit b =>
+  lazy val graphFFT = GraphDSL.create() { implicit dsl =>
+    implicit val b = Builder()
+
     val in      = DiskIn(file = fIn, numChannels = 1).head
     val size    = b.add(Source.single(BufI(65536))).out
     val padding = b.add(Source.single(BufI(    0))).out
@@ -37,7 +39,9 @@ object StreamTest extends App {
     ClosedShape
   }
 
-  lazy val graphWin = GraphDSL.create() { implicit b =>
+  lazy val graphWin = GraphDSL.create() { implicit dsl =>
+    implicit val b = Builder()
+
     val in      = DiskIn(file = fIn, numChannels = 1).head
     val fftSize = 32768 // 8192
     val winIn   = GenWindow(size = const(fftSize), shape = const(GenWindow.Hann.id), param = const(0.0))
@@ -92,7 +96,9 @@ object StreamTest extends App {
 //    ClosedShape
 //  }
 
-  lazy val graphOLD = GraphDSL.create() { implicit b =>
+  lazy val graphOLD = GraphDSL.create() { implicit dsl =>
+    implicit val b = Builder()
+
     // 'analysis'
 //    val in          = DiskIn(file = fIn)
     val in          = DiskIn(file = fIn2, numChannels = 1).head
@@ -200,7 +206,9 @@ object StreamTest extends App {
     ClosedShape
   }
 
-  lazy val graphMONO = GraphDSL.create() { implicit b =>
+  lazy val graphMONO = GraphDSL.create() { implicit dsl =>
+    implicit val b = Builder()
+
     // 'analysis'
     val in          = DiskIn(file = fIn, numChannels = 1).head
     val fftSize     = 131072 // 32768 // 8192
@@ -282,7 +290,9 @@ object StreamTest extends App {
     gain = 1.0
   )
 
-  lazy val graph = GraphDSL.create() { implicit b =>
+  lazy val graph = GraphDSL.create() { implicit dsl =>
+    implicit val b = Builder()
+
     // 'analysis'
     val in          = DiskIn(file = fIn, numChannels = 1).head
     val fftSize     = 131072 // 32768 // 8192

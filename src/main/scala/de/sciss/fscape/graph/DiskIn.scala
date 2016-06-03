@@ -15,15 +15,17 @@ package de.sciss.fscape
 package graph
 
 import de.sciss.file.File
+import de.sciss.fscape.stream.{Control, GBuilder, StreamIn}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-case class DiskIn(file: File, numChannels: Int) extends UGenSource.SingleOut {
+case class DiskIn(file: File, numChannels: Int) extends UGenSource.MultiOut {
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike = {
-    import b._
-    val outs = stream.DiskIn(file = file, numChannels = numChannels)
-    ???
+    UGen.MultiOut(this, inputs = args, numOutputs = numChannels, isIndividual = true, hasSideEffect = true)
   }
 
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = unwrap(Vector.empty)
+
+  private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Vec[StreamIn] =
+    stream.DiskIn(file = file, numChannels = numChannels)
 }

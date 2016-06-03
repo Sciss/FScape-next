@@ -13,7 +13,6 @@
 
 package de.sciss.fscape.stream
 
-import akka.stream.scaladsl.GraphDSL
 import akka.stream.stage.{GraphStage, GraphStageLogic}
 import akka.stream.{Attributes, FanInShape2}
 import de.sciss.fscape.stream.impl.FilterIn2Impl
@@ -22,12 +21,11 @@ import de.sciss.numbers.{DoubleFunctions => rd, DoubleFunctions2 => rd2}
 import scala.annotation.switch
 
 object BinaryOp {
-  def apply(op: Op, in1: OutD, in2: OutD)(implicit builder: GBuilder, ctrl: Control): OutD = {
+  def apply(op: Op, in1: OutD, in2: OutD)(implicit b: Builder): OutD = {
     val stage0  = new Stage(op)
-    val stage   = builder.add(stage0)
-    import GraphDSL.Implicits._
-    in1 ~> stage.in0
-    in2 ~> stage.in1
+    val stage   = b.add(stage0)
+    b.connect(in1, stage.in0)
+    b.connect(in2, stage.in1)
     stage.out
   }
 
