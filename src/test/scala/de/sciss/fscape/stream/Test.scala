@@ -29,7 +29,7 @@ object Test extends App {
   implicit val ctrl = Control(blockSize)
 
   lazy val graphFFT = GraphDSL.create() { implicit b =>
-    val in      = DiskIn(file = fIn)
+    val in      = DiskIn(file = fIn, numChannels = 1).head
     val size    = b.add(Source.single(BufI(65536))).out
     val padding = b.add(Source.single(BufI(    0))).out
     val fft     = Real1FFT(in, size = size, padding = padding)
@@ -38,7 +38,7 @@ object Test extends App {
   }
 
   lazy val graphWin = GraphDSL.create() { implicit b =>
-    val in      = DiskIn(file = fIn)
+    val in      = DiskIn(file = fIn, numChannels = 1).head
     val fftSize = 32768 // 8192
     val winIn   = GenWindow(size = const(fftSize), shape = const(GenWindow.Hann.id), param = const(0.0))
     val winOut  = BinaryOp(in1 = in, in2 = winIn, op = BinaryOp.Times)
@@ -95,7 +95,7 @@ object Test extends App {
   lazy val graphOLD = GraphDSL.create() { implicit b =>
     // 'analysis'
 //    val in          = DiskIn(file = fIn)
-    val in          = DiskIn(file = fIn2)
+    val in          = DiskIn(file = fIn2, numChannels = 1).head
 //    val fftSize     = 131072
     val fftSize     = 32768 // 8192
     val winStep     = fftSize // / 4
@@ -202,7 +202,7 @@ object Test extends App {
 
   lazy val graph = GraphDSL.create() { implicit b =>
     // 'analysis'
-    val in          = DiskIn(file = fIn)
+    val in          = DiskIn(file = fIn, numChannels = 1).head
     val fftSize     = 131072 // 32768 // 8192
     val winStep     = fftSize / 4
     val inW         = Sliding       (in = in  , size = const(fftSize), step    = const(winStep))

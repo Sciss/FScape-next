@@ -27,7 +27,7 @@ case class UnzipWindowShape(in0: InD, in1: InI, outlets: ISeq[OutD]) extends Sha
   override def deepCopy(): UnzipWindowShape =
     UnzipWindowShape(in0.carbonCopy(), in1.carbonCopy(), outlets.map(_.carbonCopy()))
 
-  override def copyFromPorts(inlets: ISeq[Inlet[_]], outlets: ISeq[Outlet[_]]): Shape = {
+  override def copyFromPorts(inlets: ISeq[Inlet[_]], outlets: ISeq[Outlet[_]]): UnzipWindowShape = {
     require(inlets .size == this.inlets .size, s"number of inlets [${inlets.size}] does not match [${this.inlets.size}]")
     require(outlets.size == this.outlets.size, s"number of outlets [${outlets.size}] does not match [${this.outlets.size}]")
     UnzipWindowShape(inlets(0).asInstanceOf[Inlet[BufD]], inlets(1).asInstanceOf[Inlet[BufI]],

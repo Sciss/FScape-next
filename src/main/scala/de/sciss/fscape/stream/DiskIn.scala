@@ -15,9 +15,12 @@ package de.sciss.fscape.stream
 
 import de.sciss.file._
 
+import scala.collection.immutable.{IndexedSeq => Vec}
+
 object DiskIn {
-  def apply(file: File)(implicit b: GBuilder, ctrl: Control): OutD = {
-    val source = new AudioFileSource(file, ctrl)
-    b.add(source).out
+  def apply(file: File, numChannels: Int)(implicit b: GBuilder, ctrl: Control): Vec[OutD] = {
+    val source  = new AudioFileSource(file, numChannels = numChannels, ctrl = ctrl)
+    val stage   = b.add(source)
+    stage.outlets.toIndexedSeq
   }
 }

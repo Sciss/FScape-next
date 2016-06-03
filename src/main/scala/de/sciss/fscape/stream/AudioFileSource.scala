@@ -14,20 +14,20 @@
 package de.sciss.fscape.stream
 
 import akka.stream.stage.{GraphStage, GraphStageLogic, OutHandler}
-import akka.stream.{ActorAttributes, Attributes, SourceShape}
+import akka.stream.{ActorAttributes, Attributes}
 import de.sciss.file._
+import de.sciss.fscape.Util
+import de.sciss.fscape.stream.impl.UniformSourceShape
 import de.sciss.fscape.stream.{logStream => log}
 import de.sciss.synth.io
 
 import scala.util.control.NonFatal
 
 // similar to internal `UnfoldResourceSource`
-final class AudioFileSource(f: File, ctrl: Control)
-  extends GraphStage[SourceShape[BufD]] { source =>
+final class AudioFileSource(f: File, numChannels: Int, ctrl: Control)
+  extends GraphStage[UniformSourceShape[BufD]] { source =>
 
-  private[this] val out = OutD("AudioFileSource.out")
-  
-  override val shape = SourceShape(out)
+  override val shape = UniformSourceShape(Vector.tabulate(numChannels)(ch => OutD(s"AudioFileSource.out$ch")))
 
   override def initialAttributes: Attributes =
     Attributes.name(toString) and
@@ -40,11 +40,14 @@ final class AudioFileSource(f: File, ctrl: Control)
 
     private[this] var framesRead  = 0L
 
-    setHandler(out, this)
+    shape.outlets.foreach(setHandler(_, this))
 
     override def preStart(): Unit = {
       log(s"$source - preStart()")
       af          = io.AudioFile.openRead(f)
+      if (af.numChannels != numChannels) {
+        Console.err.println(s"Warning: DiskIn - channel mismatch (file has ${af.numChannels}, UGen has $numChannels)")
+      }
       bufSize     = ctrl.bufSize
       buf         = af.buffer(bufSize)
     }
@@ -59,23 +62,40 @@ final class AudioFileSource(f: File, ctrl: Control)
       }
     }
 
-    override def onPull(): Unit = {
+    override def onDownstreamFinish(): Unit =
+      if (shape.outlets.forall(isClosed(_))) completeStage()
+
+    override def onPull(): Unit =
+      if (numChannels == 1 || shape.outlets.forall(out => isClosed(out) || isAvailable(out))) process()
+
+    private def process(): Unit = {
       val chunk = math.min(bufSize, af.numFrames - framesRead).toInt
       if (chunk == 0) {
         completeStage()
       } else {
         af.read(buf, 0, chunk)
         framesRead += chunk
-        val bufOut = ctrl.borrowBufD()
-        val a = buf(0) // XXX TODO --- how to handle channels
-        val b = bufOut.buf
-        var i = 0
-        while (i < chunk) {
-          b(i) = a(i).toDouble
-          i += 1
+        var ch = 0
+        while (ch < numChannels) {
+          val out = shape.out(ch)
+          if (!isClosed(out)) {
+            val bufOut = ctrl.borrowBufD()
+            val b = bufOut.buf
+            if (ch < buf.length) {
+              val a = buf(ch)
+              var i = 0
+              while (i < chunk) {
+                b(i) = a(i).toDouble
+                i += 1
+              }
+            } else {
+              Util.clear(b, 0, chunk)
+            }
+            bufOut.size = chunk
+            push(out, bufOut)
+          }
+          ch += 1
         }
-        bufOut.size = chunk
-        push(out, bufOut)
       }
     }
   }
