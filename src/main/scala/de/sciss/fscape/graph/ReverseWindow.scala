@@ -1,5 +1,5 @@
 /*
- *  Real1FFT.scala
+ *  ReverseWindow.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2016 Hanns Holger Rutz. All rights reserved.
@@ -18,17 +18,10 @@ import de.sciss.fscape.stream.StreamIn
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-/** Real-valued one-dimensional forward fast fourier transform.
-  *
-  * @param in       the input signal to transform
-  * @param size     the size of chunks to take from the input
-  * @param padding  the number of frames to pad chunks with before transforming.
-  *                 thus fft size = size + padding
-  */
-case class Real1FFT(in: GE, size: GE, padding: GE = 0) extends UGenSource.SingleOut {
-  protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike = ???
-
+final case class ReverseWindow(in: GE, size: GE, clump: GE = 1) extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = ???
+
+  protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike = ???
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamIn = ???
 }

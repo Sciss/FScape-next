@@ -13,7 +13,8 @@
 
 package de.sciss.fscape
 
-import de.sciss.fscape.stream.{Control, GBuilder, StreamIn}
+import de.sciss.fscape.graph.UGenInGroup
+import de.sciss.fscape.stream.StreamIn
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
@@ -33,7 +34,7 @@ object UGenSource {
 
   protected sealed trait SomeOut[S] extends UGenSource[UGenInLike, S] with GE.Lazy {
     final protected def rewrap(args: Vec[UGenInLike], exp: Int)(implicit b: UGenGraph.Builder): UGenInLike =
-      ugen.UGenInGroup(Vec.tabulate(exp)(i => unwrap(args.map(_.unwrap(i)))))
+      UGenInGroup(Vec.tabulate(exp)(i => unwrap(args.map(_.unwrap(i)))))
   }
 }
 
@@ -50,7 +51,7 @@ sealed trait UGenSource[U, S] extends Lazy.Expander[U] {
     var exp     = 0
     args.foreach(_.unbubble match {
       case u: UGenIn => if (uInsOk) uIns :+= u
-      case g: ugen.UGenInGroup =>
+      case g: UGenInGroup =>
         exp     = math.max(exp, g.numOutputs)
         uInsOk  = false // don't bother adding further UGenIns to uIns
     })

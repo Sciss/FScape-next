@@ -20,13 +20,13 @@ import de.sciss.synth.io.AudioFileSpec
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-case class DiskOut(file: File, spec: AudioFileSpec, in: GE) extends UGenSource.ZeroOut {
+final case class DiskOut(file: File, spec: AudioFileSpec, in: GE) extends UGenSource.ZeroOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): Unit = unwrap(in.expand.outputs)
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit =
     UGen.ZeroOut(this, args, isIndividual = true)
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit = {
-    stream.DiskOut(file = file, spec = spec, in = ???)
+    stream.DiskOut(file = file, spec = spec, in = args.map(_.toDouble))
   }
 }

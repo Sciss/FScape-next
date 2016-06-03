@@ -1,5 +1,5 @@
 /*
- *  StreamIn.scala
+ *  GESeq.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2016 Hanns Holger Rutz. All rights reserved.
@@ -12,16 +12,14 @@
  */
 
 package de.sciss.fscape
-package stream
+package graph
+package impl
 
 import scala.collection.immutable.{IndexedSeq => Vec}
-import scala.language.implicitConversions
 
-object StreamIn {
-  implicit def fromDouble   (peer:     OutD ):     StreamIn  = ???
-  implicit def fromDoubleVec(peer: Vec[OutD]): Vec[StreamIn] = ???
-}
-trait StreamIn {
-  def toDouble: OutD
-  def toInt   : OutI
+final case class GESeq(elems: Vec[GE]) extends GE {
+  private[fscape] def expand(implicit b: UGenGraph.Builder): UGenInLike =
+    UGenInGroup(elems.map(_.expand))
+
+  override def toString = elems.mkString("GESeq(", ",", ")")
 }

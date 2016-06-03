@@ -1,6 +1,18 @@
+/*
+ *  package.scala
+ *  (FScape)
+ *
+ *  Copyright (c) 2001-2016 Hanns Holger Rutz. All rights reserved.
+ *
+ *  This software is published under the GNU General Public License v2+
+ *
+ *
+ *  For further information, please contact Hanns Holger Rutz at
+ *  contact@sciss.de
+ */
+
 package de.sciss
 
 package object fscape {
-  type Num    = Double
-  type Frames = Array[Array[Double]]
+  implicit def geOps(g: GE): GEOps = new GEOps(g)
 }

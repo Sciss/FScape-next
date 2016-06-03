@@ -69,7 +69,7 @@ sealed trait UGen extends Product {
 object UGen {
   object SingleOut {
     def apply(source: UGenSource.SingleOut, inputs: Vec[UGenIn], isIndividual: Boolean = false,
-              hasSideEffect: Boolean = false, specialIndex: Int = 0)(implicit b: UGenGraph.Builder): SingleOut = {
+              hasSideEffect: Boolean = false)(implicit b: UGenGraph.Builder): SingleOut = {
       val res = new SingleOutImpl(source, inputs, isIndividual = isIndividual, hasSideEffect = hasSideEffect)
       b.addUGen(res)
       res
@@ -78,7 +78,7 @@ object UGen {
   /** A SingleOutUGen is a UGen which has exactly one output, and
     * hence can directly function as input to another UGen without expansion.
     */
-  trait SingleOut extends ugen.UGenProxy with UGen {
+  trait SingleOut extends graph.UGenProxy with UGen {
     final def numOutputs = 1
     final def outputIndex = 0
     final def source: UGen = this
@@ -108,11 +108,11 @@ object UGen {
     }
   }
   /** A class for UGens with multiple outputs. */
-  trait MultiOut extends ugen.UGenInGroup with UGen {
+  trait MultiOut extends graph.UGenInGroup with UGen {
 
-    final def unwrap(i: Int): UGenInLike = ugen.UGenOutProxy(this, i % numOutputs)
+    final def unwrap(i: Int): UGenInLike = graph.UGenOutProxy(this, i % numOutputs)
 
-    def outputs: Vec[UGenIn] = Vector.tabulate(numOutputs)(ch => ugen.UGenOutProxy(this, ch))
+    def outputs: Vec[UGenIn] = Vector.tabulate(numOutputs)(ch => graph.UGenOutProxy(this, ch))
     
     private[fscape] final def unbubble: UGenInLike = if (numOutputs == 1) outputs(0) else this
   }
@@ -150,7 +150,7 @@ sealed trait UGenIn extends UGenInLike {
   private[fscape] final def unbubble   : UGenInLike  = this
 }
 
-package ugen {
+package graph {
   object UGenInGroup {
     private final val emptyVal = new Apply(Vector.empty)
     def empty: UGenInGroup = emptyVal
@@ -177,21 +177,26 @@ package ugen {
     def outputIndex: Int
   }
 
+  object Constant {
+    def unapply(c: Constant): Option[Double] = Some(c.doubleValue)
+  }
   /** A scalar constant used as an input to a UGen. */
-  sealed trait Constant extends UGenIn
+  sealed trait Constant extends UGenIn {
+    def doubleValue: Double
+  }
   object ConstantI {
     final val C0  = new ConstantI(0)
     final val C1  = new ConstantI(1)
     final val Cm1 = new ConstantI(-1)
   }
-  final case class ConstantI(value: Int)    extends Constant
-  final case class ConstantL(value: Long)   extends Constant
+  final case class ConstantI(value: Int)    extends Constant { def doubleValue = value.toDouble }
+  final case class ConstantL(value: Long)   extends Constant { def doubleValue = value.toDouble }
   object ConstantD {
     final val C0  = new ConstantD(0)
     final val C1  = new ConstantD(1)
     final val Cm1 = new ConstantD(-1)
   }
-  final case class ConstantD(value: Double) extends Constant
+  final case class ConstantD(value: Double) extends Constant { def doubleValue = value }
 
   //  /** A ControlOutProxy is similar to a UGenOutProxy in that it denotes
 //    * an output channel of a control UGen. However it refers to a control-proxy

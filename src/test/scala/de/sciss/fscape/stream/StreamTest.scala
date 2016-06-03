@@ -1,4 +1,5 @@
-package de.sciss.fscape.stream
+package de.sciss.fscape
+package stream
 
 import akka.NotUsed
 import akka.actor.ActorSystem
@@ -44,7 +45,7 @@ object StreamTest extends App {
 
     val in      = DiskIn(file = fIn, numChannels = 1).head
     val fftSize = 32768 // 8192
-    val winIn   = GenWindow(size = const(fftSize), shape = const(GenWindow.Hann.id), param = const(0.0))
+    val winIn   = GenWindow(size = const(fftSize), shape = const(graph.GenWindow.Hann.id), param = const(0.0))
     val winOut  = BinaryOp(in1 = in, in2 = winIn, op = BinaryOp.Times)
     val sig     = winOut
     DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig :: Nil)
@@ -255,42 +256,15 @@ object StreamTest extends App {
 
     // XXX TODO --- what's this gain factor?
     val gain        = BinaryOp      (in1 = sig0, in2 = const(1.0/2097152), op = BinaryOp.Times)
-    val winIn       = GenWindow(size = const(fftSize), shape = const(GenWindow.Hann.id), param = const(0.0))
+    val winIn       = GenWindow(size = const(fftSize), shape = const(graph.GenWindow.Hann.id), param = const(0.0))
     val winOut      = BinaryOp(in1 = gain, in2 = winIn, op = BinaryOp.Times)
     val sig         = OverlapAdd(winOut, size = const(fftSize), step = const(winStep))
 
     DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig :: Nil)
     ClosedShape
   }
-  
-  case class CepCoef(crr: Int, cri: Int, clr: Int, cli: Int, ccr: Int, cci: Int, car: Int, cai: Int,
-                     gain: Double)
 
-  val Coef1 = CepCoef(
-    crr =  0, cri =  0,
-    clr = +1, cli = +1,
-    ccr = +1, cci = -1,
-    car = +1, cai = -1,
-    gain = 1.0/2097152    // XXX TODO --- what's this factor?
-  )
-
-  val Coef2 = CepCoef(
-    crr = +1, cri = +1,
-    clr =  0, cli =  0,
-    ccr = +1, cci = -1,
-    car = +1, cai = -1,
-    gain = 1.0/32         // XXX TODO --- what's this factor?
-  )
-  
-  val CoefBypass = CepCoef(
-    crr = +1, cri = +1,
-    clr = +1, cli = +1,
-    ccr =  0, cci =  0,
-    car =  0, cai =  0,
-    gain = 1.0
-  )
-
-  lazy val graph = GraphDSL.create() { implicit dsl =>
+  lazy val _graph = GraphDSL.create() { implicit dsl =>
     implicit val b = Builder()
 
     // 'analysis'
@@ -307,7 +281,7 @@ object StreamTest extends App {
     val cep0        = Complex1IFFT  (in  = logC, size = const(fftSize), padding = const(0))
     val cep1        = BinaryOp      (in1 = cep0, in2  = const(1.0/fftSize), op = BinaryOp.Times)
 
-    val coefs       = Vector(Coef1, Coef2)
+    val coefs       = Vector(CepCoef.One, CepCoef.Two)
     val cepB        = BroadcastBuf(in = cep1, numOutputs = 2)
     val sig         = (coefs zip cepB).map { case (coef, cep) =>
       import coef._
@@ -323,7 +297,7 @@ object StreamTest extends App {
       val outW        = Real1FullIFFT(in = fftOut, size = const(fftSize), padding = const(0))
 
       val times       = BinaryOp(in1 = outW, in2 = const(gain), op = BinaryOp.Times)
-      val winIn       = GenWindow(size = const(fftSize), shape = const(GenWindow.Hann.id), param = const(0.0))
+      val winIn       = GenWindow(size = const(fftSize), shape = const(graph.GenWindow.Hann.id), param = const(0.0))
       val winOut      = BinaryOp(in1 = times, in2 = winIn, op = BinaryOp.Times)
       val lap         = OverlapAdd(winOut, size = const(fftSize), step = const(winStep))
       lap
@@ -386,7 +360,7 @@ object StreamTest extends App {
 //        maxSize     = 1024)
   )
 
-  val rg  = RunnableGraph.fromGraph(graph)
+  val rg  = RunnableGraph.fromGraph(_graph)
   val res = rg.run()
 
   Swing.onEDT {
