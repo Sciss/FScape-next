@@ -216,10 +216,10 @@ object Test extends App {
     val cep         = BinaryOp      (in1 = cep0, in2  = const(1.0/fftSize), op = BinaryOp.Times)
 
     // 'variant 1'
-    //    val crr =  0; val cri =  0
-    //    val clr = +1; val cli = +1
-    //    val ccr = +1; val cci = -1
-    //    val car = +1; val cai = -1
+    val crr =  0; val cri =  0
+    val clr = +1; val cli = +1
+    val ccr = +1; val cci = -1
+    val car = +1; val cai = -1
 
     // 'bypass'
     //    val crr = +1; val cri = +1
@@ -227,13 +227,15 @@ object Test extends App {
     //    val ccr =  0; val cci =  0
     //    val car =  0; val cai =  0
 
-    // 'variant 2'; XXX TODO --- `FoldCepstrum` should have these parameters
-    val crr = +1; val cri = +1
-    val clr =  0; val cli =  0
-    val ccr = +1; val cci = -1
-    val car = +1; val cai = -1
+    // 'variant 2'
+//    val crr = +1; val cri = +1
+//    val clr =  0; val cli =  0
+//    val ccr = +1; val cci = -1
+//    val car = +1; val cai = -1
 
-    val cepOut      = FoldCepstrum  (in = cep, size = const(fftSize))
+    val cepOut      = FoldCepstrum  (in = cep, size = const(fftSize),
+      crr = const(crr), cri = const(cri), clr = const(clr), cli = const(cli),
+      ccr = const(ccr), cci = const(cci), car = const(car), cai = const(cai))
     val freq0       = Complex1FFT   (in = cepOut, size = const(fftSize), padding = const(0))
     val freq1       = BinaryOp      (in1 = freq0, in2 = const(fftSize), op = BinaryOp.Times)
     val freq        = freq1 // ComplexUnaryOp(in = freq1, op = ComplexUnaryOp.Conj)

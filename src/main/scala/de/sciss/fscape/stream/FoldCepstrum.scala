@@ -15,44 +15,61 @@ package de.sciss.fscape.stream
 
 import akka.stream.scaladsl.GraphDSL
 import akka.stream.stage.{GraphStage, GraphStageLogic}
-import akka.stream.{Attributes, FanInShape2}
+import akka.stream.{Attributes, FanInShape10}
 import de.sciss.fscape.Util
-import de.sciss.fscape.stream.impl.{FilterIn2Impl, WindowedFilterLogicImpl}
+import de.sciss.fscape.stream.impl.{FilterIn10Impl, WindowedFilterLogicImpl}
 
 object FoldCepstrum {
-//  val crr = +1; val cri = +1
-//  val clr =  0; val cli =  0
-//  val ccr = +1; val cci = -1
-//  val car = +1; val cai = -1
-
-  def apply(in: OutD, size: OutI)(implicit b: GBuilder, ctrl: Control): OutD = {
+  def apply(in: OutD, size: OutI,
+            crr: OutD, cri: OutD, clr: OutD, cli: OutD,
+            ccr: OutD, cci: OutD, car: OutD, cai: OutD)(implicit b: GBuilder, ctrl: Control): OutD = {
     val stage0  = new Stage
     val stage   = b.add(stage0)
     import GraphDSL.Implicits._
     in   ~> stage.in0
     size ~> stage.in1
+    crr  ~> stage.in2
+    cri  ~> stage.in3
+    clr  ~> stage.in4
+    cli  ~> stage.in5
+    ccr  ~> stage.in6
+    cci  ~> stage.in7
+    car  ~> stage.in8
+    cai  ~> stage.in9
 
     stage.out
   }
 
-  private final class Stage(implicit ctrl: Control)
-    extends GraphStage[FanInShape2[BufD, BufI, BufD]] {
+  private type Shape10 = FanInShape10[BufD, BufI, BufD, BufD, BufD, BufD, BufD, BufD, BufD, BufD, BufD]
 
-    val shape = new FanInShape2(
-      in0 = InD ("FoldCepstrum.in"  ),
-      in1 = InI ("FoldCepstrum.size"),
-      out = OutD("FoldCepstrum.out" )
+  private final class Stage(implicit ctrl: Control)
+    extends GraphStage[Shape10] {
+    
+    private[this] val name = "FoldCepstrum"
+
+    val shape = new FanInShape10(
+      in0  = InD (s"$name.in"  ),
+      in1  = InI (s"$name.size"),
+      in2  = InD (s"$name.crr" ),
+      in3  = InD (s"$name.cri" ),
+      in4  = InD (s"$name.clr" ),
+      in5  = InD (s"$name.cli" ),
+      in6  = InD (s"$name.ccr" ),
+      in7  = InD (s"$name.cci" ),
+      in8  = InD (s"$name.car" ),
+      in9  = InD (s"$name.cai" ),
+      out  = OutD(s"$name.out" )
     )
 
     def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new Logic(shape)
   }
 
   // XXX TODO -- abstract over data type (BufD vs BufI)?
-  private final class Logic(protected val shape: FanInShape2[BufD, BufI, BufD])
+  private final class Logic(protected val shape: Shape10)
                            (implicit protected val ctrl: Control)
     extends GraphStageLogic(shape)
-      with WindowedFilterLogicImpl[BufD, BufD, FanInShape2[BufD, BufI, BufD]]
-      with FilterIn2Impl                            [BufD, BufI, BufD] {
+      with WindowedFilterLogicImpl[BufD, BufD, Shape10]
+      with FilterIn10Impl[BufD, BufI, BufD, BufD, BufD, BufD, BufD, BufD, BufD, BufD, BufD] {
 
     protected val in0: InD = shape.in0
 
@@ -60,6 +77,15 @@ object FoldCepstrum {
 
     private[this] var winBuf      : Array[Double] = _
     private[this] var size        : Int = _
+
+    private[this] var crr : Double = _
+    private[this] var cri : Double = _
+    private[this] var clr : Double = _
+    private[this] var cli : Double = _
+    private[this] var ccr : Double = _
+    private[this] var cci : Double = _
+    private[this] var car : Double = _
+    private[this] var cai : Double = _
 
     protected def startNextWindow(inOff: Int): Int = {
       val oldSize = size
@@ -70,6 +96,15 @@ object FoldCepstrum {
       if (size != oldSize) {
         winBuf = new Array[Double](fullSize)
       }
+      if (bufIn2 != null && inOff < bufIn2.size) crr = bufIn2.buf(inOff)
+      if (bufIn3 != null && inOff < bufIn3.size) cri = bufIn3.buf(inOff)
+      if (bufIn4 != null && inOff < bufIn4.size) clr = bufIn4.buf(inOff)
+      if (bufIn5 != null && inOff < bufIn5.size) cli = bufIn5.buf(inOff)
+      if (bufIn6 != null && inOff < bufIn6.size) ccr = bufIn6.buf(inOff)
+      if (bufIn7 != null && inOff < bufIn7.size) cci = bufIn7.buf(inOff)
+      if (bufIn8 != null && inOff < bufIn8.size) car = bufIn8.buf(inOff)
+      if (bufIn9 != null && inOff < bufIn9.size) cai = bufIn9.buf(inOff)
+      
       fullSize
     }
 
@@ -82,12 +117,14 @@ object FoldCepstrum {
 //    private var DEBUG = true
 
     protected def processWindow(writeToWinOff: Int, flush: Boolean): Int = {
+      // println(s"crr = $crr, cri = $cri, clr = $clr, cli = $cli, ccr = $ccr, cci = $cci, car = $car, cai = $cai")
+
       // 'variant 1'
       // gain: 1.0/2097152
-      val crr =  0; val cri =  0
-      val clr = +1; val cli = +1
-      val ccr = +1; val cci = -1
-      val car = +1; val cai = -1
+//      val crr =  0; val cri =  0
+//      val clr = +1; val cli = +1
+//      val ccr = +1; val cci = -1
+//      val car = +1; val cai = -1
 
       // 'bypass'
       // gain: 1.0/4
