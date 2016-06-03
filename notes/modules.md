@@ -110,15 +110,31 @@ Can we use `WindowLogicImpl`?
           |xxxxx
              |xxxxx|
     
-- `startNextWindow` returns `winSize` (NO: returns `step`)
+- `startNextWindow` returns `step`
 - `copyInputToWindow` - consume `winSize` samples; as in `Sliding` we maintain a list of "open" windows,
-  and here we append to all of them
-- `processWindow` - a no-op? returns `step`
+  and here we append only to the active one, i.e. the first with `inRemain > 0`.
+- `processWindow` - returns `windows.last.availableOut1`
   ; this becomes `readFromWinRemain` and determines the number of frames
   that must be transported to the outlet before a going back to `copyInputToWindow`,
   thus controls the back pressure.
 - `copyWindowToOutput` - output `step` samples; summing the content of the list of "open" windows
-- `startNextWindow`  (loop -- remain at `winSize`)
+- `startNextWindow`  (loop -- remain at `step`)
+
+What is `availableOut1`? Observation: `offOut` must be zero at the time `processWindow` is called,
+and `offIn` might be the most recent `min(size, step)` (or zero if the previous windows are still
+being filled!). I.e. if the last window is full (`inRemain == 0`) it _should_ return `step`. We don't 
+need to store that `step` in the `Window` structure, but can just poll the most recent global `step` value.
+Otherwise it should be `offIn`.
+
+Example of the regular 1/2 overlap above:
+- start-window -> `step`
+- create new window and fill with `step` frames.
+- `processWindow` returns `step`; copy those to output
+- create new window; append `step` to first window
+- `processWindow` returns zero (`availableOut` for second window is zero)
+- append `step` to second window
+- `processWindow` returns `step`; add last `step` from first window and first `step` from second window to output
+- remove first window
 
 How to support `step > winSize`
 
@@ -129,3 +145,19 @@ How to support `step > winSize`
 
 It looks actually like this should already be supported with the above algorithm, except that
 we need to take care to add zero padding in `copyWindowToOutput`.
+
+Example of the regular 1/2 overlap above:
+- start-window -> `step`
+- create new window and fill with `min(size, step)` frames.
+- `processWindow` returns `min(size, step)`; this must be corrected to actually return `step`!
+- copy and remove window
+- create new window; and repeat
+
+Irregular windows:
+
+    |xxxxxxx|xxx|xxxxxxx|xxx|
+    
+    |xxxxxxx
+       |xxx
+          |xxxxxxx
+             |xxx|

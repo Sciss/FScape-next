@@ -100,19 +100,26 @@ object OverlapAdd {
         windows += new Window(new Array[Double](size))
       }
       var i = 0
-      while (i < windows.length) { // avoid iterator and symmetry with `copyWindowToOutput`
+      var remain = chunk
+      while (i < windows.length && remain > 0) { // avoid iterator and symmetry with `copyWindowToOutput`
         val win = windows(i)
-        val chunk1 = math.min(chunk, win.inRemain)
+        val chunk1 = math.min(remain, win.inRemain)
         println(s"copying $chunk1 frames to   window $i at ${win.offIn}")
         if (chunk1 > 0) {
           Util.copy(bufIn0.buf, inOff, win.buf, win.offIn, chunk1)
           win.offIn += chunk1
+          remain    -= chunk1
         }
         i += 1
       }
     }
 
-    protected def processWindow(writeToWinOff: Int): Int = writeToWinOff  // XXX TODO --- correct?
+    protected def processWindow(writeToWinOff: Int): Int = {
+      val win = windows(windows.length - 1) // N.B. `Buffer#last` is currently inefficient!
+      val res = if (win.inRemain > 0) win.offIn else step
+      println(s"processWindow($writeToWinOff) -> $res")
+      res
+    }
 
     protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit = {
       Util.clear(bufOut.buf, outOff, chunk)
