@@ -14,8 +14,9 @@
 package de.sciss.fscape.stream
 
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler}
-import akka.stream.{ActorAttributes, Attributes, SinkShape}
+import akka.stream.{ActorAttributes, Attributes}
 import de.sciss.file._
+import de.sciss.fscape.stream.impl.UniformSinkShape
 import de.sciss.fscape.stream.{logStream => log}
 import de.sciss.synth.io
 
@@ -23,11 +24,9 @@ import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal
 
 final class AudioFileSink(f: File, spec: io.AudioFileSpec)(implicit ctrl: Control)
-  extends GraphStage[SinkShape[BufD]] { sink =>
+  extends GraphStage[UniformSinkShape[BufD]] { sink =>
   
-  private[this] val in = InD("AudioFileSink.in")
-
-  override val shape = SinkShape(in)
+  override val shape = UniformSinkShape[BufD](Vector.tabulate(spec.numChannels)(ch => InD(s"AudioFileSink.in$ch")))
 
   override def initialAttributes: Attributes =
     Attributes.name(toString) and
@@ -39,10 +38,13 @@ final class AudioFileSink(f: File, spec: io.AudioFileSpec)(implicit ctrl: Contro
     private[this] var buf     : io.Frames = _
 
     private[this] var framesWritten = 0L
+    private[this] var pushed        = 0
+    private[this] val numChannels   = spec.numChannels
+    private[this] val bufIns        = new Array[BufD](spec.numChannels)
 
     private /* [this] */ val result = Promise[Long]()
 
-    setHandler(in, this)
+    shape.inlets.foreach(setHandler(_, this))
 
     override def preStart(): Unit = {
       val asyncCancel = getAsyncCallback[Unit] { _ =>
@@ -56,14 +58,18 @@ final class AudioFileSink(f: File, spec: io.AudioFileSpec)(implicit ctrl: Contro
       })
 
       log(s"$sink - preStart()")
-      require(spec.numChannels == 1, s"$this: Currently only monophonic files supported")
       af = io.AudioFile.openWrite(f, spec)
-      pull(in)
+      shape.inlets.foreach(pull)
     }
 
     override def postStop(): Unit = {
       log(s"$sink - postStop()")
       buf = null
+      var ch = 0
+      while (ch < numChannels) {
+        bufIns(ch) = null
+        ch += 1
+      }
       try {
         af.close()
         result.trySuccess(framesWritten)
@@ -73,17 +79,37 @@ final class AudioFileSink(f: File, spec: io.AudioFileSpec)(implicit ctrl: Contro
     }
 
     override def onPush(): Unit = {
-      val bufIn = grab(in)
-      val chunk = bufIn.size
+      pushed += 1
+      if (pushed == numChannels) {
+        pushed = 0
+        process()
+      }
+    }
+
+    private def process(): Unit = {
+      var ch = 0
+      var chunk = 0
+      while (ch < numChannels) {
+        val bufIn = grab(shape.in(ch))
+        bufIns(ch)  = bufIn
+        chunk       = if (ch == 0) bufIn.size else math.min(chunk, bufIn.size)
+        ch += 1
+      }
+
       if (buf == null || buf(0).length < chunk) {
         buf = af.buffer(chunk)
       }
-      var i = 0
-      val a = bufIn.buf
-      val b = buf(0)
-      while (i < chunk) {
-        b(i) = a(i).toFloat
-        i += 1
+
+      ch = 0
+      while (ch < numChannels) {
+        var i = 0
+        val a = bufIns(ch).buf
+        val b = buf(0)
+        while (i < chunk) {
+          b(i) = a(i).toFloat
+          i += 1
+        }
+        ch += 1
       }
       try {
         af.write(buf, 0, chunk)
@@ -93,9 +119,18 @@ final class AudioFileSink(f: File, spec: io.AudioFileSpec)(implicit ctrl: Contro
           result.failure(ex)
           failStage(ex)
       } finally {
-        bufIn.release()
+        ch = 0
+        while (ch < numChannels) {
+          bufIns(ch).release()
+          ch += 1
+        }
       }
-      pull(in)
+
+      ch = 0
+      while (ch < numChannels) {
+        pull(shape.in(ch))
+        ch += 1
+      }
     }
 
     override def onUpstreamFailure(ex: Throwable): Unit = {

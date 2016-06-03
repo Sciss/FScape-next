@@ -33,7 +33,7 @@ object Test extends App {
     val size    = b.add(Source.single(BufI(65536))).out
     val padding = b.add(Source.single(BufI(    0))).out
     val fft     = Real1FFT(in, size = size, padding = padding)
-    DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = fft)
+    DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = fft :: Nil)
     ClosedShape
   }
 
@@ -43,7 +43,7 @@ object Test extends App {
     val winIn   = GenWindow(size = const(fftSize), shape = const(GenWindow.Hann.id), param = const(0.0))
     val winOut  = BinaryOp(in1 = in, in2 = winIn, op = BinaryOp.Times)
     val sig     = winOut
-    DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig)
+    DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig :: Nil)
     ClosedShape
   }
 
@@ -196,7 +196,7 @@ object Test extends App {
     // 'synthesis'
     val outW        = Real1FullIFFT (in = fftOut, size = const(fftSize), padding = const(0))
     val sig         = outW  // XXX TODO: apply window function and overlap-add
-    DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig)
+    DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig :: Nil)
     ClosedShape
   }
 
@@ -251,7 +251,7 @@ object Test extends App {
     val winOut      = BinaryOp(in1 = gain, in2 = winIn, op = BinaryOp.Times)
     val sig         = OverlapAdd(winOut, size = const(fftSize), step = const(winStep))
 
-    DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig)
+    DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig :: Nil)
     ClosedShape
   }
 

@@ -17,10 +17,16 @@ import akka.stream.scaladsl.GraphDSL
 import de.sciss.file.File
 import de.sciss.synth.io.AudioFileSpec
 
+import scala.collection.immutable.{Seq => ISeq}
+
 object DiskOut {
-  def apply(file: File, spec: AudioFileSpec, in: OutD)(implicit b: GBuilder, ctrl: Control): Unit = {
+  def apply(file: File, spec: AudioFileSpec, in: ISeq[OutD])(implicit b: GBuilder, ctrl: Control): Unit = {
+    require (spec.numChannels == in.size, s"Channel mismatch (spec has ${spec.numChannels}, in has ${in.size})")
     val sink = new AudioFileSink(file, spec)
     import GraphDSL.Implicits._
-    in ~> sink
+    val stage = b.add(sink)
+    (in zip stage.inlets).foreach { case (output, input) =>
+      output ~> input
+    }
   }
 }
