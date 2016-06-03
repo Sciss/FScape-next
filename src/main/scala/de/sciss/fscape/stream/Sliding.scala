@@ -68,7 +68,9 @@ object Sliding {
   }
 
   // XXX TODO --- we should try to see if this can be implemented
-  // on top of windowed-logic-impl which would make it much simpler
+  // on top of windowed-logic-impl which would make it much simpler.
+  // XXX TODO --- check that flushIn is correctly handled (we should
+  // flush partial windows)
   private final class Logic(protected val shape: FanInShape3[BufD, BufI, BufI, BufD])
                            (implicit protected val ctrl: Control)
     extends GraphStageLogic(shape) with FilterIn3Impl[BufD, BufI, BufI, BufD] {

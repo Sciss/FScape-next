@@ -93,7 +93,7 @@ object ReverseWindow {
     protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit =
       Util.copy(winBuf, readFromWinOff, bufOut.buf, outOff, chunk)
 
-    protected def processWindow(writeToWinOff: Int): Int = {
+    protected def processWindow(writeToWinOff: Int, flush: Boolean): Int = {
       var i   = 0
       val cl  = clump
       val cl2 = cl + cl

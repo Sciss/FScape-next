@@ -78,7 +78,7 @@ object FoldCepstrum {
 
 //    private var DEBUG = true
 
-    protected def processWindow(writeToWinOff: Int): Int = {
+    protected def processWindow(writeToWinOff: Int, flush: Boolean): Int = {
       // 'variant 1'
       // gain: 1.0/2097152
       val crr =  0; val cri =  0

@@ -38,7 +38,7 @@ trait WindowedLogicImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, Shape <:
 
   protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit
 
-  protected def processWindow(writeToWinOff: Int): Int
+  protected def processWindow(writeToWinOff: Int, flush: Boolean): Int
 
   protected def allocOutBuf(): Out
 
@@ -101,7 +101,7 @@ trait WindowedLogicImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, Shape <:
         }
 
         if (writeToWinRemain == 0 || flushIn) {
-          readFromWinRemain = processWindow(writeToWinOff = writeToWinOff)
+          readFromWinRemain = processWindow(writeToWinOff = writeToWinOff, flush = flushIn)
           readFromWinOff    = 0
           isNextWindow      = true
           stateChange       = true
