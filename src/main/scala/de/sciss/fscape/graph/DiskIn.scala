@@ -16,9 +16,10 @@ package graph
 
 import de.sciss.file.File
 
-case class DiskIn(file: File) extends UGenSource.SingleOut {
-  protected def makeSignal: UGenIn = {
-    val p = ugen.DiskIn(file)
-    p.output
-  }
+import scala.collection.immutable.IndexedSeq
+
+case class DiskIn(file: File, numChannels: Int) extends UGenSource.SingleOut {
+  protected def makeUGen(args: IndexedSeq[UGenIn]): UGenInLike = ???
+
+  protected def makeUGens: UGenInLike = ???
 }

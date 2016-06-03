@@ -15,14 +15,14 @@ package de.sciss.fscape
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-object Module {
+object UGenGraph {
   trait Builder {
     def addUGen(ugen: UGen): Unit
     def visit[U](ref: AnyRef, init: => U): U
   }
 
   private trait AbstractBuilder extends Builder {
-    def build: Module
+    def build: UGenGraph
   }
 
   private[this] final val builderRef = new ThreadLocal[AbstractBuilder] {
@@ -30,7 +30,7 @@ object Module {
   }
 
   private object BuilderDummy extends AbstractBuilder {
-    def build: Module = outOfContext
+    def build: UGenGraph = outOfContext
 
     def addUGen(ugen: UGen) = ()
 
@@ -42,7 +42,7 @@ object Module {
   /** This is analogous to `UGenGraph.Builder` in ScalaCollider. */
   def builder: Builder = builderRef.get()
 
-  def build(graph: Graph): Module = {
+  def build(graph: Graph): UGenGraph = {
     val old = builderRef.get()
     val b   = new BuilderImpl
     builderRef.set(b)
@@ -61,9 +61,9 @@ object Module {
     private[this] var ugens     = Vector.empty[UGen]
     private[this] var sourceMap = Map.empty[AnyRef, Any]
 
-    def build: Module = {
+    def build: UGenGraph = {
       // XXX TODO -- optimise; for now just return all ugens unsorted
-      Module(ugens)
+      UGenGraph(ugens)
     }
 
     def visit[U](ref: AnyRef, init: => U): U = {
@@ -83,7 +83,7 @@ object Module {
     }
   }
 }
-final case class Module(ugens: Vec[UGen]) {
+final case class UGenGraph(ugens: Vec[UGen]) {
   def run(): Unit = ???
 
   def dispose(): Unit = {

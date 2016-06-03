@@ -57,6 +57,6 @@ object Graph {
 final case class Graph(sources: Vec[Lazy] /* , controlProxies: Set[ControlProxyLike] */) {
   def isEmpty : Boolean  = sources.isEmpty // && controlProxies.isEmpty
   def nonEmpty: Boolean  = !isEmpty
-  def expand: Module = Module.build(this)
+  def expand: UGenGraph = UGenGraph.build(this)
 }
 

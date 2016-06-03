@@ -12,11 +12,11 @@
  */
 
 package de.sciss.fscape.stream
+package impl
 
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler}
 import akka.stream.{ActorAttributes, Attributes}
 import de.sciss.file._
-import de.sciss.fscape.stream.impl.UniformSinkShape
 import de.sciss.fscape.stream.{logStream => log}
 import de.sciss.synth.io
 

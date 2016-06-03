@@ -11,14 +11,12 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape.stream
+package de.sciss.fscape.graph
 
-import akka.stream.scaladsl.GraphDSL
-import akka.stream.stage.{GraphStage, GraphStageLogic}
-import akka.stream.{Attributes, FlowShape}
-import de.sciss.fscape.stream.impl.FilterIn1Impl
+import de.sciss.fscape.{GE, UGenIn, UGenInLike, UGenSource}
 
 import scala.annotation.switch
+import scala.collection.immutable.IndexedSeq
 
 /** Unary operator assuming stream is complex signal (real and imaginary interleaved).
   * Outputs another complex stream even if the operator yields a purely real-valued result
@@ -27,48 +25,40 @@ import scala.annotation.switch
   * XXX TODO - need more ops such as conjugate, polar-to-cartesian, ...
   */
 object ComplexUnaryOp {
-  def apply(op: Op, in: OutD)(implicit builder: GBuilder, ctrl: Control): OutD = {
-    val stage0  = new Stage(op)
-    val stage   = builder.add(stage0)
-    import GraphDSL.Implicits._
-    in ~> stage.in
-    stage.out
-  }
-
   object Op {
     def apply(id: Int): Op = (id: @switch) match {
       // case Neg        .id => Neg
       //      case Not        .id => Not
       case Abs        .id => Abs
-//      case Ceil       .id => Ceil
-//      case Floor      .id => Floor
-//      case Frac       .id => Frac
-//      case Signum     .id => Signum
+      //      case Ceil       .id => Ceil
+      //      case Floor      .id => Floor
+      //      case Frac       .id => Frac
+      //      case Signum     .id => Signum
       case Squared    .id => Squared
       case Cubed      .id => Cubed
-//      case Sqrt       .id => Sqrt
+      //      case Sqrt       .id => Sqrt
       case Exp        .id => Exp
       case Reciprocal .id => Reciprocal
-//      case Midicps    .id => Midicps
-//      case Cpsmidi    .id => Cpsmidi
-//      case Midiratio  .id => Midiratio
-//      case Ratiomidi  .id => Ratiomidi
-//      case Dbamp      .id => Dbamp
-//      case Ampdb      .id => Ampdb
-//      case Octcps     .id => Octcps
-//      case Cpsoct     .id => Cpsoct
+      //      case Midicps    .id => Midicps
+      //      case Cpsmidi    .id => Cpsmidi
+      //      case Midiratio  .id => Midiratio
+      //      case Ratiomidi  .id => Ratiomidi
+      //      case Dbamp      .id => Dbamp
+      //      case Ampdb      .id => Ampdb
+      //      case Octcps     .id => Octcps
+      //      case Cpsoct     .id => Cpsoct
       case Log        .id => Log
       case Log2       .id => Log2
       case Log10      .id => Log10
-//      case Sin        .id => Sin
-//      case Cos        .id => Cos
-//      case Tan        .id => Tan
-//      case Asin       .id => Asin
-//      case Acos       .id => Acos
-//      case Atan       .id => Atan
-//      case Sinh       .id => Sinh
-//      case Cosh       .id => Cosh
-//      case Tanh       .id => Tanh
+      //      case Sin        .id => Sin
+      //      case Cos        .id => Cos
+      //      case Tan        .id => Tan
+      //      case Asin       .id => Asin
+      //      case Acos       .id => Acos
+      //      case Atan       .id => Atan
+      //      case Sinh       .id => Sinh
+      //      case Cosh       .id => Cosh
+      //      case Tanh       .id => Tanh
       //      case Distort    .id => Distort
       //      case Softclip   .id => Softclip
       //      case Ramp       .id => Ramp
@@ -108,10 +98,10 @@ object ComplexUnaryOp {
     }
   }
 
-//  case object Neg extends Op {
-//    final val id = 0
-//    def apply(a: Double): Double = -a
-//  }
+  //  case object Neg extends Op {
+  //    final val id = 0
+  //    def apply(a: Double): Double = -a
+  //  }
 
   //  case object Not extends Op {
   //    final val id = 1
@@ -281,79 +271,10 @@ object ComplexUnaryOp {
       }
     }
   }
+}
+final case class ComplexUnaryOp(op: ComplexUnaryOp.Op, in: GE) extends UGenSource.SingleOut {
 
-  private final class Stage(op: Op)(implicit ctrl: Control)
-    extends GraphStage[FlowShape[BufD, BufD]] {
+  protected def makeUGen(args: IndexedSeq[UGenIn]): UGenInLike = ???
 
-    val shape = new FlowShape(
-      in  = InD ("ComplexUnaryOp.in" ),
-      out = OutD("ComplexUnaryOp.out")
-    )
-
-    def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new Logic(op, shape)
-  }
-
-  private final class Logic(op: Op,
-                            protected val shape: FlowShape[BufD, BufD])
-                           (implicit protected val ctrl: Control)
-    extends GraphStageLogic(shape)
-      with FilterIn1Impl[BufD, BufD] {
-
-    private[this] var inOff             = 0  // regarding `bufIn`
-    private[this] var inRemain          = 0
-    private[this] var outOff            = 0  // regarding `bufOut`
-    private[this] var outRemain         = 0
-    private[this] var outSent           = true
-
-    @inline
-    private[this] def allocOutBuf(): BufD = ctrl.borrowBufD()
-
-    @inline
-    private[this] def shouldRead = inRemain == 0 && canRead
-
-    def process(): Unit = {
-      var stateChange = false
-
-      if (shouldRead) {
-        readIns()
-        inRemain    = bufIn.size
-        inOff       = 0
-        stateChange = true
-      }
-
-      if (outSent) {
-        bufOut        = allocOutBuf()
-        outRemain     = bufOut.size
-        outOff        = 0
-        outSent       = false
-        stateChange   = true
-      }
-
-      val chunk = math.min(inRemain, outRemain) & ~1  // must be even
-      if (chunk > 0) {
-        op(in = bufIn.buf, inOff = inOff, out = bufOut.buf, outOff = outOff, len = chunk >> 1)
-        inOff       += chunk
-        inRemain    -= chunk
-        outOff      += chunk
-        outRemain   -= chunk
-        stateChange  = true
-      }
-
-      val flushOut = inRemain <= 1 && isClosed(shape.in)  // flush also if inRemain == 1
-      if (!outSent && (outRemain == 0 || flushOut) && isAvailable(shape.out)) {
-        if (outOff > 0) {
-          bufOut.size = outOff
-          push(shape.out, bufOut)
-        } else {
-          bufOut.release()
-        }
-        bufOut      = null
-        outSent     = true
-        stateChange = true
-      }
-
-      if      (flushOut && outSent) completeStage()
-      else if (stateChange)         process()
-    }
-  }
+  protected def makeUGens: UGenInLike = ???
 }

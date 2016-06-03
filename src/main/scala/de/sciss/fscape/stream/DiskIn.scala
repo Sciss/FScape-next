@@ -14,6 +14,7 @@
 package de.sciss.fscape.stream
 
 import de.sciss.file._
+import de.sciss.fscape.stream.impl.AudioFileSource
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 

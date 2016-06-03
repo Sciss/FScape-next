@@ -15,6 +15,7 @@ package de.sciss.fscape.stream
 
 import akka.stream.scaladsl.GraphDSL
 import de.sciss.file.File
+import de.sciss.fscape.stream.impl.AudioFileSink
 import de.sciss.synth.io.AudioFileSpec
 
 import scala.collection.immutable.{Seq => ISeq}

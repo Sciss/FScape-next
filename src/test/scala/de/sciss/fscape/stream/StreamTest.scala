@@ -11,7 +11,7 @@ import de.sciss.synth.io.AudioFileSpec
 import scala.concurrent.ExecutionContext
 import scala.swing.Swing
 
-object Test extends App {
+object StreamTest extends App {
   // showStreamLog = true
 
   // val fIn   = userHome / "Music" / "work" / "mentasm-199a3aa1.aif"

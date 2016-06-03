@@ -18,5 +18,5 @@ import de.sciss.file.File
 import de.sciss.synth.io.AudioFileSpec
 
 case class DiskOut(file: File, spec: AudioFileSpec, in: GE) extends UGenSource.ZeroOut {
-  protected def makeSignal: Unit = ugen.DiskOut(file = file, spec = spec, in = in.expand)
+  protected def makeSignal: Unit = ??? // ugen.DiskOut(file = file, spec = spec, in = in.expand)
 }

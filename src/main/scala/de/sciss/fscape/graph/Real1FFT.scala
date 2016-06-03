@@ -23,7 +23,8 @@ package graph
   */
 case class Real1FFT(in: GE, size: GE, padding: GE = 0) extends UGenSource.SingleOut {
   protected def makeSignal: UGenIn = {
-    val p = ugen.Real1FFT(in = in.expand, size = size.expand, padding = padding.expand)
-    p.output
+    ???
+//    val p = ugen.Real1FFT(in = in.expand, size = size.expand, padding = padding.expand)
+//    p.output
   }
 }
