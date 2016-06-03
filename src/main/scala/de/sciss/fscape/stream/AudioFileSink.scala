@@ -104,7 +104,7 @@ final class AudioFileSink(f: File, spec: io.AudioFileSpec)(implicit ctrl: Contro
       while (ch < numChannels) {
         var i = 0
         val a = bufIns(ch).buf
-        val b = buf(0)
+        val b = buf(ch)
         while (i < chunk) {
           b(i) = a(i).toFloat
           i += 1

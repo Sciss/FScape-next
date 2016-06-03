@@ -200,7 +200,7 @@ object Test extends App {
     ClosedShape
   }
 
-  lazy val graph = GraphDSL.create() { implicit b =>
+  lazy val graphMONO = GraphDSL.create() { implicit b =>
     // 'analysis'
     val in          = DiskIn(file = fIn, numChannels = 1).head
     val fftSize     = 131072 // 32768 // 8192
@@ -228,10 +228,10 @@ object Test extends App {
     //    val car =  0; val cai =  0
 
     // 'variant 2'
-//    val crr = +1; val cri = +1
-//    val clr =  0; val cli =  0
-//    val ccr = +1; val cci = -1
-//    val car = +1; val cai = -1
+    //    val crr = +1; val cri = +1
+    //    val clr =  0; val cli =  0
+    //    val ccr = +1; val cci = -1
+    //    val car = +1; val cai = -1
 
     val cepOut      = FoldCepstrum  (in = cep, size = const(fftSize),
       crr = const(crr), cri = const(cri), clr = const(clr), cli = const(cli),
@@ -252,6 +252,74 @@ object Test extends App {
     val sig         = OverlapAdd(winOut, size = const(fftSize), step = const(winStep))
 
     DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig :: Nil)
+    ClosedShape
+  }
+  
+  case class CepCoef(crr: Int, cri: Int, clr: Int, cli: Int, ccr: Int, cci: Int, car: Int, cai: Int,
+                     gain: Double)
+
+  val Coef1 = CepCoef(
+    crr =  0, cri =  0,
+    clr = +1, cli = +1,
+    ccr = +1, cci = -1,
+    car = +1, cai = -1,
+    gain = 1.0/2097152    // XXX TODO --- what's this factor?
+  )
+
+  val Coef2 = CepCoef(
+    crr = +1, cri = +1,
+    clr =  0, cli =  0,
+    ccr = +1, cci = -1,
+    car = +1, cai = -1,
+    gain = 1.0/32         // XXX TODO --- what's this factor?
+  )
+  
+  val CoefBypass = CepCoef(
+    crr = +1, cri = +1,
+    clr = +1, cli = +1,
+    ccr =  0, cci =  0,
+    car =  0, cai =  0,
+    gain = 1.0
+  )
+
+  lazy val graph = GraphDSL.create() { implicit b =>
+    // 'analysis'
+    val in          = DiskIn(file = fIn, numChannels = 1).head
+    val fftSize     = 131072 // 32768 // 8192
+    val winStep     = fftSize / 4
+    val inW         = Sliding       (in = in  , size = const(fftSize), step    = const(winStep))
+    val fft0        = Real1FullFFT  (in = inW , size = const(fftSize), padding = const(0))
+    val fft         = fft0 // ComplexUnaryOp(in = fft0, op = ComplexUnaryOp.Conj)
+
+    // 'percussion'
+    val log         = ComplexUnaryOp(in = fft , op = ComplexUnaryOp.Log)
+    val logC        = BinaryOp      (in1 = log , in2  = const(-80), op = BinaryOp.Max)
+    val cep0        = Complex1IFFT  (in  = logC, size = const(fftSize), padding = const(0))
+    val cep1        = BinaryOp      (in1 = cep0, in2  = const(1.0/fftSize), op = BinaryOp.Times)
+
+    val coefs       = Vector(Coef1, Coef2)
+    val cepB        = BroadcastBuf(in = cep1, numOutputs = 2)
+    val sig         = (coefs zip cepB).map { case (coef, cep) =>
+      import coef._
+      val cepOut      = FoldCepstrum  (in = cep, size = const(fftSize),
+        crr = const(crr), cri = const(cri), clr = const(clr), cli = const(cli),
+        ccr = const(ccr), cci = const(cci), car = const(car), cai = const(cai))
+      val freq0       = Complex1FFT   (in = cepOut, size = const(fftSize), padding = const(0))
+      val freq1       = BinaryOp      (in1 = freq0, in2 = const(fftSize), op = BinaryOp.Times)
+      val freq        = freq1 // ComplexUnaryOp(in = freq1, op = ComplexUnaryOp.Conj)
+      val fftOut      = ComplexUnaryOp(in = freq  , op = ComplexUnaryOp.Exp)
+
+      // 'synthesis'
+      val outW        = Real1FullIFFT(in = fftOut, size = const(fftSize), padding = const(0))
+
+      val times       = BinaryOp(in1 = outW, in2 = const(gain), op = BinaryOp.Times)
+      val winIn       = GenWindow(size = const(fftSize), shape = const(GenWindow.Hann.id), param = const(0.0))
+      val winOut      = BinaryOp(in1 = times, in2 = winIn, op = BinaryOp.Times)
+      val lap         = OverlapAdd(winOut, size = const(fftSize), step = const(winStep))
+      lap
+    }
+
+    DiskOut(file = fOut, spec = AudioFileSpec(numChannels = sig.size, sampleRate = 44100), in = sig)
     ClosedShape
   }
 
