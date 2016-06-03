@@ -37,7 +37,7 @@ object Lazy {
       * the `expand` method. Therefore it is guaranteed, that the expansion to
       * ugens is performed no more than once in the graph expansion.
       */
-    final private[fscape] def force(b: UGenGraph.Builder): Unit = visit(b)
+    final private[fscape] def force(b: UGenGraph.Builder): Unit = expand(b)
 
     /** A final implementation of this method which looks up the current ugen graph
       * builder and then performs the expansion just as `force`, returning the
@@ -46,9 +46,7 @@ object Lazy {
       * @return  the expanded object (e.g. `Unit` for a ugen with no outputs,
       *          or a single ugen, or a group of ugens)
       */
-    final private[fscape] def expand: U = visit(UGenGraph.builder)
-
-    private def visit(b: UGenGraph.Builder): U = b.visit(ref, makeUGens)
+    final private[fscape] def expand(implicit b: UGenGraph.Builder): U = b.visit(ref, makeUGens)
 
     /** Abstract method which must be implemented by creating the actual `UGen`s
       * during expansion. This method is at most called once during graph
@@ -56,7 +54,7 @@ object Lazy {
       *
       * @return  the expanded object (depending on the type parameter `U`)
       */
-    protected def makeUGens: U
+    protected def makeUGens(implicit b: UGenGraph.Builder): U
   }
 }
 

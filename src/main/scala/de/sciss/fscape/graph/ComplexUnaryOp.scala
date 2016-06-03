@@ -11,12 +11,11 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape.graph
-
-import de.sciss.fscape.{GE, UGenIn, UGenInLike, UGenSource}
+package de.sciss.fscape
+package graph
 
 import scala.annotation.switch
-import scala.collection.immutable.IndexedSeq
+import scala.collection.immutable.{IndexedSeq => Vec}
 
 /** Unary operator assuming stream is complex signal (real and imaginary interleaved).
   * Outputs another complex stream even if the operator yields a purely real-valued result
@@ -274,7 +273,7 @@ object ComplexUnaryOp {
 }
 final case class ComplexUnaryOp(op: ComplexUnaryOp.Op, in: GE) extends UGenSource.SingleOut {
 
-  protected def makeUGen(args: IndexedSeq[UGenIn]): UGenInLike = ???
+  protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike = ???
 
-  protected def makeUGens: UGenInLike = ???
+  protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = ???
 }

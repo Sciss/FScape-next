@@ -68,10 +68,10 @@ sealed trait UGen extends RawUGen with Product {
 object UGen {
   object SingleOut {
     def apply(name: String, inputs: Vec[UGenIn], isIndividual: Boolean = false,
-              hasSideEffect: Boolean = false, specialIndex: Int = 0): SingleOut = {
+              hasSideEffect: Boolean = false, specialIndex: Int = 0)(implicit b: UGenGraph.Builder): SingleOut = {
       val res = new SingleOutImpl(name, inputs, isIndividual = isIndividual, hasSideEffect = hasSideEffect,
         specialIndex = specialIndex)
-      UGenGraph.builder.addUGen(res)
+      b.addUGen(res)
       res
     }
   }
@@ -86,9 +86,9 @@ object UGen {
 
   object ZeroOut {
     def apply(name: String, inputs: Vec[UGenIn], isIndividual: Boolean = false,
-              specialIndex: Int = 0): ZeroOut = {
+              specialIndex: Int = 0)(implicit b: UGenGraph.Builder): ZeroOut = {
       val res = new ZeroOutImpl(name, inputs, isIndividual = isIndividual, specialIndex = specialIndex)
-      UGenGraph.builder.addUGen(res)
+      b.addUGen(res)
       res
     }
   }
@@ -99,10 +99,11 @@ object UGen {
 
   object MultiOut {
     def apply(name: String, inputs: Vec[UGenIn], numOutputs: Int,
-              isIndividual: Boolean = false, hasSideEffect: Boolean = false, specialIndex: Int = 0): MultiOut = {
+              isIndividual: Boolean = false, hasSideEffect: Boolean = false, specialIndex: Int = 0)
+             (implicit b: UGenGraph.Builder): MultiOut = {
       val res = new MultiOutImpl(name, numOutputs = numOutputs, inputs = inputs, isIndividual = isIndividual,
         hasSideEffect = hasSideEffect, specialIndex = specialIndex)
-      UGenGraph.builder.addUGen(res)
+      b.addUGen(res)
       res
     }
   }
@@ -118,7 +119,7 @@ object UGen {
 }
 
 object UGenInLike {
-  implicit def expand(ge: GE): UGenInLike = ge.expand
+  implicit def expand(ge: GE)(implicit b: UGenGraph.Builder): UGenInLike = ge.expand
 }
 sealed trait UGenInLike extends GE {
   private[fscape] def outputs: Vec[UGenInLike]
@@ -133,7 +134,7 @@ sealed trait UGenInLike extends GE {
   private[fscape] def flatOutputs: Vec[UGenIn]
 
   // ---- GE ----
-  final private[fscape] def expand: UGenInLike = this
+  final private[fscape] def expand(implicit b: UGenGraph.Builder): UGenInLike = this
 }
 
 /** An element that can be used as an input to a UGen.

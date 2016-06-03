@@ -17,6 +17,10 @@ package graph
 import de.sciss.file.File
 import de.sciss.synth.io.AudioFileSpec
 
+import scala.collection.immutable.{IndexedSeq => Vec}
+
 case class DiskOut(file: File, spec: AudioFileSpec, in: GE) extends UGenSource.ZeroOut {
-  protected def makeSignal: Unit = ??? // ugen.DiskOut(file = file, spec = spec, in = in.expand)
+  protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit = ???
+
+  protected def makeUGens(implicit b: UGenGraph.Builder): Unit = ???
 }

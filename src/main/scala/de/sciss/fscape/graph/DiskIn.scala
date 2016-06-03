@@ -16,10 +16,14 @@ package graph
 
 import de.sciss.file.File
 
-import scala.collection.immutable.IndexedSeq
+import scala.collection.immutable.{IndexedSeq => Vec}
 
 case class DiskIn(file: File, numChannels: Int) extends UGenSource.SingleOut {
-  protected def makeUGen(args: IndexedSeq[UGenIn]): UGenInLike = ???
+  protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike = {
+    import b._
+    val outs = stream.DiskIn(file = file, numChannels = numChannels)
+    ???
+  }
 
-  protected def makeUGens: UGenInLike = ???
+  protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = unwrap(Vector.empty)
 }

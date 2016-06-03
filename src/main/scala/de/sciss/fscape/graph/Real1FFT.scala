@@ -14,6 +14,8 @@
 package de.sciss.fscape
 package graph
 
+import scala.collection.immutable.{IndexedSeq => Vec}
+
 /** Real-valued one-dimensional forward fast fourier transform.
   *
   * @param in       the input signal to transform
@@ -22,9 +24,7 @@ package graph
   *                 thus fft size = size + padding
   */
 case class Real1FFT(in: GE, size: GE, padding: GE = 0) extends UGenSource.SingleOut {
-  protected def makeSignal: UGenIn = {
-    ???
-//    val p = ugen.Real1FFT(in = in.expand, size = size.expand, padding = padding.expand)
-//    p.output
-  }
+  protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike = ???
+
+  protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = ???
 }

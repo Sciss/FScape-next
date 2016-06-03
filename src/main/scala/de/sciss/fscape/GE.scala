@@ -24,5 +24,5 @@ object GE {
   implicit def fromDouble(x: Double): ConstantD = new ConstantD(x)
 }
 trait GE extends Product {
-  private[fscape] def expand: UGenInLike
+  private[fscape] def expand(implicit b: UGenGraph.Builder): UGenInLike
 }

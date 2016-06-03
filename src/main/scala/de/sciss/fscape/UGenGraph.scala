@@ -13,12 +13,17 @@
 
 package de.sciss.fscape
 
+import de.sciss.fscape.stream.{Control, GBuilder}
+
 import scala.collection.immutable.{IndexedSeq => Vec}
 
 object UGenGraph {
   trait Builder {
     def addUGen(ugen: UGen): Unit
     def visit[U](ref: AnyRef, init: => U): U
+
+    implicit def streamControl: stream.Control
+    implicit def streamBuilder: stream.GBuilder
   }
 
   private trait AbstractBuilder extends Builder {
@@ -36,11 +41,16 @@ object UGenGraph {
 
     def visit[U](ref: AnyRef, init: => U): U = outOfContext
 
+
+    def streamControl: Control = ???
+
+    def streamBuilder: GBuilder = ???
+
     private def outOfContext: Nothing = sys.error("Out of context")
   }
 
-  /** This is analogous to `UGenGraph.Builder` in ScalaCollider. */
-  def builder: Builder = builderRef.get()
+//  /** This is analogous to `UGenGraph.Builder` in ScalaCollider. */
+//  def builder: Builder = builderRef.get()
 
   def build(graph: Graph): UGenGraph = {
     val old = builderRef.get()
@@ -65,6 +75,9 @@ object UGenGraph {
       // XXX TODO -- optimise; for now just return all ugens unsorted
       UGenGraph(ugens)
     }
+
+    def streamControl: Control  = ???
+    def streamBuilder: GBuilder = ???
 
     def visit[U](ref: AnyRef, init: => U): U = {
       // log(s"visit  ${ref.hashCode.toHexString}")

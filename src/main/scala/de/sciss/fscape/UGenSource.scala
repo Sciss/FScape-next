@@ -17,7 +17,7 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 
 object UGenSource {
   trait ZeroOut extends UGenSource[Unit] {
-    final protected def rewrap(args: Vec[UGenInLike], exp: Int): Unit = {
+    final protected def rewrap(args: Vec[UGenInLike], exp: Int)(implicit b: UGenGraph.Builder): Unit = {
       var i = 0
       while (i < exp) {
         unwrap(args.map(_.unwrap(i)))
@@ -30,17 +30,17 @@ object UGenSource {
   trait MultiOut  extends SomeOut
 
   protected sealed trait SomeOut extends UGenSource[UGenInLike] with GE.Lazy {
-    final protected def rewrap(args: Vec[UGenInLike], exp: Int): UGenInLike =
+    final protected def rewrap(args: Vec[UGenInLike], exp: Int)(implicit b: UGenGraph.Builder): UGenInLike =
       ugen.UGenInGroup(Vec.tabulate(exp)(i => unwrap(args.map(_.unwrap(i)))))
   }
 }
 
 sealed trait UGenSource[U] extends Lazy.Expander[U] {
-  protected def makeUGen(args: Vec[UGenIn]): U
+  protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): U
 
   final def name: String = productPrefix
 
-  final protected def unwrap(args: Vec[UGenInLike]): U = {
+  final protected def unwrap(args: Vec[UGenInLike])(implicit b: UGenGraph.Builder): U = {
     var uIns    = Vec.empty[UGenIn]
     var uInsOk  = true
     var exp     = 0
@@ -58,5 +58,5 @@ sealed trait UGenSource[U] extends Lazy.Expander[U] {
     }
   }
 
-  protected def rewrap(args: Vec[UGenInLike], exp: Int): U
+  protected def rewrap(args: Vec[UGenInLike], exp: Int)(implicit b: UGenGraph.Builder): U
 }
