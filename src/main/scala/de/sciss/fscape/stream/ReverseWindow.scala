@@ -13,10 +13,9 @@
 
 package de.sciss.fscape.stream
 
-import akka.NotUsed
 import akka.stream.scaladsl.GraphDSL
 import akka.stream.stage.{GraphStage, GraphStageLogic}
-import akka.stream.{Attributes, FanInShape3, Inlet, Outlet}
+import akka.stream.{Attributes, FanInShape3}
 import de.sciss.fscape.Util
 import de.sciss.fscape.stream.impl.{FilterIn3Impl, WindowedFilterLogicImpl}
 
@@ -33,8 +32,7 @@ object ReverseWindow {
     *               sampled at each beginning of a new window and held constant
     *               during the window.
     */
-  def apply(in: Outlet[BufD], size: Outlet[BufI], clump: Outlet[BufI])
-           (implicit b: GraphDSL.Builder[NotUsed], ctrl: Control): Outlet[BufD] = {
+  def apply(in: OutD, size: OutI, clump: OutI)(implicit b: GBuilder, ctrl: Control): OutD = {
     val stage0  = new Stage
     val stage   = b.add(stage0)
     import GraphDSL.Implicits._
@@ -49,10 +47,10 @@ object ReverseWindow {
     extends GraphStage[FanInShape3[BufD, BufI, BufI, BufD]] {
 
     val shape = new FanInShape3(
-      in0 = Inlet [BufD]("ReverseWindow.in"   ),
-      in1 = Inlet [BufI]("ReverseWindow.size" ),
-      in2 = Inlet [BufI]("ReverseWindow.clump"),
-      out = Outlet[BufD]("ReverseWindow.out"  )
+      in0 = InD ("ReverseWindow.in"   ),
+      in1 = InI ("ReverseWindow.size" ),
+      in2 = InI ("ReverseWindow.clump"),
+      out = OutD("ReverseWindow.out"  )
     )
 
     def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new Logic(shape)
@@ -65,7 +63,7 @@ object ReverseWindow {
       with WindowedFilterLogicImpl[BufD, BufD, FanInShape3[BufD, BufI, BufI, BufD]]
       with FilterIn3Impl                            [BufD, BufI, BufI, BufD] {
 
-    protected val in0: Inlet[BufD] = shape.in0
+    protected val in0: InD = shape.in0
 
     protected def allocOutBuf(): BufD = ctrl.borrowBufD()
 

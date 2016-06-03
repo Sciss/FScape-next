@@ -13,15 +13,12 @@
 
 package de.sciss.fscape.stream
 
-import akka.NotUsed
-import akka.stream.Outlet
 import akka.stream.scaladsl.GraphDSL
 import de.sciss.file.File
 import de.sciss.synth.io.AudioFileSpec
 
 object DiskOut {
-  def apply(file: File, spec: AudioFileSpec, in: Outlet[BufD])
-           (implicit b: GraphDSL.Builder[NotUsed], ctrl: Control): Unit = {
+  def apply(file: File, spec: AudioFileSpec, in: OutD)(implicit b: GBuilder, ctrl: Control): Unit = {
     val sink = new AudioFileSink(file, spec)
     import GraphDSL.Implicits._
     in ~> sink

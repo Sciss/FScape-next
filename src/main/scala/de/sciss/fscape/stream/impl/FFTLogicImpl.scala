@@ -11,14 +11,13 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape.stream.impl
+package de.sciss.fscape.stream
+package impl
 
-import akka.NotUsed
 import akka.stream.scaladsl.GraphDSL
 import akka.stream.stage.{GraphStage, GraphStageLogic}
-import akka.stream.{Attributes, FanInShape3, Inlet, Outlet}
+import akka.stream.{Attributes, FanInShape3}
 import de.sciss.fscape.Util
-import de.sciss.fscape.stream.{BufD, BufI, Control}
 import edu.emory.mathcs.jtransforms.fft.DoubleFFT_1D
 
 abstract class FFTStageImpl(name: String)
@@ -27,14 +26,14 @@ abstract class FFTStageImpl(name: String)
   // ---- impl ----
   
   final val shape = new FanInShape3(
-    in0 = Inlet [BufD](s"$name.in"     ),
-    in1 = Inlet [BufI](s"$name.size"   ),
-    in2 = Inlet [BufI](s"$name.padding"),
-    out = Outlet[BufD](s"$name.out"    )
+    in0 = InD (s"$name.in"     ),
+    in1 = InI (s"$name.size"   ),
+    in2 = InI (s"$name.padding"),
+    out = OutD(s"$name.out"    )
   )
 
-  final def connect(in: Outlet[BufD], size: Outlet[BufI], padding: Outlet[BufI])
-                   (implicit b: GraphDSL.Builder[NotUsed]): Outlet[BufD] = {
+  final def connect(in: OutD, size: OutI, padding: OutI)
+                   (implicit b: GBuilder): OutD = {
     val stage   = b.add(this)
     import GraphDSL.Implicits._
     in      ~> stage.in0
@@ -74,7 +73,7 @@ abstract class FFTLogicImpl(protected val shape: FanInShape3[BufD, BufI, BufI, B
     fft = null
   }
 
-  protected final def in0: Inlet[BufD] = shape.in0
+  protected final def in0: InD = shape.in0
 
   protected final def allocOutBuf(): BufD = ctrl.borrowBufD()
 

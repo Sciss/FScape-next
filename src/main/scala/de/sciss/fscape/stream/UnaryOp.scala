@@ -13,18 +13,16 @@
 
 package de.sciss.fscape.stream
 
-import akka.NotUsed
 import akka.stream.scaladsl.GraphDSL
 import akka.stream.stage.{GraphStage, GraphStageLogic}
-import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
+import akka.stream.{Attributes, FlowShape}
 import de.sciss.fscape.stream.impl.FilterIn1Impl
 import de.sciss.numbers.{DoubleFunctions => rd, DoubleFunctions2 => rd2}
 
 import scala.annotation.switch
 
 object UnaryOp {
-  def apply(op: Op, in: Outlet[BufD])
-           (implicit builder: GraphDSL.Builder[NotUsed], ctrl: Control): Outlet[BufD] = {
+  def apply(op: Op, in: OutD)(implicit builder: GBuilder, ctrl: Control): OutD = {
     val stage0  = new Stage(op)
     val stage   = builder.add(stage0)
     import GraphDSL.Implicits._
@@ -294,8 +292,8 @@ object UnaryOp {
     extends GraphStage[FlowShape[BufD, BufD]] {
 
     val shape = new FlowShape(
-      in  = Inlet [BufD]("UnaryOp.in" ),
-      out = Outlet[BufD]("UnaryOp.out")
+      in  = InD ("UnaryOp.in" ),
+      out = OutD("UnaryOp.out")
     )
 
     def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new Logic(op, shape)

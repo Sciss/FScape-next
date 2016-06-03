@@ -13,10 +13,9 @@
 
 package de.sciss.fscape.stream
 
-import akka.NotUsed
-import akka.stream.{Attributes, FanInShape3, Inlet, Outlet}
 import akka.stream.scaladsl.GraphDSL
 import akka.stream.stage.{GraphStage, GraphStageLogic}
+import akka.stream.{Attributes, FanInShape3}
 import de.sciss.fscape.Util
 import de.sciss.fscape.stream.impl.FilterIn3Impl
 
@@ -32,8 +31,7 @@ object Sliding {
     * @param size   the window size. this is clipped to be `&lt;= 1`
     * @param step   the step size. this is clipped to be `&lt;= 1` and `&lt;= size`
     */
-  def apply(in: Outlet[BufD], size: Outlet[BufI], step: Outlet[BufI])
-           (implicit b: GraphDSL.Builder[NotUsed], ctrl: Control): Outlet[BufD] = {
+  def apply(in: OutD, size: OutI, step: OutI)(implicit b: GBuilder, ctrl: Control): OutD = {
     val stage0  = new Stage
     val stage   = b.add(stage0)
     import GraphDSL.Implicits._
@@ -58,10 +56,10 @@ object Sliding {
     extends GraphStage[FanInShape3[BufD, BufI, BufI, BufD]] {
 
     val shape = new FanInShape3(
-      in0 = Inlet [BufD]("Sliding.in"  ),
-      in1 = Inlet [BufI]("Sliding.size"),
-      in2 = Inlet [BufI]("Sliding.step"),
-      out = Outlet[BufD]("Sliding.out" )
+      in0 = InD ("Sliding.in"  ),
+      in1 = InI ("Sliding.size"),
+      in2 = InI ("Sliding.step"),
+      out = OutD("Sliding.out" )
     )
 
     def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new Logic(shape)

@@ -14,7 +14,7 @@
 package de.sciss.fscape.stream
 
 import akka.stream.stage.{GraphStage, GraphStageLogic, OutHandler}
-import akka.stream.{ActorAttributes, Attributes, Outlet, SourceShape}
+import akka.stream.{ActorAttributes, Attributes, SourceShape}
 import de.sciss.file._
 import de.sciss.fscape.stream.{logStream => log}
 import de.sciss.synth.io
@@ -25,7 +25,7 @@ import scala.util.control.NonFatal
 final class AudioFileSource(f: File, ctrl: Control)
   extends GraphStage[SourceShape[BufD]] { source =>
 
-  private[this] val out = Outlet[BufD]("AudioFileSource.out")
+  private[this] val out = OutD("AudioFileSource.out")
   
   override val shape = SourceShape(out)
 

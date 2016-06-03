@@ -14,7 +14,7 @@
 package de.sciss.fscape.stream
 
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler}
-import akka.stream.{ActorAttributes, Attributes, Inlet, SinkShape}
+import akka.stream.{ActorAttributes, Attributes, SinkShape}
 import de.sciss.file._
 import de.sciss.fscape.stream.{logStream => log}
 import de.sciss.synth.io
@@ -25,7 +25,7 @@ import scala.util.control.NonFatal
 final class AudioFileSink(f: File, spec: io.AudioFileSpec)(implicit ctrl: Control)
   extends GraphStage[SinkShape[BufD]] { sink =>
   
-  private[this] val in = Inlet[BufD]("AudioFileSink.in")
+  private[this] val in = InD("AudioFileSink.in")
 
   override val shape = SinkShape(in)
 

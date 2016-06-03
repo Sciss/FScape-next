@@ -13,9 +13,6 @@
 
 package de.sciss.fscape.stream
 
-import akka.NotUsed
-import akka.stream.Outlet
-import akka.stream.scaladsl.GraphDSL
 import de.sciss.fscape.stream.impl.{Complex1FFTStageImpl, Complex1IFFTStageImpl, Real1FFTStageImpl, Real1FullFFTStageImpl, Real1FullIFFTStageImpl, Real1IFFTStageImpl}
 
 /** Real (positive spectrum) forward Short Time Fourier Transform.
@@ -24,8 +21,7 @@ import de.sciss.fscape.stream.impl.{Complex1FFTStageImpl, Complex1IFFTStageImpl,
   * Useful page: http://calculator.vhex.net/calculator/fast-fourier-transform-calculator-fft/1d-discrete-fourier-transform
   */
 object Real1FFT {
-  def apply(in: Outlet[BufD], size: Outlet[BufI], padding: Outlet[BufI])
-           (implicit b: GraphDSL.Builder[NotUsed], ctrl: Control): Outlet[BufD] = {
+  def apply(in: OutD, size: OutI, padding: OutI)(implicit b: GBuilder, ctrl: Control): OutD = {
     // XXX TODO:
     println("WARNING: Real1FFT --- returned packed format") // (Re(DC), Re(Ny), Re(1), Im(1) etc.
     new Real1FFTStageImpl(ctrl).connect(in = in, size = size, padding = padding)
@@ -36,8 +32,7 @@ object Real1FFT {
   * The counter-part of `Real1FFT`.
   */
 object Real1IFFT {
-  def apply(in: Outlet[BufD], size: Outlet[BufI], padding: Outlet[BufI])
-           (implicit b: GraphDSL.Builder[NotUsed], ctrl: Control): Outlet[BufD] =
+  def apply(in: OutD, size: OutI, padding: OutI)(implicit b: GBuilder, ctrl: Control): OutD =
     new Real1IFFTStageImpl(ctrl).connect(in = in, size = size, padding = padding)
 }
 
@@ -47,8 +42,7 @@ object Real1IFFT {
   * The counter-part of it is `Real1FullIFFT`.
   */
 object Real1FullFFT {
-  def apply(in: Outlet[BufD], size: Outlet[BufI], padding: Outlet[BufI])
-           (implicit b: GraphDSL.Builder[NotUsed], ctrl: Control): Outlet[BufD] =
+  def apply(in: OutD, size: OutI, padding: OutI)(implicit b: GBuilder, ctrl: Control): OutD =
     new Real1FullFFTStageImpl(ctrl).connect(in = in, size = size, padding = padding)
 }
 
@@ -58,8 +52,7 @@ object Real1FullFFT {
   * drops the imaginary part.
   */
 object Real1FullIFFT {
-  def apply(in: Outlet[BufD], size: Outlet[BufI], padding: Outlet[BufI])
-           (implicit b: GraphDSL.Builder[NotUsed], ctrl: Control): Outlet[BufD] =
+  def apply(in: OutD, size: OutI, padding: OutI)(implicit b: GBuilder, ctrl: Control): OutD =
     new Real1FullIFFTStageImpl(ctrl).connect(in = in, size = size, padding = padding)
 }
 
@@ -67,8 +60,7 @@ object Real1FullIFFT {
   * The counter-part of it is `Complex1IFFT`.
   */
 object Complex1FFT {
-  def apply(in: Outlet[BufD], size: Outlet[BufI], padding: Outlet[BufI])
-           (implicit b: GraphDSL.Builder[NotUsed], ctrl: Control): Outlet[BufD] =
+  def apply(in: OutD, size: OutI, padding: OutI)(implicit b: GBuilder, ctrl: Control): OutD =
     new Complex1FFTStageImpl(ctrl).connect(in = in, size = size, padding = padding)
 }
 
@@ -76,7 +68,6 @@ object Complex1FFT {
   * The is the counter-part to `Complex1FFT`.
   */
 object Complex1IFFT {
-  def apply(in: Outlet[BufD], size: Outlet[BufI], padding: Outlet[BufI])
-           (implicit b: GraphDSL.Builder[NotUsed], ctrl: Control): Outlet[BufD] =
+  def apply(in: OutD, size: OutI, padding: OutI)(implicit b: GBuilder, ctrl: Control): OutD =
     new Complex1IFFTStageImpl(ctrl).connect(in = in, size = size, padding = padding)
 }

@@ -11,17 +11,17 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape.stream.impl
+package de.sciss.fscape.stream
+package impl
 
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
 import akka.stream.{Attributes, Inlet, Outlet, Shape}
 import de.sciss.fscape.Util
-import de.sciss.fscape.stream.{BufD, BufI, Control}
 
 import scala.collection.breakOut
 import scala.collection.immutable.{Seq => ISeq}
 
-case class ZipWindowShape(inputs: ISeq[Inlet[BufD]], size: Inlet[BufI], out: Outlet[BufD]) extends Shape {
+case class ZipWindowShape(inputs: ISeq[InD], size: InI, out: OutD) extends Shape {
   val inlets : ISeq[Inlet [_]] = inputs :+ size
   val outlets: ISeq[Outlet[_]] = Vector(out)
 
@@ -33,7 +33,7 @@ case class ZipWindowShape(inputs: ISeq[Inlet[BufD]], size: Inlet[BufI], out: Out
     require(outlets.size == this.outlets.size, s"number of outlets [${outlets.size}] does not match [${this.outlets.size}]")
     val init = inlets.init.asInstanceOf[ISeq[Inlet[BufD]]]
     val last = inlets.last.asInstanceOf[Inlet[BufI]]
-    ZipWindowShape(init, last, outlets.head.asInstanceOf[Outlet[BufD]])
+    ZipWindowShape(init, last, outlets.head.asInstanceOf[OutD])
   }
 }
 
@@ -41,9 +41,9 @@ final class ZipWindowStageImpl(numInputs: Int)(implicit ctrl: Control)
   extends GraphStage[ZipWindowShape] {
 
   val shape = ZipWindowShape(
-    inputs  = Vector.tabulate(numInputs)(idx => Inlet[BufD](s"ZipWindow.in$idx")),
-    size    = Inlet [BufI]("ZipWindow.size"),
-    out     = Outlet[BufD]("ZipWindow.out" )
+    inputs  = Vector.tabulate(numInputs)(idx => InD(s"ZipWindow.in$idx")),
+    size    = InI ("ZipWindow.size"),
+    out     = OutD("ZipWindow.out" )
   )
 
   def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new ZipWindowLogicImpl(shape)
@@ -74,7 +74,7 @@ final class ZipWindowLogicImpl(shape: ZipWindowShape)(implicit ctrl: Control)
   @inline
   private[this] def shouldNext  = isNextWindow && (size > 0 || sizeOff < sizeRemain)
 
-  private final class Input(val let: Inlet[BufD]) extends InHandler {
+  private final class Input(val let: InD) extends InHandler {
     var buf: BufD = _
     var off       = 0
     var remain    = 0

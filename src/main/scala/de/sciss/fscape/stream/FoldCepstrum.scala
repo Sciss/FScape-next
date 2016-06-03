@@ -13,16 +13,19 @@
 
 package de.sciss.fscape.stream
 
-import akka.NotUsed
 import akka.stream.scaladsl.GraphDSL
 import akka.stream.stage.{GraphStage, GraphStageLogic}
-import akka.stream.{Attributes, FanInShape2, Inlet, Outlet}
+import akka.stream.{Attributes, FanInShape2}
 import de.sciss.fscape.Util
 import de.sciss.fscape.stream.impl.{FilterIn2Impl, WindowedFilterLogicImpl}
 
 object FoldCepstrum {
-  def apply(in: Outlet[BufD], size: Outlet[BufI])
-           (implicit b: GraphDSL.Builder[NotUsed], ctrl: Control): Outlet[BufD] = {
+//  val crr = +1; val cri = +1
+//  val clr =  0; val cli =  0
+//  val ccr = +1; val cci = -1
+//  val car = +1; val cai = -1
+
+  def apply(in: OutD, size: OutI)(implicit b: GBuilder, ctrl: Control): OutD = {
     val stage0  = new Stage
     val stage   = b.add(stage0)
     import GraphDSL.Implicits._
@@ -36,9 +39,9 @@ object FoldCepstrum {
     extends GraphStage[FanInShape2[BufD, BufI, BufD]] {
 
     val shape = new FanInShape2(
-      in0 = Inlet [BufD]("FoldCepstrum.in"  ),
-      in1 = Inlet [BufI]("FoldCepstrum.size"),
-      out = Outlet[BufD]("FoldCepstrum.out" )
+      in0 = InD ("FoldCepstrum.in"  ),
+      in1 = InI ("FoldCepstrum.size"),
+      out = OutD("FoldCepstrum.out" )
     )
 
     def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new Logic(shape)
@@ -51,7 +54,7 @@ object FoldCepstrum {
       with WindowedFilterLogicImpl[BufD, BufD, FanInShape2[BufD, BufI, BufD]]
       with FilterIn2Impl                            [BufD, BufI, BufD] {
 
-    protected val in0: Inlet[BufD] = shape.in0
+    protected val in0: InD = shape.in0
 
     protected def allocOutBuf(): BufD = ctrl.borrowBufD()
 

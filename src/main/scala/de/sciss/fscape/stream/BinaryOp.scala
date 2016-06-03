@@ -13,18 +13,16 @@
 
 package de.sciss.fscape.stream
 
-import akka.NotUsed
 import akka.stream.scaladsl.GraphDSL
 import akka.stream.stage.{GraphStage, GraphStageLogic}
-import akka.stream.{Attributes, FanInShape2, Inlet, Outlet}
+import akka.stream.{Attributes, FanInShape2}
 import de.sciss.fscape.stream.impl.FilterIn2Impl
 import de.sciss.numbers.{DoubleFunctions => rd, DoubleFunctions2 => rd2}
 
 import scala.annotation.switch
 
 object BinaryOp {
-  def apply(op: Op, in1: Outlet[BufD], in2: Outlet[BufD])
-           (implicit builder: GraphDSL.Builder[NotUsed], ctrl: Control): Outlet[BufD] = {
+  def apply(op: Op, in1: OutD, in2: OutD)(implicit builder: GBuilder, ctrl: Control): OutD = {
     val stage0  = new Stage(op)
     val stage   = builder.add(stage0)
     import GraphDSL.Implicits._
@@ -342,9 +340,9 @@ object BinaryOp {
     extends GraphStage[FanInShape2[BufD, BufD, BufD]] {
 
     val shape = new FanInShape2(
-      in0 = Inlet [BufD]("BinaryOp.in1"),
-      in1 = Inlet [BufD]("BinaryOp.in2"),
-      out = Outlet[BufD]("BinaryOp.out")
+      in0 = InD ("BinaryOp.in1"),
+      in1 = InD ("BinaryOp.in2"),
+      out = OutD("BinaryOp.out")
     )
 
     def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new Logic(op, shape)

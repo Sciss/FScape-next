@@ -13,10 +13,9 @@
 
 package de.sciss.fscape.stream
 
-import akka.NotUsed
 import akka.stream.scaladsl.GraphDSL
 import akka.stream.stage.{GraphStage, GraphStageLogic}
-import akka.stream.{Attributes, FanInShape3, Inlet, Outlet}
+import akka.stream.{Attributes, FanInShape3}
 import de.sciss.fscape.Util
 import de.sciss.fscape.stream.impl.{FilterIn3Impl, WindowedFilterLogicImpl}
 
@@ -31,8 +30,7 @@ object OverlapAdd {
     * @param step   the step size. this is clipped to be `&lt;= 1`. If it is greater
     *               than `size`, parts of the input will be correctly skipped.
     */
-  def apply(in: Outlet[BufD], size: Outlet[BufI], step: Outlet[BufI])
-           (implicit b: GraphDSL.Builder[NotUsed], ctrl: Control): Outlet[BufD] = {
+  def apply(in: OutD, size: OutI, step: OutI)(implicit b: GBuilder, ctrl: Control): OutD = {
     val stage0  = new Stage
     val stage   = b.add(stage0)
     import GraphDSL.Implicits._
@@ -57,10 +55,10 @@ object OverlapAdd {
     extends GraphStage[FanInShape3[BufD, BufI, BufI, BufD]] {
 
     val shape = new FanInShape3(
-      in0 = Inlet [BufD]("OverlapAdd.in"  ),
-      in1 = Inlet [BufI]("OverlapAdd.size"),
-      in2 = Inlet [BufI]("OverlapAdd.step"),
-      out = Outlet[BufD]("OverlapAdd.out" )
+      in0 = InD ("OverlapAdd.in"  ),
+      in1 = InI ("OverlapAdd.size"),
+      in2 = InI ("OverlapAdd.step"),
+      out = OutD("OverlapAdd.out" )
     )
 
     def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new Logic(shape)
@@ -72,7 +70,7 @@ object OverlapAdd {
       with WindowedFilterLogicImpl[BufD, BufD, FanInShape3[BufD, BufI, BufI, BufD]]
       with FilterIn3Impl[BufD, BufI, BufI, BufD] {
 
-    protected val in0: Inlet[BufD] = shape.in0
+    protected val in0: InD = shape.in0
 
     protected def allocOutBuf(): BufD = ctrl.borrowBufD()
 

@@ -13,18 +13,16 @@
 
 package de.sciss.fscape.stream
 
-import akka.NotUsed
 import akka.stream.scaladsl.GraphDSL
 import akka.stream.stage.{GraphStage, GraphStageLogic}
-import akka.stream.{Attributes, FanInShape3, Inlet, Outlet}
+import akka.stream.{Attributes, FanInShape3}
 import de.sciss.dsp.Util.Pi2
 import de.sciss.fscape.stream.impl.{GenIn3Impl, WindowedLogicImpl}
 
 import scala.annotation.switch
 
 object GenWindow {
-  def apply(size: Outlet[BufI], shape: Outlet[BufI], param: Outlet[BufD])
-           (implicit b: GraphDSL.Builder[NotUsed], ctrl: Control): Outlet[BufD] = {
+  def apply(size: OutI, shape: OutI, param: OutD)(implicit b: GBuilder, ctrl: Control): OutD = {
     val stage0  = new Stage
     val stage   = b.add(stage0)
     import GraphDSL.Implicits._
@@ -167,10 +165,10 @@ object GenWindow {
     extends GraphStage[FanInShape3[BufI, BufI, BufD, BufD]] {
 
     val shape = new FanInShape3(
-      in0 = Inlet [BufI]("GenWindow.size" ),
-      in1 = Inlet [BufI]("GenWindow.shape"),
-      in2 = Inlet [BufD]("GenWindow.param"),
-      out = Outlet[BufD]("GenWindow.out"  )
+      in0 = InI ("GenWindow.size" ),
+      in1 = InI ("GenWindow.shape"),
+      in2 = InD ("GenWindow.param"),
+      out = OutD("GenWindow.out"  )
     )
 
     def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new Logic(shape)

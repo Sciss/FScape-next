@@ -13,10 +13,9 @@
 
 package de.sciss.fscape.stream
 
-import akka.NotUsed
 import akka.stream.scaladsl.GraphDSL
 import akka.stream.stage.{GraphStage, GraphStageLogic}
-import akka.stream.{Attributes, FanInShape4, Inlet, Outlet}
+import akka.stream.{Attributes, FanInShape4}
 import de.sciss.fscape.Util
 import de.sciss.fscape.stream.impl.{FilterIn4Impl, WindowedFilterLogicImpl}
 
@@ -33,8 +32,7 @@ object ResizeWindow {
     * @param start  the delta window size at the output window's beginning
     * @param stop   the delta window size at the output window's ending
     */
-  def apply(in: Outlet[BufD], size: Outlet[BufI], start: Outlet[BufI], stop: Outlet[BufI])
-           (implicit b: GraphDSL.Builder[NotUsed], ctrl: Control): Outlet[BufD] = {
+  def apply(in: OutD, size: OutI, start: OutI, stop: OutI)(implicit b: GBuilder, ctrl: Control): OutD = {
     val stage0  = new Stage
     val stage   = b.add(stage0)
     import GraphDSL.Implicits._
@@ -48,11 +46,11 @@ object ResizeWindow {
 
   private final class Stage(implicit ctrl: Control) extends GraphStage[FanInShape4[BufD, BufI, BufI, BufI, BufD]] {
     val shape = new FanInShape4(
-      in0 = Inlet [BufD]("ResizeWindow.in"   ),
-      in1 = Inlet [BufI]("ResizeWindow.size" ),
-      in2 = Inlet [BufI]("ResizeWindow.start"),
-      in3 = Inlet [BufI]("ResizeWindow.stop" ),
-      out = Outlet[BufD]("ResizeWindow.out"  )
+      in0 = InD ("ResizeWindow.in"   ),
+      in1 = InI ("ResizeWindow.size" ),
+      in2 = InI ("ResizeWindow.start"),
+      in3 = InI ("ResizeWindow.stop" ),
+      out = OutD("ResizeWindow.out"  )
     )
 
     def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new Logic(shape)
@@ -65,7 +63,7 @@ object ResizeWindow {
       with WindowedFilterLogicImpl[BufD, BufD, FanInShape4[BufD, BufI, BufI, BufI, BufD]]
       with FilterIn4Impl                            [BufD, BufI, BufI, BufI, BufD] {
 
-    protected val in0: Inlet[BufD] = shape.in0
+    protected val in0: InD = shape.in0
 
     protected def allocOutBuf(): BufD = ctrl.borrowBufD()
 

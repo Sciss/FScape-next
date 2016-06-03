@@ -13,8 +13,6 @@
 
 package de.sciss.fscape.stream
 
-import akka.NotUsed
-import akka.stream.Outlet
 import akka.stream.scaladsl.GraphDSL
 import de.sciss.fscape.stream.impl.ZipWindowStageImpl
 
@@ -27,8 +25,7 @@ object ZipWindow {
     * @param b      the second signal to zip
     * @param size   the window size. this is clipped to be `&lt;= 1`
     */
-  def apply(a: Outlet[BufD], b: Outlet[BufD], size: Outlet[BufI])
-           (implicit builder: GraphDSL.Builder[NotUsed], ctrl: Control): Outlet[BufD] =
+  def apply(a: OutD, b: OutD, size: OutI)(implicit builder: GBuilder, ctrl: Control): OutD =
     ZipWindowN(in = Vector(a, b), size = size)
 }
 
@@ -38,8 +35,7 @@ object ZipWindowN {
     * @param in         the signals to zip
     * @param size       the window size. this is clipped to be `&lt;= 1`
     */
-  def apply(in: ISeq[Outlet[BufD]], size: Outlet[BufI])
-           (implicit b: GraphDSL.Builder[NotUsed], ctrl: Control): Outlet[BufD] = {
+  def apply(in: ISeq[OutD], size: OutI)(implicit b: GBuilder, ctrl: Control): OutD = {
     val stage0  = new ZipWindowStageImpl(numInputs = in.size)
     val stage   = b.add(stage0)
     import GraphDSL.Implicits._

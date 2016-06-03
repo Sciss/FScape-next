@@ -13,8 +13,6 @@
 
 package de.sciss.fscape.stream
 
-import akka.NotUsed
-import akka.stream.Outlet
 import akka.stream.scaladsl.GraphDSL
 import de.sciss.fscape.stream.impl.UnzipWindowStageImpl
 
@@ -26,8 +24,7 @@ object UnzipWindow {
     * @param in     the signal to unzip
     * @param size   the window size. this is clipped to be `&lt;= 1`
     */
-  def apply(in: Outlet[BufD], size: Outlet[BufI])
-           (implicit b: GraphDSL.Builder[NotUsed], ctrl: Control): (Outlet[BufD], Outlet[BufD]) = {
+  def apply(in: OutD, size: OutI)(implicit b: GBuilder, ctrl: Control): (OutD, OutD) = {
     val Seq(out0, out1) = UnzipWindowN(2, in = in, size = size)
     (out0, out1)
   }
@@ -40,8 +37,7 @@ object UnzipWindowN {
     * @param in         the signal to unzip
     * @param size       the window size. this is clipped to be `&lt;= 1`
     */
-  def apply(numOutputs: Int, in: Outlet[BufD], size: Outlet[BufI])
-           (implicit b: GraphDSL.Builder[NotUsed], ctrl: Control): Vec[Outlet[BufD]] = {
+  def apply(numOutputs: Int, in: OutD, size: OutI)(implicit b: GBuilder, ctrl: Control): Vec[OutD] = {
     val stage0  = new UnzipWindowStageImpl(numOutputs = numOutputs)
     val stage   = b.add(stage0)
     import GraphDSL.Implicits._

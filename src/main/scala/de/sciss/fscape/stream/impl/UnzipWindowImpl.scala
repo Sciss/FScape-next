@@ -11,17 +11,17 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape.stream.impl
+package de.sciss.fscape.stream
+package impl
 
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
 import akka.stream.{Attributes, Inlet, Outlet, Shape}
 import de.sciss.fscape.Util
-import de.sciss.fscape.stream.{BufD, BufI, Control}
 
 import scala.collection.breakOut
 import scala.collection.immutable.{Seq => ISeq}
 
-case class UnzipWindowShape(in0: Inlet[BufD], in1: Inlet[BufI], outlets: ISeq[Outlet[BufD]]) extends Shape {
+case class UnzipWindowShape(in0: InD, in1: InI, outlets: ISeq[OutD]) extends Shape {
   val inlets: ISeq[Inlet[_]] = Vector(in0, in1)
 
   override def deepCopy(): UnzipWindowShape =
@@ -31,7 +31,7 @@ case class UnzipWindowShape(in0: Inlet[BufD], in1: Inlet[BufI], outlets: ISeq[Ou
     require(inlets .size == this.inlets .size, s"number of inlets [${inlets.size}] does not match [${this.inlets.size}]")
     require(outlets.size == this.outlets.size, s"number of outlets [${outlets.size}] does not match [${this.outlets.size}]")
     UnzipWindowShape(inlets(0).asInstanceOf[Inlet[BufD]], inlets(1).asInstanceOf[Inlet[BufI]],
-      outlets.asInstanceOf[ISeq[Outlet[BufD]]])
+      outlets.asInstanceOf[ISeq[OutD]])
   }
 }
 
@@ -39,9 +39,9 @@ final class UnzipWindowStageImpl(numOutputs: Int)(implicit ctrl: Control)
   extends GraphStage[UnzipWindowShape] {
 
   val shape = UnzipWindowShape(
-    in0     = Inlet[BufD]("UnzipWindow.in"),
-    in1     = Inlet[BufI]("UnzipWindow.size"),
-    outlets = Vector.tabulate(numOutputs)(idx => Outlet[BufD](s"UnzipWindow.out$idx"))
+    in0     = InD("UnzipWindow.in"),
+    in1     = InI("UnzipWindow.size"),
+    outlets = Vector.tabulate(numOutputs)(idx => OutD(s"UnzipWindow.out$idx"))
   )
 
   def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new UnzipWindowLogicImpl(shape)
@@ -79,7 +79,7 @@ final class UnzipWindowLogicImpl(shape: UnzipWindowShape)(implicit ctrl: Control
   @inline
   private[this] def shouldNext  = isNextWindow && bufIn0 != null
 
-  private final class Output(val let: Outlet[BufD]) extends OutHandler {
+  private final class Output(val let: OutD) extends OutHandler {
     var buf: BufD = _
     var off       = 0
     var remain    = 0
