@@ -13,54 +13,26 @@
 
 package de.sciss.fscape
 
+import akka.stream.ClosedShape
+import akka.stream.scaladsl.GraphDSL
 import de.sciss.fscape.graph.{Constant, UGenProxy}
+import de.sciss.fscape.stream.StreamIn
 
-import scala.collection.{breakOut, mutable}
+import scala.collection.breakOut
 import scala.collection.immutable.{IndexedSeq => Vec}
 
 object UGenGraph {
   trait Builder {
     def addUGen(ugen: UGen): Unit
     def visit[U](ref: AnyRef, init: => U): U
-
-//    implicit def streamControl: stream.Control
-//    implicit def streamBuilder: stream.GBuilder
   }
 
-  private trait AbstractBuilder extends Builder {
-    def build: UGenGraph
-  }
-
-  private[this] final val builderRef = new ThreadLocal[AbstractBuilder] {
-    override protected def initialValue = BuilderDummy
-  }
-
-  private object BuilderDummy extends AbstractBuilder {
-    def build: UGenGraph = outOfContext
-
-    def addUGen(ugen: UGen) = ()
-
-    def visit[U](ref: AnyRef, init: => U): U = outOfContext
-
-    private def outOfContext: Nothing = sys.error("Out of context")
-  }
-
-//  /** This is analogous to `UGenGraph.Builder` in ScalaCollider. */
-//  def builder: Builder = builderRef.get()
-
-  def build(graph: Graph): UGenGraph = {
-    val old = builderRef.get()
-    val b   = new BuilderImpl
-    builderRef.set(b)
-    try {
-      graph.sources.foreach { source =>
-        source.force(b)
-      }
-      b.build
-
-    } finally {
-      builderRef.set(old)
+  def build(graph: Graph)(implicit ctrl: stream.Control): UGenGraph = {
+    val b = new BuilderImpl
+    graph.sources.foreach { source =>
+      source.force(b)
     }
+    b.build
   }
 
   // ---- IndexedUGen ----
@@ -75,13 +47,13 @@ object UGenGraph {
     def makeEffective(): Int
   }
 
-  private final class ConstantIndex(c: Constant) extends UGenInIndex {
+  private final class ConstantIndex(val peer: Constant) extends UGenInIndex {
     def makeEffective() = 0
 
-    override def toString = s"ConstantIndex($c)"
+    override def toString = s"ConstantIndex($peer)"
   }
 
-  private final class UGenProxyIndex(iu: IndexedUGenBuilder, outIdx: Int) extends UGenInIndex {
+  private final class UGenProxyIndex(val iu: IndexedUGenBuilder, val outIdx: Int) extends UGenInIndex {
     def makeEffective(): Int = {
       if (!iu.effective) {
         iu.effective = true
@@ -94,19 +66,47 @@ object UGenGraph {
     override def toString = s"UGenProxyIndex($iu, $outIdx)"
   }
 
-  private final class BuilderImpl extends AbstractBuilder {
+  private final class BuilderImpl(implicit ctrl: stream.Control) extends Builder {
     private[this] var ugens     = Vector.empty[UGen]
     private[this] var sourceMap = Map.empty[AnyRef, Any]
 
     def build: UGenGraph = {
       val iUGens = indexUGens()
-      UGenGraph(ugens)
+      buildStream(iUGens)
+      new UGenGraph {
+        def run(): Unit = ???
+
+        def dispose(): Unit = ???
+      }
+    }
+
+    // - converts to StreamIn objects that automatically insert stream broadcasters
+    //   and dummy sinks
+    private def buildStream(ugens: Vec[IndexedUGenBuilder]): Unit = {
+      GraphDSL.create() { implicit dsl =>
+        implicit val sb   = stream.Builder()
+        ugens.foreach { iu =>
+          val args: Vec[StreamIn] = iu.inputIndices.map {
+            case c: ConstantIndex => c.peer
+            case u: UGenInIndex =>
+              ???
+          } (breakOut)
+
+          iu.ugen match {
+            case ugen: UGen.SingleOut =>
+              ugen.source.makeStream(args)
+            case ugen: UGen.ZeroOut   =>
+              ugen.source.makeStream(args)
+            case ugen: UGen.MultiOut  =>
+              ugen.source.makeStream(args)
+          }
+        }
+        ClosedShape
+      }
     }
 
     // - builds parent-child graph of UGens
     // - deletes no-op sub-trees
-    // - converts to StreamIn objects that automatically insert stream broadcasters
-    //   and dummy sinks
     private def indexUGens(): Vec[IndexedUGenBuilder] = {
       var numIneffective  = ugens.size
       val indexedUGens    = ugens.map { ugen =>
@@ -122,7 +122,7 @@ object UGenGraph {
             new ConstantIndex(c)
 
           case up: UGenProxy =>
-            val iui       = ugenMap(up.source)
+            val iui       = ugenMap(up.ugen)
             iui.children(up.outputIndex) ::= iu
             new UGenProxyIndex(iui, up.outputIndex)
         } (breakOut)
@@ -160,10 +160,8 @@ object UGenGraph {
     }
   }
 }
-final case class UGenGraph(ugens: Vec[UGen]) {
-  def run(): Unit = ???
+trait UGenGraph {
+  def run(): Unit
 
-  def dispose(): Unit = {
-    ???
-  }
+  def dispose(): Unit
 }

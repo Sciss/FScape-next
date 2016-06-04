@@ -3,6 +3,8 @@ package de.sciss.fscape
 import de.sciss.file._
 import de.sciss.synth.io.AudioFileSpec
 
+import scala.concurrent.ExecutionContext
+
 object GraphTest extends App {
   val fIn   = userHome / "Documents" / "projects" / "Unlike" / "audio_work" / "mentasm-e8646341-63dcf8a8.aif"
   val fOut  = userHome / "Music" / "work" / "_killme.aif"
@@ -42,6 +44,8 @@ object GraphTest extends App {
     DiskOut(file = fOut, spec = AudioFileSpec(numChannels = sig.size, sampleRate = 44100), in = sig)
   }
 
+  import ExecutionContext.Implicits.global
+  implicit val ctrl = stream.Control(bufSize = 1024)
   val process = g.expand
   process.run()
 }

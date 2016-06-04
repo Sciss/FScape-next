@@ -17,20 +17,20 @@ import de.sciss.fscape.{UGen, UGenIn, UGenSource}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-final class ZeroOutImpl(source: UGenSource.ZeroOut, val inputs: Vec[UGenIn], val isIndividual: Boolean)
+final class ZeroOutImpl(val source: UGenSource.ZeroOut, val inputs: Vec[UGenIn], val isIndividual: Boolean)
   extends UGen.ZeroOut {
 
   def name: String = source.name
 }
 
-final class SingleOutImpl(source: UGenSource.SingleOut, val inputs: Vec[UGenIn], val isIndividual: Boolean,
+final class SingleOutImpl(val source: UGenSource.SingleOut, val inputs: Vec[UGenIn], val isIndividual: Boolean,
                           val hasSideEffect: Boolean)
   extends UGen.SingleOut {
 
   def name: String = source.name
 }
 
-final class MultiOutImpl(source: UGenSource.MultiOut, val numOutputs: Int, val inputs: Vec[UGenIn],
+final class MultiOutImpl(val source: UGenSource.MultiOut, val numOutputs: Int, val inputs: Vec[UGenIn],
                          val isIndividual: Boolean, val hasSideEffect: Boolean)
   extends UGen.MultiOut {
 

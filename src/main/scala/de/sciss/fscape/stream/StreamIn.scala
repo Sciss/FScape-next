@@ -22,8 +22,8 @@ import scala.language.implicitConversions
 //  implicit def fromDoubleVec(peer: Vec[OutD]): Vec[StreamIn] = ???
 //}
 trait StreamIn {
-  def toDouble: OutD
-  def toInt   : OutI
+  def toDouble(implicit b: Builder): OutD
+  def toInt   (implicit b: Builder): OutI
 }
 
 object StreamOut {

@@ -82,7 +82,9 @@ object UGen {
   trait SingleOut extends graph.UGenProxy with UGen {
     final def numOutputs = 1
     final def outputIndex = 0
-    final def source: UGen = this
+    final def ugen: UGen = this
+
+    def source: UGenSource.SingleOut
   }
 
   object ZeroOut {
@@ -96,6 +98,8 @@ object UGen {
   trait ZeroOut extends UGen {
     final def numOutputs    = 0
     final def hasSideEffect = true  // implied by having no outputs
+
+    def source: UGenSource.ZeroOut
   }
 
   object MultiOut {
@@ -114,7 +118,9 @@ object UGen {
     final def unwrap(i: Int): UGenInLike = graph.UGenOutProxy(this, i % numOutputs)
 
     def outputs: Vec[UGenIn] = Vector.tabulate(numOutputs)(ch => graph.UGenOutProxy(this, ch))
-    
+
+    def source: UGenSource.MultiOut
+
     private[fscape] final def unbubble: UGenInLike = if (numOutputs == 1) outputs(0) else this
   }
 }
@@ -152,6 +158,10 @@ sealed trait UGenIn extends UGenInLike {
 }
 
 package graph {
+
+  import akka.stream.scaladsl
+  import de.sciss.fscape.stream.{BufD, BufI, OutD, OutI, StreamIn}
+
   object UGenInGroup {
     private final val emptyVal = new Apply(Vector.empty)
     def empty: UGenInGroup = emptyVal
@@ -174,7 +184,7 @@ package graph {
   }
 
   sealed trait UGenProxy extends UGenIn {
-    def source: UGen
+    def ugen: UGen
     def outputIndex: Int
   }
 
@@ -182,22 +192,45 @@ package graph {
     def unapply(c: Constant): Option[Double] = Some(c.doubleValue)
   }
   /** A scalar constant used as an input to a UGen. */
-  sealed trait Constant extends UGenIn {
-    def doubleValue: Double
+  sealed trait Constant extends UGenIn with StreamIn {
+    def doubleValue : Double
+    def intValue    : Int
+
+    def toDouble(implicit b: stream.Builder): OutD = b.add(scaladsl.Source.single(BufD(doubleValue))).out
+    def toInt   (implicit b: stream.Builder): OutI = b.add(scaladsl.Source.single(BufI(intValue   ))).out
   }
   object ConstantI {
     final val C0  = new ConstantI(0)
     final val C1  = new ConstantI(1)
     final val Cm1 = new ConstantI(-1)
   }
-  final case class ConstantI(value: Int)    extends Constant { def doubleValue = value.toDouble }
-  final case class ConstantL(value: Long)   extends Constant { def doubleValue = value.toDouble }
+  final case class ConstantI(value: Int) extends Constant {
+    def doubleValue = value.toDouble
+    def intValue    = value
+  }
+  final case class ConstantL(value: Long) extends Constant {
+    def doubleValue = value.toDouble
+    def intValue    = {
+      val res = value.toInt
+      if (res != value) throw new ArithmeticException(s"Long $value exceeds Int range")
+      res
+    }
+  }
   object ConstantD {
     final val C0  = new ConstantD(0)
     final val C1  = new ConstantD(1)
     final val Cm1 = new ConstantD(-1)
   }
-  final case class ConstantD(value: Double) extends Constant { def doubleValue = value }
+  final case class ConstantD(value: Double) extends Constant {
+    def doubleValue = value
+    def intValue    = {
+      if (value.isNaN) throw new ArithmeticException("NaN cannot be translated to Int")
+      val r = math.rint(value)
+      if (r < Int.MinValue || r > Int.MaxValue)
+        throw new ArithmeticException(s"Double $value exceeds Int range")
+      r.toInt
+    }
+  }
 
   //  /** A ControlOutProxy is similar to a UGenOutProxy in that it denotes
 //    * an output channel of a control UGen. However it refers to a control-proxy
@@ -217,10 +250,10 @@ package graph {
     * A sequence of these form the representation of a multi-channel-expanded
     * UGen.
     */
-  final case class UGenOutProxy(source: UGen.MultiOut, outputIndex: Int)
+  final case class UGenOutProxy(ugen: UGen.MultiOut, outputIndex: Int)
     extends UGenIn with UGenProxy {
 
     override def toString =
-      if (source.numOutputs == 1) source.toString else s"$source.\\($outputIndex)"
+      if (ugen.numOutputs == 1) ugen.toString else s"$ugen.\\($outputIndex)"
   }
 }
