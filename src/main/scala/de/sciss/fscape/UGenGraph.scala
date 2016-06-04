@@ -13,6 +13,9 @@
 
 package de.sciss.fscape
 
+import de.sciss.fscape.graph.{Constant, UGenProxy}
+
+import scala.collection.{breakOut, mutable}
 import scala.collection.immutable.{IndexedSeq => Vec}
 
 object UGenGraph {
@@ -60,13 +63,71 @@ object UGenGraph {
     }
   }
 
+  // ---- IndexedUGen ----
+  private final class IndexedUGenBuilder(val ugen: UGen /* , var index: Int */, var effective: Boolean) {
+    var children      = Array.fill(ugen.numOutputs)(List.empty[IndexedUGenBuilder]) // mutable.Buffer.empty[IndexedUGenBuilder]
+    var inputIndices  = List.empty[UGenProxyIndex]
+
+    override def toString = s"IndexedUGen($ugen, $effective) : richInputs = $inputIndices"
+  }
+
+  private final class UGenProxyIndex(iu: IndexedUGenBuilder, outIdx: Int) {
+    def makeEffective(): Int = {
+      if (!iu.effective) {
+        iu.effective = true
+        var numEff   = 1
+        iu.inputIndices.foreach(numEff += _.makeEffective())
+        numEff
+      } else 0
+    }
+
+    override def toString = s"UGenProxyIndex($iu, $outIdx)"
+  }
+
   private final class BuilderImpl extends AbstractBuilder {
     private[this] var ugens     = Vector.empty[UGen]
     private[this] var sourceMap = Map.empty[AnyRef, Any]
 
     def build: UGenGraph = {
-      // XXX TODO -- optimise; for now just return all ugens unsorted
+      val iUGens = indexUGens()
       UGenGraph(ugens)
+    }
+
+    // - builds parent-child graph of UGens
+    // - deletes no-op sub-trees
+    // - converts to StreamIn objects that automatically insert stream broadcasters
+    //   and dummy sinks
+    private def indexUGens(): Vec[IndexedUGenBuilder] = {
+      var numIneffective  = ugens.size
+      val indexedUGens    = ugens.map { ugen =>
+        val eff = ugen.hasSideEffect
+        if (eff) numIneffective -= 1
+        new IndexedUGenBuilder(ugen, eff)
+      }
+
+      val ugenMap: Map[AnyRef, IndexedUGenBuilder] = indexedUGens.map(iu => (iu.ugen, iu))(breakOut)
+      indexedUGens.foreach { iu =>
+        iu.inputIndices = iu.ugen.inputs.collect {
+          case up: UGenProxy =>
+            val iui       = ugenMap(up.source)
+            iui.children(up.outputIndex) ::= iu
+            new UGenProxyIndex(iui, up.outputIndex)
+        } (breakOut)
+        if (iu.effective) iu.inputIndices.foreach(numIneffective -= _.makeEffective())
+      }
+      val filtered: Vec[IndexedUGenBuilder] =
+        if (numIneffective == 0)
+          indexedUGens
+        else
+          indexedUGens.collect {
+            case iu if iu.effective =>
+              for (outputIndex <- iu.children.indices) {
+                iu.children(outputIndex) = iu.children(outputIndex).filter(_.effective)
+              }
+              iu
+          }
+
+      filtered
     }
 
     def visit[U](ref: AnyRef, init: => U): U = {

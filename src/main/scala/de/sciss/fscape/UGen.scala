@@ -41,7 +41,8 @@ sealed trait UGen extends Product {
 
   def inputs      : Vec[UGenIn]
 
-  def numInputs: Int = inputs.size
+  def numInputs : Int = inputs.size
+  def numOutputs: Int
 
   // the full UGen spec:
   // name, inputs

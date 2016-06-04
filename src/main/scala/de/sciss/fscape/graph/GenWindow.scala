@@ -18,6 +18,7 @@ import de.sciss.fscape.stream.StreamIn
 
 import scala.annotation.switch
 import scala.collection.immutable.{IndexedSeq => Vec}
+import scala.language.implicitConversions
 
 object GenWindow {
   import Util.Pi2

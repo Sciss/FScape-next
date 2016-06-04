@@ -13,6 +13,8 @@
 
 package de.sciss
 
+import scala.language.implicitConversions
+
 package object fscape {
   implicit def geOps(g: GE): GEOps = new GEOps(g)
 }
