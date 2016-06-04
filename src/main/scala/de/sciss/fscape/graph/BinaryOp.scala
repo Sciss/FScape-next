@@ -14,7 +14,7 @@
 package de.sciss.fscape
 package graph
 
-import de.sciss.fscape.stream.StreamIn
+import de.sciss.fscape.stream.{StreamIn, StreamOut}
 import de.sciss.numbers.{DoubleFunctions => rd, DoubleFunctions2 => rd2}
 
 import scala.annotation.switch
@@ -342,5 +342,8 @@ final case class BinaryOp(op: BinaryOp.Op, a: GE, b: GE) extends UGenSource.Sing
   protected def makeUGen(args: Vec[UGenIn])(implicit builder: UGenGraph.Builder): UGenInLike =
     UGen.SingleOut(this, args)
 
-  private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamIn = ???
+  private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
+    val Vec(in1, in2) = args
+    stream.BinaryOp(op = op, in1 = in1.toDouble, in2 = in2.toDouble)
+  }
 }

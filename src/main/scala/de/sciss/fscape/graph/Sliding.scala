@@ -13,7 +13,7 @@
 
 package de.sciss.fscape.graph
 
-import de.sciss.fscape.stream.StreamIn
+import de.sciss.fscape.stream.{StreamIn, StreamOut}
 import de.sciss.fscape.{GE, UGen, UGenGraph, UGenIn, UGenInLike, UGenSource, stream}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -25,5 +25,8 @@ final case class Sliding(in: GE, size: GE, step: GE) extends UGenSource.SingleOu
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
     UGen.SingleOut(this, args)
 
-  private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamIn = ???
+  private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
+    val Vec(in, size, step) = args
+    stream.Sliding(in = in.toDouble, size = size.toInt, step = step.toInt)
+  }
 }

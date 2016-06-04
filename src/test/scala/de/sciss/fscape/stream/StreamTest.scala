@@ -46,7 +46,7 @@ object StreamTest extends App {
     val in      = DiskIn(file = fIn, numChannels = 1).head
     val fftSize = 32768 // 8192
     val winIn   = GenWindow(size = const(fftSize), shape = const(graph.GenWindow.Hann.id), param = const(0.0))
-    val winOut  = BinaryOp(in1 = in, in2 = winIn, op = BinaryOp.Times)
+    val winOut  = BinaryOp(in1 = in, in2 = winIn, op = graph.BinaryOp.Times)
     val sig     = winOut
     DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig :: Nil)
     ClosedShape
@@ -110,10 +110,10 @@ object StreamTest extends App {
     val fft         = Real1FullFFT  (in = inW , size = const(fftSize), padding = const(0))
 
     // 'percussion'
-    val log         = ComplexUnaryOp(in = fft , op = ComplexUnaryOp.Log)
-    val logC        = BinaryOp      (in1 = log , in2 = const(-56 /* -80 */), op = BinaryOp.Max)
+    val log         = ComplexUnaryOp(in = fft , op = graph.ComplexUnaryOp.Log)
+    val logC        = BinaryOp      (in1 = log , in2 = const(-56 /* -80 */), op = graph.BinaryOp.Max)
     val cep0        = Complex1IFFT  (in  = logC, size = const(fftSize), padding = const(0))
-    val cep         = BinaryOp      (in1 = cep0 , in2 = const(1.0/fftSize), op = BinaryOp.Times)
+    val cep         = BinaryOp      (in1 = cep0 , in2 = const(1.0/fftSize), op = graph.BinaryOp.Times)
     val (pos0, neg0) = UnzipWindow   (in = cep , size = const(fftSize))
     import GraphDSL.Implicits._
     val pos1        = ResizeWindow  (in = pos0, size = const(fftSize), start = const(0), stop = const(2)) // 'add nyquist'
@@ -169,21 +169,22 @@ object StreamTest extends App {
     val cInB        = BroadcastBuf(cIn, 2)
     val dInB        = BroadcastBuf(dIn, 2)
 
-    val am1         = BinaryOp(op = BinaryOp.Times, in1 = aInB(0), in2 = const(crr))
-    val am2         = BinaryOp(op = BinaryOp.Times, in1 = cInB(0), in2 = const(ccr))
-    val aOut        = BinaryOp(op = BinaryOp.Plus , in1 = am1, in2 = am2)
+    import graph.BinaryOp.{Plus, Times}
+    val am1         = BinaryOp(op = Times, in1 = aInB(0), in2 = const(crr))
+    val am2         = BinaryOp(op = Times, in1 = cInB(0), in2 = const(ccr))
+    val aOut        = BinaryOp(op = Plus , in1 = am1, in2 = am2)
 
-    val bm1         = BinaryOp(op = BinaryOp.Times, in1 = bInB(0), in2 = const(cri))
-    val bm2         = BinaryOp(op = BinaryOp.Times, in1 = dInB(0), in2 = const(cci))
-    val bOut        = BinaryOp(op = BinaryOp.Plus , in1 = bm1, in2 = bm2)
+    val bm1         = BinaryOp(op = Times, in1 = bInB(0), in2 = const(cri))
+    val bm2         = BinaryOp(op = Times, in1 = dInB(0), in2 = const(cci))
+    val bOut        = BinaryOp(op = Plus , in1 = bm1, in2 = bm2)
 
-    val cm1         = BinaryOp(op = BinaryOp.Times, in1 = cInB(1), in2 = const(clr))
-    val cm2         = BinaryOp(op = BinaryOp.Times, in1 = aInB(1), in2 = const(car))
-    val cOut        = BinaryOp(op = BinaryOp.Plus , in1 = cm1, in2 = cm2)
+    val cm1         = BinaryOp(op = Times, in1 = cInB(1), in2 = const(clr))
+    val cm2         = BinaryOp(op = Times, in1 = aInB(1), in2 = const(car))
+    val cOut        = BinaryOp(op = Plus , in1 = cm1, in2 = cm2)
 
-    val dm1         = BinaryOp(op = BinaryOp.Times, in1 = dInB(1), in2 = const(cli))
-    val dm2         = BinaryOp(op = BinaryOp.Times, in1 = bInB(1), in2 = const(cai))
-    val dOut        = BinaryOp(op = BinaryOp.Plus , in1 = dm1, in2 = dm2)
+    val dm1         = BinaryOp(op = Times, in1 = dInB(1), in2 = const(cli))
+    val dm2         = BinaryOp(op = Times, in1 = bInB(1), in2 = const(cai))
+    val dOut        = BinaryOp(op = Plus , in1 = dm1, in2 = dm2)
 
     val posOut0     = ZipWindow(a = aOut, b = bOut, size = const(1))
     val negOutR0    = ZipWindow(a = cOut, b = dOut, size = const(1))
@@ -197,8 +198,8 @@ object StreamTest extends App {
     val negOut      = ReverseWindow (in = negOutR, size = const(fftSize), clump = const(2))
     val logOut      = ZipWindow(a = posOut, b = negOut, size = const(fftSize))
     val freq0       = Complex1FFT   (in = logOut, size = const(fftSize), padding = const(0))
-    val freq        = BinaryOp      (in1 = freq0 , in2 = const(fftSize), op = BinaryOp.Times)
-    val fftOut      = ComplexUnaryOp(in = freq  , op = ComplexUnaryOp.Exp)
+    val freq        = BinaryOp      (in1 = freq0 , in2 = const(fftSize), op = Times)
+    val fftOut      = ComplexUnaryOp(in = freq  , op = graph.ComplexUnaryOp.Exp)
 
     // 'synthesis'
     val outW        = Real1FullIFFT (in = fftOut, size = const(fftSize), padding = const(0))
@@ -210,6 +211,8 @@ object StreamTest extends App {
   lazy val graphMONO = GraphDSL.create() { implicit dsl =>
     implicit val b = Builder()
 
+    import graph.BinaryOp.{Times, Max}
+
     // 'analysis'
     val in          = DiskIn(file = fIn, numChannels = 1).head
     val fftSize     = 131072 // 32768 // 8192
@@ -219,10 +222,10 @@ object StreamTest extends App {
     val fft         = fft0 // ComplexUnaryOp(in = fft0, op = ComplexUnaryOp.Conj)
 
     // 'percussion'
-    val log         = ComplexUnaryOp(in = fft , op = ComplexUnaryOp.Log)
-    val logC        = BinaryOp      (in1 = log , in2  = const(-80), op = BinaryOp.Max)
+    val log         = ComplexUnaryOp(in = fft , op = graph.ComplexUnaryOp.Log)
+    val logC        = BinaryOp      (in1 = log , in2  = const(-80), op = Max)
     val cep0        = Complex1IFFT  (in  = logC, size = const(fftSize), padding = const(0))
-    val cep         = BinaryOp      (in1 = cep0, in2  = const(1.0/fftSize), op = BinaryOp.Times)
+    val cep         = BinaryOp      (in1 = cep0, in2  = const(1.0/fftSize), op = Times)
 
     // 'variant 1'
     val crr =  0; val cri =  0
@@ -246,18 +249,18 @@ object StreamTest extends App {
       crr = const(crr), cri = const(cri), clr = const(clr), cli = const(cli),
       ccr = const(ccr), cci = const(cci), car = const(car), cai = const(cai))
     val freq0       = Complex1FFT   (in = cepOut, size = const(fftSize), padding = const(0))
-    val freq1       = BinaryOp      (in1 = freq0, in2 = const(fftSize), op = BinaryOp.Times)
+    val freq1       = BinaryOp      (in1 = freq0, in2 = const(fftSize), op = Times)
     val freq        = freq1 // ComplexUnaryOp(in = freq1, op = ComplexUnaryOp.Conj)
-    val fftOut      = ComplexUnaryOp(in = freq  , op = ComplexUnaryOp.Exp)
+    val fftOut      = ComplexUnaryOp(in = freq  , op = graph.ComplexUnaryOp.Exp)
 
     // 'synthesis'
     val outW        = Real1FullIFFT (in = fftOut, size = const(fftSize), padding = const(0))
     val sig0        = outW  // XXX TODO: apply window function and overlap-add
 
     // XXX TODO --- what's this gain factor?
-    val gain        = BinaryOp      (in1 = sig0, in2 = const(1.0/2097152), op = BinaryOp.Times)
+    val gain        = BinaryOp      (in1 = sig0, in2 = const(1.0/2097152), op = Times)
     val winIn       = GenWindow(size = const(fftSize), shape = const(graph.GenWindow.Hann.id), param = const(0.0))
-    val winOut      = BinaryOp(in1 = gain, in2 = winIn, op = BinaryOp.Times)
+    val winOut      = BinaryOp(in1 = gain, in2 = winIn, op = Times)
     val sig         = OverlapAdd(winOut, size = const(fftSize), step = const(winStep))
 
     DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig :: Nil)
@@ -266,6 +269,8 @@ object StreamTest extends App {
 
   lazy val _graph = GraphDSL.create() { implicit dsl =>
     implicit val b = Builder()
+
+    import graph.BinaryOp.{Times, Max}
 
     // 'analysis'
     val in          = DiskIn(file = fIn, numChannels = 1).head
@@ -276,10 +281,10 @@ object StreamTest extends App {
     val fft         = fft0 // ComplexUnaryOp(in = fft0, op = ComplexUnaryOp.Conj)
 
     // 'percussion'
-    val log         = ComplexUnaryOp(in = fft , op = ComplexUnaryOp.Log)
-    val logC        = BinaryOp      (in1 = log , in2  = const(-80), op = BinaryOp.Max)
+    val log         = ComplexUnaryOp(in = fft , op = graph.ComplexUnaryOp.Log)
+    val logC        = BinaryOp      (in1 = log , in2  = const(-80), op = Max)
     val cep0        = Complex1IFFT  (in  = logC, size = const(fftSize), padding = const(0))
-    val cep1        = BinaryOp      (in1 = cep0, in2  = const(1.0/fftSize), op = BinaryOp.Times)
+    val cep1        = BinaryOp      (in1 = cep0, in2  = const(1.0/fftSize), op = Times)
 
     val coefs       = Vector(CepCoef.One, CepCoef.Two)
     val cepB        = BroadcastBuf(in = cep1, numOutputs = 2)
@@ -289,16 +294,16 @@ object StreamTest extends App {
         crr = const(crr), cri = const(cri), clr = const(clr), cli = const(cli),
         ccr = const(ccr), cci = const(cci), car = const(car), cai = const(cai))
       val freq0       = Complex1FFT   (in = cepOut, size = const(fftSize), padding = const(0))
-      val freq1       = BinaryOp      (in1 = freq0, in2 = const(fftSize), op = BinaryOp.Times)
+      val freq1       = BinaryOp      (in1 = freq0, in2 = const(fftSize), op = Times)
       val freq        = freq1 // ComplexUnaryOp(in = freq1, op = ComplexUnaryOp.Conj)
-      val fftOut      = ComplexUnaryOp(in = freq  , op = ComplexUnaryOp.Exp)
+      val fftOut      = ComplexUnaryOp(in = freq  , op = graph.ComplexUnaryOp.Exp)
 
       // 'synthesis'
       val outW        = Real1FullIFFT(in = fftOut, size = const(fftSize), padding = const(0))
 
-      val times       = BinaryOp(in1 = outW, in2 = const(gain), op = BinaryOp.Times)
+      val times       = BinaryOp(in1 = outW, in2 = const(gain), op = Times)
       val winIn       = GenWindow(size = const(fftSize), shape = const(graph.GenWindow.Hann.id), param = const(0.0))
-      val winOut      = BinaryOp(in1 = times, in2 = winIn, op = BinaryOp.Times)
+      val winOut      = BinaryOp(in1 = times, in2 = winIn, op = Times)
       val lap         = OverlapAdd(winOut, size = const(fftSize), step = const(winStep))
       lap
     }

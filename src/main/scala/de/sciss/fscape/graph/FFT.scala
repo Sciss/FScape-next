@@ -14,66 +14,55 @@
 package de.sciss.fscape
 package graph
 
-import de.sciss.fscape.stream.StreamIn
+import de.sciss.fscape.stream.{OutD, OutI, StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-final case class Real1FFT(in: GE, size: GE, padding: GE = 0) extends UGenSource.SingleOut {
-  protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
+sealed trait FFTUGen extends UGenSource.SingleOut {
+  def in      : GE
+  def size    : GE
+  def padding : GE
+
+  protected def apply(in: OutD, size: OutI, padding: OutI)(implicit b: stream.Builder): OutD
+
+  protected final def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
     unwrap(Vector(in.expand, size.expand, padding.expand))
 
-  protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
+  protected final def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
     UGen.SingleOut(this, args)
 
-  private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamIn = ???
+  private[fscape] final def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
+    val Vec(in, size, padding) = args
+    apply(in = in.toDouble, size = size.toInt, padding = padding.toInt)
+  }
 }
 
-final case class Real1IFFT(in: GE, size: GE, padding: GE = 0) extends UGenSource.SingleOut {
-  protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
-    unwrap(Vector(in.expand, size.expand, padding.expand))
-
-  protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
-    UGen.SingleOut(this, args)
-
-  private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamIn = ???
+final case class Real1FFT(in: GE, size: GE, padding: GE = 0) extends FFTUGen {
+  protected def apply(in: OutD, size: OutI, padding: OutI)(implicit b: stream.Builder): OutD =
+    stream.Real1FFT(in = in, size = size, padding = padding)
 }
 
-final case class Real1FullFFT(in: GE, size: GE, padding: GE = 0) extends UGenSource.SingleOut {
-  protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
-    unwrap(Vector(in.expand, size.expand, padding.expand))
-
-  protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
-    UGen.SingleOut(this, args)
-
-  private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamIn = ???
+final case class Real1IFFT(in: GE, size: GE, padding: GE = 0) extends FFTUGen {
+  protected def apply(in: OutD, size: OutI, padding: OutI)(implicit b: stream.Builder): OutD =
+    stream.Real1IFFT(in = in, size = size, padding = padding)
 }
 
-final case class Real1FullIFFT(in: GE, size: GE, padding: GE = 0) extends UGenSource.SingleOut {
-  protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
-    unwrap(Vector(in.expand, size.expand, padding.expand))
-
-  protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
-    UGen.SingleOut(this, args)
-
-  private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamIn = ???
+final case class Real1FullFFT(in: GE, size: GE, padding: GE = 0) extends FFTUGen {
+  protected def apply(in: OutD, size: OutI, padding: OutI)(implicit b: stream.Builder): OutD =
+    stream.Real1FullFFT(in = in, size = size, padding = padding)
 }
 
-final case class Complex1FFT(in: GE, size: GE, padding: GE = 0) extends UGenSource.SingleOut {
-  protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
-    unwrap(Vector(in.expand, size.expand, padding.expand))
-
-  protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
-    UGen.SingleOut(this, args)
-
-  private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamIn = ???
+final case class Real1FullIFFT(in: GE, size: GE, padding: GE = 0) extends FFTUGen {
+  protected def apply(in: OutD, size: OutI, padding: OutI)(implicit b: stream.Builder): OutD =
+    stream.Real1FullIFFT(in = in, size = size, padding = padding)
 }
 
-final case class Complex1IFFT(in: GE, size: GE, padding: GE = 0) extends UGenSource.SingleOut {
-  protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
-    unwrap(Vector(in.expand, size.expand, padding.expand))
+final case class Complex1FFT(in: GE, size: GE, padding: GE = 0) extends FFTUGen {
+  protected def apply(in: OutD, size: OutI, padding: OutI)(implicit b: stream.Builder): OutD =
+    stream.Complex1FFT(in = in, size = size, padding = padding)
+}
 
-  protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
-    UGen.SingleOut(this, args)
-
-  private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamIn = ???
+final case class Complex1IFFT(in: GE, size: GE, padding: GE = 0) extends FFTUGen {
+  protected def apply(in: OutD, size: OutI, padding: OutI)(implicit b: stream.Builder): OutD =
+    stream.Complex1IFFT(in = in, size = size, padding = padding)
 }

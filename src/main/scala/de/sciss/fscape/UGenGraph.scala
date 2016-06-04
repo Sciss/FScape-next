@@ -66,12 +66,22 @@ object UGenGraph {
   // ---- IndexedUGen ----
   private final class IndexedUGenBuilder(val ugen: UGen /* , var index: Int */, var effective: Boolean) {
     var children      = Array.fill(ugen.numOutputs)(List.empty[IndexedUGenBuilder]) // mutable.Buffer.empty[IndexedUGenBuilder]
-    var inputIndices  = List.empty[UGenProxyIndex]
+    var inputIndices  = List.empty[UGenInIndex]
 
     override def toString = s"IndexedUGen($ugen, $effective) : richInputs = $inputIndices"
   }
 
-  private final class UGenProxyIndex(iu: IndexedUGenBuilder, outIdx: Int) {
+  private trait UGenInIndex {
+    def makeEffective(): Int
+  }
+
+  private final class ConstantIndex(c: Constant) extends UGenInIndex {
+    def makeEffective() = 0
+
+    override def toString = s"ConstantIndex($c)"
+  }
+
+  private final class UGenProxyIndex(iu: IndexedUGenBuilder, outIdx: Int) extends UGenInIndex {
     def makeEffective(): Int = {
       if (!iu.effective) {
         iu.effective = true
@@ -107,7 +117,10 @@ object UGenGraph {
 
       val ugenMap: Map[AnyRef, IndexedUGenBuilder] = indexedUGens.map(iu => (iu.ugen, iu))(breakOut)
       indexedUGens.foreach { iu =>
-        iu.inputIndices = iu.ugen.inputs.collect {
+        iu.inputIndices = iu.ugen.inputs.map {
+          case c: Constant =>
+            new ConstantIndex(c)
+
           case up: UGenProxy =>
             val iui       = ugenMap(up.source)
             iui.children(up.outputIndex) ::= iu

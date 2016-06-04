@@ -14,7 +14,7 @@
 package de.sciss.fscape
 package graph
 
-import de.sciss.fscape.stream.StreamIn
+import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
@@ -29,5 +29,10 @@ final case class FoldCepstrum(in: GE, size: GE,
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
     UGen.SingleOut(this, args)
 
-  private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamIn = ???
+  private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
+    val Vec(in, size, crr, cri, clr, cli, ccr, cci, car, cai) = args
+    stream.FoldCepstrum(in = in.toDouble, size = size.toInt,
+      crr = crr.toDouble, cri = cri.toDouble, clr = clr.toDouble, cli = cli.toDouble,
+      ccr = ccr.toDouble, cci = cci.toDouble, car = car.toDouble, cai = cai.toDouble)
+  }
 }

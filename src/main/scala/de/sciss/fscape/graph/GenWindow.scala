@@ -14,7 +14,7 @@
 package de.sciss.fscape
 package graph
 
-import de.sciss.fscape.stream.StreamIn
+import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.annotation.switch
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -161,5 +161,8 @@ final case class GenWindow(size: GE, shape: GE, param: GE = 0.0) extends UGenSou
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
     UGen.SingleOut(this, args)
 
-  private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamIn = ???
+  private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
+    val Vec(size, shape, param) = args
+    stream.GenWindow(size = size.toInt, shape = shape.toInt, param = param.toDouble)
+  }
 }

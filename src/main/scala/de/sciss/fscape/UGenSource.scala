@@ -14,7 +14,7 @@
 package de.sciss.fscape
 
 import de.sciss.fscape.graph.UGenInGroup
-import de.sciss.fscape.stream.StreamIn
+import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
@@ -29,8 +29,8 @@ object UGenSource {
     }
   }
 
-  trait SingleOut extends SomeOut[StreamIn]
-  trait MultiOut  extends SomeOut[Vec[StreamIn]]
+  trait SingleOut extends SomeOut[StreamOut]
+  trait MultiOut  extends SomeOut[Vec[StreamOut]]
 
   protected sealed trait SomeOut[S] extends UGenSource[UGenInLike, S] with GE.Lazy {
     final protected def rewrap(args: Vec[UGenInLike], exp: Int)(implicit b: UGenGraph.Builder): UGenInLike =

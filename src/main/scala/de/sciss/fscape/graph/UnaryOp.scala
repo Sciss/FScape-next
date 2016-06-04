@@ -14,7 +14,7 @@
 package de.sciss.fscape
 package graph
 
-import de.sciss.fscape.stream.StreamIn
+import de.sciss.fscape.stream.{StreamIn, StreamOut}
 import de.sciss.numbers.{DoubleFunctions => rd, DoubleFunctions2 => rd2}
 
 import scala.annotation.switch
@@ -285,10 +285,14 @@ object UnaryOp {
   //  }
 }
 final case class UnaryOp(op: UnaryOp.Op, in: GE) extends UGenSource.SingleOut {
+  protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
+    unwrap(Vector(in.expand))
 
-  protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike = ???
+  protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
+    UGen.SingleOut(this, args)
 
-  protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = ???
-
-  private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamIn = ???
+  private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
+    val Vec(in) = args
+    stream.UnaryOp(op = op, in = in.toDouble)
+  }
 }

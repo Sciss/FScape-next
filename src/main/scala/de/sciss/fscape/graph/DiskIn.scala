@@ -15,7 +15,7 @@ package de.sciss.fscape
 package graph
 
 import de.sciss.file.File
-import de.sciss.fscape.stream.{Control, GBuilder, StreamIn}
+import de.sciss.fscape.stream.{Control, GBuilder, StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
@@ -25,6 +25,6 @@ final case class DiskIn(file: File, numChannels: Int) extends UGenSource.MultiOu
 
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = makeUGen(Vector.empty)
 
-  private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Vec[StreamIn] =
+  private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Vec[StreamOut] =
     stream.DiskIn(file = file, numChannels = numChannels)
 }
