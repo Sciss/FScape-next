@@ -27,12 +27,19 @@ object Builder {
       import GraphDSL.Implicits._
       out ~> in
     }
+
+    def map[A, B](out: Outlet[A])(fun: A => B): Outlet[B] = {
+      import GraphDSL.Implicits._
+      out.map(fun).outlet
+    }
   }
 }
 trait Builder {
   def control: Control
 
   def add[S <: Shape](graph: Graph[S, _]): S
+
+  def map[A, B](out: Outlet[A])(fun: A => B): Outlet[B]
 
   def connect[A](out: Outlet[A], in: Inlet[A]): Unit
 }

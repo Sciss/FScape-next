@@ -1,9 +1,13 @@
 package de.sciss.fscape
 
+import akka.actor.ActorSystem
+import akka.stream.ActorMaterializer
 import de.sciss.file._
+import de.sciss.fscape.gui.SimpleGUI
 import de.sciss.synth.io.AudioFileSpec
 
 import scala.concurrent.ExecutionContext
+import scala.swing.Swing
 
 object GraphTest extends App {
   val fIn   = userHome / "Documents" / "projects" / "Unlike" / "audio_work" / "mentasm-e8646341-63dcf8a8.aif"
@@ -45,7 +49,15 @@ object GraphTest extends App {
   }
 
   import ExecutionContext.Implicits.global
-  implicit val ctrl = stream.Control(bufSize = 1024)
-  val process = g.expand
-  process.run()
+  implicit val ctrl   = stream.Control(bufSize = 1024)
+  val process         = g.expand
+  implicit val system = ActorSystem()
+  implicit val mat    = ActorMaterializer()
+  process.runnable.run()
+
+  Swing.onEDT {
+    SimpleGUI(ctrl)
+  }
+
+  println("Running.")
 }

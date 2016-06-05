@@ -13,11 +13,13 @@
 
 package de.sciss.fscape
 
+import akka.NotUsed
 import akka.stream.ClosedShape
-import akka.stream.scaladsl.GraphDSL
+import akka.stream.scaladsl.{GraphDSL, RunnableGraph}
 import de.sciss.fscape.graph.{Constant, UGenProxy}
 import de.sciss.fscape.stream.StreamIn
 
+import scala.annotation.switch
 import scala.collection.breakOut
 import scala.collection.immutable.{IndexedSeq => Vec}
 
@@ -40,7 +42,7 @@ object UGenGraph {
     var children      = Array.fill(ugen.numOutputs)(List.empty[IndexedUGenBuilder]) // mutable.Buffer.empty[IndexedUGenBuilder]
     var inputIndices  = List.empty[UGenInIndex]
 
-    override def toString = s"IndexedUGen($ugen, $effective) : richInputs = $inputIndices"
+    override def toString = s"Idx($ugen, $effective) : richInputs = $inputIndices"
   }
 
   private trait UGenInIndex {
@@ -50,7 +52,7 @@ object UGenGraph {
   private final class ConstantIndex(val peer: Constant) extends UGenInIndex {
     def makeEffective() = 0
 
-    override def toString = s"ConstantIndex($peer)"
+    override def toString = peer.toString
   }
 
   private final class UGenProxyIndex(val iu: IndexedUGenBuilder, val outIdx: Int) extends UGenInIndex {
@@ -63,7 +65,7 @@ object UGenGraph {
       } else 0
     }
 
-    override def toString = s"UGenProxyIndex($iu, $outIdx)"
+    override def toString = s"$iu[$outIdx]"
   }
 
   private final class BuilderImpl(implicit ctrl: stream.Control) extends Builder {
@@ -71,38 +73,60 @@ object UGenGraph {
     private[this] var sourceMap = Map.empty[AnyRef, Any]
 
     def build: UGenGraph = {
-      val iUGens = indexUGens()
-      buildStream(iUGens)
-      new UGenGraph {
-        def run(): Unit = ???
-
-        def dispose(): Unit = ???
-      }
+      val iUGens  = indexUGens()
+      val rg      = buildStream(iUGens)
+      UGenGraph(rg)
     }
 
     // - converts to StreamIn objects that automatically insert stream broadcasters
     //   and dummy sinks
-    private def buildStream(ugens: Vec[IndexedUGenBuilder]): Unit = {
-      GraphDSL.create() { implicit dsl =>
-        implicit val sb   = stream.Builder()
+    private def buildStream(ugens: Vec[IndexedUGenBuilder]): RunnableGraph[NotUsed] = {
+      val _graph = GraphDSL.create() { implicit dsl =>
+        implicit val sb = stream.Builder()
+
+        var ugenOutMap = Map.empty[IndexedUGenBuilder, Array[StreamIn]]
+
         ugens.foreach { iu =>
           val args: Vec[StreamIn] = iu.inputIndices.map {
-            case c: ConstantIndex => c.peer
-            case u: UGenInIndex =>
-              ???
+            case c: ConstantIndex   => c.peer
+            case u: UGenProxyIndex  => ugenOutMap(u.iu)(u.outIdx)
           } (breakOut)
+
+          def mkOut(outlet: stream.OutD, numChildren: Int): StreamIn = (numChildren: @switch) match {
+            case 0 =>
+              // XXX TODO -- we got to attach a dummy sink here
+              StreamIn.unused
+            case 1 => StreamIn.single(outlet)
+            case n => StreamIn.multi (outlet, numChildren)
+          }
+
+          @inline def add(value: Array[StreamIn]): Unit = {
+            println(s"map += $iu -> ${value.mkString("[", ", ", "]")}")
+            ugenOutMap += iu -> value
+          }
 
           iu.ugen match {
             case ugen: UGen.SingleOut =>
-              ugen.source.makeStream(args)
-            case ugen: UGen.ZeroOut   =>
-              ugen.source.makeStream(args)
+              val out         = ugen.source.makeStream(args)
+              val numChildren = iu.children(0).size
+              val value       = Array(mkOut(out.peer, numChildren))
+              add(value)
+
             case ugen: UGen.MultiOut  =>
+              val outs  = ugen.source.makeStream(args)
+              val value = outs.zipWithIndex.map { case (out, outIdx) =>
+                val numChildren = iu.children(outIdx).size
+                mkOut(out.peer, numChildren)
+              } (breakOut) : Array[StreamIn]
+              add(value)
+
+            case ugen: UGen.ZeroOut   =>
               ugen.source.makeStream(args)
           }
         }
         ClosedShape
       }
+      RunnableGraph.fromGraph(_graph)
     }
 
     // - builds parent-child graph of UGens
@@ -160,8 +184,4 @@ object UGenGraph {
     }
   }
 }
-trait UGenGraph {
-  def run(): Unit
-
-  def dispose(): Unit
-}
+final case class UGenGraph(runnable: RunnableGraph[NotUsed])

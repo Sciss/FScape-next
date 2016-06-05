@@ -207,6 +207,7 @@ package graph {
   final case class ConstantI(value: Int) extends Constant {
     def doubleValue = value.toDouble
     def intValue    = value
+    override def toString = value.toString
   }
   final case class ConstantL(value: Long) extends Constant {
     def doubleValue = value.toDouble
@@ -215,6 +216,7 @@ package graph {
       if (res != value) throw new ArithmeticException(s"Long $value exceeds Int range")
       res
     }
+    override def toString = value.toString
   }
   object ConstantD {
     final val C0  = new ConstantD(0)
@@ -230,6 +232,7 @@ package graph {
         throw new ArithmeticException(s"Double $value exceeds Int range")
       r.toInt
     }
+    override def toString = value.toString
   }
 
   //  /** A ControlOutProxy is similar to a UGenOutProxy in that it denotes
