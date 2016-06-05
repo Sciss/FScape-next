@@ -15,12 +15,12 @@ package de.sciss.fscape
 
 import akka.NotUsed
 import akka.stream.ClosedShape
-import akka.stream.scaladsl.{GraphDSL, RunnableGraph}
+import akka.stream.scaladsl.{GraphDSL, RunnableGraph, Sink}
 import de.sciss.fscape.graph.{Constant, UGenProxy}
 import de.sciss.fscape.stream.StreamIn
 
 import scala.annotation.switch
-import scala.collection.breakOut
+import scala.collection.{breakOut, mutable}
 import scala.collection.immutable.{IndexedSeq => Vec}
 
 object UGenGraph {
@@ -70,6 +70,7 @@ object UGenGraph {
 
   private final class BuilderImpl(implicit ctrl: stream.Control) extends Builder {
     private[this] var ugens     = Vector.empty[UGen]
+    private[this] val ugenSet   = mutable.Set.empty[UGen]
     private[this] var sourceMap = Map.empty[AnyRef, Any]
 
     def build: UGenGraph = {
@@ -94,14 +95,15 @@ object UGenGraph {
 
           def mkOut(outlet: stream.OutD, numChildren: Int): StreamIn = (numChildren: @switch) match {
             case 0 =>
-              // XXX TODO -- we got to attach a dummy sink here
+              import GraphDSL.Implicits._
+              outlet ~> Sink.ignore // in Akka all outlets must be connected
               StreamIn.unused
             case 1 => StreamIn.single(outlet)
             case n => StreamIn.multi (outlet, numChildren)
           }
 
           @inline def add(value: Array[StreamIn]): Unit = {
-            println(s"map += $iu -> ${value.mkString("[", ", ", "]")}")
+            // println(s"map += $iu -> ${value.mkString("[", ", ", "]")}")
             ugenOutMap += iu -> value
           }
 
@@ -179,8 +181,12 @@ object UGenGraph {
     }
 
     def addUGen(ugen: UGen): Unit = {
-      ugens :+= ugen
-      // log(s"addUGen ${ugen.name} @ ${ugen.hashCode.toHexString} ${if (ugen.isIndividual) "indiv" else ""}")
+      // XXX TODO --- where is this check in ScalaCollider?
+      // have we removed it (why)?
+      if (ugenSet.add(ugen)) {
+        ugens :+= ugen
+        // log(s"addUGen ${ugen.name} @ ${ugen.hashCode.toHexString} ${if (ugen.isIndividual) "indiv" else ""}")
+      }
     }
   }
 }
