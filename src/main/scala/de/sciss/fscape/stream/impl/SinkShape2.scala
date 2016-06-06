@@ -1,5 +1,5 @@
 /*
- *  UniformSinkShape.scala
+ *  SinkShape2.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2016 Hanns Holger Rutz. All rights reserved.
@@ -20,20 +20,17 @@ import akka.stream.{Inlet, Outlet, Shape}
 import scala.collection.immutable.{Seq => ISeq}
 
 /** A generalized Sink shape with multiple uniform inlets. */
-final case class UniformSinkShape[In](inlets: ISeq[Inlet[In]])
+final case class SinkShape2[In0, In1](in0: Inlet[In0], in1: Inlet[In1])
   extends Shape {
 
+  val inlets : ISeq[Inlet [_]] = Vector(in0, in1)
   def outlets: ISeq[Outlet[_]] = Vector.empty
 
-  def deepCopy(): UniformSinkShape[In] =
-    UniformSinkShape(inlets.map(_.carbonCopy()))
+  def deepCopy(): SinkShape2[In0, In1] = SinkShape2(in0.carbonCopy(), in1.carbonCopy())
 
-  def copyFromPorts(inlets: ISeq[Inlet[_]], outlets: ISeq[Outlet[_]]): UniformSinkShape[In] = {
-    require(inlets.size == this.inlets.size, s"number of inlets [${inlets.size}] does not match [${this.inlets.size}]")
+  def copyFromPorts(inlets: ISeq[Inlet[_]], outlets: ISeq[Outlet[_]]): SinkShape2[In0, In1] = {
+    require(inlets.size == 2, s"number of inlets [${inlets.size}] does not match [2]")
     require(outlets.isEmpty, s"number of outlets [${outlets.size}] does not match [0]")
-    UniformSinkShape(inlets.asInstanceOf[ISeq[Inlet[In]]])
+    SinkShape2(inlets(0).asInstanceOf[Inlet[In0]], inlets(1).asInstanceOf[Inlet[In1]])
   }
-
-  val inArray: Array[Inlet[In]] = inlets.toArray
-  def in(n: Int): Inlet[In] = inArray(n)
 }

@@ -25,5 +25,8 @@ final case class Impulse(freq: GE, phase: GE = 0.0) extends UGenSource.SingleOut
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
     UGen.SingleOut(this, args)
 
-  private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = ???
+  private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
+    val Vec(freq, phase) = args
+    stream.Impulse(freq = freq.toDouble, phase = phase.toDouble)
+  }
 }

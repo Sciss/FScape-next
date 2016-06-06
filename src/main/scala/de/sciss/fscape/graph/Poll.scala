@@ -18,12 +18,16 @@ import de.sciss.fscape.stream.StreamIn
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-final case class Poll(trig: GE, in: GE, label: String = "poll") extends UGenSource.ZeroOut {
+/** Note that arguments have different order than in ScalaCollider! */
+final case class Poll(in: GE, trig: GE, label: String = "poll") extends UGenSource.ZeroOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): Unit =
-    unwrap(Vector(trig.expand, in.expand))
+    unwrap(Vector(in.expand, trig.expand))
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit =
     UGen.ZeroOut(this, args)
 
-  private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit = ???
+  private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit = {
+    val Vec(in, trig) = args
+    stream.Poll(in = in.toDouble, trig = trig.toInt, label = label)
+  }
 }

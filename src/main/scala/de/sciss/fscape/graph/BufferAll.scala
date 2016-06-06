@@ -27,6 +27,6 @@ final case class BufferAll(in: GE) extends UGenSource.SingleOut {
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
     val Vec(in) = args
-    ???
+    stream.BufferAll(in.toDouble)
   }
 }

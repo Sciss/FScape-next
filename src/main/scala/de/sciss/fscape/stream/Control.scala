@@ -15,6 +15,8 @@ package de.sciss.fscape.stream
 
 import java.util.concurrent.ConcurrentLinkedQueue
 
+import de.sciss.file.File
+
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.implicitConversions
 
@@ -62,6 +64,8 @@ object Control {
     def cancel(): Unit = leaves.foreach(_.cancel())
 
     def stats = Stats(numBufD = queueD.size(), numBufI = queueI.size())
+
+    def createTempFile(): File = File.createTemp()
   }
 
   final case class Stats(numBufD: Int, numBufI: Int)
@@ -84,6 +88,11 @@ trait Control {
 
   /** Adds a leaf node that can be cancelled. Must be called during materialization. */
   def addLeaf(l: Leaf): Unit
+
+  /** Creates a temporary file. The caller is responsible to deleting the file
+    * after it is not needed any longer. (The file will still be marked `deleteOnExit`)
+    */
+  def createTempFile(): File
 
   /** Cancels the process. This works by cancelling all registered leaves. If the graph
     * is correctly constructed, this should shut down all connected trees from there automatically.
