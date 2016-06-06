@@ -151,7 +151,7 @@ trait WindowedLogicImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, Shape <:
       }
     }
 
-    val flushOut = inRemain == 0 && writeToWinOff == 0 && readFromWinRemain == 0 && shouldComplete()
+    val flushOut = inRemain == 0 && writeToWinRemain /* writeToWinOff */ == 0 && readFromWinRemain == 0 && shouldComplete()
     if (!outSent && (outRemain == 0 || flushOut) && isAvailable(shape.out)) {
       logStream(s"sendOut(); outOff = $outOff")
       if (outOff > 0) {

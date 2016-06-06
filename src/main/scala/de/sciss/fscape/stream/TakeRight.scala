@@ -89,7 +89,10 @@ object TakeRight {
       }
     }
 
-    protected def processWindow(writeToWinOff: Int, flush: Boolean): Int = if (flush) len else 0
+    protected def processWindow(writeToWinOff: Int, flush: Boolean): Int = {
+      println(s"TakeRight.processWindow($writeToWinOff, $flush)")
+      if (flush) len else 0
+    }
 
     protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit = {
       val off0    = (bufOff - len + readFromWinOff + bufSize) % bufSize
