@@ -13,56 +13,55 @@
 
 package de.sciss.fscape
 
-import de.sciss.fscape.graph.{BinaryOp, UnaryOp}
+import de.sciss.fscape.graph.{BinaryOp, ChannelProxy, Constant, Impulse, Poll, TakeRight, UnaryOp}
+import de.sciss.optional.Optional
 
 final class GEOps(val `this`: GE) extends AnyVal { me =>
   import me.{`this` => g}
 
-//  /** Creates a proxy that represents a specific output channel of the element.
-//    *
-//    * @param index  channel-index, zero-based. Indices which are greater than or equal
-//    *               to the number of outputs are wrapped around.
-//    *
-//    * @return a monophonic element that represents the given channel of the receiver
-//    */
-//  def `\\`(index: Int)      : GE = ChannelProxy(g, index)
-//
+  /** Creates a proxy that represents a specific output channel of the element.
+    *
+    * @param index  channel-index, zero-based. Indices which are greater than or equal
+    *               to the number of outputs are wrapped around.
+    *
+    * @return a monophonic element that represents the given channel of the receiver
+    */
+  def `\\`(index: Int)      : GE = ChannelProxy(g, index)
+
 //  def madd(mul: GE, add: GE): GE = MulAdd(g, mul, add)
 //
 //  def flatten               : GE = Flatten(g)
-//
-//  def poll: Poll = poll()
-//
-//  /** Polls the output values of this graph element, and prints the result to the console.
-//    * This is a convenient method for wrapping this graph element in a `Poll` UGen.
-//    *
-//    * @param   trig     a signal to trigger the printing. If this is a constant, it is
-//    *                   interpreted as a frequency value and an `Impulse` generator of that frequency
-//    *                   is used instead.
-//    * @param   label    a string to print along with the values, in order to identify
-//    *                   different polls. Using the special label `"#auto"` (default) will generated
-//    *                   automatic useful labels using information from the polled graph element
-//    * @param   trigID   if greater then 0, a `"/tr"` OSC message is sent back to the client
-//    *                   (similar to `SendTrig`)
-//    *
-//    * @see  [[de.sciss.synth.ugen.Poll]]
-//    */
-//  def poll(trig: GE = 10, label: Optional[String] = None, trigID: GE = -1): Poll = {
-//    val trig1 = trig match {
-//      case Constant(freq) => Impulse((g.rate getOrElse audio) max control, freq, 0) // XXX good? or throw an error? should have a maxRate?
-//      case other          => other
-//    }
-//    Poll(trig1.rate, trig1, g, label.getOrElse {
-//      val str = g.toString
-//      val i   = str.indexOf('(')
-//      if (i >= 0) str.substring(0, i)
-//      else {
-//        val j = str.indexOf('@')
-//        if (j >= 0) str.substring(0, j)
-//        else str
-//      }
-//    }, trigID)
-//  }
+
+  def poll: Poll = poll()
+
+  /** Polls the output values of this graph element, and prints the result to the console.
+    * This is a convenient method for wrapping this graph element in a `Poll` UGen.
+    *
+    * @param   trig     a signal to trigger the printing. If this is a constant, it is
+    *                   interpreted as a frequency value and an `Impulse` generator of that frequency
+    *                   is used instead.
+    * @param   label    a string to print along with the values, in order to identify
+    *                   different polls. Using the special label `"#auto"` (default) will generated
+    *                   automatic useful labels using information from the polled graph element
+    *
+    * @see  [[de.sciss.fscape.graph.Poll]]
+    */
+  def poll(trig: GE = 10, label: Optional[String] = None): Poll = {
+    val trig1 = trig match {
+      case Constant(freq) => Impulse(freq, 0) // XXX good? or throw an error? should have a maxRate?
+      case other          => other
+    }
+    Poll(trig1, g, label.getOrElse {
+      val str = g.toString
+      val i   = str.indexOf('(')
+      if (i >= 0) str.substring(0, i)
+      else {
+        val j = str.indexOf('@')
+        if (j >= 0) str.substring(0, j)
+        else str
+      }
+    })
+  }
 
   import UnaryOp._
 
@@ -218,4 +217,8 @@ final class GEOps(val `this`: GE) extends AnyVal { me =>
 
   def expexp(inLow: GE, inHigh: GE, outLow: GE, outHigh: GE): GE =
     (outHigh / outLow).pow((g / inLow).log / (inHigh / inLow).log) * outLow
+
+  def takeRight(len: GE): GE = TakeRight(in = g, len = len)
+
+  def last: GE = takeRight(1)
 }

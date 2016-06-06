@@ -9,7 +9,7 @@ import de.sciss.synth.io.AudioFileSpec
 import scala.concurrent.ExecutionContext
 import scala.swing.Swing
 
-object GraphTest extends App {
+object PercussionTest extends App {
   val fIn   = userHome / "Documents" / "projects" / "Unlike" / "audio_work" / "mentasm-e8646341-63dcf8a8.aif"
   val fOut  = userHome / "Music" / "work" / "_killme.aif"
 
