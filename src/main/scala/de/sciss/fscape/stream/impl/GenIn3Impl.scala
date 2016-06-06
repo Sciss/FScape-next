@@ -67,7 +67,7 @@ trait GenIn3Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: 
     }
 
     _inValid = true
-    updateCanRead() // _canRead = false
+    updateCanRead()
     ctrl.bufSize
   }
 

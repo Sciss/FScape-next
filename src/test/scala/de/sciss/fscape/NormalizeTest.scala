@@ -17,15 +17,15 @@ object NormalizeTest extends App {
   import graph._
   import numbers.Implicits._
 
-  stream.showStreamLog = true
+  // stream.showStreamLog = true
 
-  lazy val g = Graph {
+  lazy val gOLD = Graph {
     val trig  = Impulse(1.0/44100)
     val in    = DiskIn(file = fIn, numChannels = 1)
     Poll(in = in, trig = trig, label = "test")
   }
 
-  lazy val g0 = Graph {
+  lazy val g = Graph {
     val in        = DiskIn(file = fIn, numChannels = 1)
     val max       = RunningMax(in.abs).last
     max.ampdb.poll(0, "max [dB]")

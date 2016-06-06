@@ -57,6 +57,10 @@ object Impulse {
     private[this] var phase   : Double = _  // internal state; does not include `phaseOff`
     private[this] var init = true
 
+    override def postStop(): Unit = {
+      super.postStop()
+    }
+
     protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Int = {
       var inOffI    = inOff
       var outOffI   = outOff

@@ -43,7 +43,7 @@ object Poll {
     extends GraphStageLogic(shape)
       with Sink2Impl[BufD, BufI] {
 
-    private[this] var trig0 = false
+    private[this] var high0 = false
 
     def process(): Unit = {
       if (!canRead) return
@@ -52,20 +52,20 @@ object Poll {
       val b0      = bufIn0.buf
       val b1      = if (bufIn1 == null) null else bufIn1.buf
       val stop1   = if (b1     == null) 0    else bufIn1.size
-      var t0      = trig0
-      var t1      = t0
+      var h0      = high0
+      var h1      = h0
       var inOffI  = 0
       while (inOffI < stop0) {
-        if (inOffI < stop1) t1 = !t0 && b1(inOffI) > 0
-        if (t1) {
+        if (inOffI < stop1) h1 = b1(inOffI) > 0
+        if (h1 && !h0) {
           val x0 = b0(inOffI)
           // XXX TODO --- make console selectable
           println(s"$label: $x0")
         }
         inOffI  += 1
-        t0       = t1
+        h0       = h1
       }
-      trig0 = t0
+      high0 = h0
     }
   }
 }
