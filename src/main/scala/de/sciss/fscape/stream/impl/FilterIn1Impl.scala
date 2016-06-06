@@ -45,13 +45,14 @@ trait FilterIn1Impl[In >: Null <: BufLike, Out >: Null <: BufLike]
     freeOutputBuffers()
   }
 
-  protected final def readIns(): Unit = {
+  protected final def readIns(): Int = {
     freeInputBuffers()
     bufIn0 = grab(in0)
     bufIn0.assertAllocated()
     tryPull(in0)
     _inValid = true
     _canRead = false
+    bufIn0.size
   }
 
   protected final def freeInputBuffers(): Unit =

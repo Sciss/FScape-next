@@ -31,6 +31,4 @@ trait WindowedFilterLogicImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, Sh
   // ---- impl ----
 
   protected final def shouldComplete(): Boolean = isClosed(in0)
-
-  protected final def inAvailable(): Int = bufIn0.size
 }

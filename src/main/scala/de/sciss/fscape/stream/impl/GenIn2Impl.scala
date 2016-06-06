@@ -48,7 +48,7 @@ trait GenIn2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, Out >: Null <: 
     freeOutputBuffers()
   }
 
-  protected final def readIns(): Unit = {
+  protected final def readIns(): Int = {
     freeInputBuffers()
     val sh = shape
     if (isAvailable(sh.in0)) {
@@ -63,6 +63,7 @@ trait GenIn2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, Out >: Null <: 
 
     _inValid = true
     _canRead = false
+    ctrl.bufSize
   }
 
   protected final def freeInputBuffers(): Unit = {

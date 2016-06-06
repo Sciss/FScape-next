@@ -99,7 +99,7 @@ final class UnzipWindowLogicImpl(shape: UnzipWindowShape)(implicit ctrl: Control
     freeOutputBuffers()
   }
 
-  private def readIns(): Unit = {
+  private def readIns(): Int = {
     freeInputBuffers()
     val sh    = shape
     bufIn0    = grab(sh.in0)
@@ -111,6 +111,7 @@ final class UnzipWindowLogicImpl(shape: UnzipWindowShape)(implicit ctrl: Control
     }
 
     canRead = false
+    bufIn0.size
   }
 
   private def freeInputBuffers(): Unit = {
@@ -148,8 +149,7 @@ final class UnzipWindowLogicImpl(shape: UnzipWindowShape)(implicit ctrl: Control
     var stateChange = false
 
     if (shouldRead) {
-      readIns()
-      inRemain    = bufIn0.size
+      inRemain    = readIns()
       inOff       = 0
       stateChange = true
     }

@@ -50,7 +50,7 @@ trait FilterIn4Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null 
     freeOutputBuffers()
   }
 
-  protected final def readIns(): Unit = {
+  protected final def readIns(): Int = {
     freeInputBuffers()
     val sh    = shape
     bufIn0    = grab(sh.in0)
@@ -74,6 +74,7 @@ trait FilterIn4Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null 
 
     _inValid = true
     _canRead = false
+    bufIn0.size
   }
 
   protected final def freeInputBuffers(): Unit = {

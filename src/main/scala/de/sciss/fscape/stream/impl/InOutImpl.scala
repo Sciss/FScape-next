@@ -36,7 +36,7 @@ trait InOutImpl[S <: Shape] {
 
   def updateCanRead(): Unit
 
-  protected def readIns(): Unit
+  protected def readIns(): Int
 
   /** Exposed from `GraphStageLogic` API. */
   def completeStage(): Unit

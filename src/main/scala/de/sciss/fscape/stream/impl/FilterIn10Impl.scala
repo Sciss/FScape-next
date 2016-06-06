@@ -56,7 +56,7 @@ trait FilterIn10Impl[
     freeOutputBuffers()
   }
 
-  protected final def readIns(): Unit = {
+  protected final def readIns(): Int = {
     freeInputBuffers()
     val sh    = shape
     bufIn0    = grab(sh.in0)
@@ -102,6 +102,7 @@ trait FilterIn10Impl[
 
     _inValid = true
     _canRead = false
+    bufIn0.size
   }
 
   protected final def freeInputBuffers(): Unit = {

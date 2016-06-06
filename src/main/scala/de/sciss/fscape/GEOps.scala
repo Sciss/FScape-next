@@ -38,18 +38,18 @@ final class GEOps(val `this`: GE) extends AnyVal { me =>
     * This is a convenient method for wrapping this graph element in a `Poll` UGen.
     *
     * @param   trig     a signal to trigger the printing. If this is a constant, it is
-    *                   interpreted as a frequency value and an `Impulse` generator of that frequency
-    *                   is used instead.
+    *                   interpreted as a normalized frequency and an `Impulse` generator with
+    *                   this normalized frequency is used.
     * @param   label    a string to print along with the values, in order to identify
     *                   different polls. Using the special label `"#auto"` (default) will generated
     *                   automatic useful labels using information from the polled graph element
     *
     * @see  [[de.sciss.fscape.graph.Poll]]
     */
-  def poll(trig: GE = 10, label: Optional[String] = None): Poll = {
+  def poll(trig: GE = 2e-4, label: Optional[String] = None): Poll = {
     val trig1 = trig match {
-      case Constant(freq) => Impulse(freq, 0) // XXX good? or throw an error? should have a maxRate?
-      case other          => other
+      case Constant(freqN)  => Impulse(freqN)
+      case other            => other
     }
     Poll(trig1, g, label.getOrElse {
       val str = g.toString

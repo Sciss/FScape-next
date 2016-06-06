@@ -103,9 +103,8 @@ object Sliding {
 
       // read inlets
       if (shouldRead) {
-        readIns()
+        inRemain    = readIns()
         inOff       = 0
-        inRemain    = bufIn0.size // if (inRemain == 48)
         stateChange = true
       }
 

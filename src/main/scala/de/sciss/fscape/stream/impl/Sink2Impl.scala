@@ -17,7 +17,7 @@ package impl
 
 import akka.stream.stage.GraphStageLogic
 
-/** Building block for generators with `Sink2Shape` type graph stage logic.
+/** Building block for sinks with `Sink2Shape` type graph stage logic.
   * A sink keeps consuming input until left inlet is closed.
   */
 trait Sink2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike]
@@ -46,13 +46,13 @@ trait Sink2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike]
     freeOutputBuffers()
   }
 
-  protected final def readIns(): Unit = {
+  protected final def readIns(): Int = {
     freeInputBuffers()
     val sh = shape
-    if (isAvailable(sh.in0)) {
-      bufIn0 = grab(sh.in0)
-      tryPull(sh.in0)
-    }
+
+    bufIn0 = grab(sh.in0)
+    bufIn0.assertAllocated()
+    tryPull(sh.in0)
 
     if (isAvailable(sh.in1)) {
       bufIn1 = grab(sh.in1)
@@ -61,6 +61,7 @@ trait Sink2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike]
 
     _inValid = true
     _canRead = false
+    bufIn0.size
   }
 
   protected final def freeInputBuffers(): Unit = {
@@ -82,7 +83,7 @@ trait Sink2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike]
     // acquired at least one buffer of each inlet. that could
     // be checked in `onUpstreamFinish` which should probably
     // close the stage if not a single buffer had been read!
-    _canRead = ((isClosed(sh.in0) && _inValid) || isAvailable(sh.in0)) &&
+    _canRead = isAvailable(sh.in0) &&
       ((isClosed(sh.in1) && _inValid) || isAvailable(sh.in1))
   }
 

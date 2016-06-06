@@ -37,9 +37,6 @@ trait WindowedLogicImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, Shape <:
   /** If crucial inputs have been closed. */
   protected def shouldComplete(): Boolean
 
-  /** Number of samples available from input buffers. */
-  protected def inAvailable(): Int
-
   /** Issues a copy from input buffer to internal window buffer.
     *
     * @param inOff          current offset into input buffer
@@ -94,11 +91,10 @@ trait WindowedLogicImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, Shape <:
     logStream(s"process() $this")
 
     if (shouldRead) {
-      readIns()
-      inRemain    = inAvailable()
+      inRemain    = readIns()
       inOff       = 0
       stateChange = true
-      logStream(s"readIns(); inRemain = ${inAvailable()}")
+      logStream(s"readIns(); inRemain = $inRemain")
     }
 
     if (canWriteToWindow) {

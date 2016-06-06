@@ -34,8 +34,7 @@ trait FilterChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape
     var stateChange = false
 
     if (shouldRead) {
-      readIns()
-      inRemain    = bufIn0.size
+      inRemain    = readIns()
       inOff       = 0
       stateChange = true
     }

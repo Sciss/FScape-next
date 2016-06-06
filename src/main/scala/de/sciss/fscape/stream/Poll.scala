@@ -46,8 +46,9 @@ object Poll {
     private[this] var trig0 = false
 
     def process(): Unit = {
-      readIns()
-      val stop0   = bufIn0.size
+      if (!canRead) return
+
+      val stop0   = readIns()
       val b0      = bufIn0.buf
       val b1      = if (bufIn1 == null) null else bufIn1.buf
       val stop1   = if (b1     == null) 0    else bufIn1.size
