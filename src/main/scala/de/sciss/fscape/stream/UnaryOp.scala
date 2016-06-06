@@ -22,6 +22,7 @@ object UnaryOp {
   import graph.UnaryOp.Op
 
   def apply(op: Op, in: OutD)(implicit b: Builder): OutD = {
+    // println(s"UnaryOp($op, $in)")
     val stage0  = new Stage(op)
     val stage   = b.add(stage0)
     b.connect(in, stage.in)
@@ -48,6 +49,7 @@ object UnaryOp {
     protected def allocOutBuf(): BufD = ctrl.borrowBufD()
 
     protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Int = {
+      // println(s"UnaryOp($op).processChunk(in $bufIn0, out $bufOut, chunk $chunk)")
       var inOffI  = inOff
       var outOffI = outOff
       val inStop  = inOffI + chunk

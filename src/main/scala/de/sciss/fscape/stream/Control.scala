@@ -34,14 +34,19 @@ object Control {
 
     def borrowBufD(): BufD = {
       val res0 = queueD.poll()
-      if (res0 == null) BufD.alloc(bufSize) else {
+      val res  = if (res0 == null) BufD.alloc(bufSize) else {
         res0.acquire()
         res0
       }
+      // println(s"Control.borrowBufD(): $res / ${res.allocCount()}")
+      // assert(res.allocCount() == 1, res.allocCount())
+      res
     }
 
-    def returnBufD(buf: BufD): Unit =
+    def returnBufD(buf: BufD): Unit = {
+      require(buf.allocCount() == 0)
       queueD.offer(buf) // XXX TODO -- limit size?
+    }
 
     def borrowBufI(): BufI = {
       val res0 = queueI.poll()
@@ -51,8 +56,10 @@ object Control {
       }
     }
 
-    def returnBufI(buf: BufI): Unit =
+    def returnBufI(buf: BufI): Unit = {
+      require(buf.allocCount() == 0)
       queueI.offer(buf) // XXX TODO -- limit size?
+    }
 
     def addLeaf(l: Leaf): Unit = leaves ::= l
 

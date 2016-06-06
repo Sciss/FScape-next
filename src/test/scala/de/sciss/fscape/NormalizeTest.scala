@@ -25,24 +25,21 @@ object NormalizeTest extends App {
     Poll(in = in, trig = trig, label = "test")
   }
 
-  lazy val gWEIRD = Graph {
+  lazy val g = Graph {
     def mkIn() = DiskIn(file = fIn, numChannels = 1)
 
     val in        = mkIn()
     val max       = RunningMax(in.abs) // .last
     val trig  = Impulse(1.0/44100)
-    // in /* max */. poll(trig, "max [Lin]")
+    in /* max */     . poll(trig, "max [Lin]")
     in /* max */.ampdb.poll(trig, "max [dB ]")
   }
 
-  lazy val g = Graph {
-    def mkIn() = DiskIn(file = fIn, numChannels = 1)
-
-    val in        = mkIn()
-    // val max       = RunningMax(in.abs) // .last
+  lazy val gFORK = Graph {
+    val in    = DC(-33.0)
     val trig  = Impulse(1.0/44100)
-    in /* max */    .poll(trig, "max [Lin]")
-    in /* max */.abs.poll(trig, "max [Abs]")
+    in     .poll(trig, "[Lin]")
+    in .abs.poll(trig, "[Abs]")
   }
 
   lazy val gY = Graph {

@@ -22,6 +22,8 @@ trait BufLike {
   def assertAllocated(): Unit
 
   var size: Int
+
+  def allocCount(): Int
 }
 
 object BufD {
@@ -37,22 +39,24 @@ object BufD {
 final class BufD private(val buf: Array[Double], var size: Int, borrowed: Boolean)
   extends BufLike {
 
-  private[this] val allocCount = if (borrowed) new AtomicInteger(1) else null
+  private[this] val _allocCount = if (borrowed) new AtomicInteger(1) else null
 
-  def assertAllocated(): Unit = require(!borrowed || allocCount.get() > 0)
+  def assertAllocated(): Unit = require(!borrowed || _allocCount.get() > 0)
+
+  def allocCount(): Int = _allocCount.get()
 
   def acquire(): Unit = if (borrowed) {
-    /* val oldCount = */ allocCount.getAndIncrement()
+    /* val oldCount = */ _allocCount.getAndIncrement()
     // require(oldCount >= 0)
   }
 
   def release()(implicit ctrl: Control): Unit = if (borrowed) {
-    val newCount = allocCount.decrementAndGet()
+    val newCount = _allocCount.decrementAndGet()
     require(newCount >= 0)
     if (newCount == 0) ctrl.returnBufD(this)
   }
 
-  override def toString = s"BufD(size = $size)"
+  override def toString = s"BufD(size = $size)@${hashCode.toHexString}"
 }
 
 object BufI {
@@ -66,15 +70,17 @@ object BufI {
   }
 }
 final class BufI private(val buf: Array[Int], var size: Int, borrowed: Boolean) extends BufLike {
-  private[this] val allocCount = if (borrowed) new AtomicInteger(1) else null
+  private[this] val _allocCount = if (borrowed) new AtomicInteger(1) else null
 
-  def assertAllocated(): Unit = require(!borrowed || allocCount.get() > 0)
+  def assertAllocated(): Unit = require(!borrowed || _allocCount.get() > 0)
+
+  def allocCount(): Int = _allocCount.get()
 
   def acquire(): Unit = if (borrowed)
-    allocCount.getAndIncrement()
+    _allocCount.getAndIncrement()
 
   def release()(implicit ctrl: Control): Unit = if (borrowed) {
-    val newCount = allocCount.decrementAndGet()
+    val newCount = _allocCount.decrementAndGet()
     require(newCount >= 0)
     if (newCount == 0) ctrl.returnBufI(this)
   }

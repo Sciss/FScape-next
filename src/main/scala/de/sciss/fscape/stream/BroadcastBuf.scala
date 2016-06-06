@@ -20,6 +20,7 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 
 object BroadcastBuf {
   def apply[B <: BufLike](in: Outlet[B], numOutputs: Int)(implicit b: Builder): Vec[Outlet[B]] = {
+    // println(s"BroadcastBuf($in, $numOutputs)")
     val stage0 = new BroadcastBufStageImpl[B](numOutputs = numOutputs, eagerCancel = true)
     val stage  = b.add(stage0)
     b.connect(in, stage.in)

@@ -52,7 +52,7 @@ object StreamIn {
           b(i)  = math.max(Int.MinValue, math.min(Int.MaxValue, math.round(x))).toInt
           i += 1
         }
-        ctrl.returnBufD(bufD)
+        bufD.release()
         bufI
       }
     }

@@ -21,6 +21,7 @@ import de.sciss.fscape.stream.impl.{Sink2Impl, SinkShape2}
 // XXX TODO --- we could use an `Outlet[String]`, that might be making perfect sense
 object Poll {
   def apply(in: OutD, trig: OutI, label: String)(implicit b: Builder): Unit = {
+    // println(s"Poll($in, $trig, $label)")
     val stage0  = new Stage(label = label)
     val stage   = b.add(stage0)
     b.connect(in  , stage.in0)
@@ -49,6 +50,9 @@ object Poll {
       if (!canRead) return
 
       val stop0   = readIns()
+      // println(s"Poll($label).process(in $bufIn0, trig $bufIn1, chunk $stop0)")
+      // bufIn0.assertAllocated()
+
       val b0      = bufIn0.buf
       val b1      = if (bufIn1 == null) null else bufIn1.buf
       val stop1   = if (b1     == null) 0    else bufIn1.size
