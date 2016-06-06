@@ -14,10 +14,10 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.{Attributes, FanInShape2}
 import akka.stream.stage.{GraphStage, GraphStageLogic}
+import akka.stream.{Attributes, FanInShape2}
 import de.sciss.fscape.graph.ConstantI
-import de.sciss.fscape.stream.impl.{FilterIn2Impl, WindowedFilterLogicImpl}
+import de.sciss.fscape.stream.impl.FilterIn2Impl
 
 object TakeRight {
   def last(in: OutD)(implicit b: Builder): OutD = {
@@ -48,60 +48,102 @@ object TakeRight {
   private final class Logic(protected val shape: FanInShape2[BufD, BufI, BufD])
                            (implicit protected val ctrl: Control)
     extends GraphStageLogic(shape)
-      with FilterIn2Impl[BufD, BufI, BufD]
-      with WindowedFilterLogicImpl[BufD, BufD, FanInShape2[BufD, BufI, BufD]] {
+      with FilterIn2Impl[BufD, BufI, BufD] {
 
     protected def allocOutBuf(): BufD = ctrl.borrowBufD()
 
-    private[this] var len     : Int           = -1 // negative value triggers init
-    private[this] var bufSize : Int           = _
+    private[this] var len     : Int           = _
     private[this] var bufWin  : Array[Double] = _
-    private[this] var bufOff  : Int           = 0 // cyclical pointer
+    private[this] var bufWritten = 0L
 
-    protected def startNextWindow(inOff: Int): Int = {
-      if (len < 0) {
-        assert(inOff == 0)
-        len       = math.max(1, bufIn1.buf(inOff))
-        // theoretically we could go with `bufSize == len`,
-        // but increasing up to `ctrl.bufSize` should make
-        // this play nicely with the context and perform faster.
-        bufSize   = math.max(len, ctrl.bufSize)
-        bufWin    = new Array[Double](bufSize)
+    private[this] var outOff            = 0
+    private[this] var outRemain         = 0
+    private[this] var outSent           = true
+
+    private[this] var bufOff    : Int = _
+    private[this] var bufRemain : Int = _
+
+    private[this] var writeMode = false
+
+    def process(): Unit =
+      if (writeMode) tryWrite()
+      else {
+        if (canRead) {
+          readIns()
+          if (bufWin == null) {
+            len    = math.max(1, bufIn1.buf(0))
+            bufWin = new Array[Double](len)
+          }
+          copyInputToBuffer()
+        }
+        if (isClosed(in0)) {
+          bufRemain   = math.min(bufWritten, len).toInt
+          bufOff      = (math.max(0L, bufWritten - len) % len).toInt
+          writeMode   = true
+          tryWrite()
+        }
       }
-      assert(bufSize > 0)
-      bufSize
-    }
 
-    protected def copyInputToWindow(inOff: Int, writeToWinOff: Int, chunk: Int): Unit = {
-      // it's important to treat `bufWin` as cyclical, we don't want to "lose" previous content;
-      // we track that using `bufOff`, and thus `writeToWinOff` is not used.
-      val chunk1  = math.min(chunk, bufSize - bufOff)
-      var inOff1  = inOff
+    private def copyInputToBuffer(): Unit = {
+      val inRemain  = bufIn0.size
+      val chunk     = math.min(inRemain, len)
+      var inOff     = inRemain - chunk
+      var bufOff    = ((bufWritten + inOff) % len).toInt
+      val chunk1    = math.min(chunk, len - bufOff)
       if (chunk1 > 0) {
-        Util.copy(bufIn0.buf, inOff1, bufWin, bufOff, chunk1)
-        bufOff  = (bufOff + chunk1) % bufSize
-        inOff1 += chunk1
+        // println(s"copy1($inOff / $inRemain -> $bufOff / $len -> $chunk1")
+        Util.copy(bufIn0.buf, inOff, bufWin, bufOff, chunk1)
+        bufOff = (bufOff + chunk1) % len
+        inOff += chunk1
       }
       val chunk2 = chunk - chunk1
       if (chunk2 > 0) {
-        Util.copy(bufIn0.buf, inOff1, bufWin, bufOff, chunk2)
-        bufOff += chunk2
+        // println(s"copy2($inOff / $inRemain -> $bufOff / $len -> $chunk2")
+        Util.copy(bufIn0.buf, inOff, bufWin, bufOff, chunk2)
+        bufOff = (bufOff + chunk2) % len
+        // inOff += chunk2
       }
+      bufWritten += inRemain
     }
 
-    protected def processWindow(writeToWinOff: Int, flush: Boolean): Int = {
-      println(s"TakeRight.processWindow($writeToWinOff, $flush)")
-      if (flush) len else 0
-    }
-
-    protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit = {
-      val off0    = (bufOff - len + readFromWinOff + bufSize) % bufSize
-      val chunk1  = math.min(bufSize - off0, chunk)
-      Util.copy(bufWin, off0, bufOut.buf, outOff, chunk1)
-      val chunk2  = chunk - chunk1
-      if (chunk2 > 0) {
-        Util.copy(bufWin, off0 + chunk1, bufOut.buf, outOff + chunk1, chunk2)
+    protected def tryWrite(): Unit = {
+      if (outSent) {
+        bufOut        = allocOutBuf()
+        outRemain     = bufOut.size
+        outOff        = 0
+        outSent       = false
       }
+
+      val chunk = math.min(bufRemain, outRemain)
+      if (chunk > 0) {
+        val chunk1  = math.min(len - bufOff, chunk)
+        Util.copy(bufWin, bufOff, bufOut.buf, outOff, chunk1)
+        bufOff  = (bufOff + chunk1) % len
+        outOff += chunk1
+        val chunk2  = chunk - chunk1
+        if (chunk2 > 0) {
+          Util.copy(bufWin, bufOff, bufOut.buf, outOff, chunk2)
+          bufOff  = (bufOff + chunk2) % len
+          outOff += chunk2
+        }
+
+        bufRemain -= chunk
+        outRemain -= chunk
+      }
+
+      val flushOut = bufRemain == 0
+      if (!outSent && (outRemain == 0 || flushOut) && isAvailable(out)) {
+        if (outOff > 0) {
+          bufOut.size = outOff
+          push(out, bufOut)
+        } else {
+          bufOut.release()
+        }
+        bufOut      = null
+        outSent     = true
+      }
+
+      if (flushOut && outSent) completeStage()
     }
   }
 }
