@@ -37,7 +37,6 @@ object ReverseWindow {
     b.connect(in    , stage.in0)
     b.connect(size  , stage.in1)
     b.connect(clump , stage.in2)
-
     stage.out
   }
 

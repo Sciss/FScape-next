@@ -16,11 +16,15 @@ package stream
 
 import akka.stream.stage.{GraphStage, GraphStageLogic}
 import akka.stream.{Attributes, FanInShape2}
-import de.sciss.fscape.stream.impl.FilterIn2Impl
+import de.sciss.fscape.stream.impl.{FilterChunkImpl, FilterIn2Impl}
 
 object RunningMax {
   def apply(in: OutD, trig: OutI)(implicit b: Builder): OutD = {
-    ???
+    val stage0  = new Stage
+    val stage   = b.add(stage0)
+    b.connect(in  , stage.in0)
+    b.connect(trig, stage.in1)
+    stage.out
   }
 
   private final class Stage(implicit ctrl: Control)
@@ -38,65 +42,37 @@ object RunningMax {
   private final class Logic(protected val shape: FanInShape2[BufD, BufI, BufD])
                            (implicit protected val ctrl: Control)
     extends GraphStageLogic(shape)
+      with FilterChunkImpl[BufD, BufD, FanInShape2[BufD, BufI, BufD]]
       with FilterIn2Impl[BufD, BufI, BufD] {
 
-    private[this] var inOff             = 0  // regarding `bufIn`
-    private[this] var inRemain          = 0
-    private[this] var outOff            = 0  // regarding `bufOut`
-    private[this] var outRemain         = 0
-    private[this] var outSent           = true
+    protected def allocOutBuf(): BufD = ctrl.borrowBufD()
 
-    @inline
-    private[this] def allocOutBuf(): BufD = ctrl.borrowBufD()
+    private[this] var value = Double.NegativeInfinity
+    private[this] var trig0 = false
 
-    @inline
-    private[this] def shouldRead = inRemain == 0 && canRead
-
-    protected def processChunk(len: Int): Unit = ???
-
-    def process(): Unit = {
-      var stateChange = false
-
-      if (shouldRead) {
-        readIns()
-        inRemain    = bufIn0.size
-        inOff       = 0
-        stateChange = true
+    protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Int = {
+      var inOffI  = inOff
+      var outOffI = outOff
+      val stop0   = inOffI + chunk
+      val b0      = bufIn0.buf
+      val b1      = if (bufIn1 == null) null else bufIn1.buf
+      val out     = bufOut.buf
+      val stop1   = if (b1 == null) 0 else bufIn1.size
+      var v       = value
+      var t0      = trig0
+      var t1      = t0
+      while (inOffI < stop0) {
+        val x0 = b0(inOffI)
+        if (inOffI < stop1) t1 = !t0 && b1(inOffI) > 0
+        v = if (t1) x0 else math.max(v, x0)
+        out(outOffI) = v
+        inOffI  += 1
+        outOffI += 1
+        t0       = t1
       }
-
-      if (outSent) {
-        bufOut        = allocOutBuf()
-        outRemain     = bufOut.size
-        outOff        = 0
-        outSent       = false
-        stateChange   = true
-      }
-
-      val chunk = math.min(inRemain, outRemain)
-      if (chunk > 0) {
-        processChunk(chunk)
-        inOff       += chunk
-        inRemain    -= chunk
-        outOff      += chunk
-        outRemain   -= chunk
-        stateChange  = true
-      }
-
-      val flushOut = inRemain == 0 && isClosed(shape.in0)
-      if (!outSent && (outRemain == 0 || flushOut) && isAvailable(shape.out)) {
-        if (outOff > 0) {
-          bufOut.size = outOff
-          push(shape.out, bufOut)
-        } else {
-          bufOut.release()
-        }
-        bufOut      = null
-        outSent     = true
-        stateChange = true
-      }
-
-      if      (flushOut && outSent) completeStage()
-      else if (stateChange)         process()
+      value = v
+      trig0 = t0
+      chunk
     }
   }
 }
