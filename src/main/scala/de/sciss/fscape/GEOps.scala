@@ -51,7 +51,7 @@ final class GEOps(val `this`: GE) extends AnyVal { me =>
       case Constant(freqN)  => Impulse(freqN)
       case other            => other
     }
-    Poll(trig1, g, label.getOrElse {
+    Poll(in = g, trig = trig1, label = label.getOrElse {
       val str = g.toString
       val i   = str.indexOf('(')
       if (i >= 0) str.substring(0, i)

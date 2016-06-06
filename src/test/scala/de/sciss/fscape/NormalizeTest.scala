@@ -25,13 +25,35 @@ object NormalizeTest extends App {
     Poll(in = in, trig = trig, label = "test")
   }
 
+  lazy val gWEIRD = Graph {
+    def mkIn() = DiskIn(file = fIn, numChannels = 1)
+
+    val in        = mkIn()
+    val max       = RunningMax(in.abs) // .last
+    val trig  = Impulse(1.0/44100)
+    // in /* max */. poll(trig, "max [Lin]")
+    in /* max */.ampdb.poll(trig, "max [dB ]")
+  }
+
   lazy val g = Graph {
-    val in        = DiskIn(file = fIn, numChannels = 1)
+    def mkIn() = DiskIn(file = fIn, numChannels = 1)
+
+    val in        = mkIn()
+    // val max       = RunningMax(in.abs) // .last
+    val trig  = Impulse(1.0/44100)
+    // in /* max */. poll(trig, "max [Lin]")
+    in /* max */.ampdb.poll(trig, "max [dB ]")
+  }
+
+  lazy val gX = Graph {
+    def mkIn() = DiskIn(file = fIn, numChannels = 1)
+
+    val in        = mkIn()
     val max       = RunningMax(in.abs).last
     max.ampdb.poll(0, "max [dB]")
     val headroom  = -0.2.dbamp
     val gain      = max.reciprocal * headroom
-    val buf       = BufferAll(in)
+    val buf       = mkIn() // BufferAll(in)
     val sig       = buf * gain
     DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig)
   }

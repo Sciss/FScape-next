@@ -79,7 +79,7 @@ object TakeRight {
       var inOff1  = inOff
       if (chunk1 > 0) {
         Util.copy(bufIn0.buf, inOff1, bufWin, bufOff, chunk1)
-        bufOff += chunk1
+        bufOff  = (bufOff + chunk1) % bufSize
         inOff1 += chunk1
       }
       val chunk2 = chunk - chunk1

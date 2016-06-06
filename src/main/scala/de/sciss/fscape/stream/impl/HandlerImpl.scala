@@ -30,7 +30,7 @@ final class ProcessInHandlerImpl[A, S <: Shape](in: Inlet[A], logic: InOutImpl[S
     if (logic.inValid) logic.process() // may lead to `flushOut`
     else {
       if (!logic.isInAvailable(in)) {
-        println(s"inValid Process $logic")
+        println(s"Invalid process $in")
         logic.completeStage()
       }
     }
@@ -57,7 +57,7 @@ final class AuxInHandlerImpl[A, S <: Shape](in: Inlet[A], logic: InOutImpl[S])
     if (logic.inValid || logic.isInAvailable(in)) {
       testRead()
     } else {
-      println(s"inValid Aux $logic")
+      println(s"Invalid aux $in")
       logic.completeStage()
     }
   }
