@@ -173,4 +173,3 @@ Irregular windows:
     val buf  = PersistentBuffer(proc)  // FullBuffer ? BufferAll ?
     val sig  = buf * gain
     DiskOut(sig)
-

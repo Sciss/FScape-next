@@ -26,6 +26,12 @@ trait WindowedLogicImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, Shape <:
 
   // ---- abstract ----
 
+  /** Notifies about the start of the next window.
+    *
+    * @param inOff  current offset into input buffer
+    * @return the number of frames to write to the internal window buffer
+    *         (becomes `writeToWinRemain`)
+    */
   protected def startNextWindow(inOff: Int): Int
 
   /** If crucial inputs have been closed. */
@@ -34,11 +40,28 @@ trait WindowedLogicImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, Shape <:
   /** Number of samples available from input buffers. */
   protected def inAvailable(): Int
 
+  /** Issues a copy from input buffer to internal window buffer.
+    *
+    * @param inOff          current offset into input buffer
+    * @param writeToWinOff  current offset into internal window buffer
+    * @param chunk          number of frames to copy
+    */
   protected def copyInputToWindow(inOff: Int, writeToWinOff: Int, chunk: Int): Unit
 
-  protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit
-
+  /** Called when the internal window buffer is full, in order to
+    * proceed to the next phase of copying from window to output.
+    * (transitioning between `copyInputToWindow` and `copyWindowToOutput`)
+    *
+    * @param writeToWinOff  the current offset into the internal window buffer.
+    *                       this is basically the amount of frames available for
+    *                       processing.
+    * @param flush          `true` if the input is exhausted.
+    * @return the number of frames available for sending through `copyWindowToOutput`
+    *         (this becomes `readFromWinRemain`).
+    */
   protected def processWindow(writeToWinOff: Int, flush: Boolean): Int
+
+  protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit
 
   protected def allocOutBuf(): Out
 

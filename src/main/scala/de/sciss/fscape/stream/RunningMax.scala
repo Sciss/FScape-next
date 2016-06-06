@@ -36,7 +36,7 @@ object RunningMax {
       out = OutD("RunningMax.out" )
     )
 
-    def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new Logic(shape)
+    def createLogic(attr: Attributes): GraphStageLogic = new Logic(shape)
   }
 
   private final class Logic(protected val shape: FanInShape2[BufD, BufI, BufD])
