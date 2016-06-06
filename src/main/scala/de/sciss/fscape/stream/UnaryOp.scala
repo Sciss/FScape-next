@@ -51,7 +51,7 @@ object UnaryOp {
       var inOffI  = inOff
       var outOffI = outOff
       val inStop  = inOffI + chunk
-      val in      = bufIn0 .buf
+      val in      = bufIn0.buf
       val out     = bufOut.buf
       while (inOffI < inStop) {
         out(outOffI) = op(in(inOffI))

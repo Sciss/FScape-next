@@ -41,8 +41,13 @@ object NormalizeTest extends App {
     val in        = mkIn()
     // val max       = RunningMax(in.abs) // .last
     val trig  = Impulse(1.0/44100)
-    // in /* max */. poll(trig, "max [Lin]")
-    in /* max */.ampdb.poll(trig, "max [dB ]")
+    in /* max */    .poll(trig, "max [Lin]")
+    in /* max */.abs.poll(trig, "max [Abs]")
+  }
+
+  lazy val gY = Graph {
+    val trig = 1 // Impulse(1.0/44100)
+    Poll(in = (-0.0940551906824112: GE).abs.ampdb, trig = trig, label = "max")
   }
 
   lazy val gX = Graph {
