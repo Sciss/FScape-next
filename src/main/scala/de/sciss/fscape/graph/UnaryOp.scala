@@ -289,7 +289,7 @@ final case class UnaryOp(op: UnaryOp.Op, in: GE) extends UGenSource.SingleOut {
     unwrap(Vector(in.expand))
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
-    UGen.SingleOut(this, args)
+    UGen.SingleOut(this, inputs = args, rest = op)
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
     val Vec(in) = args

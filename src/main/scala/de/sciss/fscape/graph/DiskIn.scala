@@ -20,10 +20,11 @@ import de.sciss.fscape.stream.{Control, GBuilder, StreamIn, StreamOut}
 import scala.collection.immutable.{IndexedSeq => Vec}
 
 final case class DiskIn(file: File, numChannels: Int) extends UGenSource.MultiOut {
-  protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
-    UGen.MultiOut(this, inputs = args, numOutputs = numChannels, isIndividual = true, hasSideEffect = true)
-
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = makeUGen(Vector.empty)
+
+  protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
+    UGen.MultiOut(this, inputs = args, numOutputs = numChannels, rest = file,
+      isIndividual = true, hasSideEffect = true)
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Vec[StreamOut] =
     stream.DiskIn(file = file, numChannels = numChannels)

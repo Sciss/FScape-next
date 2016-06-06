@@ -39,7 +39,14 @@ sealed trait UGen extends Product {
 
   def name      : String
 
-  def inputs      : Vec[UGenIn]
+  def inputs    : Vec[UGenIn]
+
+  /** Additional UGen arguments that are not of type `UGenIn`.
+    * These are included to achieve correct equality
+    * (also as we do not transcode unary/binary operator ids
+    * into special indices)
+    */
+  protected def rest: Any
 
   def numInputs : Int = inputs.size
   def numOutputs: Int
@@ -47,11 +54,12 @@ sealed trait UGen extends Product {
   // the full UGen spec:
   // name, inputs
   override final def productPrefix: String = "UGen"
-  final def productArity: Int = 2
+  final def productArity: Int = 3
 
   final def productElement(n: Int): Any = (n: @switch) match {
     case 0 => name
     case 1 => inputs
+    case 2 => rest
     case _ => throw new java.lang.IndexOutOfBoundsException(n.toString)
   }
 
@@ -69,9 +77,10 @@ sealed trait UGen extends Product {
 
 object UGen {
   object SingleOut {
-    def apply(source: UGenSource.SingleOut, inputs: Vec[UGenIn], isIndividual: Boolean = false,
+    def apply(source: UGenSource.SingleOut, inputs: Vec[UGenIn], rest: Any = (), isIndividual: Boolean = false,
               hasSideEffect: Boolean = false)(implicit b: UGenGraph.Builder): SingleOut = {
-      val res = new SingleOutImpl(source, inputs, isIndividual = isIndividual, hasSideEffect = hasSideEffect)
+      val res = new SingleOutImpl(source = source, inputs = inputs, rest = rest,
+        isIndividual = isIndividual, hasSideEffect = hasSideEffect)
       b.addUGen(res)
       res
     }
@@ -88,9 +97,9 @@ object UGen {
   }
 
   object ZeroOut {
-    def apply(source: UGenSource.ZeroOut, inputs: Vec[UGenIn], isIndividual: Boolean = false)
+    def apply(source: UGenSource.ZeroOut, inputs: Vec[UGenIn], rest: Any = (), isIndividual: Boolean = false)
              (implicit b: UGenGraph.Builder): ZeroOut = {
-      val res = new ZeroOutImpl(source, inputs, isIndividual = isIndividual)
+      val res = new ZeroOutImpl(source = source, inputs = inputs, rest = rest, isIndividual = isIndividual)
       b.addUGen(res)
       res
     }
@@ -104,9 +113,10 @@ object UGen {
 
   object MultiOut {
     def apply(source: UGenSource.MultiOut, inputs: Vec[UGenIn], numOutputs: Int,
-              isIndividual: Boolean = false, hasSideEffect: Boolean = false)
+              rest: Any = (), isIndividual: Boolean = false, hasSideEffect: Boolean = false)
              (implicit b: UGenGraph.Builder): MultiOut = {
-      val res = new MultiOutImpl(source, numOutputs = numOutputs, inputs = inputs, isIndividual = isIndividual,
+      val res = new MultiOutImpl(source = source, numOutputs = numOutputs, inputs = inputs,
+        rest = rest, isIndividual = isIndividual,
         hasSideEffect = hasSideEffect)
       b.addUGen(res)
       res

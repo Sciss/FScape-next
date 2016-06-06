@@ -24,7 +24,7 @@ final case class Poll(in: GE, trig: GE, label: String = "poll") extends UGenSour
     unwrap(Vector(in.expand, trig.expand))
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit =
-    UGen.ZeroOut(this, args)
+    UGen.ZeroOut(this, inputs = args, rest = label)
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit = {
     val Vec(in, trig) = args

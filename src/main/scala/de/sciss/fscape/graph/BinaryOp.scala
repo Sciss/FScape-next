@@ -340,7 +340,7 @@ final case class BinaryOp(op: BinaryOp.Op, a: GE, b: GE) extends UGenSource.Sing
     unwrap(Vector(a.expand, b.expand))
 
   protected def makeUGen(args: Vec[UGenIn])(implicit builder: UGenGraph.Builder): UGenInLike =
-    UGen.SingleOut(this, args)
+    UGen.SingleOut(this, inputs = args, rest = op)
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
     val Vec(in1, in2) = args

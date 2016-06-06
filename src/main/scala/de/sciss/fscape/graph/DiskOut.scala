@@ -24,7 +24,7 @@ final case class DiskOut(file: File, spec: AudioFileSpec, in: GE) extends UGenSo
   protected def makeUGens(implicit b: UGenGraph.Builder): Unit = unwrap(in.expand.outputs)
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit =
-    UGen.ZeroOut(this, args, isIndividual = true)
+    UGen.ZeroOut(this, inputs = args, rest = file, isIndividual = true)
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit = {
     stream.DiskOut(file = file, spec = spec, in = args.map(_.toDouble))

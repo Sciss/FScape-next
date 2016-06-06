@@ -12,6 +12,7 @@ import scala.swing.Swing
 
 object NormalizeTest extends App {
   val fIn   = userHome / "Documents" / "projects" / "Unlike" / "audio_work" / "mentasm-e8646341-63dcf8a8.aif"
+  val fIn2  = userHome / "Music" / "work" / "B20h22m33s19mar2016.wav"
   val fOut  = userHome / "Music" / "work" / "_killme.aif"
 
   import graph._
@@ -25,7 +26,7 @@ object NormalizeTest extends App {
     Poll(in = in, trig = trig, label = "test")
   }
 
-  lazy val g = Graph {
+  lazy val gFORK2 = Graph {
     def mkIn() = DiskIn(file = fIn, numChannels = 1)
 
     val in        = mkIn()
@@ -42,9 +43,22 @@ object NormalizeTest extends App {
     in .abs.poll(trig, "[Abs]")
   }
 
-  lazy val gY = Graph {
+  lazy val gConst = Graph {
     val trig = 1 // Impulse(1.0/44100)
     Poll(in = (-0.0940551906824112: GE).abs.ampdb, trig = trig, label = "max")
+  }
+
+  lazy val g = Graph {
+    def mkIn() = ChannelProxy(DiskIn(file = fIn2, numChannels = 2), 0)
+
+    val in        = mkIn()
+    val max       = RunningMax(in.abs) // .last
+    max.ampdb.poll(1.0/44100, "max [dB]")
+    val headroom  = -0.2.dbamp
+    val gain      = max.reciprocal * headroom
+    val buf       = mkIn() // BufferAll(in)
+    val sig       = buf * gain
+    DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig)
   }
 
   lazy val gX = Graph {
