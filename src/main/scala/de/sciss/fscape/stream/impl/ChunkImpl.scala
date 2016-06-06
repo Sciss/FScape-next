@@ -1,13 +1,29 @@
-package de.sciss.fscape.stream
+/*
+ *  ChunkImpl.scala
+ *  (FScape)
+ *
+ *  Copyright (c) 2001-2016 Hanns Holger Rutz. All rights reserved.
+ *
+ *  This software is published under the GNU General Public License v2+
+ *
+ *
+ *  For further information, please contact Hanns Holger Rutz at
+ *  contact@sciss.de
+ */
+
+package de.sciss.fscape
+package stream
 package impl
 
 import akka.stream.stage.GraphStageLogic
 import akka.stream.{Inlet, Outlet, Shape}
 
-trait FilterChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape] {
+trait ChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape] {
   _: InOutImpl[S] with GraphStageLogic =>
 
   // ---- abstract ----
+
+  protected def shouldComplete(): Boolean
 
   protected var bufIn0: In0
   protected var bufOut: Out
@@ -22,19 +38,21 @@ trait FilterChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape
   // ---- impl ----
 
   private[this] var inOff             = 0  // regarding `bufIn`
-  private[this] var inRemain          = 0
+  private[this] var _inRemain         = 0
   private[this] var outOff            = 0  // regarding `bufOut`
   private[this] var outRemain         = 0
   private[this] var outSent           = true
 
+  protected final def inRemain: Int = _inRemain
+
   @inline
-  private[this] def shouldRead = inRemain == 0 && canRead
+  private[this] def shouldRead = _inRemain == 0 && canRead
 
   def process(): Unit = {
     var stateChange = false
 
     if (shouldRead) {
-      inRemain    = readIns()
+      _inRemain    = readIns()
       inOff       = 0
       stateChange = true
     }
@@ -47,17 +65,17 @@ trait FilterChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape
       stateChange   = true
     }
 
-    val chunk = math.min(inRemain, outRemain)
+    val chunk = math.min(_inRemain, outRemain)
     if (chunk > 0) {
       val chunk1   = processChunk(inOff = inOff, outOff = outOff, len = chunk)
       inOff       += chunk1
-      inRemain    -= chunk1
+      _inRemain    -= chunk1
       outOff      += chunk1
       outRemain   -= chunk1
       if (chunk1 > 0) stateChange = true
     }
 
-    val flushOut = inRemain == 0 && isClosed(in0)
+    val flushOut = shouldComplete()
     if (!outSent && (outRemain == 0 || flushOut) && isAvailable(out)) {
       if (outOff > 0) {
         bufOut.size = outOff
@@ -73,4 +91,18 @@ trait FilterChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape
     if      (flushOut && outSent) completeStage()
     else if (stateChange)         process()
   }
+}
+
+trait FilterChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape]
+  extends ChunkImpl[In0, Out, S] {
+  _: InOutImpl[S] with GraphStageLogic =>
+
+  protected final def shouldComplete(): Boolean = inRemain == 0 && isClosed(in0)
+}
+
+trait GenChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape]
+  extends ChunkImpl[In0, Out, S] {
+  _: InOutImpl[S] with GraphStageLogic =>
+
+  protected final def shouldComplete(): Boolean = false
 }

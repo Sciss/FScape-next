@@ -16,7 +16,7 @@ package stream
 
 import akka.stream.stage.{GraphStage, GraphStageLogic}
 import akka.stream.{Attributes, FanInShape2, Inlet, Outlet}
-import de.sciss.fscape.stream.impl.{FilterChunkImpl, GenIn2Impl}
+import de.sciss.fscape.stream.impl.{GenChunkImpl, GenIn2Impl}
 import de.sciss.numbers
 
 object Impulse {
@@ -34,7 +34,7 @@ object Impulse {
     val shape = new FanInShape2(
       in0 = InD ("Impulse.freqN"),
       in1 = InD ("Impulse.phase"),
-      out = OutD("GenWindow.out")
+      out = OutD("Impulse.out"  )
     )
 
     def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new Logic(shape)
@@ -44,7 +44,7 @@ object Impulse {
   private final class Logic(protected val shape: FanInShape2[BufD, BufD, BufD])
                            (implicit protected val ctrl: Control)
     extends GraphStageLogic(shape)
-      with FilterChunkImpl[BufD, BufD, FanInShape2[BufD, BufD, BufD]]
+      with GenChunkImpl[BufD, BufD, FanInShape2[BufD, BufD, BufD]]
       with GenIn2Impl[BufD, BufD, BufD] {
 
     protected def allocOutBuf(): BufD = ctrl.borrowBufD()

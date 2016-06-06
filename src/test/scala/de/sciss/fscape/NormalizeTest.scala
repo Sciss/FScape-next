@@ -17,6 +17,8 @@ object NormalizeTest extends App {
   import graph._
   import numbers.Implicits._
 
+  stream.showStreamLog = true
+
   lazy val g = Graph {
     val trig  = Impulse(1.0/44100)
     val in    = DiskIn(file = fIn, numChannels = 1)

@@ -73,5 +73,10 @@ final class ProcessOutHandlerImpl[A, S <: Shape](out: Outlet[A], logic: InOutImp
     logic.process()
   }
 
+  override def onDownstreamFinish(): Unit = {
+    logStream(s"onDownstreamFinish($out)")
+    super.onDownstreamFinish()
+  }
+
   logic.setOutHandler(out, this)
 }

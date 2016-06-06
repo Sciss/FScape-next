@@ -58,7 +58,6 @@ object GenWindow {
     private[this] var param  : Double = _
 
     protected def shouldComplete(): Boolean = false         // never
-    protected def inAvailable   (): Int     = ctrl.bufSize  // !
 
     protected def startNextWindow(inOff: Int): Int = {
 //      val oldSize = winSize
