@@ -11,11 +11,12 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape.stream.impl
+package de.sciss.fscape
+package stream
+package impl
 
 import akka.stream.FanInShape2
 import akka.stream.stage.GraphStageLogic
-import de.sciss.fscape.stream.BufLike
 
 /** Building block for `FanInShape2` type graph stage logic. */
 trait FilterIn2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, Out >: Null <: BufLike]
@@ -28,6 +29,10 @@ trait FilterIn2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, Out >: Null 
   protected final var bufIn1: In1 = _
   protected final var bufOut: Out = _
 
+  protected final val in0 = shape.in0
+  protected final val in1 = shape.in1
+  protected final val out = shape.out
+
   private[this] final var _canRead = false
   private[this] final var _inValid = false
 
@@ -35,9 +40,8 @@ trait FilterIn2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, Out >: Null 
   final def inValid: Boolean = _inValid
 
   override def preStart(): Unit = {
-    val sh = shape
-    pull(sh.in0)
-    pull(sh.in1)
+    pull(in0)
+    pull(in1)
   }
 
   override def postStop(): Unit = {
@@ -47,14 +51,13 @@ trait FilterIn2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, Out >: Null 
 
   protected final def readIns(): Unit = {
     freeInputBuffers()
-    val sh    = shape
-    bufIn0    = grab(sh.in0)
+    bufIn0    = grab(in0)
     bufIn0.assertAllocated()
-    tryPull(sh.in0)
+    tryPull(in0)
 
-    if (isAvailable(sh.in1)) {
-      bufIn1 = grab(sh.in1)
-      tryPull(sh.in1)
+    if (isAvailable(in1)) {
+      bufIn1 = grab(in1)
+      tryPull(in1)
     }
 
     _inValid = true
@@ -79,12 +82,11 @@ trait FilterIn2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, Out >: Null 
     }
 
   final def updateCanRead(): Unit = {
-    val sh = shape
-    _canRead = isAvailable(sh.in0) &&
-      ((isClosed(sh.in1) && _inValid) || isAvailable(sh.in1))
+    _canRead = isAvailable(in0) &&
+      ((isClosed(in1) && _inValid) || isAvailable(in1))
   }
 
-  new ProcessInHandlerImpl (shape.in0, this)
-  new AuxInHandlerImpl     (shape.in1, this)
-  new ProcessOutHandlerImpl(shape.out, this)
+  new ProcessInHandlerImpl (in0, this)
+  new AuxInHandlerImpl     (in1, this)
+  new ProcessOutHandlerImpl(out, this)
 }

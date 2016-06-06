@@ -161,3 +161,16 @@ Irregular windows:
        |xxx
           |xxxxxxx
              |xxx|
+
+## Normalize
+
+    proc -> abs              -> RunningMax -> LastValue -> reciprocal -> *headRoom  \ * -> DiskOut
+         -> PersistentBuffer                                                        /
+
+    val proc = ??? : GE
+    val max  = RunningMax(proc).last
+    val gain = headRoom / max    // IfGt(max, 0, max, 0) ?
+    val buf  = PersistentBuffer(proc)  // FullBuffer ? BufferAll ?
+    val sig  = buf * gain
+    DiskOut(sig)
+

@@ -11,11 +11,12 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape.stream.impl
+package de.sciss.fscape
+package stream
+package impl
 
 import akka.stream.FlowShape
 import akka.stream.stage.GraphStageLogic
-import de.sciss.fscape.stream.BufLike
 
 /** Building block for `FanInShape2` type graph stage logic. */
 trait FilterIn1Impl[In >: Null <: BufLike, Out >: Null <: BufLike]
@@ -24,8 +25,11 @@ trait FilterIn1Impl[In >: Null <: BufLike, Out >: Null <: BufLike]
 
   // ---- impl ----
 
-  protected final var bufIn : In  = _
+  protected final var bufIn0: In  = _
   protected final var bufOut: Out = _
+
+  protected final val in0 = shape.in
+  protected final val out = shape.out
 
   private[this] final var _canRead = false
   private[this] final var _inValid = false
@@ -34,7 +38,7 @@ trait FilterIn1Impl[In >: Null <: BufLike, Out >: Null <: BufLike]
   final def inValid: Boolean = _inValid
 
   override def preStart(): Unit =
-    pull(shape.in)
+    pull(in0)
 
   override def postStop(): Unit = {
     freeInputBuffers()
@@ -43,18 +47,17 @@ trait FilterIn1Impl[In >: Null <: BufLike, Out >: Null <: BufLike]
 
   protected final def readIns(): Unit = {
     freeInputBuffers()
-    val sh    = shape
-    bufIn     = grab(sh.in)
-    bufIn.assertAllocated()
-    tryPull(sh.in)
+    bufIn0 = grab(in0)
+    bufIn0.assertAllocated()
+    tryPull(in0)
     _inValid = true
     _canRead = false
   }
 
   protected final def freeInputBuffers(): Unit =
-    if (bufIn != null) {
-      bufIn.release()
-      bufIn = null
+    if (bufIn0 != null) {
+      bufIn0.release()
+      bufIn0 = null
     }
 
   protected final def freeOutputBuffers(): Unit =
@@ -64,8 +67,8 @@ trait FilterIn1Impl[In >: Null <: BufLike, Out >: Null <: BufLike]
     }
 
   final def updateCanRead(): Unit =
-    _canRead = isAvailable(shape.in)
+    _canRead = isAvailable(in0)
 
-  new ProcessInHandlerImpl (shape.in , this)
-  new ProcessOutHandlerImpl(shape.out, this)
+  new ProcessInHandlerImpl (in0, this)
+  new ProcessOutHandlerImpl(out, this)
 }

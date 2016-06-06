@@ -16,7 +16,7 @@ package stream
 
 import akka.stream.stage.{GraphStage, GraphStageLogic}
 import akka.stream.{Attributes, FlowShape}
-import de.sciss.fscape.stream.impl.FilterIn1Impl
+import de.sciss.fscape.stream.impl.{FilterChunkImpl, FilterIn1Impl}
 
 /** Unary operator assuming stream is complex signal (real and imaginary interleaved).
   * Outputs another complex stream even if the operator yields a purely real-valued result
@@ -45,67 +45,18 @@ object ComplexUnaryOp {
     def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new Logic(op, shape)
   }
 
-  private final class Logic(op: Op,
-                            protected val shape: FlowShape[BufD, BufD])
+  private final class Logic(op: Op, protected val shape: FlowShape[BufD, BufD])
                            (implicit protected val ctrl: Control)
     extends GraphStageLogic(shape)
+      with FilterChunkImpl[BufD, BufD, FlowShape[BufD, BufD]]
       with FilterIn1Impl[BufD, BufD] {
 
-    private[this] var inOff             = 0  // regarding `bufIn`
-    private[this] var inRemain          = 0
-    private[this] var outOff            = 0  // regarding `bufOut`
-    private[this] var outRemain         = 0
-    private[this] var outSent           = true
+    protected def allocOutBuf(): BufD = ctrl.borrowBufD()
 
-    @inline
-    private[this] def allocOutBuf(): BufD = ctrl.borrowBufD()
-
-    @inline
-    private[this] def shouldRead = inRemain == 0 && canRead
-
-    def process(): Unit = {
-      var stateChange = false
-
-      if (shouldRead) {
-        readIns()
-        inRemain    = bufIn.size
-        inOff       = 0
-        stateChange = true
-      }
-
-      if (outSent) {
-        bufOut        = allocOutBuf()
-        outRemain     = bufOut.size
-        outOff        = 0
-        outSent       = false
-        stateChange   = true
-      }
-
-      val chunk = math.min(inRemain, outRemain) & ~1  // must be even
-      if (chunk > 0) {
-        op(in = bufIn.buf, inOff = inOff, out = bufOut.buf, outOff = outOff, len = chunk >> 1)
-        inOff       += chunk
-        inRemain    -= chunk
-        outOff      += chunk
-        outRemain   -= chunk
-        stateChange  = true
-      }
-
-      val flushOut = inRemain <= 1 && isClosed(shape.in)  // flush also if inRemain == 1
-      if (!outSent && (outRemain == 0 || flushOut) && isAvailable(shape.out)) {
-        if (outOff > 0) {
-          bufOut.size = outOff
-          push(shape.out, bufOut)
-        } else {
-          bufOut.release()
-        }
-        bufOut      = null
-        outSent     = true
-        stateChange = true
-      }
-
-      if      (flushOut && outSent) completeStage()
-      else if (stateChange)         process()
+    protected def processChunk(inOff: Int, outOff: Int, chunk0: Int): Int = {
+      val chunk = chunk0 & ~1  // must be even
+      op(in = bufIn0.buf, inOff = inOff, out = bufOut.buf, outOff = outOff, len = chunk >> 1)
+      chunk
     }
   }
 }
