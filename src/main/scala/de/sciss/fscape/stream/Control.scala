@@ -11,7 +11,8 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape.stream
+package de.sciss.fscape
+package stream
 
 import java.util.concurrent.ConcurrentLinkedQueue
 
@@ -22,7 +23,9 @@ import scala.language.implicitConversions
 
 object Control {
   trait ConfigLike {
+    /** The block size for buffers send between nodes. */
     def bufSize: Int
+    /** Whether to isolate nodes through an asynchronous barrier. */
     def useAsync: Boolean
   }
   object Config {
@@ -31,7 +34,14 @@ object Control {
   }
   final case class Config(bufSize: Int, useAsync: Boolean) extends ConfigLike
   final class ConfigBuilder extends ConfigLike {
+    /** The default block size is 1024. */
     var bufSize: Int = 1024
+    /** The default behavior is to isolate blocking nodes
+      * into a separate graph. This should usually be the case.
+      * It can be disabled for debugging purposes, for example
+      * in order to allow the debug printer to create an entire
+      * GraphViz representation.
+      */
     var useAsync: Boolean = true
 
     def build = Config(bufSize = bufSize, useAsync = useAsync)
@@ -96,7 +106,9 @@ object Control {
   final case class Stats(numBufD: Int, numBufI: Int)
 }
 trait Control {
-  /** Global buffer size. The guaranteed size of the double and integer arrays. */
+  /** Global buffer size. The guaranteed size of the double and integer arrays.
+    * A shortcut for `config.bufSize`.
+    */
   def bufSize: Int
 
   /** Borrows a double buffer. Its size is reset to `bufSize`. */
@@ -105,10 +117,16 @@ trait Control {
   /** Borrows an integer buffer. Its size is reset to `bufSize`. */
   def borrowBufI(): BufI
 
-  /** Returns a double buffer. When `buf.borrowed` is `false`, this is a no-op. */
+  /** Returns a double buffer. When `buf.borrowed` is `false`, this is a no-op.
+    * This should never be called directly but only by the buffer itself
+    * through `buf.release()`.
+    */
   def returnBufD(buf: BufD): Unit
 
-  /** Returns an integer buffer. When `buf.borrowed` is `false`, this is a no-op. */
+  /** Returns an integer buffer. When `buf.borrowed` is `false`, this is a no-op.
+    * This should never be called directly but only by the buffer itself
+    * through `buf.release()`.
+    */
   def returnBufI(buf: BufI): Unit
 
   /** Adds a leaf node that can be cancelled. Must be called during materialization. */
