@@ -49,14 +49,18 @@ object Sliding {
     def outRemain   : Int = size  - offOut
   }
 
+  private final val name = "Sliding"
+
   private final class Stage(implicit ctrl: Control)
     extends GraphStage[FanInShape3[BufD, BufI, BufI, BufD]] {
 
+    override def toString = s"$name@${hashCode.toHexString}"
+
     val shape = new FanInShape3(
-      in0 = InD ("Sliding.in"  ),
-      in1 = InI ("Sliding.size"),
-      in2 = InI ("Sliding.step"),
-      out = OutD("Sliding.out" )
+      in0 = InD (s"$name.in"  ),
+      in1 = InI (s"$name.size"),
+      in2 = InI (s"$name.step"),
+      out = OutD(s"$name.out" )
     )
 
     def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new Logic(shape)
@@ -69,6 +73,8 @@ object Sliding {
   private final class Logic(protected val shape: FanInShape3[BufD, BufI, BufI, BufD])
                            (implicit protected val ctrl: Control)
     extends GraphStageLogic(shape) with FilterIn3Impl[BufD, BufI, BufI, BufD] {
+
+    override def toString = s"$name-L@${hashCode.toHexString}"
 
     private[this] var inOff         = 0  // regarding `bufIn`
     private[this] var inRemain      = 0
@@ -100,6 +106,7 @@ object Sliding {
     @tailrec
     def process(): Unit = {
       var stateChange = false
+      logStream(s"$this.process()")
 
       // read inlets
       if (shouldRead) {
@@ -195,7 +202,10 @@ object Sliding {
         stateChange = true
       }
 
-      if (flushOut && outSent) completeStage()
+      if (flushOut && outSent) {
+        logStream(s"$this.completeStage()")
+        completeStage()
+      }
       else if (stateChange) process()
     }
   }

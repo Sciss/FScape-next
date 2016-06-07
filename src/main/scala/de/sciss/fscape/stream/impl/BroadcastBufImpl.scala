@@ -11,11 +11,12 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape.stream.impl
+package de.sciss.fscape
+package stream
+package impl
 
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
 import akka.stream.{Attributes, Inlet, Outlet, UniformFanOutShape}
-import de.sciss.fscape.stream.{BufLike, Control}
 
 /** Variant of Akka's built-in `Broadcast` that properly allocates buffers. */
 final class BroadcastBufStageImpl[B <: BufLike](numOutputs: Int, eagerCancel: Boolean)(implicit ctrl: Control)
@@ -85,10 +86,16 @@ final class BroadcastBufLogicImpl[B <: BufLike](shape: UniformFanOutShape[B, B],
         }
 
         override def onDownstreamFinish(): Unit = {
-          if (eagerCancel) completeStage()
+          if (eagerCancel) {
+            logStream(s"$this.completeStage()")
+            completeStage()
+          }
           else {
             sinksRunning -= 1
-            if (sinksRunning == 0) completeStage()
+            if (sinksRunning == 0) {
+              logStream(s"$this.completeStage()")
+              completeStage()
+            }
             else if (pending(idx0)) {
               pending(idx0) = false
               pendingCount -= 1

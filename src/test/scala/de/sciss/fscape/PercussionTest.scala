@@ -28,7 +28,7 @@ object PercussionTest extends App {
     sig
   }
 
-  val g = Graph {
+  lazy val gABBREV = Graph {
     // 'analysis'
     val in          = DiskIn(file = fIn, numChannels = 1)
     val fftSize     = 131072
@@ -62,7 +62,7 @@ object PercussionTest extends App {
     DiskOut(file = fOut, spec = AudioFileSpec(numChannels = sig.size, sampleRate = 44100), in = sig)
   }
 
-  val gREAL = Graph {
+  lazy val g = Graph {
     // 'analysis'
     val in          = DiskIn(file = fIn, numChannels = 1)
     val fftSize     = 131072
@@ -96,6 +96,7 @@ object PercussionTest extends App {
     DiskOut(file = fOut, spec = AudioFileSpec(numChannels = sig.size, sampleRate = 44100), in = sig)
   }
 
+//  stream.showStreamLog = true
   // XXX TODO -- reduce ceremony here
   import ExecutionContext.Implicits.global
   val config = stream.Control.Config()

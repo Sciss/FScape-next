@@ -48,10 +48,10 @@ object OverlapAdd {
     def outRemain   : Int = size  - offOut
   }
 
+  private final val name = "OverlapAdd"
+
   private final class Stage(implicit ctrl: Control)
     extends GraphStage[FanInShape3[BufD, BufI, BufI, BufD]] {
-
-    val name = "OverlapAdd"
 
     override def toString = s"$name@${hashCode.toHexString}"
 
@@ -70,6 +70,8 @@ object OverlapAdd {
     extends GraphStageLogic(shape)
       with WindowedFilterLogicImpl[BufD, BufD, FanInShape3[BufD, BufI, BufI, BufD]]
       with FilterIn3Impl[BufD, BufI, BufI, BufD] {
+
+    override def toString = s"$name-L@${hashCode.toHexString}"
 
     protected val in0: InD = shape.in0
 

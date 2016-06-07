@@ -29,10 +29,10 @@ object BinaryOp {
     stage.out
   }
 
+  private final val name = "BinaryOp"
+
   private final class Stage(op: Op)(implicit ctrl: Control)
     extends GraphStage[FanInShape2[BufD, BufD, BufD]] {
-
-    val name = "BinaryOp"
 
     override def toString = s"$name($op)@${hashCode.toHexString}"
 
@@ -50,6 +50,8 @@ object BinaryOp {
     extends GraphStageLogic(shape)
       with FilterChunkImpl[BufD, BufD, FanInShape2[BufD, BufD, BufD]]
       with FilterIn2Impl[BufD, BufD, BufD] {
+
+    override def toString = s"$name-L($op)@${hashCode.toHexString}"
 
     private[this] var bVal: Double = _
 

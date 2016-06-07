@@ -33,10 +33,10 @@ object TakeRight {
     stage.out
   }
 
+  private final val name = "TakeRight"
+
   private final class Stage(implicit ctrl: Control)
     extends GraphStage[FanInShape2[BufD, BufI, BufD]] {
-
-    val name = "TakeRight"
 
     override def toString = s"$name@${hashCode.toHexString}"
 
@@ -54,6 +54,8 @@ object TakeRight {
     extends GraphStageLogic(shape)
       with FilterIn2Impl[BufD, BufI, BufD] {
 
+    override def toString = s"$name-L@${hashCode.toHexString}"
+
     protected def allocOutBuf(): BufD = ctrl.borrowBufD()
 
     private[this] var len     : Int           = _
@@ -69,7 +71,9 @@ object TakeRight {
 
     private[this] var writeMode = false
 
-    def process(): Unit =
+    def process(): Unit = {
+      logStream(s"$this.process() ${if (writeMode) "W" else "R"}")
+
       if (writeMode) tryWrite()
       else {
         if (canRead) {
@@ -87,6 +91,7 @@ object TakeRight {
           tryWrite()
         }
       }
+    }
 
     private def copyInputToBuffer(): Unit = {
       val inRemain  = bufIn0.size
@@ -147,7 +152,10 @@ object TakeRight {
         outSent     = true
       }
 
-      if (flushOut && outSent) completeStage()
+      if (flushOut && outSent) {
+        logStream(s"$this.completeStage()")
+        completeStage()
+      }
     }
   }
 }

@@ -28,10 +28,10 @@ object Poll {
     b.connect(trig, stage.in1)
   }
 
+  private final val name = "Poll"
+
   private final class Stage(label: String)(implicit ctrl: Control)
     extends GraphStage[SinkShape2[BufD, BufI]] {
-
-    val name = "Poll"
 
     override def toString = s"$name($label)"
 
@@ -48,10 +48,20 @@ object Poll {
     extends GraphStageLogic(shape)
       with Sink2Impl[BufD, BufI] {
 
+    override def toString = s"$name-L($label)"
+
     private[this] var high0 = false
 
     def process(): Unit = {
-      if (!canRead) return
+      if (!canRead) {
+        if (!inValid) {
+          logStream(s"$this.completeStage()")
+          completeStage()
+        }
+        return
+      }
+
+      logStream(s"$this.process()")
 
       val stop0   = readIns()
       // println(s"Poll($label).process(in $bufIn0, trig $bufIn1, chunk $stop0)")

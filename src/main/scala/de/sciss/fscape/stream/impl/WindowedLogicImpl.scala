@@ -94,7 +94,7 @@ trait WindowedLogicImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, Shape <:
       inRemain    = readIns()
       inOff       = 0
       stateChange = true
-      logStream(s"readIns(); inRemain = $inRemain")
+      // logStream(s"readIns(); inRemain = $inRemain")
     }
 
     if (canWriteToWindow) {
@@ -103,13 +103,13 @@ trait WindowedLogicImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, Shape <:
         writeToWinOff     = 0
         isNextWindow      = false
         stateChange       = true
-        logStream(s"startNextWindow(); writeToWinRemain = $writeToWinRemain")
+        // logStream(s"startNextWindow(); writeToWinRemain = $writeToWinRemain")
       }
 
       val chunk     = math.min(writeToWinRemain, inRemain)
       val flushIn   = inRemain == 0 && writeToWinOff > 0 && shouldComplete()
       if (chunk > 0 || flushIn) {
-        logStream(s"writeToWindow(); inOff = $inOff, writeToWinOff = $writeToWinOff, chunk = $chunk")
+        // logStream(s"writeToWindow(); inOff = $inOff, writeToWinOff = $writeToWinOff, chunk = $chunk")
         if (chunk > 0) {
           copyInputToWindow(inOff = inOff, writeToWinOff = writeToWinOff, chunk = chunk)
           inOff            += chunk
@@ -124,7 +124,7 @@ trait WindowedLogicImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, Shape <:
           readFromWinOff    = 0
           isNextWindow      = true
           stateChange       = true
-          logStream(s"processWindow(); readFromWinRemain = $readFromWinRemain")
+          // logStream(s"processWindow(); readFromWinRemain = $readFromWinRemain")
         }
       }
     }
@@ -136,12 +136,12 @@ trait WindowedLogicImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, Shape <:
         outOff        = 0
         outSent       = false
         stateChange   = true
-        logStream(s"allocOutBuf(); outRemain = $outRemain")
+        // logStream(s"allocOutBuf(); outRemain = $outRemain")
       }
 
       val chunk = math.min(readFromWinRemain, outRemain)
       if (chunk > 0) {
-        logStream(s"readFromWindow(); readFromWinOff = $readFromWinOff, outOff = $outOff, chunk = $chunk")
+        // logStream(s"readFromWindow(); readFromWinOff = $readFromWinOff, outOff = $outOff, chunk = $chunk")
         copyWindowToOutput(readFromWinOff = readFromWinOff, outOff = outOff, chunk = chunk)
         readFromWinOff    += chunk
         readFromWinRemain -= chunk
@@ -151,9 +151,9 @@ trait WindowedLogicImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, Shape <:
       }
     }
 
-    val flushOut = inRemain == 0 && writeToWinRemain /* writeToWinOff */ == 0 && readFromWinRemain == 0 && shouldComplete()
+    val flushOut = inRemain == 0 && /* writeToWinRemain */ writeToWinOff == 0 && readFromWinRemain == 0 && shouldComplete()
     if (!outSent && (outRemain == 0 || flushOut) && isAvailable(shape.out)) {
-      logStream(s"sendOut(); outOff = $outOff")
+      // logStream(s"sendOut(); outOff = $outOff")
       if (outOff > 0) {
         bufOut.size = outOff
         push(shape.out, bufOut)
@@ -165,7 +165,10 @@ trait WindowedLogicImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, Shape <:
       stateChange = true
     }
 
-    if      (flushOut && outSent) completeStage()
-    else if (stateChange)         process()
+    if (flushOut && outSent) {
+      logStream(s"$this.completeStage()")
+      completeStage()
+    }
+    else if (stateChange) process()
   }
 }

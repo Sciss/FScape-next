@@ -38,10 +38,14 @@ case class UnzipWindowShape(in0: InD, in1: InI, outlets: ISeq[OutD]) extends Sha
 final class UnzipWindowStageImpl(numOutputs: Int)(implicit ctrl: Control)
   extends GraphStage[UnzipWindowShape] {
 
+  val name = "UnzipWindow"
+
+  override def toString = s"$name@${hashCode.toHexString}"
+
   val shape = UnzipWindowShape(
-    in0     = InD("UnzipWindow.in"),
-    in1     = InI("UnzipWindow.size"),
-    outlets = Vector.tabulate(numOutputs)(idx => OutD(s"UnzipWindow.out$idx"))
+    in0     = InD(s"$name.in"),
+    in1     = InI(s"$name.size"),
+    outlets = Vector.tabulate(numOutputs)(idx => OutD(s"$name.out$idx"))
   )
 
   def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new UnzipWindowLogicImpl(shape)
@@ -49,6 +53,8 @@ final class UnzipWindowStageImpl(numOutputs: Int)(implicit ctrl: Control)
 
 final class UnzipWindowLogicImpl(shape: UnzipWindowShape)(implicit ctrl: Control)
   extends GraphStageLogic(shape) {
+
+  override def toString = s"UnzipWindow-L@${hashCode.toHexString}"
 
   private[this] var bufIn0: BufD = _
   private[this] var bufIn1: BufI = _
@@ -209,8 +215,11 @@ final class UnzipWindowLogicImpl(shape: UnzipWindowShape)(implicit ctrl: Control
       idx += 1
     }
 
-    if      (flush && outputs.forall(_.sent)) completeStage()
-    else if (stateChange)                     process()
+    if (flush && outputs.forall(_.sent)) {
+      logStream(s"$this.completeStage()")
+      completeStage()
+    }
+    else if (stateChange) process()
   }
 
   setHandler(shape.in0, new InHandler {

@@ -29,14 +29,16 @@ object BufferDisk {
     stage.out
   }
 
+  private final val name = "BufferDisk"
+
   private final class Stage(implicit protected val ctrl: Control)
     extends BlockingGraphStage[FlowShape[BufD, BufD]] {
 
-    override def toString = s"BufferDisk@${hashCode.toHexString}"
+    override def toString = s"$name@${hashCode.toHexString}"
 
     val shape = new FlowShape(
-      in  = InD ("BufferDisk.in" ),
-      out = OutD("BufferDisk.out")
+      in  = InD (s"$name.in" ),
+      out = OutD(s"$name.out")
     )
 
     def createLogic(attr: Attributes): GraphStageLogic = new Logic(shape)
@@ -44,6 +46,8 @@ object BufferDisk {
 
   private final class Logic(shape: FlowShape[BufD, BufD])(implicit ctrl: Control)
     extends GraphStageLogic(shape) with InHandler with OutHandler {
+
+    override def toString = s"$name-L@${hashCode.toHexString}"
 
     private[this] var af: AudioFile = _
     private[this] var bufSize: Int = _
@@ -79,7 +83,7 @@ object BufferDisk {
       val bufIn = grab(shape.in)
       tryPull(shape.in)
       val chunk = bufIn.size
-      println(s"BufferDisk.onPush($chunk)")
+      logStream(s"$this.onPush($chunk)")
 
       var i = 0
       val a = bufIn.buf
@@ -93,7 +97,7 @@ object BufferDisk {
         if (af.position != framesWritten) af.position = framesWritten
         af.write(buf, 0, chunk)
         framesWritten += chunk
-        println(s"framesWritten = $framesWritten")
+        // logStream(s"framesWritten = $framesWritten")
       } finally {
         bufIn.release()
       }
@@ -103,15 +107,18 @@ object BufferDisk {
 
     def onPull(): Unit = {
       val chunk = math.min(bufSize, framesWritten - framesRead).toInt
-      println(s"BufferDisk.onPull($chunk)")
+      logStream(s"$this.onPull($chunk)")
       if (chunk == 0) {
-        if (isClosed(shape.in)) completeStage()
+        if (isClosed(shape.in)) {
+          logStream(s"$this.completeStage()")
+          completeStage()
+        }
 
       } else {
         if (af.position != framesRead) af.position = framesRead
         af.read(buf, 0, chunk)
         framesRead += chunk
-        println(s"framesRead    = $framesRead")
+        // logStream(s"framesRead    = $framesRead")
 
         val bufOut = ctrl.borrowBufD()
         val b = bufOut.buf
@@ -128,7 +135,7 @@ object BufferDisk {
 
     // in closed
     override def onUpstreamFinish(): Unit = {
-      println("BufferDisk.onUpstreamFinish")
+      logStream(s"$this.onUpstreamFinish")
       if (isAvailable(shape.out)) onPull()
     }
   }

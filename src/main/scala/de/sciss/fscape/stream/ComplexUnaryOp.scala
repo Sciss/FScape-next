@@ -34,12 +34,16 @@ object ComplexUnaryOp {
     stage.out
   }
 
+  private final val name = "ComplexUnaryOp"
+
   private final class Stage(op: Op)(implicit ctrl: Control)
     extends GraphStage[FlowShape[BufD, BufD]] {
 
+    override def toString = s"$name($op)@${hashCode.toHexString}"
+
     val shape = new FlowShape(
-      in  = InD ("ComplexUnaryOp.in" ),
-      out = OutD("ComplexUnaryOp.out")
+      in  = InD (s"$name.in" ),
+      out = OutD(s"$name.out")
     )
 
     def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new Logic(op, shape)
@@ -50,6 +54,8 @@ object ComplexUnaryOp {
     extends GraphStageLogic(shape)
       with FilterChunkImpl[BufD, BufD, FlowShape[BufD, BufD]]
       with FilterIn1Impl[BufD, BufD] {
+
+    override def toString = s"$name-L($op)@${hashCode.toHexString}"
 
     protected def allocOutBuf(): BufD = ctrl.borrowBufD()
 

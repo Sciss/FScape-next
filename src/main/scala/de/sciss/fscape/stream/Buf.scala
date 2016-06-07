@@ -56,7 +56,8 @@ final class BufD private(val buf: Array[Double], var size: Int, borrowed: Boolea
     if (newCount == 0) ctrl.returnBufD(this)
   }
 
-  override def toString = s"BufD(size = $size)@${hashCode.toHexString}"
+  override def toString: String =
+    if (size == 1) buf(0).toString else s"BufD(size = $size)@${hashCode.toHexString}"
 }
 
 object BufI {
@@ -85,5 +86,6 @@ final class BufI private(val buf: Array[Int], var size: Int, borrowed: Boolean) 
     if (newCount == 0) ctrl.returnBufI(this)
   }
 
-  override def toString = s"BufI(size = $size)"
+  override def toString =
+    if (size == 1) buf(0).toString else s"BufI(size = $size)@${hashCode.toHexString}"
 }

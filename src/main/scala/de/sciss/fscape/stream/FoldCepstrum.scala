@@ -39,10 +39,12 @@ object FoldCepstrum {
 
   private type Shape10 = FanInShape10[BufD, BufI, BufD, BufD, BufD, BufD, BufD, BufD, BufD, BufD, BufD]
 
+  private final val name = "FoldCepstrum"
+
   private final class Stage(implicit ctrl: Control)
     extends GraphStage[Shape10] {
-    
-    private[this] val name = "FoldCepstrum"
+
+    override def toString = s"$name@${hashCode.toHexString}"
 
     val shape = new FanInShape10(
       in0  = InD (s"$name.in"  ),
@@ -67,6 +69,8 @@ object FoldCepstrum {
     extends GraphStageLogic(shape)
       with WindowedFilterLogicImpl[BufD, BufD, Shape10]
       with FilterIn10Impl[BufD, BufI, BufD, BufD, BufD, BufD, BufD, BufD, BufD, BufD, BufD] {
+
+    override def toString = s"$name-L@${hashCode.toHexString}"
 
     protected val in0: InD = shape.in0
 

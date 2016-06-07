@@ -29,10 +29,10 @@ object UnaryOp {
     stage.out
   }
 
+  private final val name = "UnaryOp"
+
   private final class Stage(op: Op)(implicit ctrl: Control)
     extends GraphStage[FlowShape[BufD, BufD]] {
-
-    val name = "UnaryOp"
 
     override def toString = s"$name($op)@${hashCode.toHexString}"
 
@@ -49,6 +49,8 @@ object UnaryOp {
     extends GraphStageLogic(shape)
       with FilterChunkImpl[BufD, BufD, FlowShape[BufD, BufD]]
       with FilterIn1Impl[BufD, BufD] {
+
+    override def toString = s"$name-L($op)@${hashCode.toHexString}"
 
     protected def allocOutBuf(): BufD = ctrl.borrowBufD()
 

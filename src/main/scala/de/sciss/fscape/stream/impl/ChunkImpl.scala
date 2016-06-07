@@ -88,8 +88,11 @@ trait ChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape] {
       stateChange = true
     }
 
-    if      (flushOut && outSent) completeStage()
-    else if (stateChange)         process()
+    if (flushOut && outSent) {
+      logStream(s"$this.completeStage()")
+      completeStage()
+    }
+    else if (stateChange) process()
   }
 }
 

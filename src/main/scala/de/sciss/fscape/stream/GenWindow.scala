@@ -30,14 +30,18 @@ object GenWindow {
     stage.out
   }
 
+  private final val name = "GenWindow"
+
   private final class Stage(implicit ctrl: Control)
     extends GraphStage[FanInShape3[BufI, BufI, BufD, BufD]] {
 
+    override def toString = s"$name@${hashCode.toHexString}"
+
     val shape = new FanInShape3(
-      in0 = InI ("GenWindow.size" ),
-      in1 = InI ("GenWindow.shape"),
-      in2 = InD ("GenWindow.param"),
-      out = OutD("GenWindow.out"  )
+      in0 = InI (s"$name.size" ),
+      in1 = InI (s"$name.shape"),
+      in2 = InD (s"$name.param"),
+      out = OutD(s"$name.out"  )
     )
 
     def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new Logic(shape)
@@ -49,6 +53,8 @@ object GenWindow {
     extends GraphStageLogic(shape)
       with WindowedLogicImpl[BufD, BufD, FanInShape3[BufI, BufI, BufD, BufD]]
       with GenIn3Impl                               [BufI, BufI, BufD, BufD] {
+
+    override def toString = s"$name-L@${hashCode.toHexString}"
 
     protected def allocOutBuf(): BufD = ctrl.borrowBufD()
 
