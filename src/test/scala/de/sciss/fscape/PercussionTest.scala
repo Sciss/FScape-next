@@ -1,15 +1,11 @@
 package de.sciss.fscape
 
-import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
 import de.sciss.file._
 import de.sciss.fscape.gui.SimpleGUI
 import de.sciss.numbers
 import de.sciss.synth.io.AudioFileSpec
 
-import scala.concurrent.ExecutionContext
-import scala.swing.Swing._
-import scala.swing.{Button, Frame, Swing}
+import scala.swing.Swing
 
 object PercussionTest extends App {
   val fIn   = userHome / "Documents" / "projects" / "Unlike" / "audio_work" / "mentasm-e8646341-63dcf8a8.aif"
@@ -96,33 +92,13 @@ object PercussionTest extends App {
     DiskOut(file = fOut, spec = AudioFileSpec(numChannels = sig.size, sampleRate = 44100), in = sig)
   }
 
-//  stream.showStreamLog = true
-  // XXX TODO -- reduce ceremony here
-  import ExecutionContext.Implicits.global
   val config = stream.Control.Config()
   config.useAsync = false
-  implicit val ctrl   = stream.Control(config)
-  val process         = g.expand
-  implicit val system = ActorSystem()
-  implicit val mat    = ActorMaterializer()
-  process.runnable.run()
+  implicit val ctrl = stream.Control(config)
+  ctrl.run(g)
 
   Swing.onEDT {
-    val gui = SimpleGUI(ctrl)
-    val b   = gui.bounds
-
-    new Frame {
-      title = "Debug"
-
-      contents = Button("Dump") {
-        akka.stream.escape.Utils.debugDotGraph()
-      }
-      pack()
-      location = (b.x + b.width, b.y)
-      open()
-
-      override def closeOperation(): Unit = dispose()
-    }
+    SimpleGUI(ctrl)
   }
 
   println("Running.")

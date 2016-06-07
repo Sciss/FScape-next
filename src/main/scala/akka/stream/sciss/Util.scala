@@ -1,14 +1,10 @@
-package akka.stream
-package escape
+package akka.stream.sciss
 
-import akka.stream.impl._
+import akka.stream.Materializer
+import akka.stream.impl.{ActorMaterializerImpl, StreamSupervisor}
 import akka.testkit.TestProbe
 
-object Escape {
-  def module(in: Graph[_, _]) = in.module
-}
-
-object Utils {
+object Util {
   /** Prints a debugging string to the console,
     * including a GraphViz DOT representation of
     * the running graph.

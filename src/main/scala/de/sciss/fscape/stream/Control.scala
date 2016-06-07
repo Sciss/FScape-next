@@ -16,6 +16,8 @@ package stream
 
 import java.util.concurrent.ConcurrentLinkedQueue
 
+import akka.actor.ActorSystem
+import akka.stream.{ActorMaterializer, Materializer}
 import de.sciss.file.File
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -27,12 +29,24 @@ object Control {
     def bufSize: Int
     /** Whether to isolate nodes through an asynchronous barrier. */
     def useAsync: Boolean
+
+    def materializer: Materializer
+    
+    def executionContext: ExecutionContext
   }
   object Config {
     def apply() = new ConfigBuilder
     implicit def build(b: ConfigBuilder): Config = b.build
   }
-  final case class Config(bufSize: Int, useAsync: Boolean) extends ConfigLike
+
+  final case class Config(bufSize: Int, useAsync: Boolean, materializer0: Materializer,
+                          executionContext0: ExecutionContext)
+    extends ConfigLike {
+
+    implicit def materializer    : Materializer     = materializer0
+    implicit def executionContext: ExecutionContext = executionContext0
+  }
+
   final class ConfigBuilder extends ConfigLike {
     /** The default block size is 1024. */
     var bufSize: Int = 1024
@@ -44,14 +58,34 @@ object Control {
       */
     var useAsync: Boolean = true
 
-    def build = Config(bufSize = bufSize, useAsync = useAsync)
+    private[this] var _mat: Materializer = _
+    private[this] lazy val defaultMat: Materializer = ActorMaterializer()(ActorSystem())
+
+    def materializer: Materializer = {
+      if (_mat == null) _mat = defaultMat
+      _mat
+    }
+    def materializer_=(value: Materializer): Unit =
+      _mat = value
+    
+    private[this] var _exec: ExecutionContext = _
+
+    def executionContext: ExecutionContext = {
+      if (_exec == null) _exec = ExecutionContext.Implicits.global
+      _exec
+    }
+    def executionContext_=(value: ExecutionContext): Unit =
+      _exec = value
+
+    def build = Config(bufSize = bufSize, useAsync = useAsync,
+      materializer0 = materializer, executionContext0 = executionContext)
   }
 
-  def apply(config: Config = Config())(implicit exec: ExecutionContext): Control = new Impl(config)
+  def apply(config: Config = Config()): Control = new Impl(config)
 
   implicit def fromBuilder(implicit b: Builder): Control = b.control
 
-  private final class Impl(val config: Config)(implicit exec: ExecutionContext) extends Control {
+  private final class Impl(val config: Config) extends Control {
     override def toString = s"Control@${hashCode().toHexString}"
 
     def bufSize: Int = config.bufSize
@@ -59,6 +93,14 @@ object Control {
     private[this] val queueD  = new ConcurrentLinkedQueue[BufD]
     private[this] val queueI  = new ConcurrentLinkedQueue[BufI]
     private[this] var leaves  = List.empty[Leaf]
+
+    def debugDotGraph(): Unit = akka.stream.sciss.Util.debugDotGraph()(config.materializer)
+
+    def run(graph: Graph): UGenGraph = {
+      val ugens = graph.expand(this)
+      ugens.runnable.run()(config.materializer)
+      ugens
+    }
 
     def borrowBufD(): BufD = {
       val res0 = queueD.poll()
@@ -92,6 +134,7 @@ object Control {
     def addLeaf(l: Leaf): Unit = leaves ::= l
 
     def status: Future[Unit] = {
+      import config.executionContext
       val seq = leaves.map(_.result)
       Future.fold[Any, Unit](seq)(())((_, _) => ())  // is there a simpler way to write this?
     }
@@ -150,4 +193,8 @@ trait Control {
   def stats: Control.Stats
 
   def config: Control.Config
+
+  def debugDotGraph(): Unit
+
+  def run(graph: Graph): UGenGraph
 }

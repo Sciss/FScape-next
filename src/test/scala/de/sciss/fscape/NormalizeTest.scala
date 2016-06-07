@@ -88,13 +88,8 @@ object NormalizeTest extends App {
     DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig)
   }
 
-  // XXX TODO -- reduce ceremony here
-  import ExecutionContext.Implicits.global
-  implicit val ctrl   = stream.Control()
-  val process         = g.expand
-  implicit val system = ActorSystem()
-  implicit val mat    = ActorMaterializer()
-  process.runnable.run()
+  implicit val ctrl = stream.Control()
+  ctrl.run(g)
 
   Swing.onEDT {
     SimpleGUI(ctrl)

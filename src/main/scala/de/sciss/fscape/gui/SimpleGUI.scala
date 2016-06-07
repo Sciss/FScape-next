@@ -16,6 +16,9 @@ object SimpleGUI {
     var finished = false
 
     val ggCancel = Button("Cancel")(ctrl.cancel())
+    val ggDump   = Button("Dump") {
+      ctrl.debugDotGraph()
+    }
 
     import ExecutionContext.Implicits.global
     ctrl.status.onComplete { tr =>
@@ -35,7 +38,7 @@ object SimpleGUI {
     new Frame {
       title = "Control"
 
-      contents = new FlowPanel(ggCancel, lbCancelled)
+      contents = new FlowPanel(ggCancel, ggDump, lbCancelled)
       pack().centerOnScreen()
       open()
 

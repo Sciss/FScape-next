@@ -18,5 +18,5 @@ libraryDependencies ++= Seq(
   "de.sciss"          %% "swingplus"            % "0.2.1",
   "de.sciss"          %% "optional"             % "1.0.0",
   "com.typesafe.akka" %% "akka-stream"          % akkaVersion,
-  "com.typesafe.akka" %% "akka-stream-testkit"  % akkaVersion % "test"
+  "com.typesafe.akka" %% "akka-stream-testkit"  % akkaVersion
 )

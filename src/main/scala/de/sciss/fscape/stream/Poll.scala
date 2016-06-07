@@ -54,7 +54,7 @@ object Poll {
 
     def process(): Unit = {
       if (!canRead) {
-        if (!inValid) {
+        if (isClosed(shape.in0)) {
           logStream(s"$this.completeStage()")
           completeStage()
         }

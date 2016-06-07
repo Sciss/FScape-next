@@ -9,7 +9,6 @@ import de.sciss.file._
 import de.sciss.fscape.gui.SimpleGUI
 import de.sciss.synth.io.AudioFileSpec
 
-import scala.concurrent.ExecutionContext
 import scala.swing.Swing
 
 object StreamTest extends App {
@@ -25,10 +24,16 @@ object StreamTest extends App {
   val fOut2 = userHome / "Music" / "work" / "_killme2.aif"
   val fOut3 = userHome / "Music" / "work" / "_killme3.aif"
 
-  import ExecutionContext.Implicits.global
   val blockSize = 1024
   val config = Control.Config()
   config.bufSize = blockSize
+  implicit val system = ActorSystem()
+  config.materializer = ActorMaterializer(
+    ActorMaterializerSettings(system)
+    //      .withInputBuffer(
+    //        initialSize = 1024,
+    //        maxSize     = 1024)
+  )
   implicit val ctrl = Control(config)
 
   lazy val graphFFT = GraphDSL.create() { implicit dsl =>
@@ -213,7 +218,7 @@ object StreamTest extends App {
   lazy val graphMONO = GraphDSL.create() { implicit dsl =>
     implicit val b = Builder()
 
-    import graph.BinaryOp.{Times, Max}
+    import graph.BinaryOp.{Max, Times}
 
     // 'analysis'
     val in          = DiskIn(file = fIn, numChannels = 1).head
@@ -272,7 +277,7 @@ object StreamTest extends App {
   lazy val _graph = GraphDSL.create() { implicit dsl =>
     implicit val b = Builder()
 
-    import graph.BinaryOp.{Times, Max}
+    import graph.BinaryOp.{Max, Times}
 
     // 'analysis'
     val in          = DiskIn(file = fIn, numChannels = 1).head
@@ -359,16 +364,8 @@ object StreamTest extends App {
 //    ClosedShape
 //  }
 
-  implicit val system = ActorSystem()
-  implicit val mat    = ActorMaterializer(
-    ActorMaterializerSettings(system)
-//      .withInputBuffer(
-//        initialSize = 1024,
-//        maxSize     = 1024)
-  )
-
   val rg  = RunnableGraph.fromGraph(_graph)
-  val res = rg.run()
+  val res = rg.run()(config.materializer)
 
   Swing.onEDT {
     SimpleGUI(ctrl)
