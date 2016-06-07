@@ -32,9 +32,13 @@ object UnaryOp {
   private final class Stage(op: Op)(implicit ctrl: Control)
     extends GraphStage[FlowShape[BufD, BufD]] {
 
+    val name = "UnaryOp"
+
+    override def toString = s"$name($op)@${hashCode.toHexString}"
+
     val shape = new FlowShape(
-      in  = InD ("UnaryOp.in" ),
-      out = OutD("UnaryOp.out")
+      in  = InD (s"$name.in" ),
+      out = OutD(s"$name.out")
     )
 
     def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new Logic(op, shape)

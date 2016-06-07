@@ -21,12 +21,30 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.language.implicitConversions
 
 object Control {
-  def apply(bufSize: Int)(implicit exec: ExecutionContext): Control = new Impl(bufSize)
+  trait ConfigLike {
+    def bufSize: Int
+    def useAsync: Boolean
+  }
+  object Config {
+    def apply() = new ConfigBuilder
+    implicit def build(b: ConfigBuilder): Config = b.build
+  }
+  final case class Config(bufSize: Int, useAsync: Boolean) extends ConfigLike
+  final class ConfigBuilder extends ConfigLike {
+    var bufSize: Int = 1024
+    var useAsync: Boolean = true
+
+    def build = Config(bufSize = bufSize, useAsync = useAsync)
+  }
+
+  def apply(config: Config = Config())(implicit exec: ExecutionContext): Control = new Impl(config)
 
   implicit def fromBuilder(implicit b: Builder): Control = b.control
 
-  private final class Impl(val bufSize: Int)(implicit exec: ExecutionContext) extends Control {
+  private final class Impl(val config: Config)(implicit exec: ExecutionContext) extends Control {
     override def toString = s"Control@${hashCode().toHexString}"
+
+    def bufSize: Int = config.bufSize
 
     private[this] val queueD  = new ConcurrentLinkedQueue[BufD]
     private[this] val queueI  = new ConcurrentLinkedQueue[BufI]
@@ -112,4 +130,6 @@ trait Control {
   def status: Future[Unit]
 
   def stats: Control.Stats
+
+  def config: Control.Config
 }

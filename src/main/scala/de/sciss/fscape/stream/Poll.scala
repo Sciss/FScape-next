@@ -31,9 +31,13 @@ object Poll {
   private final class Stage(label: String)(implicit ctrl: Control)
     extends GraphStage[SinkShape2[BufD, BufI]] {
 
+    val name = "Poll"
+
+    override def toString = s"$name($label)"
+
     val shape = SinkShape2(
-      in0 = InD ("Poll.in"  ),
-      in1 = InI ("Poll.trig")
+      in0 = InD (s"$name.in"  ),
+      in1 = InI (s"$name.trig")
     )
 
     def createLogic(attr: Attributes): GraphStageLogic = new Logic(label = label, shape = shape)

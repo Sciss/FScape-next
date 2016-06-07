@@ -29,10 +29,10 @@ object BufferDisk {
     stage.out
   }
 
-  private final class Stage(implicit ctrl: Control)
+  private final class Stage(implicit protected val ctrl: Control)
     extends BlockingGraphStage[FlowShape[BufD, BufD]] {
 
-    override def toString = "BufferDisk"
+    override def toString = s"BufferDisk@${hashCode.toHexString}"
 
     val shape = new FlowShape(
       in  = InD ("BufferDisk.in" ),

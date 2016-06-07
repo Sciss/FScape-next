@@ -7,7 +7,7 @@ import scala.swing.{Button, FlowPanel, Frame, Label, Swing}
 import scala.util.{Failure, Success}
 
 object SimpleGUI {
-  def apply(ctrl: Control): Unit = {
+  def apply(ctrl: Control): Frame = {
     val txtCancelled = "Cancelled."
     val lbCancelled = new Label(txtCancelled)
     lbCancelled.preferredSize = lbCancelled.preferredSize
@@ -25,7 +25,9 @@ object SimpleGUI {
         lbCancelled.text  = tr match {
           case Success(())          => "Done."
           case Failure(Cancelled()) => txtCancelled
-          case Failure(ex)          => s"Error: ${ex.getCause}"
+          case Failure(ex)          =>
+            ex.printStackTrace()
+            s"Error: ${ex.getCause}"
         }
       }
     }

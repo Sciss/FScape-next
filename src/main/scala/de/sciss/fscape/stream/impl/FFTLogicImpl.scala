@@ -23,7 +23,9 @@ abstract class FFTStageImpl(name: String)
   extends GraphStage[FanInShape3[BufD, BufI, BufI, BufD]] {
 
   // ---- impl ----
-  
+
+  override def toString = s"$name@${hashCode.toHexString}"
+
   final val shape = new FanInShape3(
     in0 = InD (s"$name.in"     ),
     in1 = InI (s"$name.size"   ),

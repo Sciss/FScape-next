@@ -32,10 +32,14 @@ object BinaryOp {
   private final class Stage(op: Op)(implicit ctrl: Control)
     extends GraphStage[FanInShape2[BufD, BufD, BufD]] {
 
+    val name = "BinaryOp"
+
+    override def toString = s"$name($op)@${hashCode.toHexString}"
+
     val shape = new FanInShape2(
-      in0 = InD ("BinaryOp.in1"),
-      in1 = InD ("BinaryOp.in2"),
-      out = OutD("BinaryOp.out")
+      in0 = InD (s"$name.in1"),
+      in1 = InD (s"$name.in2"),
+      out = OutD(s"$name.out")
     )
 
     def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new Logic(op, shape)

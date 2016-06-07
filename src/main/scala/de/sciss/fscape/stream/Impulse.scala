@@ -31,10 +31,14 @@ object Impulse {
   private final class Stage(implicit ctrl: Control)
     extends GraphStage[FanInShape2[BufD, BufD, BufD]] {
 
+    val name = "Impulse"
+
+    override def toString = s"$name@${hashCode.toHexString}"
+
     val shape = new FanInShape2(
-      in0 = InD ("Impulse.freqN"),
-      in1 = InD ("Impulse.phase"),
-      out = OutD("Impulse.out"  )
+      in0 = InD (s"$name.freqN"),
+      in1 = InD (s"$name.phase"),
+      out = OutD(s"$name.out"  )
     )
 
     def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new Logic(shape)

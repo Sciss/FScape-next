@@ -30,10 +30,14 @@ object RunningMax {
   private final class Stage(implicit ctrl: Control)
     extends GraphStage[FanInShape2[BufD, BufI, BufD]] {
 
+    val name = "RunningMax"
+
+    override def toString = s"$name@${hashCode.toHexString}"
+
     val shape = new FanInShape2(
-      in0 = InD ("RunningMax.in"  ),
-      in1 = InI ("RunningMax.trig"),
-      out = OutD("RunningMax.out" )
+      in0 = InD (s"$name.in"  ),
+      in1 = InI (s"$name.trig"),
+      out = OutD(s"$name.out" )
     )
 
     def createLogic(attr: Attributes): GraphStageLogic = new Logic(shape)

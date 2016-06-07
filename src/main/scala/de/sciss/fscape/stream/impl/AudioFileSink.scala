@@ -24,7 +24,7 @@ import de.sciss.synth.io
 import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal
 
-final class AudioFileSink(f: File, spec: io.AudioFileSpec)(implicit ctrl: Control)
+final class AudioFileSink(f: File, spec: io.AudioFileSpec)(implicit protected val ctrl: Control)
   extends BlockingGraphStage[UniformSinkShape[BufD]] { sink =>
   
   override val shape = UniformSinkShape[BufD](Vector.tabulate(spec.numChannels)(ch => InD(s"AudioFileSink.in$ch")))

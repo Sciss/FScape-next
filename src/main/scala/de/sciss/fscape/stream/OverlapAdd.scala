@@ -51,11 +51,15 @@ object OverlapAdd {
   private final class Stage(implicit ctrl: Control)
     extends GraphStage[FanInShape3[BufD, BufI, BufI, BufD]] {
 
+    val name = "OverlapAdd"
+
+    override def toString = s"$name@${hashCode.toHexString}"
+
     val shape = new FanInShape3(
-      in0 = InD ("OverlapAdd.in"  ),
-      in1 = InI ("OverlapAdd.size"),
-      in2 = InI ("OverlapAdd.step"),
-      out = OutD("OverlapAdd.out" )
+      in0 = InD (s"$name.in"  ),
+      in1 = InI (s"$name.size"),
+      in2 = InI (s"$name.step"),
+      out = OutD(s"$name.out" )
     )
 
     def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new Logic(shape)

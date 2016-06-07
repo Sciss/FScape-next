@@ -36,10 +36,14 @@ object TakeRight {
   private final class Stage(implicit ctrl: Control)
     extends GraphStage[FanInShape2[BufD, BufI, BufD]] {
 
+    val name = "TakeRight"
+
+    override def toString = s"$name@${hashCode.toHexString}"
+
     val shape = new FanInShape2(
-      in0 = InD ("TakeRight.in" ),
-      in1 = InI ("TakeRight.len"),
-      out = OutD("TakeRight.out")
+      in0 = InD (s"$name.in" ),
+      in1 = InI (s"$name.len"),
+      out = OutD(s"$name.out")
     )
 
     def createLogic(attr: Attributes): GraphStageLogic = new Logic(shape)

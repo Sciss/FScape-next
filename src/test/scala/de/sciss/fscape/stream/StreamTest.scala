@@ -27,7 +27,9 @@ object StreamTest extends App {
 
   import ExecutionContext.Implicits.global
   val blockSize = 1024
-  implicit val ctrl = Control(blockSize)
+  val config = Control.Config()
+  config.bufSize = blockSize
+  implicit val ctrl = Control(config)
 
   lazy val graphFFT = GraphDSL.create() { implicit dsl =>
     implicit val b = Builder()

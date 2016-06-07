@@ -20,7 +20,13 @@ import akka.stream.{ActorAttributes, Attributes, Shape}
 
 /** Overrides dispatcher to implement async boundary. */
 abstract class BlockingGraphStage[S <: Shape] extends GraphStage[S] {
+  protected def ctrl: Control
+
   override def initialAttributes: Attributes =
-    Attributes.name(toString) and
-    ActorAttributes.Dispatcher("akka.stream.default-blocking-io-dispatcher")
+    if (ctrl.config.useAsync) {
+      Attributes.name(toString) and
+      ActorAttributes.Dispatcher("akka.stream.default-blocking-io-dispatcher")
+    } else {
+      Attributes.name(toString)
+    }
 }
