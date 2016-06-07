@@ -1,0 +1,216 @@
+digraph waits {
+// N0 [label="SingleSource(1.0)"]
+N1 [label="BroadcastBuf"]
+N2 [label="UnaryOp(Ampdb)@40f44579"]
+N3 [label="BroadcastBuf"]
+// N4 [label="SingleSource(0.0)"]
+N5 [label="GenWindow@7095286f"]
+// N6 [label="SingleSource(131072)"]
+// N7 [label="SingleSource(32768)"]
+// N8 [label="SingleSource(131072)"]
+// N9 [label="SingleSource(0)"]
+N10 [label="BinaryOp(Times)@28a2730d"]
+N11 [label="FoldCepstrum@32c61ade"]
+N12 [label="UnaryOp(Abs)@50fb4e72"]
+// N13 [label="SingleSource(131072)"]
+N14 [label="OverlapAdd@9f4d252"]
+// N15 [label="SingleSource(1.0)"]
+N16 [label="ComplexUnaryOp(Exp)@3275f27a"]
+// N17 [label="SingleSource(-1.0)"]
+// N18 [label="SingleSource(131072)"]
+N19 [label="Impulse@30671e00"]
+// N20 [label="SingleSource(131072.0)"]
+N21 [label="Real1FullIFFT@3ae55ea0"]
+// N22 [label="SingleSource(0)"]
+// N23 [label="SingleSource(0)"]
+// N24 [label="SingleSource(131072)"]
+N25 [label="RunningMax@152c6dec"]
+N26 [label="BinaryOp(Max)@8d7ab11"]
+N27 [label="AudioFileSource(mentasm-e8646341-63dcf8a8.aif)"]
+N28 [label="Complex1IFFT@c82315"]
+N29 [label="BinaryOp(Times)@10487df2"]
+// N30 [label="SingleSource(-1.0)"]
+N31 [label="Complex1FFT@667d311a"]
+// N32 [label="SingleSource(0.0)"]
+// N33 [label="SingleSource(131072)"]
+N34 [label="Poll(max [dB])"]
+// N35 [label="SingleSource(0)"]
+// N36 [label="SingleSource(1.0)"]
+// N37 [label="SingleSource(32768)"]
+N38 [label="BufferDisk@268f106e"]
+// N39 [label="SingleSource(131072.0)"]
+// N40 [label="SingleSource(-1.0)"]
+// N41 [label="SingleSource(0.0)"]
+N42 [label="BufferDisk@46cdf8bd"]
+// N43 [label="SingleSource(1)"]
+N44 [label="BroadcastBuf"]
+// N45 [label="SingleSource(0)"]
+N46 [label="BinaryOp(Times)@534791e7"]
+// N47 [label="SingleSource(0.0)"]
+// N48 [label="SingleSource(1.0)"]
+N49 [label="BinaryOp(Times)@1256d011"]
+N50 [label="BinaryOp(Times)@41a29844"]
+// N51 [label="SingleSource(131072)"]
+// N52 [label="SingleSource(131072.0)"]
+N53 [label="Real1FullFFT@4ed8848b"]
+// N54 [label="SingleSource(1)"]
+// N55 [label="SingleSource(0.0)"]
+N56 [label="TakeRight@21fffc1e"]
+// N57 [label="SingleSource(1.0)"]
+// N58 [label="SingleSource(32768)"]
+N59 [label="Real1FullIFFT@58d7668"]
+// N60 [label="SingleSource(131072)"]
+// N61 [label="SingleSource(131072)"]
+N62 [label="UnaryOp(Ampdb)@50b8be25"]
+// N63 [label="SingleSource(1.0)"]
+N64 [label="UnaryOp(Reciprocal)@5a4e8465"]
+// N65 [label="SingleSource(-80.0)"]
+N66 [label="BinaryOp(Times)@48f8c3e"]
+// N67 [label="SingleSource(0.0)"]
+// N68 [label="SingleSource(1.0)"]
+N69 [label="Complex1FFT@6a5f84f1"]
+// N70 [label="SingleSource(-1.0)"]
+N71 [label="map"]
+// N72 [label="SingleSource(0)"]
+N73 [label="Sliding@7f034609"]
+N74 [label="AudioFileSink(_killme.aif)"]
+N75 [label="BroadcastBuf"]
+// N76 [label="SingleSource(0)"]
+// N77 [label="SingleSource(0.9772372209558107)"]
+N78 [label="ComplexUnaryOp(Log)@51c09820"]
+// N79 [label="SingleSource(1.0)"]
+N80 [label="map"]
+// N81 [label="SingleSource(0.9772372209558107)"]
+N82 [label="FoldCepstrum@2956005a"]
+// N83 [label="SingleSource(131072)"]
+// N84 [label="SingleSource(131072)"]
+N85 [label="TakeRight@3f38718d"]
+N86 [label="RunningMax@5aee4b6d"]
+N87 [label="BinaryOp(Div)@fbac988"]
+N88 [label="UnaryOp(Reciprocal)@16775cf5"]
+// N89 [label="SingleSource(4)"]
+N90 [label="BroadcastBuf"]
+N91 [label="OverlapAdd@6a3ff3af"]
+// N92 [label="SingleSource(131072)"]
+N93 [label="ComplexUnaryOp(Exp)@422278a6"]
+N94 [label="Poll(max [dB])"]
+N95 [label="BinaryOp(Times)@1b8d0fe3"]
+N96 [label="BinaryOp(Times)@37b16893"]
+// N97 [label="SingleSource(0.0)"]
+N98 [label="BroadcastBuf"]
+N99 [label="BroadcastBuf"]
+N100 [label="UnaryOp(Abs)@22065741"]
+// N101 [label="SingleSource(0)"]
+  N56 -> N1 [label=shouldPush; color=red];
+  N1 -> N2 [label=shouldPush; color=red];
+  N3 -> N19 [label=shouldPull; color=blue]
+
+
+
+  N69 -> N10 [label=shouldPush; color=red];
+
+
+
+
+
+
+
+
+
+
+  N44 -> N12 [label=shouldPush; color=red];
+  N95 -> N14 [label=shouldPush; color=red];
+
+
+  N10 -> N16 [label=shouldPush; color=red];
+
+
+  N93 -> N21 [label=shouldPush; color=red];
+
+
+  N100 -> N25 [label=shouldPush; color=red];
+
+  N26 -> N78 [label=shouldPull; color=blue]
+
+  N28 -> N26 [label=shouldPull; color=blue]
+
+
+  N29 -> N42 [label=shouldPull; color=blue]
+  N46 -> N29 [label=shouldPush; color=red];
+  N11 -> N31 [label=shouldPush; color=red];
+
+
+  N62 -> N34 [label=shouldPush; color=red];
+  N34 -> N80 [label=shouldPull; color=blue]
+  N75 -> N38 [label=shouldPush; color=red];
+  N44 -> N42 [label=shouldPush; color=red];
+  N14 -> N44 [label=shouldPush; color=red];
+  N64 -> N46 [label=shouldPush; color=red];
+
+  N49 -> N38 [label=shouldPull; color=blue]
+  N66 -> N49 [label=shouldPush; color=red];
+  N31 -> N50 [label=shouldPush; color=red];
+
+  N53 -> N73 [label=shouldPull; color=blue]
+
+
+  N86 -> N56 [label=shouldPush; color=red];
+
+  N16 -> N59 [label=shouldPush; color=red];
+
+
+  N90 -> N62 [label=shouldPush; color=red];
+  N1 -> N64 [label=shouldPush; color=red];
+  N88 -> N66 [label=shouldPush; color=red];
+
+  N82 -> N69 [label=shouldPush; color=red];
+
+
+  N71 -> N3 [label=shouldPull; color=blue]
+  N73 -> N27 [label=shouldPull; color=blue]
+
+
+  N29 -> N74 [label=shouldPush; color=red];
+  N49 -> N74 [label=shouldPush; color=red];
+  N91 -> N75 [label=shouldPush; color=red];
+  N78 -> N53 [label=shouldPull; color=blue]
+  N80 -> N3 [label=shouldPull; color=blue]
+
+
+
+
+
+
+
+
+
+
+  N25 -> N85 [label=shouldPush; color=red];
+
+  N12 -> N86 [label=shouldPush; color=red];
+
+
+
+  N90 -> N88 [label=shouldPush; color=red];
+  N85 -> N90 [label=shouldPush; color=red];
+  N96 -> N91 [label=shouldPush; color=red];
+
+
+  N50 -> N93 [label=shouldPush; color=red];
+  N2 -> N94 [label=shouldPush; color=red];
+  N94 -> N71 [label=shouldPull; color=blue]
+  N95 -> N21 [label=shouldPull; color=blue]
+  N98 -> N95 [label=shouldPush; color=red];
+  N96 -> N59 [label=shouldPull; color=blue]
+  N98 -> N96 [label=shouldPush; color=red];
+
+  N99 -> N87 [label=shouldPull; color=blue]
+  N75 -> N100 [label=shouldPush; color=red];
+
+N99 -> N11; // -> N99;
+N99 -> N82; // -> N99;
+
+N28 -> N87;
+
+N5 -> N98;
+}

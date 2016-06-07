@@ -1,13 +1,10 @@
 package de.sciss.fscape
 
-import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
 import de.sciss.file._
 import de.sciss.fscape.gui.SimpleGUI
 import de.sciss.numbers
 import de.sciss.synth.io.AudioFileSpec
 
-import scala.concurrent.ExecutionContext
 import scala.swing.Swing
 
 object NormalizeTest extends App {
@@ -31,7 +28,7 @@ object NormalizeTest extends App {
     def mkIn() = DiskIn(file = fIn, numChannels = 1)
 
     val in        = mkIn()
-    val max       = RunningMax(in.abs) // .last
+    /* val max = */ RunningMax(in.abs) // .last
     val trig  = Impulse(1.0/44100)
     in /* max */     . poll(trig, "max [Lin]")
     in /* max */.ampdb.poll(trig, "max [dB ]")
