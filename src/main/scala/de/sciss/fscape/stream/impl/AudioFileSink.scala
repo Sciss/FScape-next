@@ -11,11 +11,12 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape.stream
+package de.sciss.fscape
+package stream
 package impl
 
-import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler}
-import akka.stream.{ActorAttributes, Attributes}
+import akka.stream.Attributes
+import akka.stream.stage.{GraphStageLogic, InHandler}
 import de.sciss.file._
 import de.sciss.fscape.stream.{logStream => log}
 import de.sciss.synth.io
@@ -24,20 +25,15 @@ import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal
 
 final class AudioFileSink(f: File, spec: io.AudioFileSpec)(implicit ctrl: Control)
-  extends GraphStage[UniformSinkShape[BufD]] { sink =>
+  extends BlockingGraphStage[UniformSinkShape[BufD]] { sink =>
   
   override val shape = UniformSinkShape[BufD](Vector.tabulate(spec.numChannels)(ch => InD(s"AudioFileSink.in$ch")))
-
-  override def initialAttributes: Attributes =
-    Attributes.name(toString) and
-    ActorAttributes.Dispatcher("akka.stream.default-blocking-io-dispatcher")
 
   def createLogic(inheritedAttributes: Attributes) = new GraphStageLogic(shape) with InHandler { logic =>
 
     private[this] var af      : io.AudioFile = _
     private[this] var buf     : io.Frames = _
 
-    private[this] var framesWritten = 0L
     private[this] var pushed        = 0
     private[this] val numChannels   = spec.numChannels
     private[this] val bufIns        = new Array[BufD](spec.numChannels)
@@ -72,7 +68,7 @@ final class AudioFileSink(f: File, spec: io.AudioFileSpec)(implicit ctrl: Contro
       }
       try {
         af.close()
-        result.trySuccess(framesWritten)
+        result.trySuccess(af.numFrames)
       } catch {
         case NonFatal(ex) => result.tryFailure(ex)
       }
@@ -113,7 +109,6 @@ final class AudioFileSink(f: File, spec: io.AudioFileSpec)(implicit ctrl: Contro
       }
       try {
         af.write(buf, 0, chunk)
-        framesWritten += chunk
       } catch {
         case NonFatal(ex) =>
           result.failure(ex)

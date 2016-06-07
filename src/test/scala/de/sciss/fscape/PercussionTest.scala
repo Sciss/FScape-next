@@ -4,6 +4,7 @@ import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import de.sciss.file._
 import de.sciss.fscape.gui.SimpleGUI
+import de.sciss.numbers
 import de.sciss.synth.io.AudioFileSpec
 
 import scala.concurrent.ExecutionContext
@@ -14,6 +15,17 @@ object PercussionTest extends App {
   val fOut  = userHome / "Music" / "work" / "_killme.aif"
 
   import graph._
+
+  def normalize(in: GE): GE = {
+    val max       = RunningMax(in.abs).last
+    max.ampdb.poll(0, "max [dB]")
+    import numbers.Implicits._
+    val headroom  = -0.2.dbamp
+    val gain      = max.reciprocal * headroom
+    val buf       = BufferDisk(in)
+    val sig       = buf * gain
+    sig
+  }
 
   val g = Graph {
     // 'analysis'
@@ -27,7 +39,7 @@ object PercussionTest extends App {
     val logC        = ComplexUnaryOp  (in = fft , op = ComplexUnaryOp.Log).max(-80)
     val cep         = Complex1IFFT    (in = logC, size = fftSize) / fftSize
 
-    val coefs       = Vector(CepCoef.One, CepCoef.Two)
+    val coefs       = Vector(CepCoef.One) // , CepCoef.Two)
     val sig         = coefs.map { coef =>
       import coef._
       val cepOut      = FoldCepstrum  (in = cep, size = fftSize,
@@ -37,12 +49,13 @@ object PercussionTest extends App {
       val fftOut      = ComplexUnaryOp(in = freq, op = ComplexUnaryOp.Exp)
 
       // 'synthesis'
-      val outW        = Real1FullIFFT (in = fftOut, size = fftSize) * gain
+      val outW        = Real1FullIFFT (in = fftOut, size = fftSize) // * gain
 
       val winIn       = GenWindow(size = fftSize, shape = GenWindow.Hann)
       val winOut      = outW * winIn
       val lap         = OverlapAdd    (in = winOut, size = fftSize, step = winStep)
-      lap
+
+      normalize(lap)
     }
 
     DiskOut(file = fOut, spec = AudioFileSpec(numChannels = sig.size, sampleRate = 44100), in = sig)

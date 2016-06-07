@@ -12,7 +12,7 @@ import scala.swing.Swing
 
 object NormalizeTest extends App {
   val fIn   = userHome / "Documents" / "projects" / "Unlike" / "audio_work" / "mentasm-e8646341-63dcf8a8.aif"
-  val fIn2  = userHome / "Music" / "work" / "B20h22m33s19mar2016/.wav"
+  val fIn2  = userHome / "Music" / "work" / "B20h22m33s19mar2016.wav"
   val fIn3  = userHome / "Music" / "work" / "_killme1.wav"
   val fOut  = userHome / "Music" / "work" / "_killme.aif"
 

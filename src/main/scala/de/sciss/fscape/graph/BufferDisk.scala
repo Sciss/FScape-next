@@ -1,5 +1,5 @@
 /*
- *  BufferAll.scala
+ *  BufferDisk.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2016 Hanns Holger Rutz. All rights reserved.
@@ -18,7 +18,7 @@ import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-final case class BufferAll(in: GE) extends UGenSource.SingleOut {
+final case class BufferDisk(in: GE) extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
     unwrap(Vector(in.expand))
 
@@ -27,6 +27,6 @@ final case class BufferAll(in: GE) extends UGenSource.SingleOut {
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
     val Vec(in) = args
-    stream.BufferAll(in.toDouble)
+    stream.BufferDisk(in.toDouble)
   }
 }

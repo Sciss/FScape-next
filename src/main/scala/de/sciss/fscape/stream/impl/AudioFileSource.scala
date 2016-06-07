@@ -11,13 +11,13 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape.stream
+package de.sciss.fscape
+package stream
 package impl
 
-import akka.stream.stage.{GraphStage, GraphStageLogic, OutHandler}
-import akka.stream.{ActorAttributes, Attributes}
+import akka.stream.Attributes
+import akka.stream.stage.{GraphStageLogic, OutHandler}
 import de.sciss.file._
-import de.sciss.fscape.Util
 import de.sciss.fscape.stream.{logStream => log}
 import de.sciss.synth.io
 
@@ -25,13 +25,9 @@ import scala.util.control.NonFatal
 
 // similar to internal `UnfoldResourceSource`
 final class AudioFileSource(f: File, numChannels: Int)(implicit ctrl: Control)
-  extends GraphStage[UniformSourceShape[BufD]] { source =>
+  extends BlockingGraphStage[UniformSourceShape[BufD]] { source =>
 
   override val shape = UniformSourceShape(Vector.tabulate(numChannels)(ch => OutD(s"AudioFileSource.out$ch")))
-
-  override def initialAttributes: Attributes =
-    Attributes.name(toString) and
-    ActorAttributes.Dispatcher("akka.stream.default-blocking-io-dispatcher")
 
   def createLogic(inheritedAttributes: Attributes) = new GraphStageLogic(shape) with OutHandler {
     private[this] var af        : io.AudioFile  = _
