@@ -15,7 +15,7 @@ package de.sciss.fscape
 package stream
 
 import de.sciss.file.File
-import de.sciss.synth.io.AudioFile
+import de.sciss.fscape.stream.impl.FileBuffer
 
 object Fourier {
   @inline private def swap[A](arr: Array[A], i: Int, j: Int): Unit = {
@@ -38,18 +38,15 @@ object Fourier {
     *	@param	dir			    1 = forward, -1 = inverse transform (multiply by freqShift for special effect!)
     *	@param	buf			    3 equal sized buffers
     */
-  private def storageFFT(audioFiles: Array[AudioFile], tempFiles: Array[File], len: Long, dir: Double, 
+  private def storageFFT(audioFiles: Array[FileBuffer], tempFiles: Array[File], len: Long, dir: Double,
                          buf: Array[Array[Double]]): Unit = {
 
     val indexMap	= Array(1, 0, 3, 2)
-    val fileIndex = new Array[Int](4)
+    val indices   = new Array[Int](4)
     val buf1      = buf(0)
     val buf2      = buf(1)
     val buf3      = buf(2)
     val memAmount = buf1.length
-    val bufSize   = 8192
-    val floatBuf  = Array.ofDim[Float](1, bufSize)  // currently `AudioFile` does not support `Double` buffers
-    val doubleBuf = new Array[Array[Double]](1)
 
     var mMax	    = len
     val numSteps  = len / memAmount
@@ -62,17 +59,17 @@ object Fourier {
     var kc	      = 0L
 
     def rewind(): Unit = {
-      audioFiles.foreach(_.seek(0L))
+      audioFiles.foreach(_.rewind())
 
       swap(audioFiles, 1, 3)
       swap(audioFiles, 0, 2)
       swap(tempFiles , 1, 3)
       swap(tempFiles , 0, 2)
 
-      fileIndex(0) = 2
-      fileIndex(1) = 3
-      fileIndex(2) = 0
-      fileIndex(3) = 1
+      indices(0) = 2
+      indices(1) = 3
+      indices(2) = 0
+      indices(3) = 1
     }
 
     rewind()
@@ -91,22 +88,8 @@ object Fourier {
       while (i < 2) {
         var step = 0
         do {
-          var framesRead = 0
-          doubleBuf(0) = buf1
-          while (framesRead < memAmount) {
-            val chunk = math.min(bufSize, memAmount - framesRead)
-            audioFiles(fileIndex(0)).read(floatBuf, 0, chunk)
-            Util.copy(floatBuf, 0, doubleBuf, framesRead, chunk)
-            framesRead	+= chunk
-          }
-          framesRead = 0
-          doubleBuf(0) = buf2
-          while (framesRead < memAmount) {
-            val chunk = math.min(bufSize, memAmount - framesRead)
-            audioFiles(fileIndex(1)).read(floatBuf, 0, chunk)
-            Util.copy(floatBuf, 0, doubleBuf, framesRead, chunk)
-            framesRead += chunk
-          }
+          audioFiles(indices(0)).read(buf1, 0, memAmount)
+          audioFiles(indices(1)).read(buf2, 0, memAmount)
 
           var j = 0
           while (j < memAmount) {
@@ -128,29 +111,15 @@ object Fourier {
             wIm += tempW * wpIm + wIm * wpRe
           }
 
-          var framesWritten = 0
-          doubleBuf(0) = buf1
-          while (framesWritten < memAmount) {
-            val chunk = math.min(bufSize, memAmount - framesWritten)
-            Util.copy(doubleBuf, framesWritten, floatBuf, 0, chunk)
-            audioFiles(fileIndex(2)).write(floatBuf, 0, chunk)
-            framesWritten += chunk
-          }
-          framesWritten = 0
-          doubleBuf(0) = buf2
-          while (framesWritten < memAmount) {
-            val chunk = math.min(bufSize, memAmount - framesWritten)
-            Util.copy(doubleBuf, framesWritten, floatBuf, 0, chunk)
-            audioFiles(fileIndex(3)).write(floatBuf, 0, chunk)
-            framesWritten += chunk
-          }
+          audioFiles(indices(2)).write(buf1, 0, memAmount)
+          audioFiles(indices(3)).write(buf2, 0, memAmount)
 
           step += 1
         } while (step < halfSteps)
 
         if ((i == 0) && (n2 != len) && (n2 == memAmount)) {
-          fileIndex(0) = indexMap(fileIndex(0))
-          fileIndex(1) = fileIndex(0)
+          indices(0) = indexMap(indices(0))
+          indices(1) = indices(0)
         }
 
         if (halfSteps == 0) i = 2
@@ -160,9 +129,9 @@ object Fourier {
       rewind()        // Start of the permutation pass.
       jk >>= 1
       if (jk == 1) {
+        assert(assertion = false, "We never get here?")
         mMax    = len
         jk      = len
-        Console.err.println("We never get here?!!")
       }
 
       n2 >>= 1
@@ -173,36 +142,22 @@ object Fourier {
           while (step < numSteps) {
             var n1 = 0L
             while (n1 < n2) {
-              var framesRead = 0
-              doubleBuf(0) = buf1
-              while (framesRead < memAmount) {
-                val chunk = math.min(bufSize, memAmount - framesRead)
-                audioFiles(fileIndex(0)).read(floatBuf, 0, chunk)
-                Util.copy(floatBuf, 0, doubleBuf, framesRead, chunk)
-                framesRead += chunk
-              }
-              var framesWritten = 0
-              while (framesWritten < memAmount) {
-                val chunk = math.min(bufSize, memAmount - framesWritten)
-                Util.copy(doubleBuf, framesWritten, floatBuf, 0, chunk)
-                audioFiles(fileIndex(2)).write(floatBuf, 0, chunk)
-                framesWritten += chunk
-              }
-
+              audioFiles(indices(0)).read (buf1, 0, memAmount)
+              audioFiles(indices(2)).write(buf1, 0, memAmount)
               n1 += memAmount
             }
-            fileIndex(2) = indexMap(fileIndex(2))
+            indices(2) = indexMap(indices(2))
 
             step += n2 / memAmount
           }
-          fileIndex(0) = indexMap(fileIndex(0))
+          indices(0) = indexMap(indices(0))
 
           i += 1
         }
         rewind()
 
       } else if (n2 == memAmount) {
-        fileIndex(1) = fileIndex(0)
+        indices(1) = indices(0)
       }
 
     } while (n2 >= memAmount)
@@ -227,14 +182,7 @@ object Fourier {
       while (i < 2) {
         var step = 0
         while (step < numSteps) {
-          var framesRead = 0
-          doubleBuf(0) = buf3
-          while (framesRead < memAmount) {
-            val chunk = math.min(bufSize, memAmount - framesRead)
-            audioFiles(fileIndex(0)).read(floatBuf, 0, chunk)
-            Util.copy(floatBuf, 0, doubleBuf, framesRead, chunk)
-            framesRead  += chunk
-          }
+          audioFiles(indices(0)).read(buf3, 0, memAmount)
 
           var kk = 0
           var k  = ks
@@ -268,30 +216,16 @@ object Fourier {
 
           // flush
           if (j >= memAmount) {
-            var framesWritten = 0
-            doubleBuf(0) = buf1
-            while (framesWritten < memAmount) {
-              val chunk = math.min(bufSize, memAmount - framesWritten)
-              Util.copy(doubleBuf, framesWritten, floatBuf, 0, chunk)
-              audioFiles(fileIndex(2)).write(floatBuf, 0, chunk)
-              framesWritten += chunk
-            }
-            framesWritten = 0
-            doubleBuf(0) = buf2
-            while (framesWritten < memAmount) {
-              val chunk = math.min(bufSize, memAmount - framesWritten)
-              Util.copy(doubleBuf, framesWritten, floatBuf, 0, chunk)
-              audioFiles(fileIndex(3)).write(floatBuf, 0, chunk)
-              framesWritten += chunk
-            }
+            audioFiles(indices(2)).write(buf1, 0, memAmount)
+            audioFiles(indices(3)).write(buf2, 0, memAmount)
             j = 0
           }
           step += 1
         } // for steps
-        fileIndex(0) = indexMap(fileIndex(0))
+        indices(0) = indexMap(indices(0))
 
         i += 1
-      } // for( 1 ... 2 )
+      } // for (0 until 1)
 
       rewind()
       jk >>= 1

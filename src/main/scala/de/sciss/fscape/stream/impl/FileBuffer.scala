@@ -44,27 +44,45 @@ object FileBuffer {
 
     def numFrames: Long = ch.size() / 8 // raf.length() / 8
 
-    // also clears `db` and limits `bb`
     private def ensureBuf(len: Int): Unit = {
-      if (db == null || db.capacity() < len) {
-        bb = ByteBuffer.allocate(len << 3)
+      val lim = math.min(len, 8192)
+      if (db == null || db.capacity() < lim) {
+        bb = ByteBuffer.allocate(lim << 3)
         db = bb.asDoubleBuffer()
       }
-      db.clear()
-      bb.rewind().limit(len << 3)
     }
 
     def write(buf: Array[Double], off: Int, len: Int): Unit = {
       ensureBuf(len)
-      db.put(buf, off, len)
-      ch.write(bb)
+      var off0 = off
+      var len0 = len
+      while (len0 > 0) {
+        val chunk = math.min(8192, len0)
+        db.clear()
+        db.put(buf, off0, chunk)
+        bb.rewind().limit(chunk << 3)
+        ch.write(bb)
+        len0 -= chunk
+        off0 += chunk
+      }
     }
 
     def read(buf: Array[Double], off: Int, len: Int): Unit = {
       ensureBuf(len)
-      ch.read(bb)
-      db.get(buf, off, len)
+      var off0 = off
+      var len0 = len
+      while (len0 > 0) {
+        val chunk = math.min(8192, len0)
+        bb.rewind().limit(chunk << 3)
+        ch.read(bb)
+        db.clear()
+        db.get(buf, off0, chunk)
+        len0 -= chunk
+        off0 += chunk
+      }
     }
+
+    def rewind(): Unit = position = 0L
   }
 }
 /** A file buffer is similar to a monophonic 64-bit float sound file.
@@ -76,6 +94,9 @@ trait FileBuffer {
 
   var position: Long
   def numFrames: Long
+
+  /** Same as `position = 0L`. */
+  def rewind(): Unit
 
   def dispose(): Unit
 
