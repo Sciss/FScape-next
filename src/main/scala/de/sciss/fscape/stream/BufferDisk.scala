@@ -66,6 +66,7 @@ object BufferDisk {
       buf = null
       try {
         af.dispose()
+        af = null
       } catch {
         case NonFatal(ex) =>  // XXX TODO -- what with this?
       }
