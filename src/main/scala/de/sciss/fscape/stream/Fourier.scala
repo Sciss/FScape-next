@@ -15,32 +15,36 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.stage.GraphStageLogic
-import akka.stream.{Attributes, FanInShape3}
+import akka.stream.{Attributes, FanInShape5}
 import de.sciss.file.File
-import de.sciss.fscape.stream.impl.{BlockingGraphStage, FileBuffer, FilterIn3Impl, WindowedFilterLogicImpl}
+import de.sciss.fscape.stream.impl.{BlockingGraphStage, FileBuffer, FilterIn5Impl, WindowedFilterLogicImpl}
 import de.sciss.numbers
 
 object Fourier {
-  def apply(in: OutD, size: OutI, padding: OutI)(implicit b: Builder): OutD = {
+  def apply(in: OutD, size: OutI, padding: OutI, dir: OutD, mem: OutI)(implicit b: Builder): OutD = {
     val stage0  = new Stage
     val stage   = b.add(stage0)
     b.connect(in     , stage.in0)
     b.connect(size   , stage.in1)
     b.connect(padding, stage.in2)
+    b.connect(dir    , stage.in3)
+    b.connect(mem    , stage.in4)
     stage.out
   }
 
   private final val name = "Fourier"
 
   private final class Stage(implicit protected val ctrl: Control)
-    extends BlockingGraphStage[FanInShape3[BufD, BufI, BufI, BufD]] {
+    extends BlockingGraphStage[FanInShape5[BufD, BufI, BufI, BufD, BufI, BufD]] {
 
     override def toString = s"$name@${hashCode.toHexString}"
 
-    val shape = new FanInShape3(
+    val shape = new FanInShape5(
       in0 = InD (s"$name.in"     ),
       in1 = InI (s"$name.size"   ),
       in2 = InI (s"$name.padding"),
+      in3 = InD (s"$name.dir"    ),
+      in4 = InI (s"$name.mem"    ),
       out = OutD(s"$name.out"    )
     )
 
@@ -60,19 +64,22 @@ object Fourier {
     }
   }
 
-  private final class Logic(protected val shape: FanInShape3[BufD, BufI, BufI, BufD])
+  private final class Logic(protected val shape: FanInShape5[BufD, BufI, BufI, BufD, BufI, BufD])
                            (implicit protected val ctrl: Control)
     extends GraphStageLogic(shape)
-      with WindowedFilterLogicImpl[BufD, BufD, FanInShape3[BufD, BufI, BufI, BufD]]
-      with FilterIn3Impl                                  [BufD, BufI, BufI, BufD] {
+      with WindowedFilterLogicImpl[BufD, BufD, FanInShape5[BufD, BufI, BufI, BufD, BufI, BufD]]
+      with FilterIn5Impl                                  [BufD, BufI, BufI, BufD, BufI, BufD] {
 
     override def toString = s"$name-L@${hashCode.toHexString}"
 
     private[this] val fileBuffers   = new Array[FileBuffer](4)
+    private[this] val tempFiles     = new Array[File      ](4)
 
     private[this] var size      : Int = _   // already multiplied by `fftInSizeFactor`
     private[this] var padding   : Int = _   // already multiplied by `fftInSizeFactor`
-    private[this] var _fftSize  = 0         // refreshed as `size + padding`
+    private[this] var memAmount : Int = _
+    private[this] var dir       : Double = _
+    private[this] var fftSize  = 0          // refreshed as `size + padding`
 
     override def postStop(): Unit = {
       super.postStop()
@@ -86,95 +93,105 @@ object Fourier {
     @inline private def fftInSizeFactor   = 2
     @inline private def fftOutSizeFactor  = 2
 
-    private def freeFileBuffers(): Unit = {
+    @inline private def freeInputFileBuffers(): Unit = freeFileBuffers(2)
+    @inline private def freeFileBuffers     (): Unit = freeFileBuffers(4)
+
+    private def freeFileBuffers(n: Int): Unit = {
       var i = 0
-      while (i < fileBuffers.length) {
-        if (fileBuffers(i) != null) {
+      while (i < 4) {
+        if (i < n && fileBuffers(i) != null) {
           fileBuffers(i).dispose()
           fileBuffers(i) = null
+        }
+        if (tempFiles(i) != null) {
+          tempFiles(i).delete()
+          tempFiles(i) = null
         }
         i += 1
       }
     }
 
     protected def startNextWindow(inOff: Int): Int = {
+      import numbers.Implicits._
       val inF = fftInSizeFactor
       if (bufIn1 != null && inOff < bufIn1.size) {
         size = math.max(1, bufIn1.buf(inOff)) * inF
       }
       if (bufIn2 != null && inOff < bufIn2.size) {
         padding = math.max(0, bufIn2.buf(inOff)) * inF
-        import numbers.Implicits._
         padding = (size + padding).nextPowerOfTwo - size
       }
+
       val n = (size + padding) / inF
-      if (n != _fftSize) {
-        _fftSize = n
+      if (n != fftSize) {
+        fftSize = n
       }
 
+      if (bufIn3 != null && inOff < bufIn3.size) {
+        dir = bufIn3.buf(inOff)
+      }
+      if (bufIn4 != null && inOff < bufIn4.size) {
+        memAmount = math.min(fftSize, math.max(2, bufIn4.buf(inOff)).nextPowerOfTwo)
+      }
+
+      // create new buffers
       freeFileBuffers()
+      var i = 0
+      while (i < 4) {
+        fileBuffers(i) = FileBuffer()
+        tempFiles  (i) = ctrl.createTempFile()
+        i += 1
+      }
 
       size
     }
 
     protected def copyInputToWindow(inOff: Int, writeToWinOff: Int, chunk: Int): Unit = {
-      ??? // Util.copy(bufIn0.buf, inOff, fftBuf, writeToWinOff, chunk)
+      // Write first half of input to 0, second half to 1
+      var inOff0    = inOff
+      var chunk0    = chunk
+      if (writeToWinOff < fftSize) {
+        val chunk1 = math.min(chunk0, fftSize - writeToWinOff)
+        fileBuffers(0).write(bufIn0.buf, inOff0, chunk1)
+        inOff0 += chunk1
+        chunk0 -= chunk1
+      }
+      if (chunk0 > 0) {
+        fileBuffers(1).write(bufIn0.buf, inOff0, chunk0)
+      }
     }
 
     protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit = {
-      ??? // Util.copy(fftBuf, readFromWinOff, bufOut.buf, outOff, chunk)
+      // Read first half of output from 2, second half from 3
+      var outOff0   = outOff
+      var chunk0    = chunk
+      if (readFromWinOff < fftSize) {
+        val chunk1 = math.min(chunk0, fftSize - readFromWinOff)
+        fileBuffers(2).read(bufOut.buf, outOff0, chunk1)
+        outOff0 += chunk1
+        chunk0  -= chunk1
+      }
+      if (chunk0 > 0) {
+        fileBuffers(3).read(bufOut.buf, outOff0, chunk0)
+      }
     }
 
     protected def processWindow(writeToWinOff: Int, flush: Boolean): Int = {
-      ???
-//      Util.fill(fftBuf, writeToWinOff, fftBuf.length - writeToWinOff, 0.0)
-//      performFFT(fft, fftBuf)
-      _fftSize * fftOutSizeFactor
+      var zero = (fftSize << 1) - writeToWinOff
+      if (writeToWinOff < fftSize) {
+        val chunk1 = math.min(zero, fftSize - writeToWinOff)
+        fileBuffers(0).writeValue(0.0, chunk1)
+        zero -= chunk1
+      }
+      if (zero > 0) {
+        fileBuffers(1).writeValue(0.0, zero)
+      }
+
+      storageFFT(fileBuffers, tempFiles, len = fftSize, dir = dir, memAmount = memAmount)
+
+      freeInputFileBuffers()    // we don't need the inputs any longer
+      fftSize * fftOutSizeFactor
     }
-
-//    def onPush(): Unit = {
-//      val bufIn = grab(shape.in)
-//      tryPull(shape.in)
-//      val chunk = bufIn.size
-//      logStream(s"$this.onPush($chunk)")
-//
-//      try {
-//        if (af.position != framesWritten) af.position = framesWritten
-//        af.write(bufIn.buf, 0, chunk)
-//        framesWritten += chunk
-//        // logStream(s"framesWritten = $framesWritten")
-//      } finally {
-//        bufIn.release()
-//      }
-//
-//      if (isAvailable(shape.out)) onPull()
-//    }
-
-//    // OutHandler
-//    def onPull(): Unit = {
-//      val chunk = math.min(bufSize, framesWritten - framesRead).toInt
-//      logStream(s"$this.onPull($chunk)")
-//      if (chunk == 0) {
-//        if (isClosed(shape.in)) {
-//          logStream(s"$this.completeStage()")
-//          completeStage()
-//        }
-//
-//      } else {
-//        if (af.position != framesRead) af.position = framesRead
-//        val bufOut = ctrl.borrowBufD()
-//        af.read(bufOut.buf, 0, chunk)
-//        framesRead += chunk
-//        bufOut.size = chunk
-//        push(shape.out, bufOut)
-//      }
-//    }
-
-//    // InHandler: in closed
-//    override def onUpstreamFinish(): Unit = {
-//      logStream(s"$this.onUpstreamFinish")
-//      if (isAvailable(shape.out)) onPull()
-//    }
   }
 
   @inline private def swap[A](arr: Array[A], i: Int, j: Int): Unit = {

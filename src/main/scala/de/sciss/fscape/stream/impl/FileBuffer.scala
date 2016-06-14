@@ -67,6 +67,24 @@ object FileBuffer {
       }
     }
 
+    def writeValue(value: Double, len: Int): Unit = {
+      ensureBuf(len)
+      val sz = math.min(len, db.capacity())
+      db.clear()
+      var i = 0
+      while (i < sz) {
+        db.put(value)
+        i += 1
+      }
+      var len0 = len
+      while (len0 > 0) {
+        val chunk = math.min(8192, len0)
+        bb.rewind().limit(chunk << 3)
+        ch.write(bb)
+        len0 -= chunk
+      }
+    }
+
     def read(buf: Array[Double], off: Int, len: Int): Unit = {
       ensureBuf(len)
       var off0 = off
@@ -102,4 +120,6 @@ trait FileBuffer {
 
   def read (buf: Array[Double], off: Int, len: Int): Unit
   def write(buf: Array[Double], off: Int, len: Int): Unit
+
+  def writeValue(value: Double, len: Int): Unit
 }
