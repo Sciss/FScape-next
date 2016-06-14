@@ -11,6 +11,7 @@ object FourierTest extends App {
   val fIn   = userHome / "Music" / "work" / "mentasm-e8646341.aif"
   val fOut  = userHome / "Music" / "work" / "_killme.aif"
   val fOut2 = userHome / "Music" / "work" / "_killme2.aif"
+  val fOut3 = userHome / "Music" / "work" / "_killme3.aif"
 
   import graph._
   import numbers.Implicits._
@@ -19,7 +20,7 @@ object FourierTest extends App {
 
   val inSpec = AudioFile.readSpec(fIn)
 
-  lazy val g = Graph {
+  lazy val gForward = Graph {
     def mkIn() = DiskIn(file = fIn, numChannels = 1)
 
     val in        = mkIn()
@@ -31,6 +32,22 @@ object FourierTest extends App {
     val im        = ChannelProxy(unzip, 1)
     DiskOut(file = fOut , spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = re)
     DiskOut(file = fOut2, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = im)
+  }
+
+  lazy val g = Graph {
+    def mkIn() = ChannelProxy(DiskIn(file = fIn, numChannels = 1), 0)
+
+    val in        = mkIn()
+    val complex   = ZipWindow(in, DC(0.0))
+    val fftSizeIn = inSpec.numFrames.toInt
+    val fftSizeOut=fftSizeIn.nextPowerOfTwo
+    val fwd       = Fourier(in = complex, size = fftSizeIn , dir = +1)
+    val bwd       = Fourier(in = fwd    , size = fftSizeOut, dir = -1)
+    val norm      = complexNormalize(bwd)
+    val unzip     = UnzipWindow(in = norm)
+    val re        = ChannelProxy(unzip, 0)
+    // val im        = ChannelProxy(unzip, 1)
+    DiskOut(file = fOut3 , spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = re)
   }
 
   def complexNormalize(in: GE): GE = {

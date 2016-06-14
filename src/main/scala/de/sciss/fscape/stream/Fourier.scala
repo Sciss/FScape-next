@@ -79,6 +79,7 @@ object Fourier {
     private[this] var padding   : Int = _   // already multiplied by `fftInSizeFactor`
     private[this] var memAmount : Int = _
     private[this] var dir       : Double = _
+    private[this] var gain      : Double = _
     private[this] var fftSize  = 0          // refreshed as `size + padding`
 
     override def postStop(): Unit = {
@@ -128,7 +129,8 @@ object Fourier {
       }
 
       if (bufIn3 != null && inOff < bufIn3.size) {
-        dir = bufIn3.buf(inOff)
+        dir   = bufIn3.buf(inOff)
+        gain  = if (dir > 0) 1.0 / fftSize else 1.0
       }
       if (bufIn4 != null && inOff < bufIn4.size) {
         memAmount = math.min(fftSize, math.max(2, bufIn4.buf(inOff)).nextPowerOfTwo)
@@ -173,6 +175,9 @@ object Fourier {
       }
       if (chunk0 > 0) {
         fileBuffers(3).read(bufOut.buf, outOff0, chunk0)
+      }
+      if (gain != 1.0) {
+        Util.mul(bufOut.buf, outOff, chunk, gain) // scale correctly for forward FFT
       }
     }
 
