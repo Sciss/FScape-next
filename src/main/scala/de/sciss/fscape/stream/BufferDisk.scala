@@ -16,8 +16,7 @@ package stream
 
 import akka.stream.stage.{GraphStageLogic, InHandler, OutHandler}
 import akka.stream.{Attributes, FlowShape}
-import de.sciss.fscape.stream.impl.BlockingGraphStage
-import de.sciss.synth.io.{AudioFile, AudioFileSpec, AudioFileType, SampleFormat}
+import de.sciss.fscape.stream.impl.{BlockingGraphStage, FileBuffer}
 
 import scala.util.control.NonFatal
 
@@ -49,9 +48,9 @@ object BufferDisk {
 
     override def toString = s"$name-L@${hashCode.toHexString}"
 
-    private[this] var af: AudioFile = _
-    private[this] var bufSize: Int = _
-    private[this] var buf: Array[Array[Float]] = _
+    private[this] var af: FileBuffer  = _
+    private[this] val bufSize       = ctrl.bufSize
+    private[this] var buf           = new Array[Double](bufSize)
 
     private[this] var framesWritten = 0L
     private[this] var framesRead    = 0L
@@ -59,21 +58,14 @@ object BufferDisk {
     setHandlers(shape.in, shape.out, this)
 
     override def preStart(): Unit = {
-      val f     = ctrl.createTempFile()
-      // XXX TODO --- should we support 64 bit?
-      // Note: sample-rate is not used
-      af        = AudioFile.openWrite(f, AudioFileSpec(AudioFileType.Wave64, SampleFormat.Float,
-        numChannels = 1, sampleRate = 44100.0))
-      bufSize   = ctrl.bufSize
-      buf       = af.buffer(bufSize)
+      af = FileBuffer()
       pull(shape.in)
     }
 
     override def postStop(): Unit = {
       buf = null
       try {
-        af.close()
-        af.file.get.delete()
+        af.dispose()
       } catch {
         case NonFatal(ex) =>  // XXX TODO -- what with this?
       }
@@ -85,17 +77,9 @@ object BufferDisk {
       val chunk = bufIn.size
       logStream(s"$this.onPush($chunk)")
 
-      var i = 0
-      val a = bufIn.buf
-      val b = buf(0)
-      while (i < chunk) {
-        b(i) = a(i).toFloat
-        i += 1
-      }
-
       try {
         if (af.position != framesWritten) af.position = framesWritten
-        af.write(buf, 0, chunk)
+        af.write(bufIn.buf, 0, chunk)
         framesWritten += chunk
         // logStream(s"framesWritten = $framesWritten")
       } finally {
@@ -116,18 +100,9 @@ object BufferDisk {
 
       } else {
         if (af.position != framesRead) af.position = framesRead
-        af.read(buf, 0, chunk)
-        framesRead += chunk
-        // logStream(s"framesRead    = $framesRead")
-
         val bufOut = ctrl.borrowBufD()
-        val b = bufOut.buf
-        val a = buf(0)
-        var i = 0
-        while (i < chunk) {
-          b(i) = a(i).toDouble
-          i += 1
-        }
+        af.read(bufOut.buf, 0, chunk)
+        framesRead += chunk
         bufOut.size = chunk
         push(shape.out, bufOut)
       }

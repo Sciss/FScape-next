@@ -173,3 +173,18 @@ Irregular windows:
     val buf  = PersistentBuffer(proc)  // FullBuffer ? BufferAll ?
     val sig  = buf * gain
     DiskOut(sig)
+
+## Fourier
+
+- Create four temporary files 0 to 3
+- Write first half of input to 0, second half to 1
+- Pad these files to fftSize/2
+- Define `memAmount` as a power of 2; `fftBuf = new float[3][memAmount]`
+- Run routine `storageFFT`
+- Delete temporary files 0 and 1
+- Output file 2 (first half) followed by 3 (second half)
+
+StorageFFT:
+
+- calculate `mMax`
+- first loop where `n2` goes from `len` down to `memAmount`; transforming two files into two files

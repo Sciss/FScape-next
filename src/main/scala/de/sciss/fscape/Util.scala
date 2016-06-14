@@ -27,7 +27,24 @@ object Util {
       val a     = in(ch)
       val b     = out(ch)
       while (i < stop) {
-        b(j) = a(i)
+        b(j) = a(i).toDouble
+        i += 1
+        j += 1
+      }
+      ch += 1
+    }
+  }
+
+  def copy(in: Array[Array[Double]], inOff: Int, out: Array[Array[Float]], outOff: Int, len: Int): Unit = {
+    var ch = 0
+    while (ch < in.length) {
+      var i     = inOff
+      val stop  = i + len
+      var j     = outOff
+      val a     = in(ch)
+      val b     = out(ch)
+      while (i < stop) {
+        b(j) = a(i).toFloat
         i += 1
         j += 1
       }

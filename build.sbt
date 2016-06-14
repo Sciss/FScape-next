@@ -8,7 +8,7 @@ homepage      := Some(url("https://github.com/Sciss/FScape-next"))
 
 scalacOptions ++= Seq("-deprecation", "-unchecked", "-feature", "-encoding", "utf8", "-Xfuture", "-Xlint")
 
-lazy val akkaVersion  = "2.4.4"
+lazy val akkaVersion  = "2.4.7"
 
 libraryDependencies ++= Seq(
   "de.sciss"          %% "scissdsp"             % "1.2.2",
