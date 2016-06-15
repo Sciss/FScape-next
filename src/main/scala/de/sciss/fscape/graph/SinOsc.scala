@@ -1,5 +1,5 @@
 /*
- *  Impulse.scala
+ *  SinOsc.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2016 Hanns Holger Rutz. All rights reserved.
@@ -18,19 +18,17 @@ import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-/** Impulse (repeated dirac) generator.
+/** Sine oscillator.
   * Note that the frequency is not in Hertz but
   * the normalized frequency
   * as we do not maintained one global sample rate.
   * For a frequency in Hertz, `freqN` would be
   * that frequency divided by the assumed sample rate.
-  * For a single impulse that is never repeated,
-  * use zero.
   *
   * @param freqN  normalized frequency (f/sr).
-  * @param phase  phase offset in cycles (0 to 1).
+  * @param phase  phase offset in radians
   */
-final case class Impulse(freqN: GE, phase: GE = 0.0) extends UGenSource.SingleOut {
+final case class SinOsc(freqN: GE, phase: GE = 0.0) extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
     unwrap(Vector(freqN.expand, phase.expand))
 
@@ -39,6 +37,6 @@ final case class Impulse(freqN: GE, phase: GE = 0.0) extends UGenSource.SingleOu
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
     val Vec(freqN, phase) = args
-    stream.Impulse(freqN = freqN.toDouble, phase = phase.toDouble)
+    stream.SinOsc(freqN = freqN.toDouble, phase = phase.toDouble)
   }
 }

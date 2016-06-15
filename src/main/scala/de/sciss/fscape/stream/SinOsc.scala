@@ -1,5 +1,5 @@
 /*
- *  Impulse.scala
+ *  SinOsc.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2016 Hanns Holger Rutz. All rights reserved.
@@ -17,9 +17,8 @@ package stream
 import akka.stream.stage.{GraphStage, GraphStageLogic}
 import akka.stream.{Attributes, FanInShape2, Inlet, Outlet}
 import de.sciss.fscape.stream.impl.{GenChunkImpl, GenIn2Impl}
-import de.sciss.numbers
 
-object Impulse {
+object SinOsc {
   def apply(freqN: OutD, phase: OutD)(implicit b: Builder): OutD = {
     val stage0  = new Stage
     val stage   = b.add(stage0)
@@ -31,7 +30,7 @@ object Impulse {
   private final class Stage(implicit ctrl: Control)
     extends GraphStage[FanInShape2[BufD, BufD, BufD]] {
 
-    val name = "Impulse"
+    val name = "SinOsc"
 
     override def toString = s"$name@${hashCode.toHexString}"
 
@@ -56,13 +55,15 @@ object Impulse {
     protected def in0: Inlet [BufD] = shape.in0
     protected def out: Outlet[BufD] = shape.out
 
-    private[this] var incr    : Double = _
+    private[this] var incr    : Double = _  // single sample delay
     private[this] var phaseOff: Double = _
-    private[this] var phase   : Double = _    // internal state; does not include `phaseOff`
+    private[this] var phase   : Double = _  // internal state; does not include `phaseOff`
     private[this] var init = true
 
+    import Util.Pi2
+
     protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Int = {
-      // println(s"Impulse.processChunk($bufIn0, $chunk)")
+      // println(s"SinOsc.processChunk($bufIn0, $chunk)")
 
       var inOffI    = inOff
       var outOffI   = outOff
@@ -73,34 +74,26 @@ object Impulse {
       val stop0     = if (b0 == null) 0 else bufIn0.size
       val stop1     = if (b1 == null) 0 else bufIn1.size
 
-      import numbers.Implicits._
-
       var incrV     = incr
       var phaseOffV = phaseOff
       var phaseV    = phase
-      var y         = 0.0
 
       if (init) {
-        incrV     = b0(inOffI)
-        phaseOffV = b1(inOffI).wrap(0.0, 1.0)
+        incrV     = b0(inOffI) * Pi2
+        phaseOffV = b1(inOffI) % Pi2
         phaseV    = -incrV
-        y         = (phaseV + phaseOffV).wrap(0.0, 1.0)
-        if (y == 0.0) y = 1.0
         init      = false
 
       } else {
-        y         = (phaseV + phaseOffV).wrap(0.0, 1.0)
       }
 
       while (inOffI < stop) {
-        if (inOffI < stop0) incrV     = b0(inOffI)
-        if (inOffI < stop1) phaseOffV = b1(inOffI).wrap(0.0, 1.0)
-        val phaseVNew = (phaseV    + incrV    )   .wrap(0.0, 1.0)
-        val x         = (phaseVNew + phaseOffV)   .wrap(0.0, 1.0)
-        val t         = x < y
-        out(outOffI)  = if (t) 1.0 else 0.0
+        if (inOffI < stop0) incrV     = b0(inOffI) * Pi2
+        if (inOffI < stop1) phaseOffV = b1(inOffI) % Pi2
+        val phaseVNew = (phaseV + incrV) % Pi2
+        val x         = phaseVNew + phaseOffV
+        out(outOffI)  = math.sin(x)
         phaseV        = phaseVNew
-        y             = x
         inOffI       += 1
         outOffI      += 1
       }

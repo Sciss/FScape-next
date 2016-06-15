@@ -1,5 +1,5 @@
 /*
- *  Impulse.scala
+ *  Take.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2016 Hanns Holger Rutz. All rights reserved.
@@ -18,27 +18,15 @@ import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-/** Impulse (repeated dirac) generator.
-  * Note that the frequency is not in Hertz but
-  * the normalized frequency
-  * as we do not maintained one global sample rate.
-  * For a frequency in Hertz, `freqN` would be
-  * that frequency divided by the assumed sample rate.
-  * For a single impulse that is never repeated,
-  * use zero.
-  *
-  * @param freqN  normalized frequency (f/sr).
-  * @param phase  phase offset in cycles (0 to 1).
-  */
-final case class Impulse(freqN: GE, phase: GE = 0.0) extends UGenSource.SingleOut {
+final case class Take(in: GE, len: GE) extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
-    unwrap(Vector(freqN.expand, phase.expand))
+    unwrap(Vector(in.expand, len.expand))
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
     UGen.SingleOut(this, args)
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
-    val Vec(freqN, phase) = args
-    stream.Impulse(freqN = freqN.toDouble, phase = phase.toDouble)
+    val Vec(in, len) = args
+    stream.Take(in = in.toDouble, len = len.toInt)
   }
 }

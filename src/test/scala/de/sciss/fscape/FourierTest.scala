@@ -20,8 +20,28 @@ object FourierTest extends App {
 
   val inSpec = AudioFile.readSpec(fIn)
 
-  lazy val gForward = Graph {
-    def mkIn() = DiskIn(file = fIn, numChannels = 1)
+  lazy val gCos = Graph {
+    val sr = 44100.0
+
+    def mkIn() = {
+      // DiskIn(file = fIn, numChannels = 1)
+      SinOsc(freqN = 4410/sr, phase = math.Pi/2).take(10 * sr)
+    }
+
+    val in = mkIn()
+    DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = sr), in = in)
+  }
+
+  lazy val g = Graph {
+    val sr = 44100.0
+
+    def mkIn() = {
+      // DiskIn(file = fIn, numChannels = 1)
+      val sz  = (10 * sr).toInt.nextPowerOfTwo
+      val gen = SinOsc(freqN = 1.0/16 /* 4410/sr */, phase = math.Pi/2)
+      // val gen = DC(1.0)
+      gen.take(sz)
+    }
 
     val in        = mkIn()
     val complex   = ZipWindow(in, DC(0.0))
@@ -30,11 +50,11 @@ object FourierTest extends App {
     val unzip     = UnzipWindow(in = norm)
     val re        = ChannelProxy(unzip, 0)
     val im        = ChannelProxy(unzip, 1)
-    DiskOut(file = fOut , spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = re)
-    DiskOut(file = fOut2, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = im)
+    DiskOut(file = fOut2, spec = AudioFileSpec(numChannels = 1, sampleRate = sr), in = re)
+    DiskOut(file = fOut3, spec = AudioFileSpec(numChannels = 1, sampleRate = sr), in = im)
   }
 
-  lazy val g = Graph {
+  lazy val gFwdBwd = Graph {
     def mkIn() = ChannelProxy(DiskIn(file = fIn, numChannels = 1), 0)
 
     val in        = mkIn()

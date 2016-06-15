@@ -13,7 +13,7 @@
 
 package de.sciss.fscape
 
-import de.sciss.fscape.graph.{BinaryOp, ChannelProxy, Constant, Impulse, Poll, TakeRight, UnaryOp}
+import de.sciss.fscape.graph.{BinaryOp, ChannelProxy, Constant, Impulse, Poll, Take, TakeRight, UnaryOp}
 import de.sciss.optional.Optional
 
 final class GEOps(val `this`: GE) extends AnyVal { me =>
@@ -218,7 +218,9 @@ final class GEOps(val `this`: GE) extends AnyVal { me =>
   def expexp(inLow: GE, inHigh: GE, outLow: GE, outHigh: GE): GE =
     (outHigh / outLow).pow((g / inLow).log / (inHigh / inLow).log) * outLow
 
+  def take     (len: GE): GE = Take     (in = g, len = len)
   def takeRight(len: GE): GE = TakeRight(in = g, len = len)
 
+  def head: GE = take     (1)
   def last: GE = takeRight(1)
 }

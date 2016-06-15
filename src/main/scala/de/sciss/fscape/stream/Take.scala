@@ -1,0 +1,79 @@
+/*
+ *  Take.scala
+ *  (FScape)
+ *
+ *  Copyright (c) 2001-2016 Hanns Holger Rutz. All rights reserved.
+ *
+ *  This software is published under the GNU General Public License v2+
+ *
+ *
+ *  For further information, please contact Hanns Holger Rutz at
+ *  contact@sciss.de
+ */
+
+package de.sciss.fscape
+package stream
+
+import akka.stream.stage.{GraphStage, GraphStageLogic}
+import akka.stream.{Attributes, FanInShape2}
+import de.sciss.fscape.graph.ConstantI
+import de.sciss.fscape.stream.impl.{ChunkImpl, FilterIn2Impl}
+
+object Take {
+  def last(in: OutD)(implicit b: Builder): OutD = {
+    val len = ConstantI(1).toInt
+    apply(in = in, len = len)
+  }
+
+  def apply(in: OutD, len: OutI)(implicit b: Builder): OutD = {
+    val stage0  = new Stage
+    val stage   = b.add(stage0)
+    b.connect(in , stage.in0)
+    b.connect(len, stage.in1)
+    stage.out
+  }
+
+  private final val name = "Take"
+
+  private final class Stage(implicit ctrl: Control)
+    extends GraphStage[FanInShape2[BufD, BufI, BufD]] {
+
+    override def toString = s"$name@${hashCode.toHexString}"
+
+    val shape = new FanInShape2(
+      in0 = InD (s"$name.in" ),
+      in1 = InI (s"$name.len"),
+      out = OutD(s"$name.out")
+    )
+
+    def createLogic(attr: Attributes): GraphStageLogic = new Logic(shape)
+  }
+
+  private final class Logic(protected val shape: FanInShape2[BufD, BufI, BufD])
+                           (implicit protected val ctrl: Control)
+    extends GraphStageLogic(shape)
+      with FilterIn2Impl                        [BufD, BufI, BufD]
+      with ChunkImpl    [BufD, BufD, FanInShape2[BufD, BufI, BufD]] {
+
+    override def toString = s"$name-L@${hashCode.toHexString}"
+
+    protected def allocOutBuf(): BufD = ctrl.borrowBufD()
+
+    private[this] var framesWritten     = 0
+    private[this] var numFrames         = -1
+
+    protected def shouldComplete(): Boolean = framesWritten == numFrames
+
+    protected def processChunk(inOff: Int, outOff: Int, len: Int): Int = {
+      if (framesWritten == 0) {
+        numFrames = math.max(0, bufIn1.buf(0))
+      }
+      val chunk = math.min(len, numFrames - framesWritten)
+      if (chunk > 0) {
+        Util.copy(bufIn0.buf, inOff, bufOut.buf, outOff, chunk)
+        framesWritten += chunk
+      }
+      chunk
+    }
+  }
+}
