@@ -16,7 +16,7 @@ package stream
 
 import akka.stream.stage.{GraphStageLogic, InHandler, OutHandler}
 import akka.stream.{Attributes, FlowShape}
-import de.sciss.fscape.stream.impl.{BlockingGraphStage, FileBuffer, StageLogicImpl}
+import de.sciss.fscape.stream.impl.{BlockingGraphStage, StageLogicImpl}
 
 import scala.util.control.NonFatal
 

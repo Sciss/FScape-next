@@ -17,7 +17,7 @@ package stream
 import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FanInShape5}
 import de.sciss.file.File
-import de.sciss.fscape.stream.impl.{BlockingGraphStage, FileBuffer, FilterIn5Impl, FilterLogicImpl, StageLogicImpl, WindowedLogicImpl}
+import de.sciss.fscape.stream.impl.{BlockingGraphStage, FilterIn5Impl, FilterLogicImpl, StageLogicImpl, WindowedLogicImpl}
 import de.sciss.numbers
 
 object Fourier {

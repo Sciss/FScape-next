@@ -13,7 +13,6 @@
 
 package de.sciss.fscape
 package stream
-package impl
 
 import java.io.RandomAccessFile
 import java.nio.{ByteBuffer, DoubleBuffer}
