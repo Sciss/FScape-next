@@ -56,7 +56,7 @@ object FourierTest extends App {
 
     def mkIn() = {
       // DiskIn(file = fIn, numChannels = 1)
-      val gen = SinOsc(freqN = 1.0/16 /* 4410/sr */, phase = math.Pi/2)
+      val gen = SinOsc(freqN = 1.0/16 /* 4410/sr */, phase = 0 /* math.Pi/2 */)
       // val gen = DC(1.0)
       gen.take(sz)
     }
