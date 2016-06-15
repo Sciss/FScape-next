@@ -193,7 +193,7 @@ object MorassTest extends App {
         val config = MorassConfig(input = fftAZ, template = fftBZ,
           synthesizeWinType = GenWindow.Rectangle,
           inputWinSize = 4096, templateWinSize = 32768, stepSize = 16, ampModulation = 0.0675 /* 1.0 */,
-          synthesizeWinAmt = 0.0625,
+          synthesizeWinAmt = 1.0 /* XXX TODO: 0.0625 */,
           numFrames = numFrames)
         val morass = mkMorass(config)
         val morassZ = ZipWindow(ChannelProxy(morass, 0), ChannelProxy(morass, 1))

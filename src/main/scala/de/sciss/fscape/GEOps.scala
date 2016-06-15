@@ -13,7 +13,7 @@
 
 package de.sciss.fscape
 
-import de.sciss.fscape.graph.{BinaryOp, ChannelProxy, ComplexBinaryOp, ComplexUnaryOp, Constant, Impulse, Poll, Take, TakeRight, UnaryOp, UnzipWindow}
+import de.sciss.fscape.graph.{BinaryOp, ChannelProxy, ComplexBinaryOp, ComplexUnaryOp, Concat, Constant, Impulse, Poll, Take, TakeRight, UnaryOp, UnzipWindow}
 import de.sciss.optional.Optional
 
 final class GEOps(val `this`: GE) extends AnyVal { me =>
@@ -239,8 +239,9 @@ final class GEOps(val `this`: GE) extends AnyVal { me =>
   def last: GE = takeRight(1)
 
   /** Concatenates another signal to this (finite) signal. */
-  def ++ (that: GE): GE = ???
+  def ++ (that: GE): GE = Concat(g, that)
 
+  /** Enables operators for an assumed complex signal. */
   def complex: GEComplexOps = new GEComplexOps(g)
 }
 
