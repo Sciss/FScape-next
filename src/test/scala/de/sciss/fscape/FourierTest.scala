@@ -16,7 +16,7 @@ object FourierTest extends App {
   import graph._
   import numbers.Implicits._
 
-  // stream.showStreamLog = true
+  showGraphLog = true
 
   val inSpec = AudioFile.readSpec(fIn)
 

@@ -11,12 +11,12 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape.stream
+package de.sciss.fscape
+package stream
 package impl
 
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
 import akka.stream.{Attributes, Inlet, Outlet, Shape}
-import de.sciss.fscape.Util
 
 import scala.collection.breakOut
 import scala.collection.immutable.{Seq => ISeq}

@@ -18,7 +18,6 @@ package impl
 import akka.stream.Attributes
 import akka.stream.stage.{GraphStageLogic, OutHandler}
 import de.sciss.file._
-import de.sciss.fscape.stream.{logStream => log}
 import de.sciss.synth.io
 
 import scala.util.control.NonFatal
@@ -50,7 +49,7 @@ final class AudioFileSourceLogic(shape: UniformSourceShape[BufD], f: File, numCh
   shape.outlets.foreach(setHandler(_, this))
 
   override def preStart(): Unit = {
-    log(s"$this.preStart()")
+    logStream(s"$this.preStart()")
     af          = io.AudioFile.openRead(f)
     if (af.numChannels != numChannels) {
       Console.err.println(s"Warning: DiskIn - channel mismatch (file has ${af.numChannels}, UGen has $numChannels)")
@@ -60,7 +59,7 @@ final class AudioFileSourceLogic(shape: UniformSourceShape[BufD], f: File, numCh
   }
 
   override def postStop(): Unit = {
-    log(s"$this.postStop()")
+    logStream(s"$this.postStop()")
     buf = null
     try {
       af.close()

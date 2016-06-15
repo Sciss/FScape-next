@@ -13,15 +13,10 @@
 
 package de.sciss.fscape
 
-import java.text.SimpleDateFormat
-import java.util.{Date, Locale}
-
 import akka.NotUsed
-import akka.stream.{Inlet, Outlet}
 import akka.stream.scaladsl.{FlowOps, GraphDSL}
+import akka.stream.{Inlet, Outlet}
 
-import scala.annotation.elidable
-import scala.annotation.elidable._
 import scala.language.implicitConversions
 
 package object stream {
@@ -48,11 +43,4 @@ package object stream {
   def  OutD(name: String): OutD = Outlet[BufD](name)
 
   type GBuilder = GraphDSL.Builder[NotUsed]
-
-  private lazy val logHeader = new SimpleDateFormat("[d MMM yyyy, HH:mm''ss.SSS] 'fscape' - ", Locale.US)
-  var showStreamLog = false
-
-  @elidable(CONFIG) private[stream] def logStream(what: => String): Unit =
-    if (showStreamLog) Console.out.println(s"${logHeader.format(new Date())}stream $what")
-
 }

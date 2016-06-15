@@ -18,7 +18,6 @@ package impl
 import akka.stream.Attributes
 import akka.stream.stage.{GraphStageLogic, InHandler}
 import de.sciss.file._
-import de.sciss.fscape.stream.{logStream => log}
 import de.sciss.synth.io
 
 import scala.concurrent.{Future, Promise}
@@ -53,13 +52,13 @@ final class AudioFileSink(f: File, spec: io.AudioFileSpec)(implicit protected va
         def cancel(): Unit = asyncCancel.invoke(())
       })
 
-      log(s"$sink - preStart()")
+      logStream(s"$sink - preStart()")
       af = io.AudioFile.openWrite(f, spec)
       shape.inlets.foreach(pull)
     }
 
     override def postStop(): Unit = {
-      log(s"$sink - postStop()")
+      logStream(s"$sink - postStop()")
       buf = null
       var ch = 0
       while (ch < numChannels) {

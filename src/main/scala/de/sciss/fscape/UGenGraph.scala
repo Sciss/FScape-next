@@ -172,12 +172,28 @@ object UGenGraph {
       filtered
     }
 
+    private def printSmart(x: Any): String = x match {
+      case u: UGen          => u.name
+      // case p: ChannelProxy  => s"${printSmart(p.elem)}.\\(${p.index})"
+      case _                => x.toString
+    }
+
+    @inline
+    private def printRef(ref: AnyRef): String = {
+      val hash = ref.hashCode.toHexString
+//      ref match {
+//        case p: Product => s"${p.productPrefix}@$hash"
+//        case _ => hash
+//      }
+      hash
+    }
+
     def visit[U](ref: AnyRef, init: => U): U = {
-      // log(s"visit  ${ref.hashCode.toHexString}")
+      logGraph(s"visit  ${printRef(ref)}")
       sourceMap.getOrElse(ref, {
-        // log(s"expand ${ref.hashCode.toHexString}...")
+        logGraph(s"expand ${printRef(ref)}...")
         val exp = init
-        // log(s"...${ref.hashCode.toHexString} -> ${exp.hashCode.toHexString} ${printSmart(exp)}")
+        logGraph(s"...${printRef(ref)} -> ${exp.hashCode.toHexString} ${printSmart(exp)}")
         sourceMap += ref -> exp
         exp
       }).asInstanceOf[U] // not so pretty...
@@ -188,7 +204,9 @@ object UGenGraph {
       // have we removed it (why)?
       if (ugenSet.add(ugen)) {
         ugens :+= ugen
-        // log(s"addUGen ${ugen.name} @ ${ugen.hashCode.toHexString} ${if (ugen.isIndividual) "indiv" else ""}")
+        logGraph(s"addUGen ${ugen.name} @ ${ugen.hashCode.toHexString} ${if (ugen.isIndividual) "indiv" else ""}")
+      } else {
+        logGraph(s"addUGen ${ugen.name} @ ${ugen.hashCode.toHexString} - duplicate")
       }
     }
   }
