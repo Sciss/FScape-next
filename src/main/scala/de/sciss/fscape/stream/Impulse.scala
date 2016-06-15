@@ -14,9 +14,9 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.stage.{GraphStage, GraphStageLogic}
+import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FanInShape2, Inlet, Outlet}
-import de.sciss.fscape.stream.impl.{GenChunkImpl, GenIn2Impl, Out1LogicImpl, StageLogicImpl}
+import de.sciss.fscape.stream.impl.{GenChunkImpl, GenIn2Impl, Out1LogicImpl, StageImpl, StageLogicImpl}
 import de.sciss.numbers
 
 object Impulse {
@@ -32,10 +32,7 @@ object Impulse {
 
   private type Shape = FanInShape2[BufD, BufD, BufD]
 
-  private final class Stage(implicit ctrl: Control) extends GraphStage[Shape] {
-
-    override def toString = s"$name@${hashCode.toHexString}"
-
+  private final class Stage(implicit ctrl: Control) extends StageImpl[Shape](name) {
     val shape = new FanInShape2(
       in0 = InD (s"$name.freqN"),
       in1 = InD (s"$name.phase"),

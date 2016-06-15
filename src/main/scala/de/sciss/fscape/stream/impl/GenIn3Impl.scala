@@ -22,7 +22,7 @@ import de.sciss.fscape.stream.BufLike
   * not care about upstream inlets being closed.
   */
 trait GenIn3Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: BufLike, Out >: Null <: BufLike]
-  extends InOutImpl[FanInShape3[In0, In1, In2, Out]] {
+  extends Out1LogicImpl[Out, FanInShape3[In0, In1, In2, Out]] {
   _: GraphStageLogic =>
 
   // ---- impl ----

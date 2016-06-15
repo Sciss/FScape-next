@@ -14,9 +14,9 @@
 package de.sciss.fscape
 package stream
 
+import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, Inlet}
-import akka.stream.stage.{GraphStage, GraphStageLogic}
-import de.sciss.fscape.stream.impl.{FilterLogicImpl, In6Out3Impl, In6Out3Shape, StageLogicImpl, WindowedLogicImpl}
+import de.sciss.fscape.stream.impl.{FilterLogicImpl, In6Out3Impl, In6Out3Shape, StageImpl, StageLogicImpl, WindowedLogicImpl}
 
 object PeakCentroid2D {
   def apply(in: OutD, width: OutI, height: OutI, thresh1: OutD, thresh2: OutD, radius: OutI): (OutD, OutD, OutD) = {
@@ -27,10 +27,7 @@ object PeakCentroid2D {
 
   private type Shape = In6Out3Shape[BufD, BufI, BufI, BufD, BufD, BufI, BufD, BufD, BufD]
 
-  private final class Stage(implicit ctrl: Control) extends GraphStage[Shape] {
-
-    override def toString = s"$name@${hashCode.toHexString}"
-
+  private final class Stage(implicit ctrl: Control) extends StageImpl[Shape](name) {
     val shape = new In6Out3Shape(
       in0  = InD (s"$name.in"        ),
       in1  = InI (s"$name.width"     ),

@@ -14,9 +14,9 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.stage.{GraphStage, GraphStageLogic}
+import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FanInShape3}
-import de.sciss.fscape.stream.impl.{FilterIn3Impl, Out1LogicImpl, StageLogicImpl}
+import de.sciss.fscape.stream.impl.{FilterIn3Impl, Out1LogicImpl, StageImpl, StageLogicImpl}
 
 import scala.annotation.tailrec
 
@@ -53,11 +53,7 @@ object Sliding {
 
   private type Shape = FanInShape3[BufD, BufI, BufI, BufD]
 
-  private final class Stage(implicit ctrl: Control)
-    extends GraphStage[FanInShape3[BufD, BufI, BufI, BufD]] {
-
-    override def toString = s"$name@${hashCode.toHexString}"
-
+  private final class Stage(implicit ctrl: Control) extends StageImpl[Shape](name) {
     val shape = new FanInShape3(
       in0 = InD (s"$name.in"  ),
       in1 = InI (s"$name.size"),

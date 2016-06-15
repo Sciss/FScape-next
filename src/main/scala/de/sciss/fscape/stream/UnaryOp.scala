@@ -14,9 +14,9 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.stage.{GraphStage, GraphStageLogic}
+import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FlowShape}
-import de.sciss.fscape.stream.impl.{FilterChunkImpl, FilterIn1Impl, Out1LogicImpl, StageLogicImpl}
+import de.sciss.fscape.stream.impl.{FilterChunkImpl, FilterIn1Impl, Out1LogicImpl, StageImpl, StageLogicImpl}
 
 object UnaryOp {
   import graph.UnaryOp.Op
@@ -33,10 +33,7 @@ object UnaryOp {
 
   private type Shape = FlowShape[BufD, BufD]
 
-  private final class Stage(op: Op)(implicit ctrl: Control) extends GraphStage[Shape] {
-
-    override def toString = s"$name($op)@${hashCode.toHexString}"
-
+  private final class Stage(op: Op)(implicit ctrl: Control) extends StageImpl[Shape](name) {
     val shape = new FlowShape(
       in  = InD (s"$name.in" ),
       out = OutD(s"$name.out")

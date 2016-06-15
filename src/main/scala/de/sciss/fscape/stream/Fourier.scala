@@ -17,7 +17,7 @@ package stream
 import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FanInShape5}
 import de.sciss.file.File
-import de.sciss.fscape.stream.impl.{BlockingGraphStage, FileBuffer, FilterIn5Impl, FilterLogicImpl, Out1LogicImpl, StageLogicImpl, WindowedLogicImpl}
+import de.sciss.fscape.stream.impl.{BlockingGraphStage, FileBuffer, FilterIn5Impl, FilterLogicImpl, StageLogicImpl, WindowedLogicImpl}
 import de.sciss.numbers
 
 object Fourier {
@@ -69,7 +69,6 @@ object Fourier {
   private final class Logic(shape: Shape)(implicit ctrl: Control)
     extends StageLogicImpl(name, shape)
       with WindowedLogicImpl[BufD, Shape]
-      with Out1LogicImpl    [BufD, Shape]
       with FilterLogicImpl  [BufD, Shape]
       with FilterIn5Impl    [BufD, BufI, BufI, BufD, BufI, BufD] {
 

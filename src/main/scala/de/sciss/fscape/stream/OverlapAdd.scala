@@ -11,12 +11,12 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape.stream
+package de.sciss.fscape
+package stream
 
-import akka.stream.stage.{GraphStage, GraphStageLogic}
-import akka.stream.{Attributes, FanInShape3, Outlet}
-import de.sciss.fscape.Util
-import de.sciss.fscape.stream.impl.{FilterIn3Impl, FilterLogicImpl, Out1LogicImpl, StageLogicImpl, WindowedLogicImpl}
+import akka.stream.stage.GraphStageLogic
+import akka.stream.{Attributes, FanInShape3}
+import de.sciss.fscape.stream.impl.{FilterIn3Impl, FilterLogicImpl, Out1LogicImpl, StageImpl, StageLogicImpl, WindowedLogicImpl}
 
 import scala.collection.mutable
 
@@ -52,10 +52,7 @@ object OverlapAdd {
 
   private type Shape = FanInShape3[BufD, BufI, BufI, BufD]
 
-  private final class Stage(implicit ctrl: Control) extends GraphStage[Shape] {
-
-    override def toString = s"$name@${hashCode.toHexString}"
-
+  private final class Stage(implicit ctrl: Control) extends StageImpl[Shape](name) {
     val shape = new FanInShape3(
       in0 = InD (s"$name.in"  ),
       in1 = InI (s"$name.size"),

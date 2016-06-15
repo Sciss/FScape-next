@@ -14,17 +14,15 @@
 package de.sciss.fscape.stream
 package impl
 
-import akka.stream.stage.{GraphStage, GraphStageLogic}
+import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FanInShape3}
 import de.sciss.fscape.Util
 import edu.emory.mathcs.jtransforms.fft.DoubleFFT_1D
 
-abstract class FFTStageImpl(protected val name: String)
-  extends GraphStage[FanInShape3[BufD, BufI, BufI, BufD]] {
+abstract class FFTStageImpl(name: String)
+  extends StageImpl[FanInShape3[BufD, BufI, BufI, BufD]](name) {
 
   // ---- impl ----
-
-  override def toString = s"$name@${hashCode.toHexString}"
 
   final val shape = new FanInShape3(
     in0 = InD (s"$name.in"     ),
@@ -49,7 +47,6 @@ abstract class FFTLogicImpl(name: String, shape: FanInShape3[BufD, BufI, BufI, B
   extends StageLogicImpl(name, shape)
     with WindowedLogicImpl[BufD, FanInShape3[BufD, BufI, BufI, BufD]]
     with FilterLogicImpl  [BufD, FanInShape3[BufD, BufI, BufI, BufD]]
-    with Out1LogicImpl    [BufD, FanInShape3[BufD, BufI, BufI, BufD]]
     with FilterIn3Impl[BufD, BufI, BufI, BufD] {
 
   // ---- abstract ----

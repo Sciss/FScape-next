@@ -25,7 +25,7 @@ trait FilterIn10Impl[
     In4 >: Null <: BufLike, In5 >: Null <: BufLike, In6 >: Null <: BufLike, In7 >: Null <: BufLike,
     In8 >: Null <: BufLike, In9 >: Null <: BufLike,
     Out >: Null <: BufLike]
-  extends InOutImpl[FanInShape10[In0, In1, In2, In3, In4, In5, In6, In7, In8, In9, Out]] {
+  extends Out1LogicImpl[Out, FanInShape10[In0, In1, In2, In3, In4, In5, In6, In7, In8, In9, Out]] {
   _: GraphStageLogic =>
 
   // ---- impl ----

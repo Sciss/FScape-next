@@ -13,10 +13,10 @@
 
 package de.sciss.fscape.stream
 
-import akka.stream.stage.{GraphStage, GraphStageLogic}
+import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FanInShape10}
 import de.sciss.fscape.Util
-import de.sciss.fscape.stream.impl.{FilterIn10Impl, FilterLogicImpl, Out1LogicImpl, StageLogicImpl, WindowedLogicImpl}
+import de.sciss.fscape.stream.impl.{FilterIn10Impl, FilterLogicImpl, StageImpl, StageLogicImpl, WindowedLogicImpl}
 
 object FoldCepstrum {
   def apply(in: OutD, size: OutI,
@@ -41,10 +41,7 @@ object FoldCepstrum {
 
   private type Shape = FanInShape10[BufD, BufI, BufD, BufD, BufD, BufD, BufD, BufD, BufD, BufD, BufD]
 
-  private final class Stage(implicit ctrl: Control) extends GraphStage[Shape] {
-
-    override def toString = s"$name@${hashCode.toHexString}"
-
+  private final class Stage(implicit ctrl: Control) extends StageImpl[Shape](name) {
     val shape = new FanInShape10(
       in0  = InD (s"$name.in"  ),
       in1  = InI (s"$name.size"),
@@ -67,7 +64,6 @@ object FoldCepstrum {
     extends StageLogicImpl(name, shape)
       with WindowedLogicImpl[BufD, Shape]
       with FilterLogicImpl  [BufD, Shape]
-      with Out1LogicImpl    [BufD, Shape]
       with FilterIn10Impl[BufD, BufI, BufD, BufD, BufD, BufD, BufD, BufD, BufD, BufD, BufD] {
 
     protected val in0: InD = shape.in0

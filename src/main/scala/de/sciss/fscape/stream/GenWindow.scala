@@ -14,12 +14,12 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.stage.{GraphStage, GraphStageLogic}
+import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FanInShape3}
-import de.sciss.fscape.stream.impl.{GenIn3Impl, Out1LogicImpl, StageLogicImpl, WindowedLogicImpl}
+import de.sciss.fscape.stream.impl.{GenIn3Impl, StageImpl, StageLogicImpl, WindowedLogicImpl}
 
 object GenWindow {
-  import graph.GenWindow.{Shape => WinShape, Hann}
+  import graph.GenWindow.{Hann, Shape => WinShape}
 
   def apply(size: OutI, shape: OutI, param: OutD)(implicit b: Builder): OutD = {
     val stage0  = new Stage
@@ -34,9 +34,7 @@ object GenWindow {
 
   private type Shape = FanInShape3[BufI, BufI, BufD, BufD]
 
-  private final class Stage(implicit ctrl: Control) extends GraphStage[Shape] {
-
-    override def toString = s"$name@${hashCode.toHexString}"
+  private final class Stage(implicit ctrl: Control) extends StageImpl[Shape](name) {
 
     val shape = new FanInShape3(
       in0 = InI (s"$name.size" ),
@@ -52,7 +50,6 @@ object GenWindow {
   private final class Logic(shape: Shape)(implicit ctrl: Control)
     extends StageLogicImpl(name, shape)
       with WindowedLogicImpl[BufD, Shape]
-      with Out1LogicImpl    [BufD, Shape]
       with GenIn3Impl       [BufI, BufI, BufD, BufD] {
 
     protected def allocOutBuf0(): BufD = ctrl.borrowBufD()

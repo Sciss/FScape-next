@@ -14,9 +14,9 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.stage.{GraphStage, GraphStageLogic}
+import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FanInShape2}
-import de.sciss.fscape.stream.impl.{FilterChunkImpl, FilterIn2Impl, Out1LogicImpl, StageLogicImpl}
+import de.sciss.fscape.stream.impl.{FilterChunkImpl, FilterIn2Impl, Out1LogicImpl, StageImpl, StageLogicImpl}
 
 object RunningMax {
   def apply(in: OutD, trig: OutI)(implicit b: Builder): OutD = {
@@ -31,10 +31,7 @@ object RunningMax {
 
   private type Shape = FanInShape2[BufD, BufI, BufD]
 
-  private final class Stage(implicit ctrl: Control) extends GraphStage[Shape] {
-
-    override def toString = s"$name@${hashCode.toHexString}"
-
+  private final class Stage(implicit ctrl: Control) extends StageImpl[Shape](name) {
     val shape = new FanInShape2(
       in0 = InD (s"$name.in"  ),
       in1 = InI (s"$name.trig"),
