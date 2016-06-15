@@ -16,7 +16,7 @@ package stream
 
 import akka.stream.Attributes
 import akka.stream.stage.{GraphStage, GraphStageLogic}
-import de.sciss.fscape.stream.impl.{Sink2Impl, SinkShape2}
+import de.sciss.fscape.stream.impl.{Sink2Impl, SinkShape2, StageLogicImpl}
 
 // XXX TODO --- we could use an `Outlet[String]`, that might be making perfect sense
 object Poll {
@@ -30,8 +30,9 @@ object Poll {
 
   private final val name = "Poll"
 
-  private final class Stage(label: String)(implicit ctrl: Control)
-    extends GraphStage[SinkShape2[BufD, BufI]] {
+  private type Shape = SinkShape2[BufD, BufI]
+
+  private final class Stage(label: String)(implicit ctrl: Control) extends GraphStage[Shape] {
 
     override def toString = s"$name($label)"
 
@@ -43,9 +44,8 @@ object Poll {
     def createLogic(attr: Attributes): GraphStageLogic = new Logic(label = label, shape = shape)
   }
 
-  private final class Logic(label: String, protected val shape: SinkShape2[BufD, BufI])
-                           (implicit protected val ctrl: Control)
-    extends GraphStageLogic(shape)
+  private final class Logic(label: String, shape: Shape)(implicit ctrl: Control)
+    extends StageLogicImpl(name, shape)
       with Sink2Impl[BufD, BufI] {
 
     override def toString = s"$name-L($label)"

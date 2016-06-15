@@ -13,7 +13,7 @@
 
 package de.sciss.fscape.stream.impl
 
-import akka.stream.FanInShape5
+import akka.stream.{FanInShape5, Outlet}
 import akka.stream.stage.GraphStageLogic
 import de.sciss.fscape.stream.BufLike
 
@@ -25,12 +25,14 @@ In3 >: Null <: BufLike, In4 >: Null <: BufLike, Out >: Null <: BufLike]
 
   // ---- impl ----
 
-  protected final var bufIn0: In0 = _
-  protected final var bufIn1: In1 = _
-  protected final var bufIn2: In2 = _
-  protected final var bufIn3: In3 = _
-  protected final var bufIn4: In4 = _
-  protected final var bufOut: Out = _
+  protected final var bufIn0 : In0 = _
+  protected final var bufIn1 : In1 = _
+  protected final var bufIn2 : In2 = _
+  protected final var bufIn3 : In3 = _
+  protected final var bufIn4 : In4 = _
+  protected final var bufOut0: Out = _
+
+  protected final def out0: Outlet[Out] = shape.out
 
   private[this] final var _canRead = false
   private[this] final var _inValid = false
@@ -108,9 +110,9 @@ In3 >: Null <: BufLike, In4 >: Null <: BufLike, Out >: Null <: BufLike]
   }
 
   protected final def freeOutputBuffers(): Unit =
-    if (bufOut != null) {
-      bufOut.release()
-      bufOut = null
+    if (bufOut0 != null) {
+      bufOut0.release()
+      bufOut0 = null
     }
 
   final def updateCanRead(): Unit = {

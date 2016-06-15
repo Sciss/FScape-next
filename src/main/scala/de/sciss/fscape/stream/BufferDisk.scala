@@ -16,7 +16,7 @@ package stream
 
 import akka.stream.stage.{GraphStageLogic, InHandler, OutHandler}
 import akka.stream.{Attributes, FlowShape}
-import de.sciss.fscape.stream.impl.{BlockingGraphStage, FileBuffer}
+import de.sciss.fscape.stream.impl.{BlockingGraphStage, FileBuffer, StageLogicImpl}
 
 import scala.util.control.NonFatal
 
@@ -30,8 +30,10 @@ object BufferDisk {
 
   private final val name = "BufferDisk"
 
+  private type Shape = FlowShape[BufD, BufD]
+
   private final class Stage(implicit protected val ctrl: Control)
-    extends BlockingGraphStage[FlowShape[BufD, BufD]] {
+    extends BlockingGraphStage[Shape] {
 
     override def toString = s"$name@${hashCode.toHexString}"
 
@@ -44,9 +46,7 @@ object BufferDisk {
   }
 
   private final class Logic(shape: FlowShape[BufD, BufD])(implicit ctrl: Control)
-    extends GraphStageLogic(shape) with InHandler with OutHandler {
-
-    override def toString = s"$name-L@${hashCode.toHexString}"
+    extends StageLogicImpl(name, shape) with InHandler with OutHandler {
 
     private[this] var af: FileBuffer  = _
     private[this] val bufSize       = ctrl.bufSize

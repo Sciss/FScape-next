@@ -17,7 +17,7 @@ package stream
 import akka.stream.stage.{GraphStage, GraphStageLogic}
 import akka.stream.{Attributes, FanInShape2}
 import de.sciss.fscape.graph.ConstantI
-import de.sciss.fscape.stream.impl.FilterIn2Impl
+import de.sciss.fscape.stream.impl.{FilterIn2Impl, Out1LogicImpl, StageLogicImpl}
 
 object TakeRight {
   def last(in: OutD)(implicit b: Builder): OutD = {
@@ -35,8 +35,9 @@ object TakeRight {
 
   private final val name = "TakeRight"
 
-  private final class Stage(implicit ctrl: Control)
-    extends GraphStage[FanInShape2[BufD, BufI, BufD]] {
+  private type Shape = FanInShape2[BufD, BufI, BufD]
+
+  private final class Stage(implicit ctrl: Control) extends GraphStage[Shape] {
 
     override def toString = s"$name@${hashCode.toHexString}"
 
@@ -49,14 +50,12 @@ object TakeRight {
     def createLogic(attr: Attributes): GraphStageLogic = new Logic(shape)
   }
 
-  private final class Logic(protected val shape: FanInShape2[BufD, BufI, BufD])
-                           (implicit protected val ctrl: Control)
-    extends GraphStageLogic(shape)
-      with FilterIn2Impl[BufD, BufI, BufD] {
+  private final class Logic(shape: Shape)(implicit ctrl: Control)
+    extends StageLogicImpl(name, shape)
+      with FilterIn2Impl[BufD, BufI, BufD]
+      with Out1LogicImpl[BufD, Shape] {
 
-    override def toString = s"$name-L@${hashCode.toHexString}"
-
-    protected def allocOutBuf(): BufD = ctrl.borrowBufD()
+    protected def allocOutBuf0(): BufD = ctrl.borrowBufD()
 
     private[this] var len     : Int           = _
     private[this] var bufWin  : Array[Double] = _
@@ -117,8 +116,8 @@ object TakeRight {
 
     protected def tryWrite(): Unit = {
       if (outSent) {
-        bufOut        = allocOutBuf()
-        outRemain     = bufOut.size
+        bufOut0        = allocOutBuf0()
+        outRemain     = bufOut0.size
         outOff        = 0
         outSent       = false
       }
@@ -126,12 +125,12 @@ object TakeRight {
       val chunk = math.min(bufRemain, outRemain)
       if (chunk > 0) {
         val chunk1  = math.min(len - bufOff, chunk)
-        Util.copy(bufWin, bufOff, bufOut.buf, outOff, chunk1)
+        Util.copy(bufWin, bufOff, bufOut0.buf, outOff, chunk1)
         bufOff  = (bufOff + chunk1) % len
         outOff += chunk1
         val chunk2  = chunk - chunk1
         if (chunk2 > 0) {
-          Util.copy(bufWin, bufOff, bufOut.buf, outOff, chunk2)
+          Util.copy(bufWin, bufOff, bufOut0.buf, outOff, chunk2)
           bufOff  = (bufOff + chunk2) % len
           outOff += chunk2
         }
@@ -141,14 +140,14 @@ object TakeRight {
       }
 
       val flushOut = bufRemain == 0
-      if (!outSent && (outRemain == 0 || flushOut) && isAvailable(out)) {
+      if (!outSent && (outRemain == 0 || flushOut) && isAvailable(out0)) {
         if (outOff > 0) {
-          bufOut.size = outOff
-          push(out, bufOut)
+          bufOut0.size = outOff
+          push(out0, bufOut0)
         } else {
-          bufOut.release()
+          bufOut0.release()
         }
-        bufOut      = null
+        bufOut0      = null
         outSent     = true
       }
 

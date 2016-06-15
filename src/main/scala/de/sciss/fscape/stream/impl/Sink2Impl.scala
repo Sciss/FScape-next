@@ -15,13 +15,31 @@ package de.sciss.fscape
 package stream
 package impl
 
+import akka.stream.Shape
 import akka.stream.stage.GraphStageLogic
+
+trait SinkImpl[S <: Shape]
+  extends InOutImpl[S] {
+  _: GraphStageLogic =>
+
+  /** Dummy, always returns `true`. */
+  final def canWrite: Boolean = true
+
+  /** Dummy, no-op. */
+  final def updateCanWrite(): Unit = ()
+
+  /** Dummy, no-op. */
+  protected final def writeOuts(outOff: Int): Unit = ()
+
+  /** Dummy, no-op. */
+  protected final def freeOutputBuffers(): Unit = ()
+}
 
 /** Building block for sinks with `Sink2Shape` type graph stage logic.
   * A sink keeps consuming input until left inlet is closed.
   */
 trait Sink2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike]
-  extends InOutImpl[SinkShape2[In0, In1]] {
+  extends SinkImpl[SinkShape2[In0, In1]] {
   _: GraphStageLogic =>
 
   // ---- impl ----
@@ -74,8 +92,6 @@ trait Sink2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike]
       bufIn1 = null
     }
   }
-
-  protected def freeOutputBuffers(): Unit = ()
 
   final def updateCanRead(): Unit = {
     val sh = shape

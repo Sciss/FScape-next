@@ -25,13 +25,13 @@ trait ChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape] {
 
   protected def shouldComplete(): Boolean
 
-  protected var bufIn0: In0
-  protected var bufOut: Out
+  protected var bufIn0 : In0
+  protected var bufOut0: Out
 
-  protected def allocOutBuf(): Out
+  protected def allocOutBuf0(): Out
 
-  protected def in0: Inlet [In0]
-  protected def out: Outlet[Out]
+  protected def in0 : Inlet [In0]
+  protected def out0: Outlet[Out]
 
   protected def processChunk(inOff: Int, outOff: Int, len: Int): Int
 
@@ -58,8 +58,8 @@ trait ChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape] {
     }
 
     if (outSent) {
-      bufOut        = allocOutBuf()
-      outRemain     = bufOut.size
+      bufOut0        = allocOutBuf0()
+      outRemain     = bufOut0.size
       outOff        = 0
       outSent       = false
       stateChange   = true
@@ -76,14 +76,14 @@ trait ChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape] {
     }
 
     val flushOut = shouldComplete()
-    if (!outSent && (outRemain == 0 || flushOut) && isAvailable(out)) {
+    if (!outSent && (outRemain == 0 || flushOut) && isAvailable(out0)) {
       if (outOff > 0) {
-        bufOut.size = outOff
-        push(out, bufOut)
+        bufOut0.size = outOff
+        push(out0, bufOut0)
       } else {
-        bufOut.release()
+        bufOut0.release()
       }
-      bufOut      = null
+      bufOut0      = null
       outSent     = true
       stateChange = true
     }

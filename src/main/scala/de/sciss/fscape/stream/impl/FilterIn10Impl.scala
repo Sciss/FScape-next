@@ -13,7 +13,7 @@
 
 package de.sciss.fscape.stream.impl
 
-import akka.stream.FanInShape10
+import akka.stream.{FanInShape10, Outlet}
 import akka.stream.stage.GraphStageLogic
 import de.sciss.fscape.stream.BufLike
 
@@ -30,17 +30,19 @@ trait FilterIn10Impl[
 
   // ---- impl ----
 
-  protected final var bufIn0: In0 = _
-  protected final var bufIn1: In1 = _
-  protected final var bufIn2: In2 = _
-  protected final var bufIn3: In3 = _
-  protected final var bufIn4: In4 = _
-  protected final var bufIn5: In5 = _
-  protected final var bufIn6: In6 = _
-  protected final var bufIn7: In7 = _
-  protected final var bufIn8: In8 = _
-  protected final var bufIn9: In9 = _
-  protected final var bufOut: Out = _
+  protected final var bufIn0 : In0 = _
+  protected final var bufIn1 : In1 = _
+  protected final var bufIn2 : In2 = _
+  protected final var bufIn3 : In3 = _
+  protected final var bufIn4 : In4 = _
+  protected final var bufIn5 : In5 = _
+  protected final var bufIn6 : In6 = _
+  protected final var bufIn7 : In7 = _
+  protected final var bufIn8 : In8 = _
+  protected final var bufIn9 : In9 = _
+  protected final var bufOut0: Out = _
+
+  protected final def out0: Outlet[Out] = shape.out
 
   private[this] final var _canRead = false
   private[this] final var _inValid = false
@@ -149,9 +151,9 @@ trait FilterIn10Impl[
   }
 
   protected final def freeOutputBuffers(): Unit =
-    if (bufOut != null) {
-      bufOut.release()
-      bufOut = null
+    if (bufOut0 != null) {
+      bufOut0.release()
+      bufOut0 = null
     }
 
   final def updateCanRead(): Unit = {

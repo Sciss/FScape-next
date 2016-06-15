@@ -16,7 +16,7 @@ package stream
 
 import akka.stream.stage.{GraphStage, GraphStageLogic}
 import akka.stream.{Attributes, FanInShape2}
-import de.sciss.fscape.stream.impl.{FilterChunkImpl, FilterIn2Impl}
+import de.sciss.fscape.stream.impl.{FilterChunkImpl, FilterIn2Impl, Out1LogicImpl, StageLogicImpl}
 
 object RunningMax {
   def apply(in: OutD, trig: OutI)(implicit b: Builder): OutD = {
@@ -27,10 +27,11 @@ object RunningMax {
     stage.out
   }
 
-  private final class Stage(implicit ctrl: Control)
-    extends GraphStage[FanInShape2[BufD, BufI, BufD]] {
+  private final val name = "RunningMax"
 
-    val name = "RunningMax"
+  private type Shape = FanInShape2[BufD, BufI, BufD]
+
+  private final class Stage(implicit ctrl: Control) extends GraphStage[Shape] {
 
     override def toString = s"$name@${hashCode.toHexString}"
 
@@ -43,13 +44,13 @@ object RunningMax {
     def createLogic(attr: Attributes): GraphStageLogic = new Logic(shape)
   }
 
-  private final class Logic(protected val shape: FanInShape2[BufD, BufI, BufD])
-                           (implicit protected val ctrl: Control)
-    extends GraphStageLogic(shape)
-      with FilterChunkImpl[BufD, BufD, FanInShape2[BufD, BufI, BufD]]
-      with FilterIn2Impl[BufD, BufI, BufD] {
+  private final class Logic(shape: Shape)(implicit ctrl: Control)
+    extends StageLogicImpl(name, shape)
+      with FilterChunkImpl[BufD, BufD, Shape]
+      with FilterIn2Impl[BufD, BufI, BufD]
+      with Out1LogicImpl[BufD, Shape] {
 
-    protected def allocOutBuf(): BufD = ctrl.borrowBufD()
+    protected def allocOutBuf0(): BufD = ctrl.borrowBufD()
 
     private[this] var value = Double.NegativeInfinity
     private[this] var trig0 = false
@@ -60,7 +61,7 @@ object RunningMax {
       val stop0   = inOffI + chunk
       val b0      = bufIn0.buf
       val b1      = if (bufIn1 == null) null else bufIn1.buf
-      val out     = bufOut.buf
+      val out     = bufOut0.buf
       val stop1   = if (b1 == null) 0 else bufIn1.size
       var v       = value
       var t0      = trig0

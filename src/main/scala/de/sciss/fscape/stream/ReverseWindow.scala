@@ -16,7 +16,7 @@ package de.sciss.fscape.stream
 import akka.stream.stage.{GraphStage, GraphStageLogic}
 import akka.stream.{Attributes, FanInShape3}
 import de.sciss.fscape.Util
-import de.sciss.fscape.stream.impl.{FilterIn3Impl, WindowedFilterLogicImpl}
+import de.sciss.fscape.stream.impl.{FilterIn3Impl, FilterLogicImpl, Out1LogicImpl, StageLogicImpl, WindowedLogicImpl}
 
 /** Reverses contents of windowed input. */
 object ReverseWindow {
@@ -40,29 +40,34 @@ object ReverseWindow {
     stage.out
   }
 
-  private final class Stage(implicit ctrl: Control)
-    extends GraphStage[FanInShape3[BufD, BufI, BufI, BufD]] {
+  private final val name = "ReverseWindow"
+
+  private type Shape = FanInShape3[BufD, BufI, BufI, BufD]
+
+  private final class Stage(implicit ctrl: Control) extends GraphStage[Shape] {
+    override def toString = s"$name@${hashCode.toHexString}"
 
     val shape = new FanInShape3(
-      in0 = InD ("ReverseWindow.in"   ),
-      in1 = InI ("ReverseWindow.size" ),
-      in2 = InI ("ReverseWindow.clump"),
-      out = OutD("ReverseWindow.out"  )
+      in0 = InD (s"$name.in"   ),
+      in1 = InI (s"$name.size" ),
+      in2 = InI (s"$name.clump"),
+      out = OutD(s"$name.out"  )
     )
 
-    def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new Logic(shape)
+    def createLogic(attr: Attributes): GraphStageLogic = new Logic(shape)
   }
 
   // XXX TODO -- abstract over data type (BufD vs BufI)?
-  private final class Logic(protected val shape: FanInShape3[BufD, BufI, BufI, BufD])
-                           (implicit protected val ctrl: Control)
-    extends GraphStageLogic(shape)
-      with WindowedFilterLogicImpl[BufD, BufD, FanInShape3[BufD, BufI, BufI, BufD]]
-      with FilterIn3Impl                            [BufD, BufI, BufI, BufD] {
+  private final class Logic(shape: Shape)(implicit ctrl: Control)
+    extends StageLogicImpl(name, shape)
+      with WindowedLogicImpl[BufD, Shape]
+      with FilterLogicImpl  [BufD, Shape]
+      with Out1LogicImpl    [BufD, Shape]
+      with FilterIn3Impl[BufD, BufI, BufI, BufD] {
 
     protected val in0: InD = shape.in0
 
-    protected def allocOutBuf(): BufD = ctrl.borrowBufD()
+    protected def allocOutBuf0(): BufD = ctrl.borrowBufD()
 
     private[this] var winBuf : Array[Double] = _
     private[this] var winSize: Int = _
@@ -86,7 +91,7 @@ object ReverseWindow {
       Util.copy(bufIn0.buf, inOff, winBuf, writeToWinOff, chunk)
 
     protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit =
-      Util.copy(winBuf, readFromWinOff, bufOut.buf, outOff, chunk)
+      Util.copy(winBuf, readFromWinOff, bufOut0.buf, outOff, chunk)
 
     protected def processWindow(writeToWinOff: Int, flush: Boolean): Int = {
       var i   = 0

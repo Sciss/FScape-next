@@ -16,7 +16,7 @@ package stream
 
 import akka.stream.stage.{GraphStage, GraphStageLogic}
 import akka.stream.{Attributes, FanInShape2}
-import de.sciss.fscape.stream.impl.{FilterChunkImpl, FilterIn2Impl}
+import de.sciss.fscape.stream.impl.{FilterChunkImpl, FilterIn2Impl, Out1LogicImpl, StageLogicImpl}
 
 object BinaryOp {
   import graph.BinaryOp.Op
@@ -31,8 +31,9 @@ object BinaryOp {
 
   private final val name = "BinaryOp"
 
-  private final class Stage(op: Op)(implicit ctrl: Control)
-    extends GraphStage[FanInShape2[BufD, BufD, BufD]] {
+  private type Shape = FanInShape2[BufD, BufD, BufD]
+
+  private final class Stage(op: Op)(implicit ctrl: Control) extends GraphStage[Shape] {
 
     override def toString = s"$name($op)@${hashCode.toHexString}"
 
@@ -42,20 +43,18 @@ object BinaryOp {
       out = OutD(s"$name.out")
     )
 
-    def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new Logic(op, shape)
+    def createLogic(attr: Attributes): GraphStageLogic = new Logic(op, shape)
   }
 
-  private final class Logic(op: Op, protected val shape: FanInShape2[BufD, BufD, BufD])
-                           (implicit protected val ctrl: Control)
-    extends GraphStageLogic(shape)
-      with FilterChunkImpl[BufD, BufD, FanInShape2[BufD, BufD, BufD]]
+  private final class Logic(op: Op, shape: Shape)(implicit ctrl: Control)
+    extends StageLogicImpl(name, shape)
+      with FilterChunkImpl[BufD, BufD, Shape]
+      with Out1LogicImpl[BufD, Shape]
       with FilterIn2Impl[BufD, BufD, BufD] {
-
-    override def toString = s"$name-L($op)@${hashCode.toHexString}"
 
     private[this] var bVal: Double = _
 
-    protected def allocOutBuf(): BufD = ctrl.borrowBufD()
+    protected def allocOutBuf0(): BufD = ctrl.borrowBufD()
 
     protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Int = {
       var inOffI  = inOff
@@ -63,7 +62,7 @@ object BinaryOp {
       val aStop   = inOffI + chunk
       val a       = bufIn0.buf
       val b       = if (bufIn1 == null) null else bufIn1.buf
-      val out     = bufOut.buf
+      val out     = bufOut0.buf
       val bStop   = if (b == null) 0 else bufIn1.size
       var bv      = bVal
       while (inOffI < aStop) {

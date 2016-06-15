@@ -50,7 +50,7 @@ final class ZipWindowStageImpl(numInputs: Int)(implicit ctrl: Control)
 }
 
 final class ZipWindowLogicImpl(shape: ZipWindowShape)(implicit ctrl: Control)
-  extends GraphStageLogic(shape) {
+  extends StageLogicImpl("ZipWindow", shape) {
 
   private[this] var bufOut: BufD = _
   private[this] var bufIn1: BufI = _

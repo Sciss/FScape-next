@@ -16,7 +16,7 @@ package de.sciss.fscape.stream
 import akka.stream.stage.{GraphStage, GraphStageLogic}
 import akka.stream.{Attributes, FanInShape4}
 import de.sciss.fscape.Util
-import de.sciss.fscape.stream.impl.{FilterIn4Impl, WindowedFilterLogicImpl}
+import de.sciss.fscape.stream.impl.{FilterIn4Impl, FilterLogicImpl, Out1LogicImpl, StageLogicImpl, WindowedLogicImpl}
 
 object ResizeWindow {
   /** Resizes the windowed input signal by trimming each
@@ -42,28 +42,35 @@ object ResizeWindow {
     stage.out
   }
 
-  private final class Stage(implicit ctrl: Control) extends GraphStage[FanInShape4[BufD, BufI, BufI, BufI, BufD]] {
+  private final val name = "ResizeWindow"
+
+  private type Shape = FanInShape4[BufD, BufI, BufI, BufI, BufD]
+
+  private final class Stage(implicit ctrl: Control) extends GraphStage[Shape] {
+    override def toString = s"$name@${hashCode.toHexString}"
+
     val shape = new FanInShape4(
-      in0 = InD ("ResizeWindow.in"   ),
-      in1 = InI ("ResizeWindow.size" ),
-      in2 = InI ("ResizeWindow.start"),
-      in3 = InI ("ResizeWindow.stop" ),
-      out = OutD("ResizeWindow.out"  )
+      in0 = InD (s"$name.in"   ),
+      in1 = InI (s"$name.size" ),
+      in2 = InI (s"$name.start"),
+      in3 = InI (s"$name.stop" ),
+      out = OutD(s"$name.out"  )
     )
 
-    def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new Logic(shape)
+    def createLogic(attr: Attributes): GraphStageLogic = new Logic(shape)
   }
 
   // XXX TODO -- abstract over data type (BufD vs BufI)?
-  private final class Logic(protected val shape: FanInShape4[BufD, BufI, BufI, BufI, BufD])
-                           (implicit protected val ctrl: Control)
-    extends GraphStageLogic(shape)
-      with WindowedFilterLogicImpl[BufD, BufD, FanInShape4[BufD, BufI, BufI, BufI, BufD]]
-      with FilterIn4Impl                            [BufD, BufI, BufI, BufI, BufD] {
+  private final class Logic(shape: Shape)(implicit ctrl: Control)
+    extends StageLogicImpl(name, shape)
+      with WindowedLogicImpl[BufD, Shape]
+      with FilterLogicImpl  [BufD, Shape]
+      with Out1LogicImpl    [BufD, Shape]
+      with FilterIn4Impl[BufD, BufI, BufI, BufI, BufD] {
 
     protected val in0: InD = shape.in0
 
-    protected def allocOutBuf(): BufD = ctrl.borrowBufD()
+    protected def allocOutBuf0(): BufD = ctrl.borrowBufD()
 
     private[this] var winBuf      : Array[Double] = _
     private[this] var winInSize   : Int = _
@@ -115,7 +122,7 @@ object ResizeWindow {
     }
 
     protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit = {
-      val arr       = bufOut.buf
+      val arr       = bufOut0.buf
       val zeroStart = math.min(chunk, math.max(0, -startNeg - readFromWinOff))
       if (zeroStart > 0) {
         Util.fill(arr, outOff, zeroStart, 0.0)

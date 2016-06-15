@@ -16,7 +16,7 @@ package stream
 
 import akka.stream.stage.{GraphStage, GraphStageLogic}
 import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
-import de.sciss.fscape.stream.impl.{GenChunkImpl, GenIn1Impl}
+import de.sciss.fscape.stream.impl.{GenChunkImpl, GenIn1Impl, Out1LogicImpl, StageLogicImpl}
 
 object DC {
   def apply(in: OutD)(implicit b: Builder): OutD = {
@@ -26,28 +26,31 @@ object DC {
     stage.out
   }
 
-  private final class Stage(implicit ctrl: Control)
-    extends GraphStage[FlowShape[BufD, BufD]] {
+  private final val name = "DC"
+
+  private type Shape = FlowShape[BufD, BufD]
+
+  private final class Stage(implicit ctrl: Control) extends GraphStage[Shape] {
 
     val shape = new FlowShape(
-      in  = InD ("DC.in" ),
-      out = OutD("DC.out")
+      in  = InD (s"$name.in" ),
+      out = OutD(s"$name.out")
     )
 
-    def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new Logic(shape)
+    def createLogic(attr: Attributes): GraphStageLogic = new Logic(shape)
   }
 
   // XXX TODO -- abstract over data type (BufD vs BufI)?
-  private final class Logic(protected val shape: FlowShape[BufD, BufD])
-                           (implicit protected val ctrl: Control)
-    extends GraphStageLogic(shape)
-      with GenChunkImpl[BufD, BufD, FlowShape[BufD, BufD]]
+  private final class Logic(shape: Shape)(implicit ctrl: Control)
+    extends StageLogicImpl(name, shape)
+      with GenChunkImpl[BufD, BufD, Shape]
+      with Out1LogicImpl[BufD, Shape]
       with GenIn1Impl[BufD, BufD] {
 
-    protected def allocOutBuf(): BufD = ctrl.borrowBufD()
+    protected def allocOutBuf0(): BufD = ctrl.borrowBufD()
 
     protected def in0: Inlet [BufD] = shape.in
-    protected def out: Outlet[BufD] = shape.out
+    protected def out0: Outlet[BufD] = shape.out
 
     private[this] var init = true
     private[this] var value   : Double = _
@@ -60,7 +63,7 @@ object DC {
 
       // println(s"DC.fill($value, $chunk) -> $bufOut")
 
-      Util.fill(bufOut.buf, outOff, chunk, value)
+      Util.fill(bufOut0.buf, outOff, chunk, value)
       chunk
     }
   }

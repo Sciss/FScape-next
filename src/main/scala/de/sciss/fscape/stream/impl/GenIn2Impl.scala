@@ -27,9 +27,9 @@ trait GenIn2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, Out >: Null <: 
 
   // ---- impl ----
 
-  protected final var bufIn0: In0 = _
-  protected final var bufIn1: In1 = _
-  protected final var bufOut: Out = _
+  protected final var bufIn0 : In0 = _
+  protected final var bufIn1 : In1 = _
+  protected final var bufOut0: Out = _
 
   private[this] final var _canRead = false
   private[this] final var _inValid = false
@@ -78,9 +78,9 @@ trait GenIn2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, Out >: Null <: 
   }
 
   protected final def freeOutputBuffers(): Unit =
-    if (bufOut != null) {
-      bufOut.release()
-      bufOut = null
+    if (bufOut0 != null) {
+      bufOut0.release()
+      bufOut0 = null
     }
 
   final def updateCanRead(): Unit = {

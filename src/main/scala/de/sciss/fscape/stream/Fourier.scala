@@ -17,7 +17,7 @@ package stream
 import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FanInShape5}
 import de.sciss.file.File
-import de.sciss.fscape.stream.impl.{BlockingGraphStage, FileBuffer, FilterIn5Impl, WindowedFilterLogicImpl}
+import de.sciss.fscape.stream.impl.{BlockingGraphStage, FileBuffer, FilterIn5Impl, FilterLogicImpl, Out1LogicImpl, StageLogicImpl, WindowedLogicImpl}
 import de.sciss.numbers
 
 object Fourier {
@@ -34,8 +34,10 @@ object Fourier {
 
   private final val name = "Fourier"
 
+  private type Shape = FanInShape5[BufD, BufI, BufI, BufD, BufI, BufD]
+
   private final class Stage(implicit protected val ctrl: Control)
-    extends BlockingGraphStage[FanInShape5[BufD, BufI, BufI, BufD, BufI, BufD]] {
+    extends BlockingGraphStage[Shape] {
 
     override def toString = s"$name@${hashCode.toHexString}"
 
@@ -64,13 +66,12 @@ object Fourier {
     }
   }
 
-  private final class Logic(protected val shape: FanInShape5[BufD, BufI, BufI, BufD, BufI, BufD])
-                           (implicit protected val ctrl: Control)
-    extends GraphStageLogic(shape)
-      with WindowedFilterLogicImpl[BufD, BufD, FanInShape5[BufD, BufI, BufI, BufD, BufI, BufD]]
-      with FilterIn5Impl                                  [BufD, BufI, BufI, BufD, BufI, BufD] {
-
-    override def toString = s"$name-L@${hashCode.toHexString}"
+  private final class Logic(shape: Shape)(implicit ctrl: Control)
+    extends StageLogicImpl(name, shape)
+      with WindowedLogicImpl[BufD, Shape]
+      with Out1LogicImpl    [BufD, Shape]
+      with FilterLogicImpl  [BufD, Shape]
+      with FilterIn5Impl    [BufD, BufI, BufI, BufD, BufI, BufD] {
 
     private[this] val fileBuffers   = new Array[FileBuffer](4)
     private[this] val tempFiles     = new Array[File      ](4)
@@ -89,7 +90,7 @@ object Fourier {
 
     protected def in0: InD = shape.in0
 
-    protected def allocOutBuf(): BufD = ctrl.borrowBufD()
+    protected def allocOutBuf0(): BufD = ctrl.borrowBufD()
 
     @inline private def fftInSizeFactor   = 2
     @inline private def fftOutSizeFactor  = 2
@@ -169,15 +170,15 @@ object Fourier {
       var chunk0    = chunk
       if (readFromWinOff < fftSize) {
         val chunk1 = math.min(chunk0, fftSize - readFromWinOff)
-        fileBuffers(2).read(bufOut.buf, outOff0, chunk1)
+        fileBuffers(2).read(bufOut0.buf, outOff0, chunk1)
         outOff0 += chunk1
         chunk0  -= chunk1
       }
       if (chunk0 > 0) {
-        fileBuffers(3).read(bufOut.buf, outOff0, chunk0)
+        fileBuffers(3).read(bufOut0.buf, outOff0, chunk0)
       }
       if (gain != 1.0) {
-        Util.mul(bufOut.buf, outOff, chunk, gain) // scale correctly for forward FFT
+        Util.mul(bufOut0.buf, outOff, chunk, gain) // scale correctly for forward FFT
       }
     }
 

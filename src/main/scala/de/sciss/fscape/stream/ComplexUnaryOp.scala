@@ -16,7 +16,7 @@ package stream
 
 import akka.stream.stage.{GraphStage, GraphStageLogic}
 import akka.stream.{Attributes, FlowShape}
-import de.sciss.fscape.stream.impl.{FilterChunkImpl, FilterIn1Impl}
+import de.sciss.fscape.stream.impl.{FilterChunkImpl, FilterIn1Impl, Out1LogicImpl, StageLogicImpl}
 
 /** Unary operator assuming stream is complex signal (real and imaginary interleaved).
   * Outputs another complex stream even if the operator yields a purely real-valued result
@@ -36,8 +36,9 @@ object ComplexUnaryOp {
 
   private final val name = "ComplexUnaryOp"
 
-  private final class Stage(op: Op)(implicit ctrl: Control)
-    extends GraphStage[FlowShape[BufD, BufD]] {
+  private type Shape = FlowShape[BufD, BufD]
+
+  private final class Stage(op: Op)(implicit ctrl: Control) extends GraphStage[Shape] {
 
     override def toString = s"$name($op)@${hashCode.toHexString}"
 
@@ -46,22 +47,20 @@ object ComplexUnaryOp {
       out = OutD(s"$name.out")
     )
 
-    def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new Logic(op, shape)
+    def createLogic(attr: Attributes): GraphStageLogic = new Logic(op, shape)
   }
 
-  private final class Logic(op: Op, protected val shape: FlowShape[BufD, BufD])
-                           (implicit protected val ctrl: Control)
-    extends GraphStageLogic(shape)
-      with FilterChunkImpl[BufD, BufD, FlowShape[BufD, BufD]]
-      with FilterIn1Impl[BufD, BufD] {
+  private final class Logic(op: Op, shape: Shape)(implicit ctrl: Control)
+    extends StageLogicImpl(name, shape)
+      with FilterChunkImpl[BufD, BufD, Shape]
+      with FilterIn1Impl[BufD, BufD]
+      with Out1LogicImpl[BufD, Shape] {
 
-    override def toString = s"$name-L($op)@${hashCode.toHexString}"
-
-    protected def allocOutBuf(): BufD = ctrl.borrowBufD()
+    protected def allocOutBuf0(): BufD = ctrl.borrowBufD()
 
     protected def processChunk(inOff: Int, outOff: Int, chunk0: Int): Int = {
       val chunk = chunk0 & ~1  // must be even
-      op(in = bufIn0.buf, inOff = inOff, out = bufOut.buf, outOff = outOff, len = chunk >> 1)
+      op(in = bufIn0.buf, inOff = inOff, out = bufOut0.buf, outOff = outOff, len = chunk >> 1)
       chunk
     }
   }

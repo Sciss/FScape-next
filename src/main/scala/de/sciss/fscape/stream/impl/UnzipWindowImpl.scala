@@ -52,9 +52,7 @@ final class UnzipWindowStageImpl(numOutputs: Int)(implicit ctrl: Control)
 }
 
 final class UnzipWindowLogicImpl(shape: UnzipWindowShape)(implicit ctrl: Control)
-  extends GraphStageLogic(shape) {
-
-  override def toString = s"UnzipWindow-L@${hashCode.toHexString}"
+  extends StageLogicImpl("UnzipWindow", shape) {
 
   private[this] var bufIn0: BufD = _
   private[this] var bufIn1: BufI = _

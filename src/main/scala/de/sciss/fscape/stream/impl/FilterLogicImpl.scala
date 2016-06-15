@@ -1,5 +1,5 @@
 /*
- *  WindowedFilterLogicImpl.scala
+ *  FilterLogicImpl.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2016 Hanns Holger Rutz. All rights reserved.
@@ -14,11 +14,11 @@
 package de.sciss.fscape.stream.impl
 
 import akka.stream.stage.GraphStageLogic
-import akka.stream.{FanInShape, Inlet}
+import akka.stream.{Inlet, Shape}
 import de.sciss.fscape.stream.BufLike
 
-trait WindowedFilterLogicImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, Shape <: FanInShape[Out]]
-  extends WindowedLogicImpl[In0, Out, Shape] {
+trait FilterLogicImpl[In0 >: Null <: BufLike, S <: Shape]
+  extends InOutImpl[S] {
 
   _: GraphStageLogic =>
 

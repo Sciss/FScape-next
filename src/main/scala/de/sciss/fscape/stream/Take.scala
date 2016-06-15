@@ -17,7 +17,7 @@ package stream
 import akka.stream.stage.{GraphStage, GraphStageLogic}
 import akka.stream.{Attributes, FanInShape2}
 import de.sciss.fscape.graph.ConstantI
-import de.sciss.fscape.stream.impl.{ChunkImpl, FilterIn2Impl}
+import de.sciss.fscape.stream.impl.{ChunkImpl, FilterIn2Impl, Out1LogicImpl, StageLogicImpl}
 
 object Take {
   def last(in: OutD)(implicit b: Builder): OutD = {
@@ -35,8 +35,9 @@ object Take {
 
   private final val name = "Take"
 
-  private final class Stage(implicit ctrl: Control)
-    extends GraphStage[FanInShape2[BufD, BufI, BufD]] {
+  private type Shape = FanInShape2[BufD, BufI, BufD]
+
+  private final class Stage(implicit ctrl: Control) extends GraphStage[Shape] {
 
     override def toString = s"$name@${hashCode.toHexString}"
 
@@ -49,15 +50,13 @@ object Take {
     def createLogic(attr: Attributes): GraphStageLogic = new Logic(shape)
   }
 
-  private final class Logic(protected val shape: FanInShape2[BufD, BufI, BufD])
-                           (implicit protected val ctrl: Control)
-    extends GraphStageLogic(shape)
-      with FilterIn2Impl                        [BufD, BufI, BufD]
-      with ChunkImpl    [BufD, BufD, FanInShape2[BufD, BufI, BufD]] {
+  private final class Logic(shape: Shape)(implicit ctrl: Control)
+    extends StageLogicImpl(name, shape)
+      with FilterIn2Impl[BufD, BufI, BufD]
+      with ChunkImpl    [BufD, BufD, Shape]
+      with Out1LogicImpl[BufD, Shape] {
 
-    override def toString = s"$name-L@${hashCode.toHexString}"
-
-    protected def allocOutBuf(): BufD = ctrl.borrowBufD()
+    protected def allocOutBuf0(): BufD = ctrl.borrowBufD()
 
     private[this] var framesWritten     = 0
     private[this] var numFrames         = -1
@@ -70,7 +69,7 @@ object Take {
       }
       val chunk = math.min(len, numFrames - framesWritten)
       if (chunk > 0) {
-        Util.copy(bufIn0.buf, inOff, bufOut.buf, outOff, chunk)
+        Util.copy(bufIn0.buf, inOff, bufOut0.buf, outOff, chunk)
         framesWritten += chunk
       }
       chunk

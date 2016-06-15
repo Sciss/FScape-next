@@ -25,11 +25,11 @@ trait FilterIn1Impl[In >: Null <: BufLike, Out >: Null <: BufLike]
 
   // ---- impl ----
 
-  protected final var bufIn0: In  = _
-  protected final var bufOut: Out = _
+  protected final var bufIn0 : In  = _
+  protected final var bufOut0: Out = _
 
-  protected final val in0 = shape.in
-  protected final val out = shape.out
+  protected final val in0  = shape.in
+  protected final val out0 = shape.out
 
   private[this] final var _canRead = false
   private[this] final var _inValid = false
@@ -62,14 +62,14 @@ trait FilterIn1Impl[In >: Null <: BufLike, Out >: Null <: BufLike]
     }
 
   protected final def freeOutputBuffers(): Unit =
-    if (bufOut != null) {
-      bufOut.release()
-      bufOut = null
+    if (bufOut0 != null) {
+      bufOut0.release()
+      bufOut0 = null
     }
 
   final def updateCanRead(): Unit =
     _canRead = isAvailable(in0)
 
-  new ProcessInHandlerImpl (in0, this)
-  new ProcessOutHandlerImpl(out, this)
+  new ProcessInHandlerImpl (in0 , this)
+  new ProcessOutHandlerImpl(out0, this)
 }

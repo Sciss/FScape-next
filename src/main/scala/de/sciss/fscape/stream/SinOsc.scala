@@ -16,7 +16,7 @@ package stream
 
 import akka.stream.stage.{GraphStage, GraphStageLogic}
 import akka.stream.{Attributes, FanInShape2, Inlet, Outlet}
-import de.sciss.fscape.stream.impl.{GenChunkImpl, GenIn2Impl}
+import de.sciss.fscape.stream.impl.{GenChunkImpl, GenIn2Impl, Out1LogicImpl, StageLogicImpl}
 
 object SinOsc {
   def apply(freqN: OutD, phase: OutD)(implicit b: Builder): OutD = {
@@ -27,10 +27,11 @@ object SinOsc {
     stage.out
   }
 
-  private final class Stage(implicit ctrl: Control)
-    extends GraphStage[FanInShape2[BufD, BufD, BufD]] {
+  private final val name = "SinOsc"
 
-    val name = "SinOsc"
+  private type Shape = FanInShape2[BufD, BufD, BufD]
+
+  private final class Stage(implicit ctrl: Control) extends GraphStage[Shape] {
 
     override def toString = s"$name@${hashCode.toHexString}"
 
@@ -40,20 +41,20 @@ object SinOsc {
       out = OutD(s"$name.out"  )
     )
 
-    def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new Logic(shape)
+    def createLogic(attr: Attributes): GraphStageLogic = new Logic(shape)
   }
 
   // XXX TODO -- abstract over data type (BufD vs BufI)?
-  private final class Logic(protected val shape: FanInShape2[BufD, BufD, BufD])
-                           (implicit protected val ctrl: Control)
-    extends GraphStageLogic(shape)
-      with GenChunkImpl[BufD, BufD, FanInShape2[BufD, BufD, BufD]]
-      with GenIn2Impl                          [BufD, BufD, BufD] {
+  private final class Logic(shape: Shape)(implicit ctrl: Control)
+    extends StageLogicImpl(name, shape)
+      with GenChunkImpl[BufD, BufD, Shape]
+      with GenIn2Impl[BufD, BufD, BufD]
+      with Out1LogicImpl[BufD, Shape] {
 
-    protected def allocOutBuf(): BufD = ctrl.borrowBufD()
+    protected def allocOutBuf0(): BufD = ctrl.borrowBufD()
 
     protected def in0: Inlet [BufD] = shape.in0
-    protected def out: Outlet[BufD] = shape.out
+    protected def out0: Outlet[BufD] = shape.out
 
     private[this] var incr    : Double = _  // single sample delay
     private[this] var phaseOff: Double = _
@@ -70,7 +71,7 @@ object SinOsc {
       val stop      = inOffI + chunk
       val b0        = if (bufIn0 == null) null else bufIn0.buf
       val b1        = if (bufIn1 == null) null else bufIn1.buf
-      val out       = bufOut.buf
+      val out       = bufOut0.buf
       val stop0     = if (b0 == null) 0 else bufIn0.size
       val stop1     = if (b1 == null) 0 else bufIn1.size
 

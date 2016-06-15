@@ -15,13 +15,13 @@ package de.sciss.fscape
 package stream
 package impl
 
-import akka.stream.FanInShape
+import akka.stream.Shape
 import akka.stream.stage.GraphStageLogic
 
 import scala.annotation.tailrec
 
-trait WindowedLogicImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, Shape <: FanInShape[Out]]
-  extends InOutImpl[Shape] {
+trait WindowedLogicImpl[In0 >: Null <: BufLike, S <: Shape]
+  extends InOutImpl[S] {
 
   _: GraphStageLogic =>
 
@@ -61,9 +61,7 @@ trait WindowedLogicImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, Shape <:
 
   protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit
 
-  protected def allocOutBuf(): Out
-
-  protected var bufOut: Out
+  protected def allocOutputBuffers(): Int
 
   // ---- impl ----
 
@@ -132,8 +130,7 @@ trait WindowedLogicImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, Shape <:
 
     if (readFromWinRemain > 0) {
       if (outSent) {
-        bufOut        = allocOutBuf()
-        outRemain     = bufOut.size
+        outRemain     = allocOutputBuffers()
         outOff        = 0
         outSent       = false
         stateChange   = true
@@ -153,15 +150,8 @@ trait WindowedLogicImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, Shape <:
     }
 
     val flushOut = inRemain == 0 && /* writeToWinRemain */ writeToWinOff == 0 && readFromWinRemain == 0 && shouldComplete()
-    if (!outSent && (outRemain == 0 || flushOut) && isAvailable(shape.out)) {
-      // logStream(s"sendOut(); outOff = $outOff")
-      if (outOff > 0) {
-        bufOut.size = outOff
-        push(shape.out, bufOut)
-      } else {
-        bufOut.release()
-      }
-      bufOut      = null
+    if (!outSent && (outRemain == 0 || flushOut) && canWrite) {
+      writeOuts(outOff)
       outSent     = true
       stateChange = true
     }

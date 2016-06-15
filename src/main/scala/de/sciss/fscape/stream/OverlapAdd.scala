@@ -14,9 +14,9 @@
 package de.sciss.fscape.stream
 
 import akka.stream.stage.{GraphStage, GraphStageLogic}
-import akka.stream.{Attributes, FanInShape3}
+import akka.stream.{Attributes, FanInShape3, Outlet}
 import de.sciss.fscape.Util
-import de.sciss.fscape.stream.impl.{FilterIn3Impl, WindowedFilterLogicImpl}
+import de.sciss.fscape.stream.impl.{FilterIn3Impl, FilterLogicImpl, Out1LogicImpl, StageLogicImpl, WindowedLogicImpl}
 
 import scala.collection.mutable
 
@@ -50,8 +50,9 @@ object OverlapAdd {
 
   private final val name = "OverlapAdd"
 
-  private final class Stage(implicit ctrl: Control)
-    extends GraphStage[FanInShape3[BufD, BufI, BufI, BufD]] {
+  private type Shape = FanInShape3[BufD, BufI, BufI, BufD]
+
+  private final class Stage(implicit ctrl: Control) extends GraphStage[Shape] {
 
     override def toString = s"$name@${hashCode.toHexString}"
 
@@ -62,20 +63,19 @@ object OverlapAdd {
       out = OutD(s"$name.out" )
     )
 
-    def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new Logic(shape)
+    def createLogic(attr: Attributes): GraphStageLogic = new Logic(shape)
   }
 
-  private final class Logic(protected val shape: FanInShape3[BufD, BufI, BufI, BufD])
-                           (implicit protected val ctrl: Control)
-    extends GraphStageLogic(shape)
-      with WindowedFilterLogicImpl[BufD, BufD, FanInShape3[BufD, BufI, BufI, BufD]]
+  private final class Logic(shape: Shape)(implicit ctrl: Control)
+    extends StageLogicImpl(name, shape)
+      with WindowedLogicImpl[BufD, Shape]
+      with FilterLogicImpl  [BufD, Shape]
+      with Out1LogicImpl    [BufD, Shape]
       with FilterIn3Impl[BufD, BufI, BufI, BufD] {
 
-    override def toString = s"$name-L@${hashCode.toHexString}"
+    protected val in0 : InD  = shape.in0
 
-    protected val in0: InD = shape.in0
-
-    protected def allocOutBuf(): BufD = ctrl.borrowBufD()
+    protected def allocOutBuf0(): BufD = ctrl.borrowBufD()
 
     private[this] var size  : Int  = _
     private[this] var step  : Int  = _
@@ -119,14 +119,14 @@ object OverlapAdd {
     }
 
     protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit = {
-      Util.clear(bufOut.buf, outOff, chunk)
+      Util.clear(bufOut0.buf, outOff, chunk)
       var i = 0
       while (i < windows.length) {  // take care of index as we drop windows on the way
         val win = windows(i)
         val chunk1 = math.min(win.availableOut, chunk)
         // println(s"copying $chunk1 frames from window $i at ${win.offOut}")
         if (chunk1 > 0) {
-          Util.add(win.buf, win.offOut, bufOut.buf, outOff, chunk1)
+          Util.add(win.buf, win.offOut, bufOut0.buf, outOff, chunk1)
           win.offOut += chunk1
         }
         if (win.outRemain == 0) {

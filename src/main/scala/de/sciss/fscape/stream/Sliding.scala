@@ -16,7 +16,7 @@ package stream
 
 import akka.stream.stage.{GraphStage, GraphStageLogic}
 import akka.stream.{Attributes, FanInShape3}
-import de.sciss.fscape.stream.impl.FilterIn3Impl
+import de.sciss.fscape.stream.impl.{FilterIn3Impl, Out1LogicImpl, StageLogicImpl}
 
 import scala.annotation.tailrec
 
@@ -51,6 +51,8 @@ object Sliding {
 
   private final val name = "Sliding"
 
+  private type Shape = FanInShape3[BufD, BufI, BufI, BufD]
+
   private final class Stage(implicit ctrl: Control)
     extends GraphStage[FanInShape3[BufD, BufI, BufI, BufD]] {
 
@@ -63,18 +65,17 @@ object Sliding {
       out = OutD(s"$name.out" )
     )
 
-    def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new Logic(shape)
+    def createLogic(attr: Attributes): GraphStageLogic = new Logic(shape)
   }
 
   // XXX TODO --- we should try to see if this can be implemented
   // on top of windowed-logic-impl which would make it much simpler.
   // XXX TODO --- check that flushIn is correctly handled (we should
   // flush partial windows)
-  private final class Logic(protected val shape: FanInShape3[BufD, BufI, BufI, BufD])
-                           (implicit protected val ctrl: Control)
-    extends GraphStageLogic(shape) with FilterIn3Impl[BufD, BufI, BufI, BufD] {
-
-    override def toString = s"$name-L@${hashCode.toHexString}"
+  private final class Logic(shape: Shape)(implicit ctrl: Control)
+    extends StageLogicImpl(name, shape)
+      with Out1LogicImpl[BufD, Shape]
+      with FilterIn3Impl[BufD, BufI, BufI, BufD] {
 
     private[this] var inOff         = 0  // regarding `bufIn`
     private[this] var inRemain      = 0
@@ -92,13 +93,15 @@ object Sliding {
     @inline
     private[this] def shouldRead     = inRemain   == 0 && canRead
 
+    protected def allocOutBuf0(): BufD = ctrl.borrowBufD()
+
     /*
-      back-pressure algorithm:
-      - never begin a step if windows.head is full
-      - for example with a constant step size of 1/4 window size,
-        this means we halt processing input after window size
-        input frames (i.e. with four windows in memory).
-     */
+          back-pressure algorithm:
+          - never begin a step if windows.head is full
+          - for example with a constant step size of 1/4 window size,
+            this means we halt processing input after window size
+            input frames (i.e. with four windows in memory).
+         */
     @inline
     private[this] def canPrepareStep = stepRemain == 0 && bufIn0 != null &&
       (windows.isEmpty || windows.head.inRemain > 0)
@@ -133,8 +136,8 @@ object Sliding {
       if (windows.nonEmpty) {
         // create new output buffer
         if (outSent) {
-          bufOut        = ctrl.borrowBufD()
-          outRemain     = bufOut.size
+          bufOut0       = allocOutBuf0()
+          outRemain     = bufOut0.size
           outOff        = 0
           outSent       = false
           stateChange   = true
@@ -176,7 +179,7 @@ object Sliding {
         }
         val chunkOut = math.min(win.availableOut, outRemain)
         if (chunkOut > 0 || flushWin) {
-          Util.copy(win.buf, win.offOut, bufOut.buf, outOff, chunkOut)
+          Util.copy(win.buf, win.offOut, bufOut0.buf, outOff, chunkOut)
           win.offOut   += chunkOut
           outOff       += chunkOut
           outRemain    -= chunkOut
@@ -192,12 +195,12 @@ object Sliding {
       val flushOut = inRemain == 0 && windows.isEmpty && isClosed(shape.in0)
       if (!outSent && (outRemain == 0 || flushOut) && isAvailable(shape.out)) {
         if (outOff > 0) {
-          bufOut.size = outOff
-          push(shape.out, bufOut)
+          bufOut0.size = outOff
+          push(shape.out, bufOut0)
         } else {
-          bufOut.release()
+          bufOut0.release()
         }
-        bufOut      = null
+        bufOut0      = null
         outSent     = true
         stateChange = true
       }

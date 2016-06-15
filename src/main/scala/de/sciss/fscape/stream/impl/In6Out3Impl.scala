@@ -1,5 +1,5 @@
 /*
- *  FilterIn6Out3Impl.scala
+ *  In6Out3Impl.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2016 Hanns Holger Rutz. All rights reserved.
@@ -16,14 +16,17 @@ package de.sciss.fscape.stream.impl
 import akka.stream.stage.GraphStageLogic
 import de.sciss.fscape.stream.BufLike
 
-trait FilterIn6Out3Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: BufLike,
+// XXX TODO --- we could easily split now between input and output trait
+// and would reduce the number of implementation traits necessary
+trait In6Out3Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: BufLike,
 In3 >: Null <: BufLike, In4 >: Null <: BufLike, In5 >: Null <: BufLike, Out0 >: Null <: BufLike, 
 Out1 >: Null <: BufLike, Out2 >: Null <: BufLike]
-  extends InMultiOutImpl[In6Out3Shape[In0, In1, In2, In3, In4, In5, Out0, Out1, Out2]] {
+  extends InOutImpl[In6Out3Shape[In0, In1, In2, In3, In4, In5, Out0, Out1, Out2]] {
   _: GraphStageLogic =>
 
   // ---- impl ----
 
+  // XXX TODO -- should be read-only for sub-classes
   protected final var bufIn0 : In0  = _
   protected final var bufIn1 : In1  = _
   protected final var bufIn2 : In2  = _
@@ -41,6 +44,10 @@ Out1 >: Null <: BufLike, Out2 >: Null <: BufLike]
   final def canRead : Boolean = _canRead
   final def canWrite: Boolean = _canWrite
   final def inValid : Boolean = _inValid
+
+  protected def allocOutBuf0(): Out0
+  protected def allocOutBuf1(): Out1
+  protected def allocOutBuf2(): Out2
 
   override def preStart(): Unit =
     shape.inlets.foreach(pull(_))
@@ -138,13 +145,38 @@ Out1 >: Null <: BufLike, Out2 >: Null <: BufLike]
     _canWrite = isAvailable(sh.out0) && isAvailable(sh.out1) && isAvailable(sh.out2)
   }
 
-  new ProcessInHandlerImpl      (shape.in0 , this)
-  new AuxInHandlerImpl          (shape.in1 , this)
-  new AuxInHandlerImpl          (shape.in2 , this)
-  new AuxInHandlerImpl          (shape.in3 , this)
-  new AuxInHandlerImpl          (shape.in4 , this)
-  new AuxInHandlerImpl          (shape.in5 , this)
-  new ProcessMultiOutHandlerImpl(shape.out0, this)
-  new ProcessMultiOutHandlerImpl(shape.out1, this)
-  new ProcessMultiOutHandlerImpl(shape.out2, this)
+  protected final def writeOuts(outOff: Int): Unit = {
+    if (outOff > 0) {
+      bufOut0.size = outOff
+      bufOut1.size = outOff
+      bufOut2.size = outOff
+      push(shape.out0, bufOut0)
+      push(shape.out1, bufOut1)
+      push(shape.out2, bufOut2)
+    } else {
+      bufOut0.release()
+      bufOut1.release()
+      bufOut2.release()
+    }
+    bufOut0 = null
+    bufOut1 = null
+    bufOut2 = null
+  }
+
+  protected final def allocOutputBuffers(): Int = {
+    bufOut0 = allocOutBuf0()
+    bufOut1 = allocOutBuf1()
+    bufOut2 = allocOutBuf2()
+    bufOut0.size
+  }
+
+  new ProcessInHandlerImpl (shape.in0 , this)
+  new AuxInHandlerImpl     (shape.in1 , this)
+  new AuxInHandlerImpl     (shape.in2 , this)
+  new AuxInHandlerImpl     (shape.in3 , this)
+  new AuxInHandlerImpl     (shape.in4 , this)
+  new AuxInHandlerImpl     (shape.in5 , this)
+  new ProcessOutHandlerImpl(shape.out0, this)
+  new ProcessOutHandlerImpl(shape.out1, this)
+  new ProcessOutHandlerImpl(shape.out2, this)
 }

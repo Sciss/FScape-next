@@ -37,7 +37,7 @@ final class BroadcastBufStageImpl[B <: BufLike](numOutputs: Int, eagerCancel: Bo
 
 final class BroadcastBufLogicImpl[B <: BufLike](shape: UniformFanOutShape[B, B], eagerCancel: Boolean)
                                                (implicit ctrl: Control)
-  extends GraphStageLogic(shape) with InHandler {
+  extends StageLogicImpl("BoradcastBuf", shape) with InHandler {
 
   private[this] val numOutputs    = shape.outArray.length
   private[this] var pendingCount  = numOutputs

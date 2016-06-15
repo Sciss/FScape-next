@@ -25,13 +25,13 @@ trait FilterIn2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, Out >: Null 
 
   // ---- impl ----
 
-  protected final var bufIn0: In0 = _
-  protected final var bufIn1: In1 = _
-  protected final var bufOut: Out = _
+  protected final var bufIn0 : In0 = _
+  protected final var bufIn1 : In1 = _
+  protected final var bufOut0: Out = _
 
-  protected final val in0 = shape.in0
-  protected final val in1 = shape.in1
-  protected final val out = shape.out
+  protected final val in0  = shape.in0
+  protected final val in1  = shape.in1
+  protected final val out0 = shape.out
 
   private[this] final var _canRead = false
   private[this] final var _inValid = false
@@ -77,9 +77,9 @@ trait FilterIn2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, Out >: Null 
   }
 
   protected final def freeOutputBuffers(): Unit =
-    if (bufOut != null) {
-      bufOut.release()
-      bufOut = null
+    if (bufOut0 != null) {
+      bufOut0.release()
+      bufOut0 = null
     }
 
   final def updateCanRead(): Unit = {
@@ -87,7 +87,7 @@ trait FilterIn2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, Out >: Null 
       ((isClosed(in1) && _inValid) || isAvailable(in1))
   }
 
-  new ProcessInHandlerImpl (in0, this)
-  new AuxInHandlerImpl     (in1, this)
-  new ProcessOutHandlerImpl(out, this)
+  new ProcessInHandlerImpl (in0 , this)
+  new AuxInHandlerImpl     (in1 , this)
+  new ProcessOutHandlerImpl(out0, this)
 }

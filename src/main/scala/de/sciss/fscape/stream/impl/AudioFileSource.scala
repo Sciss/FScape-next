@@ -36,7 +36,7 @@ final class AudioFileSource(f: File, numChannels: Int)(implicit protected val ct
 }
 
 final class AudioFileSourceLogic(shape: UniformSourceShape[BufD], f: File, numChannels: Int)(implicit ctrl: Control)
-  extends GraphStageLogic(shape) with OutHandler {
+  extends StageLogicImpl("AudioFileSource", shape) with OutHandler {
 
   override def toString = s"AudioFileSource-L(${f.name})"
 
