@@ -14,7 +14,7 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.stage.GraphStageLogic
+import akka.stream.stage.{GraphStageLogic, InHandler}
 import akka.stream.{Attributes, FanInShape2}
 import de.sciss.fscape.stream.impl.{ChunkImpl, InOutImpl, Out1DoubleImpl, Out1LogicImpl, ProcessOutHandlerImpl, StageImpl, StageLogicImpl}
 
@@ -56,7 +56,6 @@ object Concat {
     // ---- impl ----
 
     protected var bufIn0 : BufD = _
-    protected var bufIn1 : BufD = _
     protected var bufOut0: BufD = _
 
     protected val in0  = shape.in0
@@ -64,10 +63,9 @@ object Concat {
     protected val out0 = shape.out
 
     private[this] var _canRead = false
-    private[this] var _inValid = false
 
     def canRead: Boolean = _canRead
-    def inValid: Boolean = _inValid
+    def inValid: Boolean = true
 
     override def preStart(): Unit = {
       pull(in0)
@@ -86,29 +84,21 @@ object Concat {
         bufIn0 = grab(in0)
         bufIn0.assertAllocated()
         tryPull(in0)
-      }
-
-      if (isAvailable(in1)) {
-        bufIn1 = grab(in1)
+      } else {
+        assert(isClosed(in0) && isAvailable(in1))
+        bufIn0 = grab(in1)
         tryPull(in1)
       }
 
-      _inValid = true
       _canRead = false
       bufIn0.size
-      ???
     }
 
-    protected def freeInputBuffers(): Unit = {
+    protected def freeInputBuffers(): Unit =
       if (bufIn0 != null) {
         bufIn0.release()
         bufIn0 = null
       }
-      if (bufIn1 != null) {
-        bufIn1.release()
-        bufIn1 = null
-      }
-    }
 
     protected def freeOutputBuffers(): Unit =
       if (bufOut0 != null) {
@@ -116,24 +106,33 @@ object Concat {
         bufOut0 = null
       }
 
-    def updateCanRead(): Unit = {
-      ???
-      _canRead = isAvailable(in0) &&
-        ((isClosed(in1) && _inValid) || isAvailable(in1))
-    }
+    def updateCanRead(): Unit =
+      _canRead = isAvailable(in0) || (isClosed(in0) && isAvailable(in1))
 
-    protected def shouldComplete(): Boolean = ???
+    // XXX TODO -- do we need to check `isAvailable` as well?
+    protected def shouldComplete(): Boolean = isClosed(in0) && isClosed(in1)
 
-    protected def processChunk(inOff: Int, outOff: Int, chunk0: Int): Int = {
-      val chunk = chunk0 & ~1  // must be even
-//      op(a = bufIn0.buf, aOff = inOff, b = bufIn1.buf, bOff = inOff,
-//        out = bufOut0.buf, outOff = outOff, len = chunk >> 1)
-      ???
+    protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Int = {
+      Util.copy(bufIn0.buf, inOff, bufOut0.buf, outOff, chunk)
       chunk
     }
 
-    ??? // new ProcessInHandlerImpl (in0 , this)
-    ??? // new AuxInHandlerImpl     (in1 , this)
+    private def testRead(): Unit = {
+      updateCanRead()
+      if (canRead) process()
+    }
+
+    private object InHandlerImpl extends InHandler {
+      def onPush(): Unit = testRead()
+
+      override def onUpstreamFinish(): Unit = {
+        updateCanRead()
+        process()
+      }
+    }
+
+    setHandler(in0, InHandlerImpl)
+    setHandler(in1, InHandlerImpl)
     new ProcessOutHandlerImpl(out0, this)
   }
 }
