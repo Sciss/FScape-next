@@ -20,7 +20,7 @@ import de.sciss.fscape.graph.{Constant, UGenProxy}
 import de.sciss.fscape.stream.StreamIn
 
 import scala.annotation.switch
-import scala.collection.{breakOut, mutable}
+import scala.collection.breakOut
 import scala.collection.immutable.{IndexedSeq => Vec}
 
 object UGenGraph {
@@ -70,7 +70,7 @@ object UGenGraph {
 
   private final class BuilderImpl(implicit ctrl: stream.Control) extends Builder {
     private[this] var ugens     = Vector.empty[UGen]
-    private[this] val ugenSet   = mutable.Set.empty[UGen]
+    // private[this] val ugenSet   = mutable.Set.empty[UGen]
     private[this] var sourceMap = Map.empty[AnyRef, Any]
 
     def build: UGenGraph = {
@@ -148,9 +148,6 @@ object UGenGraph {
             new ConstantIndex(c)
 
           case up: UGenProxy =>
-            if (!ugenMap.contains(up.ugen)) {
-              println("HERE")
-            }
             val iui = ugenMap(up.ugen)
             iui.children(up.outputIndex) ::= iu
             new UGenProxyIndex(iui, up.outputIndex)
@@ -200,14 +197,18 @@ object UGenGraph {
     }
 
     def addUGen(ugen: UGen): Unit = {
-      // XXX TODO --- where is this check in ScalaCollider?
-      // have we removed it (why)?
-      if (ugenSet.add(ugen)) {
+      // Where is this check in ScalaCollider? Have we removed it (why)?
+      // N.B.: We do not use UGen equality any longer in FScape because
+      // we might need to feed the same structure into different sinks
+      // that read at different speeds, so we risk to block the graph
+      // (Imagine a `DC(0.0)` going into two entirely different places!)
+
+      // if (ugenSet.add(ugen)) {
         ugens :+= ugen
         logGraph(s"addUGen ${ugen.name} @ ${ugen.hashCode.toHexString} ${if (ugen.isIndividual) "indiv" else ""}")
-      } else {
-        logGraph(s"addUGen ${ugen.name} @ ${ugen.hashCode.toHexString} - duplicate")
-      }
+      // } else {
+      //  logGraph(s"addUGen ${ugen.name} @ ${ugen.hashCode.toHexString} - duplicate")
+      // }
     }
   }
 }

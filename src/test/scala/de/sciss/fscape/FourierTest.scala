@@ -16,7 +16,7 @@ object FourierTest extends App {
   import graph._
   import numbers.Implicits._
 
-  showGraphLog = true
+  // showGraphLog = true
 
   val inSpec = AudioFile.readSpec(fIn)
 
@@ -32,7 +32,7 @@ object FourierTest extends App {
     DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = sr), in = in)
   }
 
-  lazy val g = Graph {
+  lazy val gDebug = Graph {
     val sr = 44100.0
 
     val sz        = (10 * sr).toInt.nextPowerOfTwo
@@ -50,12 +50,12 @@ object FourierTest extends App {
     gain.poll()
   }
 
-  lazy val gX = Graph {
+  lazy val g = Graph {
     val sr = 44100.0
+    val sz = (10 * sr).toInt.nextPowerOfTwo
 
     def mkIn() = {
       // DiskIn(file = fIn, numChannels = 1)
-      val sz  = (10 * sr).toInt.nextPowerOfTwo
       val gen = SinOsc(freqN = 1.0/16 /* 4410/sr */, phase = math.Pi/2)
       // val gen = DC(1.0)
       gen.take(sz)
@@ -63,7 +63,8 @@ object FourierTest extends App {
 
     val in        = mkIn()
     val complex   = ZipWindow(in, DC(0.0))
-    val fourier   = Fourier(in = complex, size = inSpec.numFrames.toInt)
+    val fftSize   = sz // inSpec.numFrames.toInt
+    val fourier   = Fourier(in = complex, size = fftSize)
     val norm      = complexNormalize(fourier)
     val unzip     = UnzipWindow(in = norm)
     val re        = ChannelProxy(unzip, 0)
@@ -73,19 +74,29 @@ object FourierTest extends App {
   }
 
   lazy val gFwdBwd = Graph {
-    def mkIn() = ChannelProxy(DiskIn(file = fIn, numChannels = 1), 0)
+    val sr = 44100.0
+
+    val sz  = (10 * sr).toInt.nextPowerOfTwo
+    def mkIn() = {
+      // DiskIn(file = fIn, numChannels = 1)
+      val gen = SinOsc(freqN = 1.0/16 /* 4410/sr */, phase = math.Pi/2)
+      // val gen = DC(1.0)
+      gen.take(sz)
+    }
 
     val in        = mkIn()
     val complex   = ZipWindow(in, DC(0.0))
-    val fftSizeIn = inSpec.numFrames.toInt
-    val fftSizeOut=fftSizeIn.nextPowerOfTwo
+    val fftSizeIn = sz // sinSpec.numFrames.toInt
+    assert(fftSizeIn.isPowerOfTwo)
+    val fftSizeOut = fftSizeIn.nextPowerOfTwo
+    assert(fftSizeOut == fftSizeIn)
     val fwd       = Fourier(in = complex, size = fftSizeIn , dir = +1)
     val bwd       = Fourier(in = fwd    , size = fftSizeOut, dir = -1)
     val norm      = complexNormalize(bwd)
     val unzip     = UnzipWindow(in = norm)
     val re        = ChannelProxy(unzip, 0)
     // val im        = ChannelProxy(unzip, 1)
-    DiskOut(file = fOut3 , spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = re)
+    DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = re)
   }
 
   def complexNormalize(in: GE): GE = {

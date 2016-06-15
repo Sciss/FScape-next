@@ -67,7 +67,7 @@ sealed trait UGen extends Product {
 
   override def equals(x: Any): Boolean = (this eq x.asInstanceOf[AnyRef]) || (!isIndividual && (x match {
     case u: UGen =>
-      u.name == name && u.inputs == inputs && u.canEqual(this)
+      u.name == name && u.inputs == inputs && u.rest == rest && u.canEqual(this)
     case _ => false
   }))
 
