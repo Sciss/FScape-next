@@ -179,13 +179,19 @@ object MorassTest extends App {
       val fftSizeA  = if (truncate) (numFramesA + 1).nextPowerOfTwo / 2 else numFramesA.nextPowerOfTwo
       val fftSizeB  = if (truncate) (numFramesB + 1).nextPowerOfTwo / 2 else numFramesB.nextPowerOfTwo
 
-      val g = Graph {
-        val fftA = mkFourierFwd(in = inA, size = fftSizeA, gain = Gain.normalized)
-        val fftB = mkFourierFwd(in = inB, size = fftSizeB, gain = Gain.normalized)
+      showStreamLog = true
 
+      val g = Graph {
         import graph._
-        val fftAZ = UnzipWindow(fftA) // treat Re and Im as two channels
-        val fftBZ = UnzipWindow(fftB) // treat Re and Im as two channels
+
+//        val fftA = mkFourierFwd(in = inA, size = fftSizeA, gain = Gain.normalized)
+//        val fftB = mkFourierFwd(in = inB, size = fftSizeB, gain = Gain.normalized)
+//
+//        val fftAZ = UnzipWindow(fftA) // treat Re and Im as two channels
+//        val fftBZ = UnzipWindow(fftB) // treat Re and Im as two channels
+
+        val fftAZ = SinOsc(1.0/64).take(44100 * 10)
+        val fftBZ = SinOsc(1.0/64).take(44100 * 10)
 
         val numFrames = math.min(fftSizeA, fftSizeB)
         assert(numFrames.isPowerOfTwo)
@@ -198,8 +204,10 @@ object MorassTest extends App {
         val morass = mkMorass(config)
         val morassZ = ZipWindow(ChannelProxy(morass, 0), ChannelProxy(morass, 1))
 
-        mkFourierInv(in = morassZ, size = numFrames, out = output,
-          spec = OutputSpec.aiffInt, gain = Gain.normalized)
+        morassZ.poll()
+
+//        mkFourierInv(in = morassZ, size = numFrames, out = output,
+//          spec = OutputSpec.aiffInt, gain = Gain.normalized)
       }
 
       val ctrl = stream.Control()
