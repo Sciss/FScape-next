@@ -203,14 +203,18 @@ final class GEOps(val `this`: GE) extends AnyVal { me =>
 //  def wrap(low: GE, high: GE): GE = {
 //    Wrap(r, g, low, high)
 //  }
-//
-//  def linlin(inLow: GE, inHigh: GE, outLow: GE, outHigh: GE): GE = {
-//    LinLin(/* rate, */ g, inLow, inHigh, outLow, outHigh)
-//  }
-//
-//  def linexp(inLow: GE, inHigh: GE, outLow: GE, outHigh: GE): GE = {
-//    LinExp(g.rate, g, inLow, inHigh, outLow, outHigh) // should be highest rate of all inputs? XXX
-//  }
+
+  def linlin(inLow: GE, inHigh: GE, outLow: GE, outHigh: GE): GE = {
+    // XXX TODO
+    // LinLin(/* rate, */ g, inLow, inHigh, outLow, outHigh)
+    (g - inLow) / (inHigh - inLow) * (outHigh - outLow) + outLow
+  }
+
+  def linexp(inLow: GE, inHigh: GE, outLow: GE, outHigh: GE): GE = {
+    // XXX TODO
+    // LinExp(g.rate, g, inLow, inHigh, outLow, outHigh) // should be highest rate of all inputs? XXX
+    (outHigh / outLow).pow((g - inLow) / (inHigh - inLow)) * outLow
+  }
 
   def explin(inLow: GE, inHigh: GE, outLow: GE, outHigh: GE): GE =
     (g / inLow).log / (inHigh / inLow).log * (outHigh - outLow) + outLow
@@ -220,6 +224,9 @@ final class GEOps(val `this`: GE) extends AnyVal { me =>
 
   def take     (len: GE): GE = Take     (in = g, len = len)
   def takeRight(len: GE): GE = TakeRight(in = g, len = len)
+
+  def drop     (len: GE): GE = ???
+  def dropRight(len: GE): GE = ???
 
   def head: GE = take     (1)
   def last: GE = takeRight(1)
