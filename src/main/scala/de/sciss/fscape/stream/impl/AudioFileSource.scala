@@ -24,14 +24,14 @@ import scala.util.control.NonFatal
 
 // similar to internal `UnfoldResourceSource`
 final class AudioFileSource(f: File, numChannels: Int)(implicit protected val ctrl: Control)
-  extends BlockingGraphStage[UniformSourceShape[BufD]] {
+  extends BlockingGraphStage[UniformSourceShape[BufD]]("AudioFileSource") {
   source =>
 
   override val shape = UniformSourceShape(Vector.tabulate(numChannels)(ch => OutD(s"AudioFileSource.out$ch")))
 
   override def toString = s"AudioFileSource(${f.name})"
 
-  def createLogic(inheritedAttributes: Attributes): GraphStageLogic =
+  def createLogic(attr: Attributes): GraphStageLogic =
     new AudioFileSourceLogic(shape, f, numChannels = numChannels)
 }
 

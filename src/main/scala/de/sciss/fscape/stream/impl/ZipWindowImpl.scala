@@ -46,7 +46,7 @@ final class ZipWindowStageImpl(numInputs: Int)(implicit ctrl: Control)
     out     = OutD("ZipWindow.out" )
   )
 
-  def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new ZipWindowLogicImpl(shape)
+  def createLogic(attr: Attributes): GraphStageLogic = new ZipWindowLogicImpl(shape)
 }
 
 final class ZipWindowLogicImpl(shape: ZipWindowShape)(implicit ctrl: Control)

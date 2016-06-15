@@ -58,7 +58,8 @@ trait ChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape] {
     }
 
     if (outSent) {
-      bufOut0        = allocOutBuf0()
+      // XXX TODO -- use allocOutputBuffers
+      bufOut0       = allocOutBuf0()
       outRemain     = bufOut0.size
       outOff        = 0
       outSent       = false

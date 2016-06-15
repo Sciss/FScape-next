@@ -14,9 +14,9 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.stage.{GraphStage, GraphStageLogic}
+import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FlowShape}
-import de.sciss.fscape.stream.impl.{FilterChunkImpl, FilterIn1Impl, Out1LogicImpl, StageLogicImpl}
+import de.sciss.fscape.stream.impl.{FilterChunkImpl, FilterIn1Impl, Out1LogicImpl, StageImpl, StageLogicImpl}
 
 /** Unary operator assuming stream is complex signal (real and imaginary interleaved).
   * Outputs another complex stream even if the operator yields a purely real-valued result
@@ -38,9 +38,7 @@ object ComplexUnaryOp {
 
   private type Shape = FlowShape[BufD, BufD]
 
-  private final class Stage(op: Op)(implicit ctrl: Control) extends GraphStage[Shape] {
-
-    override def toString = s"$name($op)@${hashCode.toHexString}"
+  private final class Stage(op: Op)(implicit ctrl: Control) extends StageImpl[Shape](name) {
 
     val shape = new FlowShape(
       in  = InD (s"$name.in" ),

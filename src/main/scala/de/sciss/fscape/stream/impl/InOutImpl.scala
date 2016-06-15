@@ -37,8 +37,10 @@ trait InOutImpl[S <: Shape] {
   /** Whether all input buffers are valid. */
   def inValid: Boolean
 
+  /** Requests the update of the `canRead` status. */
   def updateCanRead(): Unit
 
+  /** Requests the update of the `canWrite` status. */
   def updateCanWrite(): Unit
 
   protected def readIns(): Int

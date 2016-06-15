@@ -48,7 +48,7 @@ final class UnzipWindowStageImpl(numOutputs: Int)(implicit ctrl: Control)
     outlets = Vector.tabulate(numOutputs)(idx => OutD(s"$name.out$idx"))
   )
 
-  def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new UnzipWindowLogicImpl(shape)
+  def createLogic(attr: Attributes): GraphStageLogic = new UnzipWindowLogicImpl(shape)
 }
 
 final class UnzipWindowLogicImpl(shape: UnzipWindowShape)(implicit ctrl: Control)

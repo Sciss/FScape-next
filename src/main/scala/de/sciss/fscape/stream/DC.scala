@@ -14,9 +14,9 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.stage.{GraphStage, GraphStageLogic}
+import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
-import de.sciss.fscape.stream.impl.{GenChunkImpl, GenIn1Impl, Out1LogicImpl, StageLogicImpl}
+import de.sciss.fscape.stream.impl.{GenChunkImpl, GenIn1Impl, Out1LogicImpl, StageImpl, StageLogicImpl}
 
 object DC {
   def apply(in: OutD)(implicit b: Builder): OutD = {
@@ -30,7 +30,7 @@ object DC {
 
   private type Shape = FlowShape[BufD, BufD]
 
-  private final class Stage(implicit ctrl: Control) extends GraphStage[Shape] {
+  private final class Stage(implicit ctrl: Control) extends StageImpl[Shape](name) {
 
     val shape = new FlowShape(
       in  = InD (s"$name.in" ),

@@ -15,12 +15,11 @@ package de.sciss.fscape
 package stream
 package impl
 
-import akka.stream.stage.GraphStage
 import akka.stream.{ActorAttributes, Attributes, Shape}
 
 /** Overrides dispatcher to implement async boundary. */
-abstract class BlockingGraphStage[S <: Shape] extends GraphStage[S] {
-  protected def ctrl: Control
+abstract class BlockingGraphStage[S <: Shape](name: String)(implicit ctrl: Control)
+  extends StageImpl[S](name) {
 
   override def initialAttributes: Attributes =
     if (ctrl.config.useAsync) {

@@ -37,7 +37,7 @@ object Fourier {
   private type Shape = FanInShape5[BufD, BufI, BufI, BufD, BufI, BufD]
 
   private final class Stage(implicit protected val ctrl: Control)
-    extends BlockingGraphStage[Shape] {
+    extends BlockingGraphStage[Shape](name) {
 
     override def toString = s"$name@${hashCode.toHexString}"
 
