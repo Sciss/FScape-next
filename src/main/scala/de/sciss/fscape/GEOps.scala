@@ -13,7 +13,7 @@
 
 package de.sciss.fscape
 
-import de.sciss.fscape.graph.{BinaryOp, ChannelProxy, Constant, Impulse, Poll, Take, TakeRight, UnaryOp}
+import de.sciss.fscape.graph.{BinaryOp, ChannelProxy, ComplexBinaryOp, ComplexUnaryOp, Constant, Impulse, Poll, Take, TakeRight, UnaryOp, UnzipWindow}
 import de.sciss.optional.Optional
 
 final class GEOps(val `this`: GE) extends AnyVal { me =>
@@ -23,7 +23,6 @@ final class GEOps(val `this`: GE) extends AnyVal { me =>
     *
     * @param index  channel-index, zero-based. Indices which are greater than or equal
     *               to the number of outputs are wrapped around.
-    *
     * @return a monophonic element that represents the given channel of the receiver
     */
   def `\\`(index: Int)      : GE = ChannelProxy(g, index)
@@ -43,7 +42,6 @@ final class GEOps(val `this`: GE) extends AnyVal { me =>
     * @param   label    a string to print along with the values, in order to identify
     *                   different polls. Using the special label `"#auto"` (default) will generated
     *                   automatic useful labels using information from the polled graph element
-    *
     * @see  [[de.sciss.fscape.graph.Poll]]
     */
   def poll(trig: GE = 2e-4, label: Optional[String] = None): Poll = {
@@ -230,4 +228,46 @@ final class GEOps(val `this`: GE) extends AnyVal { me =>
 
   def head: GE = take     (1)
   def last: GE = takeRight(1)
+
+  def complex: GEComplexOps = new GEComplexOps(g)
+}
+
+final class GEComplexOps(val `this`: GE) extends AnyVal { me =>
+  import me.{`this` => g}
+
+  import ComplexUnaryOp._
+
+  @inline private def cUnOp(op: ComplexUnaryOp.Op): GE = op.make(g)
+
+  // unary ops
+  def abs       : GE  = cUnOp(Abs        )
+  def squared   : GE  = cUnOp(Squared    )
+  def cubed     : GE  = cUnOp(Cubed      )
+  def exp       : GE  = cUnOp(Exp        )
+  def reciprocal: GE  = cUnOp(Reciprocal )
+  def log       : GE  = cUnOp(Log        )
+  def log2      : GE  = cUnOp(Log2       )
+  def log10     : GE  = cUnOp(Log10      )
+  def conj      : GE  = cUnOp(Conj       )
+
+  import ComplexBinaryOp._
+
+  @inline private def cBinOp(op: ComplexBinaryOp.Op, b: GE): GE = op.make(g, b)
+
+  // binary ops
+  def + (b: GE): GE  = cBinOp(Plus , b)
+  def - (b: GE): GE  = cBinOp(Minus, b)
+  def * (b: GE): GE  = cBinOp(Times, b)
+
+  // unary to real
+  def mag       : GE  = ChannelProxy(UnzipWindow(abs), 0)
+  def phase     : GE  = {
+    val unzip = UnzipWindow(g)
+    val re    = ChannelProxy(unzip, 0)
+    val im    = ChannelProxy(unzip, 1)
+    im atan2 re // XXX TODO --- correct?
+  }
+
+  def real      : GE  = ChannelProxy(UnzipWindow(g  ), 0)
+  def imag      : GE  = ChannelProxy(UnzipWindow(g  ), 1)
 }

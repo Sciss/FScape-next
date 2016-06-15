@@ -73,6 +73,8 @@ object ComplexUnaryOp {
 
     def id: Int
 
+    final def make(a: GE): GE = new ComplexUnaryOp(op, a)
+
     /** Transfers values from an input buffer
       * to an output buffer,
       * applying the operator.

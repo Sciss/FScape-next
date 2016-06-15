@@ -36,9 +36,7 @@ object MorassTest extends App {
   }
 
   def complexNormalize(in: GE, headroom: GE): GE = {
-    import graph._
-    val abs = ComplexUnaryOp(ComplexUnaryOp.Abs, in = in)
-    val mag = ChannelProxy(UnzipWindow(abs), 0)
+    val mag = in.complex.abs
     normalizeImpl(in = in, mag = mag, headroom = headroom)
   }
 
@@ -115,7 +113,7 @@ object MorassTest extends App {
     // XXX TODO --- should use Real1FFT when the DC-packing is solved
     val fftA      = Real1FullFFT(in = winA, size = fftSize)
     val fftB      = Real1FullFFT(in = winB, size = fftSize)
-    val conjA     = ComplexUnaryOp(ComplexUnaryOp.Conj, in = fftA)
+    val conjA     = fftA.complex.conj
     val conv      = ??? : GE
     val elemNorm  = ??? : GE
     val iFFT      = Real1FullIFFT(in = elemNorm, size = fftSize)
