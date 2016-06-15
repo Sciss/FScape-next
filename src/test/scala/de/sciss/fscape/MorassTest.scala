@@ -7,6 +7,7 @@ import de.sciss.numbers
 import de.sciss.synth.io.{AudioFile, AudioFileSpec, AudioFileType, SampleFormat}
 
 import scala.swing.Swing
+import scala.util.Random
 
 object MorassTest extends App {
   val inputs    = (userHome / "Music" / "work").children(f => f.name.startsWith("mentasm-") && f.ext == "aif")
@@ -14,6 +15,7 @@ object MorassTest extends App {
 
   println(s"There are ${inputs.size} input files.")
   outputDir.mkdir()
+  run()
 
   case class MorassConfig(input             : GE,
                           template          : GE,
@@ -124,14 +126,15 @@ object MorassTest extends App {
     val shiftX    = /* if (keepFileLength) transX else */ transX + winSizeH
 
     val amp       = (ampModulation: GE).linlin(0, 1, 1.0, prod.peak)
-    val ampPad    = ??? : GE
-    val shiftXPad = ??? : GE
+    val ampPad    = RepeatWindow(in = amp   , num = winSize)
+    val shiftXPad = RepeatWindow(in = shiftX, num = winSize)
     val synth     = slideA * ampPad * winSynth
     // XXX TODO --- the first window will not be shifted.
     // So a real solution would be to prepend one empty
     // window and drop it later.
     val prepend   = DC(0.0).take(winSize)
-    val lapIn     = ??? : GE // prepend ++ synth
+    val lapIn     = prepend ++ synth
+    // XXX TODO --- probably have to introduce some buffer here
     val lap       = OverlapAdd(in = lapIn, size = winSize, step = shiftXPad + stepSize)
     val sig       = if (!keepFileLength) lap else lap.drop(winSizeH) // .take()
 
@@ -153,6 +156,13 @@ object MorassTest extends App {
 
   case class Gain(value: Double, normalized: Boolean = false) {
     def isUnity: Boolean = !normalized && value == 1.0
+  }
+
+
+  def run(): Unit = {
+    val Seq(inA, inB) = Random.shuffle(inputs.combinations(2)).next()
+    run(inA, inB)
+    // run(inB, inA)
   }
 
   def run(inA: File, inB: File): Unit = {

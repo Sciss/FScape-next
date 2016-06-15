@@ -220,14 +220,26 @@ final class GEOps(val `this`: GE) extends AnyVal { me =>
   def expexp(inLow: GE, inHigh: GE, outLow: GE, outHigh: GE): GE =
     (outHigh / outLow).pow((g / inLow).log / (inHigh / inLow).log) * outLow
 
+  /** Takes at most `len` elements of this signal, then terminates. */
   def take     (len: GE): GE = Take     (in = g, len = len)
+
+  /** Takes at most the last `len` elements of this (finite) signal. */
   def takeRight(len: GE): GE = TakeRight(in = g, len = len)
 
+  /** Drops the first `len` elements of this signal. */
   def drop     (len: GE): GE = ???
+
+  /** Drops the last `len` elements of this (finite) signal. */
   def dropRight(len: GE): GE = ???
 
+  /** Outputs the first element of this signal, then terminates. */
   def head: GE = take     (1)
+
+  /** Outputs the last element of this (finite) signal, then terminates. */
   def last: GE = takeRight(1)
+
+  /** Concatenates another signal to this (finite) signal. */
+  def ++ (that: GE): GE = ???
 
   def complex: GEComplexOps = new GEComplexOps(g)
 }
