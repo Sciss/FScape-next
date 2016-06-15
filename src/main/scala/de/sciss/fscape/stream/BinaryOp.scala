@@ -16,7 +16,7 @@ package stream
 
 import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FanInShape2}
-import de.sciss.fscape.stream.impl.{FilterChunkImpl, FilterIn2Impl, StageImpl, StageLogicImpl}
+import de.sciss.fscape.stream.impl.{FilterChunkImpl, FilterIn2DImpl, StageImpl, StageLogicImpl}
 
 object BinaryOp {
   import graph.BinaryOp.Op
@@ -46,11 +46,9 @@ object BinaryOp {
   private final class Logic(op: Op, shape: Shape)(implicit ctrl: Control)
     extends StageLogicImpl(name, shape)
       with FilterChunkImpl[BufD, BufD, Shape]
-      with FilterIn2Impl[BufD, BufD, BufD] {
+      with FilterIn2DImpl[BufD, BufD] {
 
     private[this] var bVal: Double = _
-
-    protected def allocOutBuf0(): BufD = ctrl.borrowBufD()
 
     protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Int = {
       var inOffI  = inOff

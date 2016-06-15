@@ -47,7 +47,7 @@ abstract class FFTLogicImpl(name: String, shape: FanInShape3[BufD, BufI, BufI, B
   extends StageLogicImpl(name, shape)
     with WindowedLogicImpl[BufD, FanInShape3[BufD, BufI, BufI, BufD]]
     with FilterLogicImpl  [BufD, FanInShape3[BufD, BufI, BufI, BufD]]
-    with FilterIn3Impl[BufD, BufI, BufI, BufD] {
+    with FilterIn3DImpl[BufD, BufI, BufI] {
 
   // ---- abstract ----
 
@@ -70,10 +70,6 @@ abstract class FFTLogicImpl(name: String, shape: FanInShape3[BufD, BufI, BufI, B
     super.postStop()
     fft = null
   }
-
-  protected final def in0: InD = shape.in0
-
-  protected final def allocOutBuf0(): BufD = ctrl.borrowBufD()
 
   protected final def fftSize: Int = _fftSize
 

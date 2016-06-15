@@ -16,7 +16,7 @@ package stream
 
 import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FlowShape}
-import de.sciss.fscape.stream.impl.{FilterChunkImpl, FilterIn1Impl, Out1LogicImpl, StageImpl, StageLogicImpl}
+import de.sciss.fscape.stream.impl.{FilterChunkImpl, FilterIn1DImpl, StageImpl, StageLogicImpl}
 
 /** Unary operator assuming stream is complex signal (real and imaginary interleaved).
   * Outputs another complex stream even if the operator yields a purely real-valued result
@@ -39,7 +39,6 @@ object ComplexUnaryOp {
   private type Shape = FlowShape[BufD, BufD]
 
   private final class Stage(op: Op)(implicit ctrl: Control) extends StageImpl[Shape](name) {
-
     val shape = new FlowShape(
       in  = InD (s"$name.in" ),
       out = OutD(s"$name.out")
@@ -51,10 +50,7 @@ object ComplexUnaryOp {
   private final class Logic(op: Op, shape: Shape)(implicit ctrl: Control)
     extends StageLogicImpl(name, shape)
       with FilterChunkImpl[BufD, BufD, Shape]
-      with FilterIn1Impl[BufD, BufD]
-      with Out1LogicImpl[BufD, Shape] {
-
-    protected def allocOutBuf0(): BufD = ctrl.borrowBufD()
+      with FilterIn1DImpl[BufD] {
 
     protected def processChunk(inOff: Int, outOff: Int, chunk0: Int): Int = {
       val chunk = chunk0 & ~1  // must be even

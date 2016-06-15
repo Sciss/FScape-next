@@ -17,7 +17,7 @@ package stream
 import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FanInShape5}
 import de.sciss.file.File
-import de.sciss.fscape.stream.impl.{BlockingGraphStage, FilterIn5Impl, FilterLogicImpl, StageLogicImpl, WindowedLogicImpl}
+import de.sciss.fscape.stream.impl.{BlockingGraphStage, FilterIn5DImpl, FilterLogicImpl, StageLogicImpl, WindowedLogicImpl}
 import de.sciss.numbers
 
 object Fourier {
@@ -70,7 +70,7 @@ object Fourier {
     extends StageLogicImpl(name, shape)
       with WindowedLogicImpl[BufD, Shape]
       with FilterLogicImpl  [BufD, Shape]
-      with FilterIn5Impl    [BufD, BufI, BufI, BufD, BufI, BufD] {
+      with FilterIn5DImpl   [BufD, BufI, BufI, BufD, BufI] {
 
     private[this] val fileBuffers   = new Array[FileBuffer](4)
     private[this] val tempFiles     = new Array[File      ](4)
@@ -86,10 +86,6 @@ object Fourier {
       super.postStop()
       freeFileBuffers()
     }
-
-    protected def in0: InD = shape.in0
-
-    protected def allocOutBuf0(): BufD = ctrl.borrowBufD()
 
     @inline private def fftInSizeFactor   = 2
     @inline private def fftOutSizeFactor  = 2

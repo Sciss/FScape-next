@@ -13,6 +13,7 @@
 
 package de.sciss.fscape.stream.impl
 
+import akka.stream.Inlet
 import akka.stream.stage.GraphStageLogic
 import de.sciss.fscape.stream.BufLike
 
@@ -36,6 +37,13 @@ Out1 >: Null <: BufLike, Out2 >: Null <: BufLike]
   protected final var bufOut0: Out0 = _
   protected final var bufOut1: Out1 = _
   protected final var bufOut2: Out2 = _
+
+  protected final def in0: Inlet[In0] = shape.in0
+  protected final def in1: Inlet[In1] = shape.in1
+  protected final def in2: Inlet[In2] = shape.in2
+  protected final def in3: Inlet[In3] = shape.in3
+  protected final def in4: Inlet[In4] = shape.in4
+  protected final def in5: Inlet[In5] = shape.in5
 
   private[this] final var _canRead  = false
   private[this] final var _canWrite = false

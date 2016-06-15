@@ -17,7 +17,7 @@ package stream
 import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FanInShape2}
 import de.sciss.fscape.graph.ConstantI
-import de.sciss.fscape.stream.impl.{FilterIn2Impl, Out1LogicImpl, StageImpl, StageLogicImpl}
+import de.sciss.fscape.stream.impl.{FilterIn2DImpl, StageImpl, StageLogicImpl}
 
 object TakeRight {
   def last(in: OutD)(implicit b: Builder): OutD = {
@@ -49,10 +49,7 @@ object TakeRight {
 
   private final class Logic(shape: Shape)(implicit ctrl: Control)
     extends StageLogicImpl(name, shape)
-      with FilterIn2Impl[BufD, BufI, BufD]
-      with Out1LogicImpl[BufD, Shape] {
-
-    protected def allocOutBuf0(): BufD = ctrl.borrowBufD()
+      with FilterIn2DImpl[BufD, BufI] {
 
     private[this] var len     : Int           = _
     private[this] var bufWin  : Array[Double] = _

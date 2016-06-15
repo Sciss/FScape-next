@@ -15,8 +15,8 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.stage.GraphStageLogic
-import akka.stream.{Attributes, FanInShape2, Inlet, Outlet}
-import de.sciss.fscape.stream.impl.{GenChunkImpl, GenIn2Impl, Out1LogicImpl, StageImpl, StageLogicImpl}
+import akka.stream.{Attributes, FanInShape2}
+import de.sciss.fscape.stream.impl.{GenChunkImpl, GenIn2DImpl, StageImpl, StageLogicImpl}
 
 object SinOsc {
   def apply(freqN: OutD, phase: OutD)(implicit b: Builder): OutD = {
@@ -45,13 +45,7 @@ object SinOsc {
   private final class Logic(shape: Shape)(implicit ctrl: Control)
     extends StageLogicImpl(name, shape)
       with GenChunkImpl[BufD, BufD, Shape]
-      with GenIn2Impl[BufD, BufD, BufD]
-      with Out1LogicImpl[BufD, Shape] {
-
-    protected def allocOutBuf0(): BufD = ctrl.borrowBufD()
-
-    protected def in0: Inlet [BufD] = shape.in0
-    protected def out0: Outlet[BufD] = shape.out
+      with GenIn2DImpl[BufD, BufD] {
 
     private[this] var incr    : Double = _  // single sample delay
     private[this] var phaseOff: Double = _

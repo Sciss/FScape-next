@@ -11,12 +11,12 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape.stream
+package de.sciss.fscape
+package stream
 
 import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FanInShape10}
-import de.sciss.fscape.Util
-import de.sciss.fscape.stream.impl.{FilterIn10Impl, FilterLogicImpl, StageImpl, StageLogicImpl, WindowedLogicImpl}
+import de.sciss.fscape.stream.impl.{FilterIn10DImpl, FilterLogicImpl, StageImpl, StageLogicImpl, WindowedLogicImpl}
 
 object FoldCepstrum {
   def apply(in: OutD, size: OutI,
@@ -64,11 +64,7 @@ object FoldCepstrum {
     extends StageLogicImpl(name, shape)
       with WindowedLogicImpl[BufD, Shape]
       with FilterLogicImpl  [BufD, Shape]
-      with FilterIn10Impl[BufD, BufI, BufD, BufD, BufD, BufD, BufD, BufD, BufD, BufD, BufD] {
-
-    protected val in0: InD = shape.in0
-
-    protected def allocOutBuf0(): BufD = ctrl.borrowBufD()
+      with FilterIn10DImpl[BufD, BufI, BufD, BufD, BufD, BufD, BufD, BufD, BufD, BufD] {
 
     private[this] var winBuf      : Array[Double] = _
     private[this] var size        : Int = _

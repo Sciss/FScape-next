@@ -11,24 +11,28 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape.stream.impl
+package de.sciss.fscape
+package stream
+package impl
 
-import akka.stream.FlowShape
+import akka.stream.{FlowShape, Inlet, Outlet}
 import akka.stream.stage.GraphStageLogic
-import de.sciss.fscape.stream.BufLike
 
 /** Building block for generators with `FanInShape2` type graph stage logic.
   * A generator keeps producing output until down-stream is closed, and does
   * not care about upstream inlets being closed.
   */
 trait GenIn1Impl[In >: Null <: BufLike, Out >: Null <: BufLike]
-  extends InOutImpl[FlowShape[In, Out]] {
+  extends Out1LogicImpl[Out, FlowShape[In, Out]] {
   _: GraphStageLogic =>
 
   // ---- impl ----
 
   protected final var bufIn0 : In  = _
   protected final var bufOut0: Out = _
+
+  protected final def in0 : Inlet [In ] = shape.in
+  protected final def out0: Outlet[Out] = shape.out
 
   private[this] final var _canRead = false
   private[this] final var _inValid = false
@@ -80,4 +84,9 @@ trait GenIn1Impl[In >: Null <: BufLike, Out >: Null <: BufLike]
 
   new AuxInHandlerImpl     (shape.in , this)
   new ProcessOutHandlerImpl(shape.out, this)
+}
+
+trait GenIn1DImpl[In >: Null <: BufLike]
+  extends GenIn1Impl[In, BufD] with Out1DoubleImpl[FlowShape[In, BufD]] {
+  _: GraphStageLogic =>
 }

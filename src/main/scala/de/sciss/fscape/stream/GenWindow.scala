@@ -16,7 +16,7 @@ package stream
 
 import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FanInShape3}
-import de.sciss.fscape.stream.impl.{GenIn3Impl, StageImpl, StageLogicImpl, WindowedLogicImpl}
+import de.sciss.fscape.stream.impl.{GenIn3DImpl, StageImpl, StageLogicImpl, WindowedLogicImpl}
 
 object GenWindow {
   import graph.GenWindow.{Hann, Shape => WinShape}
@@ -50,9 +50,7 @@ object GenWindow {
   private final class Logic(shape: Shape)(implicit ctrl: Control)
     extends StageLogicImpl(name, shape)
       with WindowedLogicImpl[BufD, Shape]
-      with GenIn3Impl       [BufI, BufI, BufD, BufD] {
-
-    protected def allocOutBuf0(): BufD = ctrl.borrowBufD()
+      with GenIn3DImpl[BufI, BufI, BufD] {
 
     // private[this] var winBuf : Array[Double] = _
     private[this] var winSize: Int      = _

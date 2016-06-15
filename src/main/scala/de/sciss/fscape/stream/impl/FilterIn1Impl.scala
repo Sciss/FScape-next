@@ -20,7 +20,7 @@ import akka.stream.stage.GraphStageLogic
 
 /** Building block for `FanInShape2` type graph stage logic. */
 trait FilterIn1Impl[In >: Null <: BufLike, Out >: Null <: BufLike]
-  extends InOutImpl[FlowShape[In, Out]] {
+  extends Out1LogicImpl[Out, FlowShape[In, Out]] {
   _: GraphStageLogic =>
 
   // ---- impl ----
@@ -72,4 +72,9 @@ trait FilterIn1Impl[In >: Null <: BufLike, Out >: Null <: BufLike]
 
   new ProcessInHandlerImpl (in0 , this)
   new ProcessOutHandlerImpl(out0, this)
+}
+
+trait FilterIn1DImpl[In >: Null <: BufLike] extends FilterIn1Impl[In, BufD] with Out1DoubleImpl[FlowShape[In, BufD]] {
+
+  _: GraphStageLogic =>
 }

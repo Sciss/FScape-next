@@ -15,8 +15,8 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.stage.GraphStageLogic
-import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
-import de.sciss.fscape.stream.impl.{GenChunkImpl, GenIn1Impl, Out1LogicImpl, StageImpl, StageLogicImpl}
+import akka.stream.{Attributes, FlowShape}
+import de.sciss.fscape.stream.impl.{GenChunkImpl, GenIn1DImpl, StageImpl, StageLogicImpl}
 
 object DC {
   def apply(in: OutD)(implicit b: Builder): OutD = {
@@ -44,13 +44,7 @@ object DC {
   private final class Logic(shape: Shape)(implicit ctrl: Control)
     extends StageLogicImpl(name, shape)
       with GenChunkImpl[BufD, BufD, Shape]
-      with Out1LogicImpl[BufD, Shape]
-      with GenIn1Impl[BufD, BufD] {
-
-    protected def allocOutBuf0(): BufD = ctrl.borrowBufD()
-
-    protected def in0: Inlet [BufD] = shape.in
-    protected def out0: Outlet[BufD] = shape.out
+      with GenIn1DImpl[BufD] {
 
     private[this] var init = true
     private[this] var value   : Double = _

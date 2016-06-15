@@ -11,11 +11,12 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape.stream.impl
+package de.sciss.fscape
+package stream
+package impl
 
-import akka.stream.{FanInShape3, Outlet}
 import akka.stream.stage.GraphStageLogic
-import de.sciss.fscape.stream.BufLike
+import akka.stream.{FanInShape3, Inlet, Outlet}
 
 /** Building block for `FanInShape3` type graph stage logic. */
 trait FilterIn3Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: BufLike, Out >: Null <: BufLike]
@@ -28,6 +29,10 @@ trait FilterIn3Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null 
   protected final var bufIn1 : In1 = _
   protected final var bufIn2 : In2 = _
   protected final var bufOut0: Out = _
+
+  protected final def in0: Inlet[In0] = shape.in0
+  protected final def in1: Inlet[In1] = shape.in1
+  protected final def in2: Inlet[In2] = shape.in2
 
   private[this] final var _canRead = false
   private[this] final var _inValid = false
@@ -103,4 +108,10 @@ trait FilterIn3Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null 
   new AuxInHandlerImpl     (shape.in1, this)
   new AuxInHandlerImpl     (shape.in2, this)
   new ProcessOutHandlerImpl(shape.out, this)
+}
+
+trait FilterIn3DImpl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: BufLike]
+  extends FilterIn3Impl[In0, In1, In2, BufD] with Out1DoubleImpl[FanInShape3[In0, In1, In2, BufD]] {
+
+  _: GraphStageLogic =>
 }

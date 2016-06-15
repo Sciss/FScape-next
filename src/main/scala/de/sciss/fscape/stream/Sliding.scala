@@ -16,7 +16,7 @@ package stream
 
 import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FanInShape3}
-import de.sciss.fscape.stream.impl.{FilterIn3Impl, Out1LogicImpl, StageImpl, StageLogicImpl}
+import de.sciss.fscape.stream.impl.{FilterIn3DImpl, StageImpl, StageLogicImpl}
 
 import scala.annotation.tailrec
 
@@ -70,8 +70,7 @@ object Sliding {
   // flush partial windows)
   private final class Logic(shape: Shape)(implicit ctrl: Control)
     extends StageLogicImpl(name, shape)
-      with Out1LogicImpl[BufD, Shape]
-      with FilterIn3Impl[BufD, BufI, BufI, BufD] {
+      with FilterIn3DImpl[BufD, BufI, BufI] {
 
     private[this] var inOff         = 0  // regarding `bufIn`
     private[this] var inRemain      = 0
@@ -88,8 +87,6 @@ object Sliding {
 
     @inline
     private[this] def shouldRead     = inRemain   == 0 && canRead
-
-    protected def allocOutBuf0(): BufD = ctrl.borrowBufD()
 
     /*
           back-pressure algorithm:

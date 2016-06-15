@@ -11,16 +11,17 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape.stream.impl
+package de.sciss.fscape
+package stream
+package impl
 
-import akka.stream.{FanInShape4, Outlet}
 import akka.stream.stage.GraphStageLogic
-import de.sciss.fscape.stream.BufLike
+import akka.stream.{FanInShape4, Inlet, Outlet}
 
 /** Building block for `FanInShape4` type graph stage logic. */
 trait FilterIn4Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: BufLike,
                     In3 >: Null <: BufLike, Out >: Null <: BufLike]
-  extends InOutImpl[FanInShape4[In0, In1, In2, In3, Out]] {
+  extends Out1LogicImpl[Out, FanInShape4[In0, In1, In2, In3, Out]] {
   _: GraphStageLogic =>
 
   // ---- impl ----
@@ -30,6 +31,11 @@ trait FilterIn4Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null 
   protected final var bufIn2 : In2 = _
   protected final var bufIn3 : In3 = _
   protected final var bufOut0: Out = _
+
+  protected final def in0: Inlet[In0] = shape.in0
+  protected final def in1: Inlet[In1] = shape.in1
+  protected final def in2: Inlet[In2] = shape.in2
+  protected final def in3: Inlet[In3] = shape.in3
 
   private[this] final var _canRead = false
   private[this] final var _inValid = false
@@ -117,4 +123,11 @@ trait FilterIn4Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null 
   new AuxInHandlerImpl     (shape.in2, this)
   new AuxInHandlerImpl     (shape.in3, this)
   new ProcessOutHandlerImpl(shape.out, this)
+}
+
+trait FilterIn4DImpl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: BufLike,
+In3 >: Null <: BufLike]
+  extends FilterIn4Impl[In0, In1, In2, In3, BufD]
+    with Out1DoubleImpl[FanInShape4[In0, In1, In2, In3, BufD]] {
+  _: GraphStageLogic =>
 }

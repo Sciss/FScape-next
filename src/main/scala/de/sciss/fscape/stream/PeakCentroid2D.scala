@@ -14,8 +14,8 @@
 package de.sciss.fscape
 package stream
 
+import akka.stream.Attributes
 import akka.stream.stage.GraphStageLogic
-import akka.stream.{Attributes, Inlet}
 import de.sciss.fscape.stream.impl.{FilterLogicImpl, In6Out3Impl, In6Out3Shape, StageImpl, StageLogicImpl, WindowedLogicImpl}
 
 object PeakCentroid2D {
@@ -51,8 +51,6 @@ object PeakCentroid2D {
       with In6Out3Impl      [BufD, BufI, BufI, BufD, BufD, BufI, BufD, BufD, BufD] {
 
     override def toString = s"$name-L@${hashCode.toHexString}"
-
-    protected def in0: Inlet[BufD] = shape.in0
 
     protected def allocOutBuf0(): BufD = ctrl.borrowBufD()
     protected def allocOutBuf1(): BufD = ctrl.borrowBufD()

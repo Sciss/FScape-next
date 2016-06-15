@@ -16,7 +16,7 @@ package stream
 
 import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FlowShape}
-import de.sciss.fscape.stream.impl.{FilterChunkImpl, FilterIn1Impl, Out1LogicImpl, StageImpl, StageLogicImpl}
+import de.sciss.fscape.stream.impl.{FilterChunkImpl, FilterIn1DImpl, StageImpl, StageLogicImpl}
 
 object UnaryOp {
   import graph.UnaryOp.Op
@@ -45,10 +45,7 @@ object UnaryOp {
   private final class Logic(op: Op, shape: Shape)(implicit ctrl: Control)
     extends StageLogicImpl(name, shape)
       with FilterChunkImpl[BufD, BufD, Shape]
-      with FilterIn1Impl[BufD, BufD]
-      with Out1LogicImpl[BufD, Shape] {
-
-    protected def allocOutBuf0(): BufD = ctrl.borrowBufD()
+      with FilterIn1DImpl[BufD] {
 
     protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Int = {
       // println(s"UnaryOp($op).processChunk(in $bufIn0, out $bufOut, chunk $chunk)")

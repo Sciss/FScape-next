@@ -11,11 +11,12 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape.stream.impl
+package de.sciss.fscape
+package stream
+package impl
 
-import akka.stream.{FanInShape10, Outlet}
 import akka.stream.stage.GraphStageLogic
-import de.sciss.fscape.stream.BufLike
+import akka.stream.{FanInShape10, Inlet, Outlet}
 
 /** Building block for `FanInShape10` type graph stage logic.
   * XXX TODO -- should be macro- or template-generated
@@ -41,6 +42,17 @@ trait FilterIn10Impl[
   protected final var bufIn8 : In8 = _
   protected final var bufIn9 : In9 = _
   protected final var bufOut0: Out = _
+
+  protected final def in0: Inlet[In0] = shape.in0
+  protected final def in1: Inlet[In1] = shape.in1
+  protected final def in2: Inlet[In2] = shape.in2
+  protected final def in3: Inlet[In3] = shape.in3
+  protected final def in4: Inlet[In4] = shape.in4
+  protected final def in5: Inlet[In5] = shape.in5
+  protected final def in6: Inlet[In6] = shape.in6
+  protected final def in7: Inlet[In7] = shape.in7
+  protected final def in8: Inlet[In8] = shape.in8
+  protected final def in9: Inlet[In9] = shape.in9
 
   protected final def out0: Outlet[Out] = shape.out
 
@@ -174,3 +186,12 @@ trait FilterIn10Impl[
   for (i <- 1 to 9) new AuxInHandlerImpl(shape.inlets(i), this)
   new ProcessOutHandlerImpl(shape.out, this)
 }
+
+trait FilterIn10DImpl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: BufLike, In3 >: Null <: BufLike,
+In4 >: Null <: BufLike, In5 >: Null <: BufLike, In6 >: Null <: BufLike, In7 >: Null <: BufLike,
+In8 >: Null <: BufLike, In9 >: Null <: BufLike]
+  extends FilterIn10Impl[In0, In1, In2, In3, In4, In5, In6, In7, In8, In9, BufD]
+    with Out1DoubleImpl[FanInShape10[In0, In1, In2, In3, In4, In5, In6, In7, In8, In9, BufD]] {
+  _: GraphStageLogic =>
+}
+

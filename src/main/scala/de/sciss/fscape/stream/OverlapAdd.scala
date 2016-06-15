@@ -16,7 +16,7 @@ package stream
 
 import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FanInShape3}
-import de.sciss.fscape.stream.impl.{FilterIn3Impl, FilterLogicImpl, Out1LogicImpl, StageImpl, StageLogicImpl, WindowedLogicImpl}
+import de.sciss.fscape.stream.impl.{FilterIn3DImpl, FilterLogicImpl, StageImpl, StageLogicImpl, WindowedLogicImpl}
 
 import scala.collection.mutable
 
@@ -67,12 +67,7 @@ object OverlapAdd {
     extends StageLogicImpl(name, shape)
       with WindowedLogicImpl[BufD, Shape]
       with FilterLogicImpl  [BufD, Shape]
-      with Out1LogicImpl    [BufD, Shape]
-      with FilterIn3Impl[BufD, BufI, BufI, BufD] {
-
-    protected val in0 : InD  = shape.in0
-
-    protected def allocOutBuf0(): BufD = ctrl.borrowBufD()
+      with FilterIn3DImpl[BufD, BufI, BufI] {
 
     private[this] var size  : Int  = _
     private[this] var step  : Int  = _

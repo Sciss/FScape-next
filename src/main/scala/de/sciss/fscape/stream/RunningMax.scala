@@ -16,7 +16,7 @@ package stream
 
 import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FanInShape2}
-import de.sciss.fscape.stream.impl.{FilterChunkImpl, FilterIn2Impl, Out1LogicImpl, StageImpl, StageLogicImpl}
+import de.sciss.fscape.stream.impl.{FilterChunkImpl, FilterIn2DImpl, StageImpl, StageLogicImpl}
 
 object RunningMax {
   def apply(in: OutD, trig: OutI)(implicit b: Builder): OutD = {
@@ -44,10 +44,7 @@ object RunningMax {
   private final class Logic(shape: Shape)(implicit ctrl: Control)
     extends StageLogicImpl(name, shape)
       with FilterChunkImpl[BufD, BufD, Shape]
-      with FilterIn2Impl[BufD, BufI, BufD]
-      with Out1LogicImpl[BufD, Shape] {
-
-    protected def allocOutBuf0(): BufD = ctrl.borrowBufD()
+      with FilterIn2DImpl[BufD, BufI] {
 
     private[this] var value = Double.NegativeInfinity
     private[this] var trig0 = false

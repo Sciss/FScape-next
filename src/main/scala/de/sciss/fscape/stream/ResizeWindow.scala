@@ -16,7 +16,7 @@ package stream
 
 import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FanInShape4}
-import de.sciss.fscape.stream.impl.{FilterIn4Impl, FilterLogicImpl, Out1LogicImpl, StageImpl, StageLogicImpl, WindowedLogicImpl}
+import de.sciss.fscape.stream.impl.{FilterIn4DImpl, FilterLogicImpl, StageImpl, StageLogicImpl, WindowedLogicImpl}
 
 object ResizeWindow {
   /** Resizes the windowed input signal by trimming each
@@ -63,12 +63,7 @@ object ResizeWindow {
     extends StageLogicImpl(name, shape)
       with WindowedLogicImpl[BufD, Shape]
       with FilterLogicImpl  [BufD, Shape]
-      with Out1LogicImpl    [BufD, Shape]
-      with FilterIn4Impl[BufD, BufI, BufI, BufI, BufD] {
-
-    protected val in0: InD = shape.in0
-
-    protected def allocOutBuf0(): BufD = ctrl.borrowBufD()
+      with FilterIn4DImpl[BufD, BufI, BufI, BufI] {
 
     private[this] var winBuf      : Array[Double] = _
     private[this] var winInSize   : Int = _

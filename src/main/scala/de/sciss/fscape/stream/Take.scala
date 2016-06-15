@@ -17,7 +17,7 @@ package stream
 import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FanInShape2}
 import de.sciss.fscape.graph.ConstantI
-import de.sciss.fscape.stream.impl.{ChunkImpl, FilterIn2Impl, Out1LogicImpl, StageImpl, StageLogicImpl}
+import de.sciss.fscape.stream.impl.{ChunkImpl, FilterIn2DImpl, StageImpl, StageLogicImpl}
 
 object Take {
   def last(in: OutD)(implicit b: Builder): OutD = {
@@ -49,11 +49,8 @@ object Take {
 
   private final class Logic(shape: Shape)(implicit ctrl: Control)
     extends StageLogicImpl(name, shape)
-      with FilterIn2Impl[BufD, BufI, BufD]
-      with ChunkImpl    [BufD, BufD, Shape]
-      with Out1LogicImpl[BufD, Shape] {
-
-    protected def allocOutBuf0(): BufD = ctrl.borrowBufD()
+      with ChunkImpl[BufD, BufD, Shape]
+      with FilterIn2DImpl[BufD, BufI] {
 
     private[this] var framesWritten     = 0
     private[this] var numFrames         = -1
