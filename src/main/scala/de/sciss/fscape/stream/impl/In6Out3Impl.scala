@@ -161,6 +161,7 @@ Out1 >: Null <: BufLike, Out2 >: Null <: BufLike]
     bufOut0 = null
     bufOut1 = null
     bufOut2 = null
+    _canWrite = false
   }
 
   protected final def allocOutputBuffers(): Int = {

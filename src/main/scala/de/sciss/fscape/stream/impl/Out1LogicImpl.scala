@@ -43,7 +43,8 @@ trait Out1LogicImpl[Out >: Null <: BufLike, S <: Shape]
     } else {
       bufOut0.release()
     }
-    bufOut0 = null
+    bufOut0   = null
+    _canWrite = false
   }
 
   protected final def allocOutputBuffers(): Int = {
