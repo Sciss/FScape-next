@@ -19,8 +19,17 @@ import akka.stream.stage.GraphStageLogic
 import de.sciss.fscape.stream.impl.{FilterLogicImpl, In6Out3Impl, In6Out3Shape, StageImpl, StageLogicImpl, WindowedLogicImpl}
 
 object PeakCentroid2D {
-  def apply(in: OutD, width: OutI, height: OutI, thresh1: OutD, thresh2: OutD, radius: OutI): (OutD, OutD, OutD) = {
-    ???
+  def apply(in: OutD, width: OutI, height: OutI, thresh1: OutD, thresh2: OutD, radius: OutI)
+           (implicit b: Builder): (OutD, OutD, OutD) = {
+    val stage0  = new Stage
+    val stage   = b.add(stage0)
+    b.connect(in     , stage.in0)
+    b.connect(width  , stage.in1)
+    b.connect(height , stage.in2)
+    b.connect(thresh1, stage.in3)
+    b.connect(thresh2, stage.in4)
+    b.connect(radius , stage.in5)
+    (stage.out0, stage.out1, stage.out2)
   }
 
   private final val name = "PeakCentroid2D"
@@ -55,6 +64,15 @@ object PeakCentroid2D {
     protected def allocOutBuf0(): BufD = ctrl.borrowBufD()
     protected def allocOutBuf1(): BufD = ctrl.borrowBufD()
     protected def allocOutBuf2(): BufD = ctrl.borrowBufD()
+    
+    private[this] var width  : Int    = _
+    private[this] var height : Int    = _
+    private[this] var thresh1: Double = _
+    private[this] var thresh2: Double = _
+    private[this] var radius : Int    = _
+
+    private[this] var winBuf      : Array[Double] = _
+    private[this] var size        : Int = _
 
     /** Notifies about the start of the next window.
       *
@@ -62,29 +80,37 @@ object PeakCentroid2D {
       * @return the number of frames to write to the internal window buffer
       *         (becomes `writeToWinRemain`)
       */
-    protected def startNextWindow(inOff: Int): Int = ???
+    protected def startNextWindow(inOff: Int): Int = {
+      val oldSize = size
+      if (bufIn1 != null && inOff < bufIn1.size) {
+        width = math.max(1, bufIn1.buf(inOff))
+      }
+      if (bufIn2 != null && inOff < bufIn2.size) {
+        height = math.max(2, bufIn2.buf(inOff))
+      }
+      size = width * height
+      if (size != oldSize) {
+        winBuf = new Array[Double](size)
+      }
 
-    /** Issues a copy from input buffer to internal window buffer.
-      *
-      * @param inOff         current offset into input buffer
-      * @param writeToWinOff current offset into internal window buffer
-      * @param chunk         number of frames to copy
-      */
-    protected def copyInputToWindow(inOff: Int, writeToWinOff: Int, chunk: Int): Unit = ???
+      if (bufIn3 != null && inOff < bufIn3.size) thresh1 = bufIn3.buf(inOff)
+      if (bufIn4 != null && inOff < bufIn4.size) thresh2 = bufIn4.buf(inOff)
+      if (bufIn5 != null && inOff < bufIn5.size) radius  = math.max(1, bufIn5.buf(inOff))
 
-    /** Called when the internal window buffer is full, in order to
-      * proceed to the next phase of copying from window to output.
-      * (transitioning between `copyInputToWindow` and `copyWindowToOutput`)
-      *
-      * @param writeToWinOff the current offset into the internal window buffer.
-      *                      this is basically the amount of frames available for
-      *                      processing.
-      * @param flush         `true` if the input is exhausted.
-      * @return the number of frames available for sending through `copyWindowToOutput`
-      *         (this becomes `readFromWinRemain`).
-      */
-    protected def processWindow(writeToWinOff: Int, flush: Boolean): Int = ???
+      size
+    }
 
-    protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit = ???
+    protected def copyInputToWindow(inOff: Int, writeToWinOff: Int, chunk: Int): Unit =
+      Util.copy(bufIn0.buf, inOff, winBuf, writeToWinOff, chunk)
+
+    protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit =
+      Util.copy(winBuf, readFromWinOff, bufOut0.buf, outOff, chunk)
+
+    protected def processWindow(writeToWinOff: Int, flush: Boolean): Int = {
+      if (writeToWinOff < size) Util.clear(winBuf, writeToWinOff, size - writeToWinOff)
+
+      
+      ???
+    }
   }
 }
