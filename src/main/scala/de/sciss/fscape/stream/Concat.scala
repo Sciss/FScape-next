@@ -109,8 +109,7 @@ object Concat {
     def updateCanRead(): Unit =
       _canRead = isAvailable(in0) || (isClosed(in0) && isAvailable(in1))
 
-    // XXX TODO -- do we need to check `isAvailable` as well?
-    protected def shouldComplete(): Boolean = isClosed(in0) && isClosed(in1)
+    protected def shouldComplete(): Boolean = inRemain == 0 && isClosed(in0) && isClosed(in1)
 
     protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Int = {
       Util.copy(bufIn0.buf, inOff, bufOut0.buf, outOff, chunk)
