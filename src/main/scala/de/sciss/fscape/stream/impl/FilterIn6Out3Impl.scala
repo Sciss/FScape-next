@@ -16,11 +16,10 @@ package de.sciss.fscape.stream.impl
 import akka.stream.stage.GraphStageLogic
 import de.sciss.fscape.stream.BufLike
 
-/** Building block for `FanInShape5` type graph stage logic. */
 trait FilterIn6Out3Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: BufLike,
 In3 >: Null <: BufLike, In4 >: Null <: BufLike, In5 >: Null <: BufLike, Out0 >: Null <: BufLike, 
 Out1 >: Null <: BufLike, Out2 >: Null <: BufLike]
-  extends InOutImpl[In6Out3Shape[In0, In1, In2, In3, In4, In5, Out0, Out1, Out2]] {
+  extends InMultiOutImpl[In6Out3Shape[In0, In1, In2, In3, In4, In5, Out0, Out1, Out2]] {
   _: GraphStageLogic =>
 
   // ---- impl ----
@@ -35,11 +34,13 @@ Out1 >: Null <: BufLike, Out2 >: Null <: BufLike]
   protected final var bufOut1: Out1 = _
   protected final var bufOut2: Out2 = _
 
-  private[this] final var _canRead = false
-  private[this] final var _inValid = false
+  private[this] final var _canRead  = false
+  private[this] final var _canWrite = false
+  private[this] final var _inValid  = false
 
-  final def canRead: Boolean = _canRead
-  final def inValid: Boolean = _inValid
+  final def canRead : Boolean = _canRead
+  final def canWrite: Boolean = _canWrite
+  final def inValid : Boolean = _inValid
 
   override def preStart(): Unit =
     shape.inlets.foreach(pull(_))
@@ -132,11 +133,18 @@ Out1 >: Null <: BufLike, Out2 >: Null <: BufLike]
       ((isClosed(sh.in4) && _inValid) || isAvailable(sh.in4))
   }
 
-  new ProcessInHandlerImpl (shape.in0, this)
-  new AuxInHandlerImpl     (shape.in1, this)
-  new AuxInHandlerImpl     (shape.in2, this)
-  new AuxInHandlerImpl     (shape.in3, this)
-  new AuxInHandlerImpl     (shape.in4, this)
-  new AuxInHandlerImpl     (shape.in5, this)
-  ??? // new ProcessOutHandlerImpl(shape.out, this)
+  final def updateCanWrite(): Unit = {
+    val sh = shape
+    _canWrite = isAvailable(sh.out0) && isAvailable(sh.out1) && isAvailable(sh.out2)
+  }
+
+  new ProcessInHandlerImpl      (shape.in0 , this)
+  new AuxInHandlerImpl          (shape.in1 , this)
+  new AuxInHandlerImpl          (shape.in2 , this)
+  new AuxInHandlerImpl          (shape.in3 , this)
+  new AuxInHandlerImpl          (shape.in4 , this)
+  new AuxInHandlerImpl          (shape.in5 , this)
+  new ProcessMultiOutHandlerImpl(shape.out0, this)
+  new ProcessMultiOutHandlerImpl(shape.out1, this)
+  new ProcessMultiOutHandlerImpl(shape.out2, this)
 }

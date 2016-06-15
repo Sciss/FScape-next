@@ -53,3 +53,12 @@ trait InOutImpl[S <: Shape] {
   protected def freeInputBuffers (): Unit
   protected def freeOutputBuffers(): Unit
 }
+
+trait InMultiOutImpl[S <: Shape] extends InOutImpl[S] {
+  _: GraphStageLogic =>
+
+  /** Whether all outputs are ready to be pushed. */
+  def canWrite: Boolean
+
+  def updateCanWrite(): Unit
+}

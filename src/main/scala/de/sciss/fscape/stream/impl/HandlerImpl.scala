@@ -81,3 +81,20 @@ final class ProcessOutHandlerImpl[A, S <: Shape](out: Outlet[A], logic: InOutImp
 
   logic.setOutHandler(out, this)
 }
+
+final class ProcessMultiOutHandlerImpl[A, S <: Shape](out: Outlet[A], logic: InMultiOutImpl[S])
+  extends OutHandler {
+
+  def onPull(): Unit = {
+    logStream(s"onPull($out)")
+    logic.updateCanWrite()
+    if (logic.canWrite) logic.process()
+  }
+
+  override def onDownstreamFinish(): Unit = {
+    logStream(s"onDownstreamFinish($out)")
+    super.onDownstreamFinish()
+  }
+
+  logic.setOutHandler(out, this)
+}
