@@ -36,6 +36,23 @@ object FourierTest extends App {
     val sr = 44100.0
 
     def mkIn() = {
+      val sz  = (10 * sr).toInt.nextPowerOfTwo
+      val gen = SinOsc(freqN = 1.0/16, phase = math.Pi/2)
+      gen.take(sz)
+    }
+
+    val in        = mkIn()
+    val complex   = ZipWindow(in, DC(0.0))
+    val fftSize   = inSpec.numFrames.toInt
+    val fourier   = Fourier(in = complex, size = fftSize)
+    val norm      = complexNormalize(fourier)
+    norm.poll()
+  }
+
+  lazy val gX = Graph {
+    val sr = 44100.0
+
+    def mkIn() = {
       // DiskIn(file = fIn, numChannels = 1)
       val sz  = (10 * sr).toInt.nextPowerOfTwo
       val gen = SinOsc(freqN = 1.0/16 /* 4410/sr */, phase = math.Pi/2)

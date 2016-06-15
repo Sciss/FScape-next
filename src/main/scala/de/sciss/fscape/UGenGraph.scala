@@ -148,7 +148,10 @@ object UGenGraph {
             new ConstantIndex(c)
 
           case up: UGenProxy =>
-            val iui       = ugenMap(up.ugen)
+            if (!ugenMap.contains(up.ugen)) {
+              println("HERE")
+            }
+            val iui = ugenMap(up.ugen)
             iui.children(up.outputIndex) ::= iu
             new UGenProxyIndex(iui, up.outputIndex)
         } (breakOut)
