@@ -96,7 +96,7 @@ object MorassTest extends App {
       //
       val len  = (synthesizeWinAmt * inputWinSize + 0.5).toInt
       val lenH = len >> 1
-      val arr = GenWindow(size = inputWinSize, shape = synthesizeWinType)
+      val arr = GenWindow(size = len, shape = synthesizeWinType)
       // GenWindow.Rectangle.fill(arr, lenH, inputWinSize - len)
       ???
     }
@@ -113,21 +113,27 @@ object MorassTest extends App {
     // XXX TODO --- should use Real1FFT when the DC-packing is solved
     val fftA      = Real1FullFFT(in = winA, size = fftSize)
     val fftB      = Real1FullFFT(in = winB, size = fftSize)
-    val conjA     = fftA.complex.conj
-    val conv      = ??? : GE
-    val elemNorm  = ??? : GE
+    val conjA     = fftA .complex.conj   // XXX TODO -- is there a reason we take the conj of A and not B?
+    val conv      = conjA.complex * fftB
+    val convMag   = conv .complex.mag.reciprocal
+    val elemNorm  = conv * ZipWindow(convMag, convMag)    // XXX TODO - should have a `Repeat(convMag, 2)` function
     val iFFT      = Real1FullIFFT(in = elemNorm, size = fftSize)
 
     val prod      = PeakCentroid1D(in = iFFT, size = fftSize, radius = radiusI)
     val transX    = prod.translate.roundTo(1)
     val shiftX    = /* if (keepFileLength) transX else */ transX + winSizeH
 
-    val amp         = (ampModulation: GE).linlin(0, 1, 1.0, prod.peak)
-    val slideAPad   = ??? : GE
-    val winSynthPad = ??? : GE
-    val synth       = slideAPad * amp * winSynthPad
-    val lap         = OverlapAdd(in = synth, size = ???, step = shiftX + stepSize)
-    val sig         = if (!keepFileLength) lap else lap.drop(winSizeH) // .take()
+    val amp       = (ampModulation: GE).linlin(0, 1, 1.0, prod.peak)
+    val ampPad    = ??? : GE
+    val shiftXPad = ??? : GE
+    val synth     = slideA * ampPad * winSynth
+    // XXX TODO --- the first window will not be shifted.
+    // So a real solution would be to prepend one empty
+    // window and drop it later.
+    val prepend   = DC(0.0).take(winSize)
+    val lapIn     = ??? : GE // prepend ++ synth
+    val lap       = OverlapAdd(in = lapIn, size = winSize, step = shiftXPad + stepSize)
+    val sig       = if (!keepFileLength) lap else lap.drop(winSizeH) // .take()
 
     sig
   }
@@ -182,7 +188,7 @@ object MorassTest extends App {
         val morass = mkMorass(config)
         val morassZ = ZipWindow(ChannelProxy(morass, 0), ChannelProxy(morass, 1))
 
-        /* val fftInv = */ mkFourierInv(in = morassZ, size = numFrames, out = output,
+        mkFourierInv(in = morassZ, size = numFrames, out = output,
           spec = OutputSpec.aiffInt, gain = Gain.normalized)
       }
 
