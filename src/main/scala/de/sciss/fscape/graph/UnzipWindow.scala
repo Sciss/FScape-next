@@ -19,9 +19,24 @@ import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-final case class UnzipWindow(in: GE, size: GE = 1) extends GE.Lazy {
-  protected def makeUGens(implicit b: Builder): UGenInLike =
-    UnzipWindowN(numOutputs = 2, in = in, size = size)
+//final case class UnzipWindow(in: GE, size: GE = 1) extends GE.Lazy {
+//  protected def makeUGens(implicit b: Builder): UGenInLike = {
+//    println(s"UnzipWindow($in, $size).makeUGen")
+//    UnzipWindowN(numOutputs = 2, in = in, size = size)
+//  }
+//}
+
+final case class UnzipWindow(in: GE, size: GE = 1) extends UGenSource.MultiOut {
+  protected def makeUGens(implicit builder: UGenGraph.Builder): UGenInLike =
+    unwrap(Vector(in.expand, size.expand))
+
+  protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
+    UGen.MultiOut(this, args, numOutputs = 2)
+
+  private[fscape] def makeStream(args: Vec[StreamIn])(implicit builder: stream.Builder): Vec[StreamOut] = {
+    val Vec(in, size) = args
+    stream.UnzipWindowN(numOutputs = 2, in = in.toDouble, size = size.toInt)
+  }
 }
 
 final case class UnzipWindowN(numOutputs: Int, in: GE, size: GE = 1) extends UGenSource.MultiOut {

@@ -35,18 +35,19 @@ object FourierTest extends App {
   lazy val g = Graph {
     val sr = 44100.0
 
-    def mkIn() = {
-      val sz  = (10 * sr).toInt.nextPowerOfTwo
-      val gen = SinOsc(freqN = 1.0/16, phase = math.Pi/2)
-      gen.take(sz)
-    }
-
-    val in        = mkIn()
+    val sz        = (10 * sr).toInt.nextPowerOfTwo
+    val gen       = SinOsc(freqN = 1.0/16, phase = math.Pi/2)
+    val in        = gen.take(sz)
     val complex   = ZipWindow(in, DC(0.0))
     val fftSize   = inSpec.numFrames.toInt
     val fourier   = Fourier(in = complex, size = fftSize)
-    val norm      = complexNormalize(fourier)
-    norm.poll()
+
+    val mag       = ChannelProxy(UnzipWindow(fourier), 0)
+    val max       = RunningMax(mag).last
+    max.ampdb.poll(0, "max [dB]")
+    val gain      = max.reciprocal
+
+    gain.poll()
   }
 
   lazy val gX = Graph {
