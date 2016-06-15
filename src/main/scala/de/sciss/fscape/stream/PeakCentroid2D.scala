@@ -17,6 +17,7 @@ package stream
 import akka.stream.Attributes
 import akka.stream.stage.GraphStageLogic
 import de.sciss.fscape.stream.impl.{FilterLogicImpl, In6Out3Impl, In6Out3Shape, StageImpl, StageLogicImpl, WindowedLogicImpl}
+import de.sciss.numbers
 
 object PeakCentroid2D {
   def apply(in: OutD, width: OutI, height: OutI, thresh1: OutD, thresh2: OutD, radius: OutI)
@@ -74,12 +75,6 @@ object PeakCentroid2D {
     private[this] var winBuf      : Array[Double] = _
     private[this] var size        : Int = _
 
-    /** Notifies about the start of the next window.
-      *
-      * @param inOff current offset into input buffer
-      * @return the number of frames to write to the internal window buffer
-      *         (becomes `writeToWinRemain`)
-      */
     protected def startNextWindow(inOff: Int): Int = {
       val oldSize = size
       if (bufIn1 != null && inOff < bufIn1.size) {
@@ -106,11 +101,99 @@ object PeakCentroid2D {
     protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit =
       Util.copy(winBuf, readFromWinOff, bufOut0.buf, outOff, chunk)
 
+    @inline
+    private def pixel(x: Int, y: Int): Double = winBuf(y * width + x)
+
     protected def processWindow(writeToWinOff: Int, flush: Boolean): Int = {
       if (writeToWinOff < size) Util.clear(winBuf, writeToWinOff, size - writeToWinOff)
 
-      
-      ???
+      var i     = 0
+      var max   = Double.NegativeInfinity
+      while (i < size) {
+        val q = winBuf(i)
+        if (q > max) {
+          max = q
+        }
+        i += 1
+      }
+      // println(f"max = $max%1.3f")
+
+      // ---- first run ----
+
+      val threshM1 = thresh1 * max
+      var cx = 0.0
+      var cy = 0.0
+      var cs = 0.0
+
+      val wh  = width/2
+      val hh  = height/2
+      var y = 0
+      while (y < height) {
+        var x = 0
+        while (x < width) {
+          //        val q = image.pixel(x, y)
+          //        if (q > threshM) {
+          val q = pixel(x, y) - threshM1
+          if (q > 0.0) {
+            cx += q * (if (x >= wh) x - width  else x)
+            cy += q * (if (y >= hh) y - height else y)
+            cs += q
+          }
+          x += 1
+        }
+        y += 1
+      }
+
+      cx /= cs
+      cy /= cs
+
+      // ---- second run ----
+      import numbers.Implicits._
+      val wm      = width - 1
+      val hm      = height - 1
+      val xMin    = ((cx + 0.5).toInt - radius).wrap(0, wm)
+      val yMin    = ((cy + 0.5).toInt - radius).wrap(0, hm)
+      val trDiam  = radius + radius + 1
+      val xMax    = (xMin + trDiam).wrap(0, wm)
+      val yMax    = (yMin + trDiam).wrap(0, hm)
+
+      // println(f"peak run 1 - ($cx%1.2f, $cy%1.2f, $cs%1.2f)")
+
+      val threshM2 = thresh2 * max
+      cx = 0.0
+      cy = 0.0
+      cs = 0.0
+      y  = yMin
+      do {
+        var x = xMin
+        do {
+          val q = pixel(x, y)
+          if (q > threshM2) {
+            // val q = image.pixel(x, y) - threshM2
+            // if (q > 0.0) {
+            cx += q * (if (x >= wh) x - width  else x)
+            cy += q * (if (y >= hh) y - height else y)
+            cs += q
+          }
+          x = (x + 1) % width
+        } while (x != xMax)
+        y = (y + 1) % height
+      } while (y != yMax)
+
+      if (cs > 0) {
+        cx /= cs
+        cy /= cs
+      }
+
+      // println(f"peak run 2 - ($cx%1.2f, $cy%1.2f, $cs%1.2f)")
+
+//      val peak = Product(translateX = cx, translateY = cy, peak = cs)
+//      peak
+
+      bufOut0.buf(0) = cx
+      bufOut1.buf(0) = cy
+      bufOut2.buf(0) = cs
+      1
     }
   }
 }
