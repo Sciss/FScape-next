@@ -52,13 +52,13 @@ object Poll {
     def process(): Unit = {
       if (!canRead) {
         if (isClosed(shape.in0)) {
-          logStream(s"$this.completeStage()")
+          logStream(s"completeStage() $this")
           completeStage()
         }
         return
       }
 
-      logStream(s"$this.process()")
+      logStream(s"process() $this")
 
       val stop0   = readIns()
       // println(s"Poll($label).process(in $bufIn0, trig $bufIn1, chunk $stop0)")

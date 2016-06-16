@@ -102,7 +102,7 @@ object Sliding {
     @tailrec
     def process(): Unit = {
       var stateChange = false
-      logStream(s"$this.process()")
+      logStream(s"process() $this")
 
       // read inlets
       if (shouldRead) {
@@ -199,7 +199,7 @@ object Sliding {
       }
 
       if (flushOut && outSent) {
-        logStream(s"$this.completeStage()")
+        logStream(s"completeStage() $this")
         completeStage()
       }
       else if (stateChange) process()

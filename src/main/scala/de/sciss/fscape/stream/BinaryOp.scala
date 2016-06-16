@@ -33,7 +33,7 @@ object BinaryOp {
 
   private type Shape = FanInShape2[BufD, BufD, BufD]
 
-  private final class Stage(op: Op)(implicit ctrl: Control) extends StageImpl[Shape](name) {
+  private final class Stage(op: Op)(implicit ctrl: Control) extends StageImpl[Shape](s"$name(${op.name})") {
     val shape = new FanInShape2(
       in0 = InD (s"$name.in1"),
       in1 = InD (s"$name.in2"),
@@ -44,7 +44,7 @@ object BinaryOp {
   }
 
   private final class Logic(op: Op, shape: Shape)(implicit ctrl: Control)
-    extends StageLogicImpl(name, shape)
+    extends StageLogicImpl(s"$name(${op.name})", shape)
       with FilterChunkImpl[BufD, BufD, Shape]
       with FilterIn2DImpl[BufD, BufD] {
 

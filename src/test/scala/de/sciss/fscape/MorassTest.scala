@@ -210,7 +210,9 @@ object MorassTest extends App {
 //          spec = OutputSpec.aiffInt, gain = Gain.normalized)
       }
 
-      val ctrl = stream.Control()
+      val config = stream.Control.Config()
+      config.useAsync = false // for debugging
+      val ctrl = stream.Control(config)
       ctrl.run(g)
 
       Swing.onEDT {

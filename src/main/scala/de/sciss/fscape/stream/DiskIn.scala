@@ -36,19 +36,15 @@ object DiskIn {
 
   // similar to internal `UnfoldResourceSource`
   private final class Stage(f: File, numChannels: Int)(implicit ctrl: Control)
-    extends BlockingGraphStage[Shape](name) {
+    extends BlockingGraphStage[Shape](s"$name(${f.name})") {
 
     val shape = UniformSourceShape(Vector.tabulate(numChannels)(ch => OutD(s"$name.out$ch")))
-
-    override def toString = s"$name(${f.name})"
 
     def createLogic(attr: Attributes): GraphStageLogic = new Logic(shape, f, numChannels = numChannels)
   }
 
   private final class Logic(shape: Shape, f: File, numChannels: Int)(implicit ctrl: Control)
-    extends StageLogicImpl(name, shape) with OutHandler {
-
-    override def toString = s"$name-L(${f.name})"
+    extends StageLogicImpl(s"$name(${f.name})", shape) with OutHandler {
 
     private[this] var af        : io.AudioFile  = _
     private[this] var buf       : io.Frames     = _

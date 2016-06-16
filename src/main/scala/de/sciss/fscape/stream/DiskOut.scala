@@ -40,19 +40,15 @@ object DiskOut {
   private type Shape = UniformSinkShape[BufD]
 
   private final class Stage(f: File, spec: io.AudioFileSpec)(implicit protected val ctrl: Control)
-    extends BlockingGraphStage[Shape](name) {
+    extends BlockingGraphStage[Shape](s"$name(${f.name})") {
 
     override val shape = UniformSinkShape[BufD](Vector.tabulate(spec.numChannels)(ch => InD(s"$name.in$ch")))
-
-    override def toString = s"$name(${f.name})"
 
     def createLogic(attr: Attributes) = new Logic(shape, f, spec)
   }
 
   private final class Logic(shape: Shape, f: File, spec: io.AudioFileSpec)(implicit ctrl: Control)
-    extends StageLogicImpl(name, shape) with InHandler { logic =>
-
-    override def toString = s"$name-L(${f.name})"
+    extends StageLogicImpl(s"$name(${f.name})", shape) with InHandler { logic =>
 
     private[this] var af      : io.AudioFile = _
     private[this] var buf     : io.Frames = _

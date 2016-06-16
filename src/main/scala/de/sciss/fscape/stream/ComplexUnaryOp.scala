@@ -38,7 +38,7 @@ object ComplexUnaryOp {
 
   private type Shape = FlowShape[BufD, BufD]
 
-  private final class Stage(op: Op)(implicit ctrl: Control) extends StageImpl[Shape](name) {
+  private final class Stage(op: Op)(implicit ctrl: Control) extends StageImpl[Shape](s"$name(${op.name})") {
     val shape = new FlowShape(
       in  = InD (s"$name.in" ),
       out = OutD(s"$name.out")
@@ -48,7 +48,7 @@ object ComplexUnaryOp {
   }
 
   private final class Logic(op: Op, shape: Shape)(implicit ctrl: Control)
-    extends StageLogicImpl(name, shape)
+    extends StageLogicImpl(s"$name(${op.name})", shape)
       with FilterChunkImpl[BufD, BufD, Shape]
       with FilterIn1DImpl[BufD] {
 
