@@ -65,7 +65,7 @@ object TakeRight {
     private[this] var writeMode = false
 
     def process(): Unit = {
-      logStream(s"$this.process() ${if (writeMode) "W" else "R"}")
+      logStream(s"process() $this ${if (writeMode) "W" else "R"}")
 
       if (writeMode) tryWrite()
       else {
@@ -146,7 +146,7 @@ object TakeRight {
       }
 
       if (flushOut && outSent) {
-        logStream(s"$this.completeStage()")
+        logStream(s"completeStage() $this")
         completeStage()
       }
     }

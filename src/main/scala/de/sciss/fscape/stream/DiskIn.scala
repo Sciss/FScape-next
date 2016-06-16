@@ -55,7 +55,7 @@ object DiskIn {
     shape.outlets.foreach(setHandler(_, this))
 
     override def preStart(): Unit = {
-      logStream(s"$this.preStart()")
+      logStream(s"preStart() $this")
       af          = io.AudioFile.openRead(f)
       if (af.numChannels != numChannels) {
         Console.err.println(s"Warning: DiskIn - channel mismatch (file has ${af.numChannels}, UGen has $numChannels)")
@@ -65,7 +65,7 @@ object DiskIn {
     }
 
     override def postStop(): Unit = {
-      logStream(s"$this.postStop()")
+      logStream(s"postStop() $this")
       buf = null
       try {
         af.close()
@@ -76,7 +76,7 @@ object DiskIn {
 
     override def onDownstreamFinish(): Unit =
       if (shape.outlets.forall(isClosed(_))) {
-        logStream(s"$this.completeStage()")
+        logStream(s"completeStage() $this")
         completeStage()
       }
 
@@ -86,7 +86,7 @@ object DiskIn {
     private def process(): Unit = {
       val chunk = math.min(bufSize, af.numFrames - framesRead).toInt
       if (chunk == 0) {
-        logStream(s"$this.completeStage()")
+        logStream(s"completeStage() $this")
         completeStage()
       } else {
         af.read(buf, 0, chunk)

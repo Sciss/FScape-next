@@ -157,7 +157,7 @@ trait WindowedLogicImpl[In0 >: Null <: BufLike, S <: Shape]
     }
 
     if (flushOut && outSent) {
-      logStream(s"$this.completeStage()")
+      logStream(s"completeStage() $this")
       completeStage()
     }
     else if (stateChange) process()

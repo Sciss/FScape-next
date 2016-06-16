@@ -20,6 +20,9 @@ import de.sciss.fscape.stream.impl.{BlockingGraphStage, StageLogicImpl}
 
 import scala.util.control.NonFatal
 
+// XXX TODO --- we could use a "quasi-circular"
+// structure? this is, overwrite parts of the file
+// that were already read
 object BufferDisk {
   def apply(in: OutD)(implicit b: Builder): OutD = {
     val stage0  = new Stage
@@ -74,7 +77,7 @@ object BufferDisk {
       val bufIn = grab(shape.in)
       tryPull(shape.in)
       val chunk = bufIn.size
-      logStream(s"$this.onPush($chunk)")
+      logStream(s"onPush(${shape.in}) $chunk")
 
       try {
         if (af.position != framesWritten) af.position = framesWritten
@@ -90,10 +93,10 @@ object BufferDisk {
 
     def onPull(): Unit = {
       val chunk = math.min(bufSize, framesWritten - framesRead).toInt
-      logStream(s"$this.onPull($chunk)")
+      logStream(s"onPull(${shape.out}) $chunk")
       if (chunk == 0) {
         if (isClosed(shape.in)) {
-          logStream(s"$this.completeStage()")
+          logStream(s"completeStage() $this")
           completeStage()
         }
 
@@ -109,7 +112,7 @@ object BufferDisk {
 
     // in closed
     override def onUpstreamFinish(): Unit = {
-      logStream(s"$this.onUpstreamFinish")
+      logStream(s"onUpstreamFinish(${shape.in}")
       if (isAvailable(shape.out)) onPull()
     }
   }

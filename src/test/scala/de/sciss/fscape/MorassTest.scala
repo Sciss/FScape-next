@@ -118,7 +118,8 @@ object MorassTest extends App {
     val conjA     = fftA .complex.conj   // XXX TODO -- is there a reason we take the conj of A and not B?
     val conv      = conjA.complex * fftB
     val convMag   = conv .complex.mag.reciprocal
-    val elemNorm  = conv * ZipWindow(convMag, convMag)    // XXX TODO - should have a `Repeat(convMag, 2)` function
+    val convBuf   = BufferDisk(conv)    // XXX TODO -- measure max delay
+    val elemNorm  = convBuf * RepeatWindow(convMag)
     val iFFT      = Real1FullIFFT(in = elemNorm, size = fftSize)
 
     val prod      = PeakCentroid1D(in = iFFT, size = fftSize, radius = radiusI)
@@ -128,7 +129,11 @@ object MorassTest extends App {
     val amp       = (ampModulation: GE).linlin(0, 1, 1.0, prod.peak)
     val ampPad    = RepeatWindow(in = amp   , num = winSize)
     val shiftXPad = RepeatWindow(in = shiftX, num = winSize)
-    val synth     = slideA * ampPad * winSynth
+
+    // ---- synthesis ----
+    // make sure to insert a large enough buffer
+    val slideABuf = BufferDisk(slideA)      // XXX TODO -- measure max delay
+    val synth     = slideABuf * ampPad * winSynth
     // XXX TODO --- the first window will not be shifted.
     // So a real solution would be to prepend one empty
     // window and drop it later.
@@ -179,19 +184,19 @@ object MorassTest extends App {
       val fftSizeA  = if (truncate) (numFramesA + 1).nextPowerOfTwo / 2 else numFramesA.nextPowerOfTwo
       val fftSizeB  = if (truncate) (numFramesB + 1).nextPowerOfTwo / 2 else numFramesB.nextPowerOfTwo
 
-      showStreamLog = true
+      // showStreamLog = true
 
       val g = Graph {
         import graph._
 
-//        val fftA = mkFourierFwd(in = inA, size = fftSizeA, gain = Gain.normalized)
-//        val fftB = mkFourierFwd(in = inB, size = fftSizeB, gain = Gain.normalized)
-//
-//        val fftAZ = UnzipWindow(fftA) // treat Re and Im as two channels
-//        val fftBZ = UnzipWindow(fftB) // treat Re and Im as two channels
+        val fftA = mkFourierFwd(in = inA, size = fftSizeA, gain = Gain.normalized)
+        val fftB = mkFourierFwd(in = inB, size = fftSizeB, gain = Gain.normalized)
 
-        val fftAZ = SinOsc(1.0/64).take(44100 * 10)
-        val fftBZ = SinOsc(1.0/64).take(44100 * 10)
+        val fftAZ = UnzipWindow(fftA) // treat Re and Im as two channels
+        val fftBZ = UnzipWindow(fftB) // treat Re and Im as two channels
+
+//        val fftAZ = SinOsc(1.0/64).take(44100 * 10)
+//        val fftBZ = SinOsc(1.0/64).take(44100 * 10)
 
         val numFrames = math.min(fftSizeA, fftSizeB)
         assert(numFrames.isPowerOfTwo)

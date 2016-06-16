@@ -113,7 +113,15 @@ object UnzipWindowN {
       var remain    = 0
       var sent      = true
 
-      def onPull(): Unit = process()
+      def onPull(): Unit = {
+        logStream(s"onPull($let)")
+        process()
+      }
+
+      override def onDownstreamFinish(): Unit = {
+        logStream(s"onDownstreamFinish($let)")
+        super.onDownstreamFinish()
+      }
     }
 
     override def preStart(): Unit = {
@@ -172,6 +180,7 @@ object UnzipWindowN {
     private[this] def allocOutBuf(): BufD = ctrl.borrowBufD()
 
     private def process(): Unit = {
+      logStream(s"process() $this")
       // becomes `true` if state changes,
       // in that case we run this method again.
       var stateChange = false
@@ -238,22 +247,34 @@ object UnzipWindowN {
       }
 
       if (flush && outputs.forall(_.sent)) {
-        logStream(s"$this.completeStage()")
+        logStream(s"completeStage() $this")
         completeStage()
       }
       else if (stateChange) process()
     }
 
     setHandler(shape.in0, new InHandler {
-      def onPush(): Unit = updateCanRead()
+      def onPush(): Unit = {
+        logStream(s"onPush(${shape.in0})")
+        updateCanRead()
+      }
 
-      override def onUpstreamFinish(): Unit = process() // may lead to `flushOut`
+      override def onUpstreamFinish(): Unit = {
+        logStream(s"onUpstreamFinish(${shape.in0})")
+        process() // may lead to `flushOut`
+      }
     })
 
     setHandler(shape.in1, new InHandler {
-      def onPush(): Unit = updateCanRead()
+      def onPush(): Unit = {
+        logStream(s"onPush(${shape.in1})")
+        updateCanRead()
+      }
 
-      override def onUpstreamFinish(): Unit = ()  // keep running
+      override def onUpstreamFinish(): Unit = {
+        logStream(s"onUpstreamFinish(${shape.in1})")
+        ()  // keep running
+      }
     })
 
     outputs.foreach(out => setHandler(out.let, out))

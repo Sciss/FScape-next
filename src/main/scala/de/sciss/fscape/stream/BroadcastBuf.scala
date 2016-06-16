@@ -97,13 +97,13 @@ object BroadcastBuf {
 
           override def onDownstreamFinish(): Unit = {
             if (eagerCancel) {
-              logStream(s"$this.completeStage()")
+              logStream(s"completeStage() $this")
               completeStage()
             }
             else {
               sinksRunning -= 1
               if (sinksRunning == 0) {
-                logStream(s"$this.completeStage()")
+                logStream(s"completeStage() $this")
                 completeStage()
               }
               else if (pending(idx0)) {

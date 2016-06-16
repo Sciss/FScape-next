@@ -18,7 +18,6 @@ import de.sciss.fscape.graph.impl.{MultiOutImpl, SingleOutImpl, ZeroOutImpl}
 import scala.annotation.switch
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.language.implicitConversions
-import scala.runtime.ScalaRunTime
 
 ///** The raw UGen information as it is found in a final `UGenGraph`. */
 //trait RawUGen {
@@ -32,8 +31,9 @@ import scala.runtime.ScalaRunTime
   * from the final graph based on `hasSideEffect` status.
   */
 sealed trait UGen extends Product {
-  // initialize this first, so that debug printing in `addUGen` can use the hash code
-  override val hashCode: Int = if (isIndividual) super.hashCode() else ScalaRunTime._hashCode(this)
+// !!! WE CURRENTLY DISABLE STRUCTURAL EQUALITY
+//  // initialize this first, so that debug printing in `addUGen` can use the hash code
+//  override val hashCode: Int = if (isIndividual) super.hashCode() else scala.runtime.ScalaRunTime._hashCode(this)
 
   override def toString: String = inputs.mkString(s"$name(", ", ", ")")
 
@@ -65,11 +65,12 @@ sealed trait UGen extends Product {
 
   final def canEqual(x: Any): Boolean = x.isInstanceOf[UGen]
 
-  override def equals(x: Any): Boolean = (this eq x.asInstanceOf[AnyRef]) || (!isIndividual && (x match {
-    case u: UGen =>
-      u.name == name && u.inputs == inputs && u.rest == rest && u.canEqual(this)
-    case _ => false
-  }))
+// !!! WE CURRENTLY DISABLE STRUCTURAL EQUALITY
+//  override def equals(x: Any): Boolean = (this eq x.asInstanceOf[AnyRef]) || (!isIndividual && (x match {
+//    case u: UGen =>
+//      u.name == name && u.inputs == inputs && u.rest == rest && u.canEqual(this)
+//    case _ => false
+//  }))
 
   def isIndividual : Boolean
   def hasSideEffect: Boolean

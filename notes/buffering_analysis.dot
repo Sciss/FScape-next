@@ -1,0 +1,149 @@
+digraph waits {
+N2 [label="GenWindow@738dc9b"]
+N3 [label="BinaryOp(*)@4c60d6e9"]
+N9 [label="map"]
+N12 [label="OverlapAdd@3e0e1046"]
+N14 [label="Poll@4f49f6af"]
+N18 [label="BinaryOp(*)@75437611"]
+N21 [label="GenWindow@644baf4a"]
+N22 [label="Take@6574a52c"]
+N24 [label="BroadcastBuf@6bbe85a8"]
+N28 [label="UnaryOp(Reciprocal)@7ae0a9ec"]
+N29 [label="BinaryOp(-)@5fb759d6"]
+N30 [label="BinaryOp(*)@4d0d9fe7"]
+N32 [label="ZipWindow@304bb45b"]
+N34 [label="BinaryOp(*)@5db6b9cd"]
+N35 [label="Take@4a883b15"]
+N36 [label="BroadcastBuf@548a24a"]
+N37 [label="RepeatWindow@6b09fb41"]
+N38 [label="Real1FullIFFT@4bdeaabb"]
+N41 [label="BinaryOp(+)@30f842ca"]
+N42 [label="Take@7eecb5b8"]
+N43 [label="ZipWindow@f58853c"]
+N47 [label="GenWindow@1530c739"]
+N49 [label="Sliding@3e8c3cb"]
+N50 [label="ComplexUnaryOp(Abs)@5b247367"]
+N51 [label="BinaryOp(RoundTo)@4722ef0c"]
+N52 [label="PeakCentroid2D@3de8f619"]
+N55 [label="BroadcastBuf@49c90a9c"]
+N59 [label="BinaryOp(*)@29d80d2b"]
+N60 [label="DC@47caedad"]
+N62 [label="RepeatWindow@50378a4"]
+N63 [label="Concat@1b919693"]
+N64 [label="Real1FullFFT@8519cb4"]
+N67 [label="BinaryOp(+)@72c8e7b"]
+N68 [label="BroadcastBuf@cecf639"]
+N71 [label="Impulse@5e3f861"]
+N72 [label="Real1FullFFT@606e4010"]
+N73 [label="Drop@7486b455"]
+N76 [label="UnzipWindowN@6440112d"]
+N78 [label="ComplexBinaryOp(*)@402c4085"]
+N79 [label="BinaryOp(+)@7bbc8656"]
+N80 [label="BinaryOp(*)@14fc5f04"]
+N82 [label="map"]
+N85 [label="ComplexUnaryOp(Conj)@273444fe"]
+N86 [label="SinOsc@4d154ccd"]
+N88 [label="SinOsc@73e9cf30"]
+N92 [label="Sliding@69e153c5"]
+
+
+
+  N3 -> N49 [label=shouldPull; color=blue]
+  N3 -> N21 [label=shouldPull; color=blue]
+  N79 -> N9 [label=shouldPush; color=red];
+  N12 -> N63 [label=shouldPull; color=blue]
+
+  N9 -> N12 [label=shouldPush; color=red];
+  N43 -> N14 [label=shouldPush; color=red];
+  N14 -> N82 [label=shouldPull; color=blue]
+  N24 -> N18 [label=shouldPush; color=red];
+  N18 -> N2 [label=shouldPull; color=blue]
+
+
+
+  N22 -> N86 [label=shouldPull; color=blue]
+
+  N24 -> N92 [label=shouldPull; color=blue]
+  N76 -> N28 [label=shouldPush; color=red];
+  N52 -> N29 [label=shouldPush; color=red];
+
+  N68 -> N30 [label=shouldPush; color=red];
+  N32 -> N30 [label=shouldPush; color=red];
+  N36 -> N32 [label=shouldPush; color=red];
+  N36 -> N32 [label=shouldPush; color=red];
+
+  N34 -> N24 [label=shouldPull; color=blue]
+  N62 -> N34 [label=shouldPush; color=red];
+  N35 -> N88 [label=shouldPull; color=blue]
+
+  N28 -> N36 [label=shouldPush; color=red];
+  N67 -> N37 [label=shouldPush; color=red];
+
+
+  N30 -> N38 [label=shouldPush; color=red];
+
+
+  N80 -> N41 [label=shouldPush; color=red];
+
+  N42 -> N60 [label=shouldPull; color=blue]
+
+  N55 -> N43 [label=shouldPush; color=red];
+  N55 -> N43 [label=shouldPush; color=red];
+
+
+
+
+  N49 -> N22 [label=shouldPull; color=blue]
+
+
+  N68 -> N50 [label=shouldPush; color=red];
+  N52 -> N51 [label=shouldPush; color=red];
+
+  N38 -> N52 [label=shouldPush; color=red];
+
+
+
+
+
+  N73 -> N55 [label=shouldPush; color=red];
+  N34 -> N59 [label=shouldPush; color=red];
+  N59 -> N47 [label=shouldPull; color=blue]
+
+  N41 -> N62 [label=shouldPush; color=red];
+
+
+  N63 -> N42 [label=shouldPull; color=blue]
+  N59 -> N63 [label=shouldPush; color=red];
+  N18 -> N64 [label=shouldPush; color=red];
+
+
+  N51 -> N67 [label=shouldPush; color=red];
+
+  N78 -> N68 [label=shouldPush; color=red];
+
+
+  N72 -> N3 [label=shouldPull; color=blue]
+
+
+  N12 -> N73 [label=shouldPush; color=red];
+
+  N50 -> N76 [label=shouldPush; color=red];
+
+  N85 -> N78 [label=shouldPush; color=red];
+  N78 -> N72 [label=shouldPull; color=blue]
+  N37 -> N79 [label=shouldPush; color=red];
+
+
+  N29 -> N80 [label=shouldPush; color=red];
+  N82 -> N71 [label=shouldPull; color=blue]
+  N64 -> N85 [label=shouldPush; color=red];
+
+
+
+
+  N92 -> N35 [label=shouldPull; color=blue]
+
+
+  N52 -> Out99 [label=shouldPush; color=red];
+  N76 -> Out100 [label=shouldPush; color=red];
+}
