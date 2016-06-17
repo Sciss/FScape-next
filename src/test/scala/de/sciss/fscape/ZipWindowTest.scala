@@ -17,6 +17,8 @@ object ZipWindowTest extends App {
   val fftSizeA = numFramesA.nextPowerOfTwo
   val fftSizeB = numFramesB.nextPowerOfTwo
 
+  println(s"fftSizeA = $fftSizeA, fftSizeB = $fftSizeB")
+
   object Gain {
     val immediate  = Gain( 0.0.dbamp, normalized = false)
     val normalized = Gain(-0.2.dbamp, normalized = true )
@@ -63,12 +65,13 @@ object ZipWindowTest extends App {
 
   lazy val g = Graph {
     import graph._
-    val fftA = mkFourierFwd(in = inA, size = fftSizeA, gain = Gain.immediate)
+    val fftA = mkFourierFwd(in = inA, size = fftSizeA, gain = Gain.normalized)
     // val fftB = mkFourierFwd(in = inB, size = fftSizeB, gain = Gain.immediate)
 
     val fftAZ0 = UnzipWindow(fftA) // treat Re and Im as two channels
     // val fftBZ = UnzipWindow(fftB) // treat Re and Im as two channels
-    val fftAZ = fftAZ0.elastic()
+    val fftAZ = fftAZ0.elastic(2048)
+//    val fftAZ = BufferDisk(fftAZ0)
 
     val numFrames = math.min(fftSizeA, fftSizeB)
     assert(numFrames.isPowerOfTwo)
