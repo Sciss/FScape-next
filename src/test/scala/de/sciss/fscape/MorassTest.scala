@@ -165,9 +165,9 @@ object MorassTest extends App {
 
 
   def run(): Unit = {
-//    val Seq(inA, inB) = Random.shuffle(inputs.combinations(2)).next()
-    val inA = inputs.find(_.name.contains("165d9543")).get
-    val inB = inputs.find(_.name.contains("155cb38e")).get
+    val Seq(inA, inB) = Random.shuffle(inputs.combinations(2)).next()
+//    val inA = inputs.find(_.name.contains("165d9543")).get
+//    val inB = inputs.find(_.name.contains("155cb38e")).get
     run(inA, inB)
     // run(inB, inA)
   }
@@ -207,14 +207,14 @@ object MorassTest extends App {
 //          synthesizeWinAmt = 1.0 /* XXX TODO: 0.0625 */,
 //          numFrames = numFrames)
 //        val morass = mkMorass(config)
-//        val morassZ = ZipWindow(ChannelProxy(morass, 0).elastic(), ChannelProxy(morass, 1).elastic())
-val morassZ = ChannelProxy(fftAZ + fftBZ, 0)
+val morass = fftAZ // + fftBZ
+        val morassZ = ZipWindow(ChannelProxy(morass, 0).elastic(), ChannelProxy(morass, 1).elastic())
 
 //        (fftAZ + fftBZ).poll(1.0/44100)
-        morassZ.poll(1.0/44100)
+//        morassZ.poll(1.0/44100)
 
-//        mkFourierInv(in = morassZ, size = numFrames, out = output,
-//          spec = OutputSpec.aiffInt, gain = Gain.normalized)
+        mkFourierInv(in = morassZ, size = numFrames, out = output,
+          spec = OutputSpec.aiffInt, gain = Gain.normalized)
       }
 
       val config = stream.Control.Config()

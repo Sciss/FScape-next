@@ -51,8 +51,8 @@ object ComplexBinaryOp {
       with FilterChunkImpl[BufD, BufD, Shape]
       with FilterIn2DImpl[BufD, BufD] {
 
-    protected def processChunk(inOff: Int, outOff: Int, chunk0: Int): Int = {
-      val chunk = chunk0 & ~1  // must be even
+    protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Int = {
+      require((chunk & 1) == 0)// must be even
       op(a = bufIn0.buf, aOff = inOff, b = bufIn1.buf, bOff = inOff,
         out = bufOut0.buf, outOff = outOff, len = chunk >> 1)
       chunk
