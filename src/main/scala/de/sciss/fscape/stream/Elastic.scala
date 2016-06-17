@@ -52,45 +52,43 @@ object Elastic {
     private[this] var num     : Int         = _
     private[this] var buffers : Array[BufD] = _
 
-    private[this] var bufPopIdx   = 0   // circular
-    private[this] var bufPushIdx  = 0   // circular
+    private[this] var bufRead     = 0
+    private[this] var bufWritten  = 0
 
     @inline
-    private def canUseBuf  = bufPopIdx != bufPushIdx
+    private def canPopBuf  = bufRead < bufWritten
 
     @inline
-    private def shouldRead  = canRead  && (canUseBuf  || bufIn0 == null)
+    private def canPushBuf = bufWritten - bufRead < num
 
     @inline
-    private def shouldWrite = canWrite && (canUseBuf  || bufIn0 != null)
+    private def shouldRead  = canRead  && (canPushBuf || bufIn0 == null)
+
+    @inline
+    private def shouldWrite = canWrite && (canPopBuf  || bufIn0 != null)
 
     override def postStop(): Unit = {
       super.postStop()
-      println("POST STOP")
-      while (bufPopIdx < bufPushIdx) {
-        buffers(bufPopIdx).release()
-        buffers(bufPopIdx) = null
-        bufPopIdx = (bufPopIdx + 1) % num
+      while (bufRead < bufWritten) {
+        val idx = bufRead % num
+        buffers(bufRead % num).release()
+        buffers(idx) = null
+        bufRead += 1
       }
     }
 
-    def logStreamX(what: => String): Unit = {
-      println(what)
-    }
-
     private def pushBuffer(): Unit = {
-      println(s"push buffers($bufPushIdx) = $bufIn0")
       assert(bufIn0 != null)
-      buffers(bufPushIdx) = bufIn0
+      val idx = bufWritten % num
+      buffers(idx) = bufIn0
       bufIn0 = null
-      bufPushIdx = (bufPushIdx + 1) % num
-      println(s"bufPopIdx = $bufPopIdx; bufPushIdx = $bufPushIdx")
+      bufWritten += 1
     }
 
     @tailrec
     def process(): Unit = {
-      logStreamX(s"process() $this")
-      logStreamX(s"-- canRead? $canRead; canWrite? $canWrite; bufIn0 ${bufIn0 != null}; readIdx $bufPopIdx; writeIdx $bufPushIdx")
+      logStream(s"process() $this")
+      // println(s"-- canRead? $canRead; canWrite? $canWrite; bufIn0 ${bufIn0 != null}; read $bufRead; written $bufWritten")
       var stateChange = false
 
       if (shouldRead) {
@@ -102,19 +100,18 @@ object Elastic {
           buffers = new Array[BufD](num)
           if (num > 0) pushBuffer()
           init    = false
-        } else if (canUseBuf) {
+        } else if (canPushBuf) {
           pushBuffer()
         }
         stateChange = true
       }
 
       if (shouldWrite) {
-        val buf = if (canUseBuf) {
-          val res = buffers(bufPopIdx)
-          println(s"read buffers($bufPopIdx) = $res; -> set null")
-          buffers(bufPopIdx) = null
-          bufPopIdx = (bufPopIdx + 1) % num
-          println(s"bufPopIdx = $bufPopIdx; bufPushIdx = $bufPushIdx")
+        val buf = if (canPopBuf) {
+          val idx = bufRead % num
+          val res = buffers(idx)
+          buffers(idx) = null
+          bufRead += 1
           res
         } else {
           val res = bufIn0
@@ -127,8 +124,8 @@ object Elastic {
         stateChange = true
       }
 
-      if (isClosed(in0) && !canUseBuf && bufIn0 == null) {
-        logStreamX(s"completeStage() $this")
+      if (isClosed(in0) && !canPopBuf && bufIn0 == null) {
+        logStream(s"completeStage() $this")
         completeStage()
       }
       else if (stateChange) process()
