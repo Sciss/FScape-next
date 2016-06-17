@@ -165,9 +165,9 @@ object MorassTest extends App {
 
 
   def run(): Unit = {
-    val Seq(inA, inB) = Random.shuffle(inputs.combinations(2)).next()
-//    val inA = inputs.find(_.name.contains("165d9543")).get
-//    val inB = inputs.find(_.name.contains("155cb38e")).get
+//    val Seq(inA, inB) = Random.shuffle(inputs.combinations(2)).next()
+    val inA = inputs.find(_.name.contains("b1269fa6")).get
+    val inB = inputs.find(_.name.contains("65929a65")).get
     run(inA, inB)
     // run(inB, inA)
   }
@@ -192,8 +192,8 @@ object MorassTest extends App {
         val fftA = mkFourierFwd(in = inA, size = fftSizeA, gain = Gain.normalized)
         val fftB = mkFourierFwd(in = inB, size = fftSizeB, gain = Gain.normalized)
 
-        val fftAZ = UnzipWindow(fftA).elastic() // treat Re and Im as two channels
-        val fftBZ = UnzipWindow(fftB).elastic() // treat Re and Im as two channels
+        val fftAZ = UnzipWindow(fftA).elastic(1024) // treat Re and Im as two channels
+        val fftBZ = UnzipWindow(fftB).elastic(1024) // treat Re and Im as two channels
 
 //        val fftAZ = SinOsc(1.0/64).take(44100 * 10)
 //        val fftBZ = SinOsc(1.0/64).take(44100 * 10)
@@ -201,14 +201,14 @@ object MorassTest extends App {
         val numFrames = math.min(fftSizeA, fftSizeB)
         assert(numFrames.isPowerOfTwo)
 
-//        val config = MorassConfig(input = fftAZ, template = fftBZ,
-//          synthesizeWinType = GenWindow.Rectangle,
-//          inputWinSize = 4096, templateWinSize = 32768, stepSize = 64 /* 16 */, ampModulation = 0.0675 /* 1.0 */,
-//          synthesizeWinAmt = 1.0 /* XXX TODO: 0.0625 */,
-//          numFrames = numFrames)
-//        val morass = mkMorass(config)
-val morass = fftAZ // + fftBZ
-        val morassZ = ZipWindow(ChannelProxy(morass, 0).elastic(), ChannelProxy(morass, 1).elastic())
+        val config = MorassConfig(input = fftAZ, template = fftBZ,
+          synthesizeWinType = GenWindow.Rectangle,
+          inputWinSize = 4096, templateWinSize = 32768, stepSize = 64 /* 16 */, ampModulation = 0.0675 /* 1.0 */,
+          synthesizeWinAmt = 1.0 /* XXX TODO: 0.0625 */,
+          numFrames = numFrames)
+        val morass = mkMorass(config)
+//val morass = fftAZ // + fftBZ
+        val morassZ = ZipWindow(ChannelProxy(morass, 0).elastic(1024), ChannelProxy(morass, 1).elastic(1024))
 
 //        (fftAZ + fftBZ).poll(1.0/44100)
 //        morassZ.poll(1.0/44100)
