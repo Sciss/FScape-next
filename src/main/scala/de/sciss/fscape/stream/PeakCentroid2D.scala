@@ -75,6 +75,10 @@ object PeakCentroid2D {
     private[this] var winBuf      : Array[Double] = _
     private[this] var size        : Int = _
 
+    private[this] var translateX  : Double = _
+    private[this] var translateY  : Double = _
+    private[this] var peak        : Double = _
+
     protected def startNextWindow(inOff: Int): Int = {
       val oldSize = size
       if (bufIn1 != null && inOff < bufIn1.size) {
@@ -98,8 +102,13 @@ object PeakCentroid2D {
     protected def copyInputToWindow(inOff: Int, writeToWinOff: Int, chunk: Int): Unit =
       Util.copy(bufIn0.buf, inOff, winBuf, writeToWinOff, chunk)
 
-    protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit =
-      Util.copy(winBuf, readFromWinOff, bufOut0.buf, outOff, chunk)
+    protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit = {
+      assert(readFromWinOff == 0 && chunk == 1)
+      // Util.copy(winBuf, readFromWinOff, bufOut0.buf, outOff, chunk)
+      bufOut0.buf(outOff) = translateX
+      bufOut1.buf(outOff) = translateY
+      bufOut2.buf(outOff) = peak
+    }
 
     @inline
     private def pixel(x: Int, y: Int): Double = winBuf(y * width + x)
@@ -190,9 +199,9 @@ object PeakCentroid2D {
 //      val peak = Product(translateX = cx, translateY = cy, peak = cs)
 //      peak
 
-      bufOut0.buf(0) = cx
-      bufOut1.buf(0) = cy
-      bufOut2.buf(0) = cs
+      translateX = cx // bufOut0.buf(0) = cx
+      translateY = cx // bufOut1.buf(0) = cy
+      peak       = cs // bufOut2.buf(0) = cs
       1
     }
   }

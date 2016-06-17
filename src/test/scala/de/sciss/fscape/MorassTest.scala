@@ -189,14 +189,14 @@ object MorassTest extends App {
       val g = Graph {
         import graph._
 
-        val fftA = mkFourierFwd(in = inA, size = fftSizeA, gain = Gain.normalized)
-        val fftB = mkFourierFwd(in = inB, size = fftSizeB, gain = Gain.normalized)
+//        val fftA = mkFourierFwd(in = inA, size = fftSizeA, gain = Gain.normalized)
+//        val fftB = mkFourierFwd(in = inB, size = fftSizeB, gain = Gain.normalized)
+//
+//        val fftAZ = UnzipWindow(fftA).elastic() // treat Re and Im as two channels
+//        val fftBZ = UnzipWindow(fftB).elastic() // treat Re and Im as two channels
 
-        val fftAZ = UnzipWindow(fftA).elastic() // treat Re and Im as two channels
-        val fftBZ = UnzipWindow(fftB).elastic() // treat Re and Im as two channels
-
-//        val fftAZ = SinOsc(1.0/64).take(44100 * 10)
-//        val fftBZ = SinOsc(1.0/64).take(44100 * 10)
+        val fftAZ = SinOsc(1.0/64).take(44100 * 10)
+        val fftBZ = SinOsc(1.0/64).take(44100 * 10)
 
         val numFrames = math.min(fftSizeA, fftSizeB)
         assert(numFrames.isPowerOfTwo)
@@ -207,9 +207,10 @@ object MorassTest extends App {
           synthesizeWinAmt = 1.0 /* XXX TODO: 0.0625 */,
           numFrames = numFrames)
         val morass = mkMorass(config)
-        val morassZ = ZipWindow(ChannelProxy(morass, 0), ChannelProxy(morass, 1))
+        val morassZ = ZipWindow(ChannelProxy(morass, 0).elastic(), ChannelProxy(morass, 1).elastic())
 
-        morassZ.poll()
+//        (fftAZ + fftBZ).poll(1.0/44100)
+        morassZ.poll(1.0/44100)
 
 //        mkFourierInv(in = morassZ, size = numFrames, out = output,
 //          spec = OutputSpec.aiffInt, gain = Gain.normalized)
