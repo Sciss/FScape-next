@@ -165,7 +165,9 @@ object MorassTest extends App {
 
 
   def run(): Unit = {
-    val Seq(inA, inB) = Random.shuffle(inputs.combinations(2)).next()
+//    val Seq(inA, inB) = Random.shuffle(inputs.combinations(2)).next()
+    val inA = inputs.find(_.name.contains("165d9543")).get
+    val inB = inputs.find(_.name.contains("155cb38e")).get
     run(inA, inB)
     // run(inB, inA)
   }

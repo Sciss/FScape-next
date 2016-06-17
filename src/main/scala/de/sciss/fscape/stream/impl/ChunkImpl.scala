@@ -39,19 +39,21 @@ trait ChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape] {
 
   // ---- impl ----
 
-  private[this] var inOff             = 0  // regarding `bufIn`
+  /* XXX XXX private[this] */ var inOff             = 0  // regarding `bufIn`
   private[this] var _inRemain         = 0
-  private[this] var outOff            = 0  // regarding `bufOut`
-  private[this] var outRemain         = 0
-  private[this] var outSent           = true
+  /* XXX XXX private[this] */ var outOff            = 0  // regarding `bufOut`
+  /* XXX XXX private[this] */ var outRemain         = 0
+  /* XXX XXX private[this] */ var outSent           = true
 
   protected final def inRemain: Int = _inRemain
 
+  /* XXX XXX
   @inline
-  private[this] def shouldRead = _inRemain == 0 && canRead
+  private[this] */ def shouldRead = _inRemain == 0 && canRead
 
+  /* XXX XXX
   @tailrec
-  final def process(): Unit = {
+  final */ def process(): Unit = {
     logStream(s"process() $this")
     var stateChange = false
 

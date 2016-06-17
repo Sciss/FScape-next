@@ -52,6 +52,11 @@ object ComplexUnaryOp {
       with FilterChunkImpl[BufD, BufD, Shape]
       with FilterIn1DImpl[BufD] {
 
+   override def process(): Unit = {
+     println(s"process() $this; inRemain $inRemain, outRemain $outRemain, outSent $outSent, canRead $canRead, canWrite $canWrite")
+     super.process()
+   }
+
     protected def processChunk(inOff: Int, outOff: Int, chunk0: Int): Int = {
       val chunk = chunk0 & ~1  // must be even
       op(in = bufIn0.buf, inOff = inOff, out = bufOut0.buf, outOff = outOff, len = chunk >> 1)
