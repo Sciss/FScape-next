@@ -184,8 +184,6 @@ object MorassTest extends App {
       val fftSizeA  = if (truncate) (numFramesA + 1).nextPowerOfTwo / 2 else numFramesA.nextPowerOfTwo
       val fftSizeB  = if (truncate) (numFramesB + 1).nextPowerOfTwo / 2 else numFramesB.nextPowerOfTwo
 
-      // showStreamLog = true
-
       val g = Graph {
         import graph._
 
@@ -203,7 +201,7 @@ object MorassTest extends App {
 
         val config = MorassConfig(input = fftAZ, template = fftBZ,
           synthesizeWinType = GenWindow.Rectangle,
-          inputWinSize = 4096, templateWinSize = 32768, stepSize = 16, ampModulation = 0.0675 /* 1.0 */,
+          inputWinSize = 4096, templateWinSize = 32768, stepSize = 64 /* 16 */, ampModulation = 0.0675 /* 1.0 */,
           synthesizeWinAmt = 1.0 /* XXX TODO: 0.0625 */,
           numFrames = numFrames)
         val morass = mkMorass(config)
@@ -219,6 +217,9 @@ object MorassTest extends App {
       val config = stream.Control.Config()
       config.useAsync = false // for debugging
       val ctrl = stream.Control(config)
+
+//      showStreamLog = true
+
       ctrl.run(g)
 
       Swing.onEDT {

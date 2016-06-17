@@ -102,12 +102,17 @@ object PeakCentroid2D {
     protected def copyInputToWindow(inOff: Int, writeToWinOff: Int, chunk: Int): Unit =
       Util.copy(bufIn0.buf, inOff, winBuf, writeToWinOff, chunk)
 
+    private var COUNT = 0
+
     protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit = {
       assert(readFromWinOff == 0 && chunk == 1)
       // Util.copy(winBuf, readFromWinOff, bufOut0.buf, outOff, chunk)
       bufOut0.buf(outOff) = translateX
       bufOut1.buf(outOff) = translateY
       bufOut2.buf(outOff) = peak
+      COUNT += 1
+      println(f"elapsed = ${COUNT * 64 / 44100.0}%1.2f sec")
+      // println(f"tr($translateX%1.2f, $translateY%1.2f), p $peak%1.2f")
     }
 
     @inline
