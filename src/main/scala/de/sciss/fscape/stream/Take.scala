@@ -55,7 +55,7 @@ object Take {
     private[this] var framesWritten     = 0
     private[this] var numFrames         = -1
 
-    protected def shouldComplete(): Boolean = framesWritten == numFrames
+    protected def shouldComplete(): Boolean = framesWritten == numFrames || (inRemain == 0 && isClosed(in0))
 
     protected def processChunk(inOff: Int, outOff: Int, len: Int): Int = {
       if (framesWritten == 0) {

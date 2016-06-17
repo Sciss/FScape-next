@@ -11,13 +11,14 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape.stream
+package de.sciss.fscape
+package stream
 
 import akka.stream.stage.{GraphStageLogic, InHandler, OutHandler}
 import akka.stream.{Attributes, Inlet, Outlet}
-import de.sciss.fscape.Util
 import de.sciss.fscape.stream.impl.{StageImpl, StageLogicImpl}
 
+import scala.annotation.tailrec
 import scala.collection.breakOut
 import scala.collection.immutable.{Seq => ISeq}
 
@@ -122,11 +123,13 @@ object ZipWindowN {
         remain   = buf.size
       }
 
-      def onPush(): Unit =
+      def onPush(): Unit = {
+        logStream(s"onPush($let)")
         if (remain == 0) {
           read()
           process()
         }
+      }
 
       def tryFree(): Unit =
         if (buf != null) {
@@ -134,7 +137,10 @@ object ZipWindowN {
           buf = null
         }
 
-      override def onUpstreamFinish(): Unit = process()
+      override def onUpstreamFinish(): Unit = {
+        logStream(s"onUpstreamFinish($let)")
+        process()
+      }
     }
 
     override def preStart(): Unit =
@@ -177,20 +183,19 @@ object ZipWindowN {
     @inline
     private[this] def allocOutBuf(): BufD = ctrl.borrowBufD()
 
+    @tailrec
     private def process(): Unit = {
+      // logStream(s"process() $this")
+
       // becomes `true` if state changes,
       // in that case we run this method again.
       var stateChange = false
-
-      // println("process()")
-      // println(s"  inputs: ${inputs.mkString("\n          ")}")
 
       if (sizeRemain == 0 && isAvailable(shape.size)) readSize()
 
       if (shouldNext) {
         inIndex += 1
         if (inIndex == numInputs) inIndex = 0
-        // println(s"shouldNext($inIndex)")
         if (sizeOff < sizeRemain) {
           size = math.max(1, bufIn1.buf(sizeOff))
         }
@@ -204,7 +209,6 @@ object ZipWindowN {
 
       val inWinRem = math.min(in.remain, winRemain)
       if (inWinRem > 0) {
-        // println(s"inWinRem($inWinRem)")
         if (outSent) {
           bufOut        = allocOutBuf()
           outRemain     = bufOut.size
@@ -216,20 +220,17 @@ object ZipWindowN {
         val chunk0  = math.min(inWinRem, outRemain)
         val chunk   = if (sizeRemain == 0 && isClosed(shape.size)) chunk0 else math.min(chunk0, sizeRemain)
         if (chunk > 0) {
-          // println(s"chunk($chunk) << ${in.off}, ${in.remain}, $outOff, $outRemain, $winRemain")
           Util.copy(in.buf.buf, in.off, bufOut.buf, outOff, chunk)
           in.off     += chunk
           in.remain  -= chunk
           outOff     += chunk
           outRemain  -= chunk
           winRemain  -= chunk
-          // println(s"chunk($chunk) >> ${in.off}, ${in.remain}, $outOff, $outRemain, $winRemain")
           if (sizeRemain > 0) {
             sizeOff    += chunk
             sizeRemain -= chunk
           }
           if (winRemain == 0) {
-            // println("isNextWindow = true")
             isNextWindow = true
           }
           stateChange = true
@@ -238,7 +239,6 @@ object ZipWindowN {
 
       val flush = in.remain == 0 && isClosed(in.let)
       if (!outSent && (outRemain == 0 || flush) && isAvailable(shape.out)) {
-        // println(s"push($outOff)")
         if (outOff > 0) {
           bufOut.size = outOff
           push(shape.out, bufOut)
@@ -250,20 +250,33 @@ object ZipWindowN {
         stateChange = true
       }
 
-      if      (flush && outSent) completeStage()
-      else if (stateChange)      process()
+      if (flush && outSent) {
+        logStream(s"completeStage() $this")
+        completeStage()
+      }
+      else if (stateChange) process()
     }
 
     inputs.foreach(in => setHandler(in.let, in))
 
     setHandler(shape.size, new InHandler {
-      def onPush(): Unit = updateSize()
+      def onPush(): Unit = {
+        logStream(s"onPush(${shape.size})")
+        updateSize()
+      }
 
-      override def onUpstreamFinish(): Unit = ()  // keep running
+      override def onUpstreamFinish(): Unit = {
+        logStream(s"onUpstreamFinish(${shape.size})")
+        process()
+        ()  // keep running
+      }
     })
 
     setHandler(shape.out, new OutHandler {
-      def onPull(): Unit = process()
+      def onPull(): Unit = {
+        logStream(s"onPull(${shape.out})")
+        process()
+      }
     })
   }
 }
