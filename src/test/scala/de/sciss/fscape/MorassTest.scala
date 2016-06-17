@@ -192,8 +192,8 @@ object MorassTest extends App {
         val fftA = mkFourierFwd(in = inA, size = fftSizeA, gain = Gain.normalized)
         val fftB = mkFourierFwd(in = inB, size = fftSizeB, gain = Gain.normalized)
 
-        val fftAZ = UnzipWindow(fftA) // treat Re and Im as two channels
-        val fftBZ = UnzipWindow(fftB) // treat Re and Im as two channels
+        val fftAZ = UnzipWindow(fftA).elastic() // treat Re and Im as two channels
+        val fftBZ = UnzipWindow(fftB).elastic() // treat Re and Im as two channels
 
 //        val fftAZ = SinOsc(1.0/64).take(44100 * 10)
 //        val fftBZ = SinOsc(1.0/64).take(44100 * 10)

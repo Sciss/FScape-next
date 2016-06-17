@@ -18,6 +18,7 @@ import akka.stream.stage.{GraphStageLogic, InHandler, OutHandler}
 import akka.stream.{Attributes, Inlet, Outlet}
 import de.sciss.fscape.stream.impl.{StageImpl, StageLogicImpl}
 
+import scala.annotation.tailrec
 import scala.collection.breakOut
 import scala.collection.immutable.{IndexedSeq => Vec, Seq => ISeq}
 
@@ -179,6 +180,7 @@ object UnzipWindowN {
     @inline
     private[this] def allocOutBuf(): BufD = ctrl.borrowBufD()
 
+    @tailrec
     private def process(): Unit = {
       logStream(s"process() $this")
       // becomes `true` if state changes,

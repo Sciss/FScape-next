@@ -66,8 +66,9 @@ object ZipWindowTest extends App {
     val fftA = mkFourierFwd(in = inA, size = fftSizeA, gain = Gain.immediate)
     // val fftB = mkFourierFwd(in = inB, size = fftSizeB, gain = Gain.immediate)
 
-    val fftAZ = UnzipWindow(fftA) // treat Re and Im as two channels
+    val fftAZ0 = UnzipWindow(fftA) // treat Re and Im as two channels
     // val fftBZ = UnzipWindow(fftB) // treat Re and Im as two channels
+    val fftAZ = fftAZ0.elastic()
 
     val numFrames = math.min(fftSizeA, fftSizeB)
     assert(numFrames.isPowerOfTwo)

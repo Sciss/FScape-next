@@ -18,6 +18,8 @@ package impl
 import akka.stream.stage.GraphStageLogic
 import akka.stream.{Inlet, Outlet, Shape}
 
+import scala.annotation.tailrec
+
 trait ChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape] {
   _: InOutImpl[S] with GraphStageLogic =>
 
@@ -48,7 +50,8 @@ trait ChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape] {
   @inline
   private[this] def shouldRead = _inRemain == 0 && canRead
 
-  def process(): Unit = {
+  @tailrec
+  final def process(): Unit = {
     logStream(s"process() $this")
     var stateChange = false
 
