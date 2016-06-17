@@ -70,7 +70,7 @@ object ZipWindowTest extends App {
 
     val fftAZ0 = UnzipWindow(fftA) // treat Re and Im as two channels
     // val fftBZ = UnzipWindow(fftB) // treat Re and Im as two channels
-    val fftAZ = fftAZ0.elastic(2048)
+    val fftAZ = fftAZ0.elastic(1024)
 //    val fftAZ = BufferDisk(fftAZ0)
 
     val numFrames = math.min(fftSizeA, fftSizeB)
@@ -79,7 +79,7 @@ object ZipWindowTest extends App {
     // fftBZ.poll(1.0/44100, "B")
   }
 
-  showStreamLog = true
+  // showStreamLog = true
 
   val config = stream.Control.Config()
   config.useAsync = false // for debugging
