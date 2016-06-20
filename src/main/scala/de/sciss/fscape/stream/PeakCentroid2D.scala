@@ -111,7 +111,7 @@ object PeakCentroid2D {
       bufOut1.buf(outOff) = translateY
       bufOut2.buf(outOff) = peak
       COUNT += 1
-      println(f"elapsed = ${COUNT * 64 / 44100.0}%1.2f sec")
+      println(f"elapsed = ${COUNT * 1024 / 44100.0}%1.2f sec")
       // println(f"tr($translateX%1.2f, $translateY%1.2f), p $peak%1.2f")
     }
 

@@ -7,7 +7,6 @@ import de.sciss.numbers
 import de.sciss.synth.io.{AudioFile, AudioFileSpec, AudioFileType, SampleFormat}
 
 import scala.swing.Swing
-import scala.util.Random
 
 object MorassTest extends App {
   val inputs    = (userHome / "Music" / "work").children(f => f.name.startsWith("mentasm-") && f.ext == "aif")
@@ -127,15 +126,15 @@ object MorassTest extends App {
     val shiftX    = /* if (keepFileLength) transX else */ transX + winSizeH
 
     val amp       = (ampModulation: GE).linlin(0, 1, 1.0, prod.peak)
-    val ampPad    = RepeatWindow(in = amp   , num = winSize)
-    val shiftXPad = RepeatWindow(in = shiftX, num = winSize)
+    val ampPad    = 1.0: GE // RepeatWindow(in = amp   , num = winSize)
+    val shiftXPad = 0.0: GE // RepeatWindow(in = shiftX, num = winSize)
 
     // ---- synthesis ----
     // make sure to insert a large enough buffer
     val slideABuf = BufferDisk(slideA)      // XXX TODO -- measure max delay
     val synth     = slideABuf * ampPad * winSynth
-    // XXX TODO --- the first window will not be shifted.
-    // So a real solution would be to prepend one empty
+    // The first window will not be shifted.
+    // So a solution is to prepend one empty
     // window and drop it later.
     val prepend   = DC(0.0).take(winSize)
     val lapIn     = synth // XXX TODO: prepend ++ synth
@@ -165,7 +164,7 @@ object MorassTest extends App {
 
 
   def run(): Unit = {
-//    val Seq(inA, inB) = Random.shuffle(inputs.combinations(2)).next()
+//    val Seq(inA, inB) = scala.util.Random.shuffle(inputs.combinations(2)).next()
     val inA = inputs.find(_.name.contains("b1269fa6")).get
     val inB = inputs.find(_.name.contains("65929a65")).get
     run(inA, inB)
@@ -185,12 +184,13 @@ object MorassTest extends App {
       val truncate  = false
       val fftSizeA  = if (truncate) (numFramesA + 1).nextPowerOfTwo / 2 else numFramesA.nextPowerOfTwo
       val fftSizeB  = if (truncate) (numFramesB + 1).nextPowerOfTwo / 2 else numFramesB.nextPowerOfTwo
+      val fftSize   = math.max(fftSizeA, fftSizeB)
 
       val g = Graph {
         import graph._
 
-        val fftA = mkFourierFwd(in = inA, size = fftSizeA, gain = Gain.normalized)
-        val fftB = mkFourierFwd(in = inB, size = fftSizeB, gain = Gain.normalized)
+        val fftA = mkFourierFwd(in = inA, size = fftSize /* A */, gain = Gain.normalized)
+        val fftB = mkFourierFwd(in = inB, size = fftSize /* B */, gain = Gain.normalized)
 
         val fftAZ = UnzipWindow(fftA).elastic(1024) // treat Re and Im as two channels
         val fftBZ = UnzipWindow(fftB).elastic(1024) // treat Re and Im as two channels
@@ -203,10 +203,11 @@ object MorassTest extends App {
 
         val config = MorassConfig(input = fftAZ, template = fftBZ,
           synthesizeWinType = GenWindow.Rectangle,
-          inputWinSize = 4096, templateWinSize = 32768, stepSize = 64 /* 16 */, ampModulation = 0.0675 /* 1.0 */,
+          inputWinSize = 4096, templateWinSize = 32768, stepSize = 1024 /* 64 */ /* 16 */, ampModulation = 0.0675 /* 1.0 */,
           synthesizeWinAmt = 1.0 /* XXX TODO: 0.0625 */,
           numFrames = numFrames)
-        val morass = mkMorass(config)
+        val morass0 = fftAZ // mkMorass(config)
+        val morass  = morass0.take(fftSize << 1)
 //val morass = fftAZ // + fftBZ
         val morassZ = ZipWindow(ChannelProxy(morass, 0).elastic(1024), ChannelProxy(morass, 1).elastic(1024))
 
