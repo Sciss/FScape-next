@@ -16,7 +16,7 @@ package de.sciss.fscape
 import de.sciss.fscape.graph.{BinaryOp, ChannelProxy, ComplexBinaryOp, ComplexUnaryOp, Concat, Constant, Drop, Elastic, Impulse, Poll, Take, TakeRight, UnaryOp, UnzipWindow}
 import de.sciss.optional.Optional
 
-final class GEOps(val `this`: GE) extends AnyVal { me =>
+final class GEOps1(val `this`: GE) extends AnyVal { me =>
   import me.{`this` => g}
 
   /** Creates a proxy that represents a specific output channel of the element.
@@ -26,40 +26,6 @@ final class GEOps(val `this`: GE) extends AnyVal { me =>
     * @return a monophonic element that represents the given channel of the receiver
     */
   def `\\`(index: Int)      : GE = ChannelProxy(g, index)
-
-//  def madd(mul: GE, add: GE): GE = MulAdd(g, mul, add)
-//
-//  def flatten               : GE = Flatten(g)
-
-  def poll: Poll = poll()
-
-  /** Polls the output values of this graph element, and prints the result to the console.
-    * This is a convenient method for wrapping this graph element in a `Poll` UGen.
-    *
-    * @param   trig     a signal to trigger the printing. If this is a constant, it is
-    *                   interpreted as a normalized frequency and an `Impulse` generator with
-    *                   this normalized frequency is used.
-    * @param   label    a string to print along with the values, in order to identify
-    *                   different polls. Using the special label `"#auto"` (default) will generated
-    *                   automatic useful labels using information from the polled graph element
-    * @see  [[de.sciss.fscape.graph.Poll]]
-    */
-  def poll(trig: GE = 2e-4, label: Optional[String] = None): Poll = {
-    val trig1 = trig match {
-      case Constant(freqN)  => Impulse(freqN)
-      case other            => other
-    }
-    Poll(in = g, trig = trig1, label = label.getOrElse {
-      val str = g.toString
-      val i   = str.indexOf('(')
-      if (i >= 0) str.substring(0, i)
-      else {
-        val j = str.indexOf('@')
-        if (j >= 0) str.substring(0, j)
-        else str
-      }
-    })
-  }
 
   import UnaryOp._
 
@@ -105,8 +71,8 @@ final class GEOps(val `this`: GE) extends AnyVal { me =>
   // def linrand : GE           = UnOp.make( 'linrand, this )
   // def bilinrand : GE         = UnOp.make( 'bilinrand, this )
   // def sum3rand : GE          = UnOp.make( 'sum3rand, this )
-//  def distort   : GE  = unOp(Distort   )
-//  def softclip  : GE  = unOp(Softclip  )
+  //  def distort   : GE  = unOp(Distort   )
+  //  def softclip  : GE  = unOp(Softclip  )
 
   // def coin : GE              = UnOp.make( 'coin, this )
   // def even : GE              = UnOp.make( 'even, this )
@@ -115,14 +81,75 @@ final class GEOps(val `this`: GE) extends AnyVal { me =>
   // def hanWindow : GE         = UnOp.make( 'hanWindow, this )
   // def welWindow : GE         = UnOp.make( 'sum3rand, this )
   // def triWindow : GE         = UnOp.make( 'triWindow, this )
-//  def ramp      : GE  = unOp(Ramp      )
-//  def scurve    : GE  = unOp(Scurve    )
+  //  def ramp      : GE  = unOp(Ramp      )
+  //  def scurve    : GE  = unOp(Scurve    )
 
   // def isPositive : GE        = UnOp.make( 'isPositive, this )
   // def isNegative : GE        = UnOp.make( 'isNegative, this )
   // def isStrictlyPositive : GE= UnOp.make( 'isStrictlyPositive, this )
   // def rho : GE               = UnOp.make( 'rho, this )
   // def theta : GE             = UnOp.make( 'theta, this )
+
+  def elastic(n: GE = 1): GE = Elastic(g, n)
+
+  /** Takes at most `len` elements of this signal, then terminates. */
+  def take     (len: GE): GE = Take     (in = g, len = len)
+
+  /** Takes at most the last `len` elements of this (finite) signal. */
+  def takeRight(len: GE): GE = TakeRight(in = g, len = len)
+
+  /** Drops the first `len` elements of this signal. */
+  def drop     (len: GE): GE = Drop     (in = g, len = len)
+
+  /** Drops the last `len` elements of this (finite) signal. */
+  def dropRight(len: GE): GE = ???
+
+  /** Outputs the first element of this signal, then terminates. */
+  def head: GE = take     (1)
+
+  /** Outputs the last element of this (finite) signal, then terminates. */
+  def last: GE = takeRight(1)
+
+  /** Concatenates another signal to this (finite) signal. */
+  def ++ (that: GE): GE = Concat(g, that)
+}
+
+final class GEOps2(val `this`: GE) extends AnyVal { me =>
+  import me.{`this` => g}
+
+//  def madd(mul: GE, add: GE): GE = MulAdd(g, mul, add)
+//
+//  def flatten               : GE = Flatten(g)
+
+  def poll: Poll = poll()
+
+  /** Polls the output values of this graph element, and prints the result to the console.
+    * This is a convenient method for wrapping this graph element in a `Poll` UGen.
+    *
+    * @param   trig     a signal to trigger the printing. If this is a constant, it is
+    *                   interpreted as a normalized frequency and an `Impulse` generator with
+    *                   this normalized frequency is used.
+    * @param   label    a string to print along with the values, in order to identify
+    *                   different polls. Using the special label `"#auto"` (default) will generated
+    *                   automatic useful labels using information from the polled graph element
+    * @see  [[de.sciss.fscape.graph.Poll]]
+    */
+  def poll(trig: GE = 2e-4, label: Optional[String] = None): Poll = {
+    val trig1 = trig match {
+      case Constant(freqN)  => Impulse(freqN)
+      case other            => other
+    }
+    Poll(in = g, trig = trig1, label = label.getOrElse {
+      val str = g.toString
+      val i   = str.indexOf('(')
+      if (i >= 0) str.substring(0, i)
+      else {
+        val j = str.indexOf('@')
+        if (j >= 0) str.substring(0, j)
+        else str
+      }
+    })
+  }
 
   import BinaryOp._
 
@@ -220,31 +247,8 @@ final class GEOps(val `this`: GE) extends AnyVal { me =>
   def expexp(inLow: GE, inHigh: GE, outLow: GE, outHigh: GE): GE =
     (outHigh / outLow).pow((g / inLow).log / (inHigh / inLow).log) * outLow
 
-  /** Takes at most `len` elements of this signal, then terminates. */
-  def take     (len: GE): GE = Take     (in = g, len = len)
-
-  /** Takes at most the last `len` elements of this (finite) signal. */
-  def takeRight(len: GE): GE = TakeRight(in = g, len = len)
-
-  /** Drops the first `len` elements of this signal. */
-  def drop     (len: GE): GE = Drop     (in = g, len = len)
-
-  /** Drops the last `len` elements of this (finite) signal. */
-  def dropRight(len: GE): GE = ???
-
-  /** Outputs the first element of this signal, then terminates. */
-  def head: GE = take     (1)
-
-  /** Outputs the last element of this (finite) signal, then terminates. */
-  def last: GE = takeRight(1)
-
-  /** Concatenates another signal to this (finite) signal. */
-  def ++ (that: GE): GE = Concat(g, that)
-
   /** Enables operators for an assumed complex signal. */
   def complex: GEComplexOps = new GEComplexOps(g)
-
-  def elastic(n: GE = 1): GE = Elastic(g, n)
 }
 
 final class GEComplexOps(val `this`: GE) extends AnyVal { me =>

@@ -22,7 +22,10 @@ import scala.annotation.elidable.CONFIG
 import scala.language.implicitConversions
 
 package object fscape {
-  implicit def geOps(g: GE): GEOps = new GEOps(g)
+  implicit def geOps1      (g: GE    ): GEOps1 = new GEOps1(g)
+  implicit def geOps2      (g: GE    ): GEOps2 = new GEOps2(g)
+  implicit def intGeOps2   (i: Int   ): GEOps2 = new GEOps2(i)
+  implicit def doubleGeOps2(d: Double): GEOps2 = new GEOps2(d)
 
   private lazy val logHeader = new SimpleDateFormat("[d MMM yyyy, HH:mm''ss.SSS] 'fscape' - ", Locale.US)
 
