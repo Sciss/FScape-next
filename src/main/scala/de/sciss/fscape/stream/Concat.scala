@@ -111,10 +111,8 @@ object Concat {
 
     protected def shouldComplete(): Boolean = inRemain == 0 && isClosed(in0) && isClosed(in1)
 
-    protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Int = {
+    protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Unit =
       Util.copy(bufIn0.buf, inOff, bufOut0.buf, outOff, chunk)
-      chunk
-    }
 
     private def testRead(): Unit = {
       updateCanRead()

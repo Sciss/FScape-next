@@ -49,7 +49,7 @@ object RunningMax {
     private[this] var value = Double.NegativeInfinity
     private[this] var trig0 = false
 
-    protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Int = {
+    protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Unit = {
       var inOffI  = inOff
       var outOffI = outOff
       val stop0   = inOffI + chunk
@@ -71,7 +71,6 @@ object RunningMax {
       }
       value = v
       trig0 = t0
-      chunk
     }
   }
 }

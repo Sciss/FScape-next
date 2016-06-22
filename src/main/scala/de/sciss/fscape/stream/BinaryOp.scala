@@ -50,14 +50,14 @@ object BinaryOp {
 
     private[this] var bVal: Double = _
 
-    protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Int = {
+    protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Unit = {
       var inOffI  = inOff
       var outOffI = outOff
       val aStop   = inOffI + chunk
       val a       = bufIn0.buf
       val b       = if (bufIn1 == null) null else bufIn1.buf
       val out     = bufOut0.buf
-      val bStop   = if (b == null) 0 else bufIn1.size
+      val bStop   = if (b      == null) 0    else bufIn1.size
       var bv      = bVal
       while (inOffI < aStop) {
         val                 av = a(inOffI)
@@ -67,7 +67,6 @@ object BinaryOp {
         outOffI += 1
       }
       bVal = bv
-      chunk
     }
   }
 }

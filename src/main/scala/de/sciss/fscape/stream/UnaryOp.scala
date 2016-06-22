@@ -47,7 +47,7 @@ object UnaryOp {
       with FilterChunkImpl[BufD, BufD, Shape]
       with FilterIn1DImpl[BufD] {
 
-    protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Int = {
+    protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Unit = {
       // println(s"UnaryOp($op).processChunk(in $bufIn0, out $bufOut, chunk $chunk)")
       var inOffI  = inOff
       var outOffI = outOff
@@ -59,7 +59,6 @@ object UnaryOp {
         inOffI  += 1
         outOffI += 1
       }
-      chunk
     }
   }
 }

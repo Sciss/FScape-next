@@ -20,7 +20,7 @@ import de.sciss.fscape.graph.ConstantI
 import de.sciss.fscape.stream.impl.{FilterChunkImpl, FilterIn2DImpl, StageImpl, StageLogicImpl}
 
 object Drop {
-  def last(in: OutD)(implicit b: Builder): OutD = {
+  def tail(in: OutD)(implicit b: Builder): OutD = {
     val len = ConstantI(1).toInt
     apply(in = in, len = len)
   }
@@ -55,7 +55,7 @@ object Drop {
     private[this] var framesRead    = 0
     private[this] var numFrames     = -1
 
-    protected def processChunk(inOff: Int, outOff: Int, len: Int): Int = {
+    protected def processChunk(inOff: Int, outOff: Int, len: Int): Unit = {
       if (framesRead == 0) {
         numFrames = math.max(0, bufIn1.buf(0))
       }
@@ -66,8 +66,10 @@ object Drop {
         Util.copy(bufIn0.buf, inOff + skip, bufOut0.buf, outOff, chunk)
       }
 
+      // println(s"inOff $inOff, outOff $outOff, len $len, skip $skip, chunk $chunk, framesRead $framesRead, numFrames $numFrames")
+
       framesRead += skip
-      chunk
+      ??? // chunk
     }
   }
 }

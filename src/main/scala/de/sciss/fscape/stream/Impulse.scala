@@ -53,7 +53,7 @@ object Impulse {
     private[this] var phase   : Double = _    // internal state; does not include `phaseOff`
     private[this] var init = true
 
-    protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Int = {
+    protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Unit = {
       // println(s"Impulse.processChunk($bufIn0, $chunk)")
 
       var inOffI    = inOff
@@ -99,7 +99,6 @@ object Impulse {
       incr      = incrV
       phaseOff  = phaseOffV
       phase     = phaseV
-      chunk
     }
   }
 }

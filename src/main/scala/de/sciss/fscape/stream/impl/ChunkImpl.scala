@@ -20,6 +20,9 @@ import akka.stream.{Inlet, Outlet, Shape}
 
 import scala.annotation.tailrec
 
+/** An I/O process that processes chunks with equal number of
+  * input and output frames.
+  */
 trait ChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape] {
   _: InOutImpl[S] with GraphStageLogic =>
 
@@ -35,7 +38,7 @@ trait ChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape] {
   protected def in0 : Inlet [In0]
   protected def out0: Outlet[Out]
 
-  protected def processChunk(inOff: Int, outOff: Int, len: Int): Int
+  protected def processChunk(inOff: Int, outOff: Int, len: Int): Unit
 
   // ---- impl ----
 
@@ -72,12 +75,12 @@ trait ChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape] {
 
     val chunk = math.min(_inRemain, outRemain)
     if (chunk > 0) {
-      val chunk1   = processChunk(inOff = inOff, outOff = outOff, len = chunk)
-      inOff       += chunk1
-      _inRemain    -= chunk1
-      outOff      += chunk1
-      outRemain   -= chunk1
-      if (chunk1 > 0) stateChange = true
+      processChunk(inOff = inOff, outOff = outOff, len = chunk)
+      inOff       += chunk
+      _inRemain   -= chunk
+      outOff      += chunk
+      outRemain   -= chunk
+      stateChange  = true
     }
 
     val flushOut = shouldComplete()
@@ -88,7 +91,7 @@ trait ChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape] {
       } else {
         bufOut0.release()
       }
-      bufOut0      = null
+      bufOut0     = null
       outSent     = true
       stateChange = true
     }

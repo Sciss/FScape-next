@@ -49,7 +49,7 @@ object DC {
     private[this] var init = true
     private[this] var value   : Double = _
 
-    protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Int = {
+    protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Unit = {
       if (init) {
         value   = bufIn0.buf(inOff)
         init    = false
@@ -58,7 +58,6 @@ object DC {
       // println(s"DC.fill($value, $chunk) -> $bufOut")
 
       Util.fill(bufOut0.buf, outOff, chunk, value)
-      chunk
     }
   }
 }

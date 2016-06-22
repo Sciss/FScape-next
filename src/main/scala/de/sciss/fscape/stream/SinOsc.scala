@@ -54,7 +54,7 @@ object SinOsc {
 
     import Util.Pi2
 
-    protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Int = {
+    protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Unit = {
       // println(s"SinOsc.processChunk($bufIn0, $chunk)")
 
       var inOffI    = inOff
@@ -92,7 +92,6 @@ object SinOsc {
       incr      = incrV
       phaseOff  = phaseOffV
       phase     = phaseV
-      chunk
     }
   }
 }

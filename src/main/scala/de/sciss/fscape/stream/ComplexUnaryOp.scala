@@ -57,10 +57,9 @@ object ComplexUnaryOp {
 //     super.process()
 //   }
 
-    protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Int = {
+    protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Unit = {
       require((chunk & 1) == 0)// must be even
       op(in = bufIn0.buf, inOff = inOff, out = bufOut0.buf, outOff = outOff, len = chunk >> 1)
-      chunk
     }
   }
 }
