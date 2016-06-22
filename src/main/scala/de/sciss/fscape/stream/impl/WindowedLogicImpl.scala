@@ -96,7 +96,8 @@ trait WindowedLogicImpl[In0 >: Null <: BufLike, S <: Shape]
     }
 
     if (canWriteToWindow) {
-      if (isNextWindow) {
+      val flushIn0 = inRemain == 0 && shouldComplete()
+      if (isNextWindow && flushIn0) {
         writeToWinRemain  = startNextWindow(inOff = inOff)
         writeToWinOff     = 0
         isNextWindow      = false
@@ -105,7 +106,7 @@ trait WindowedLogicImpl[In0 >: Null <: BufLike, S <: Shape]
       }
 
       val chunk     = math.min(writeToWinRemain, inRemain)
-      val flushIn   = inRemain == 0 && writeToWinOff > 0 && shouldComplete()
+      val flushIn   = flushIn0 && writeToWinOff > 0
       if (chunk > 0 || flushIn) {
         // logStream(s"writeToWindow(); inOff = $inOff, writeToWinOff = $writeToWinOff, chunk = $chunk")
         if (chunk > 0) {
@@ -148,7 +149,7 @@ trait WindowedLogicImpl[In0 >: Null <: BufLike, S <: Shape]
       }
     }
 
-    val flushOut = inRemain == 0 && /* writeToWinRemain */ writeToWinOff == 0 && readFromWinRemain == 0 && shouldComplete()
+    val flushOut = inRemain == 0 && writeToWinRemain == 0 && readFromWinRemain == 0 && shouldComplete()
     if (!outSent && (outRemain == 0 || flushOut) && canWrite) {
       writeOuts(outOff)
       outSent     = true
