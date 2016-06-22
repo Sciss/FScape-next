@@ -16,7 +16,7 @@ package stream
 package impl
 
 import akka.stream.stage.GraphStageLogic
-import akka.stream.{Inlet, Outlet, Shape}
+import akka.stream.{Inlet, Shape}
 
 import scala.annotation.tailrec
 
@@ -28,13 +28,7 @@ trait ChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape] {
 
   protected def shouldComplete(): Boolean
 
-  protected var bufIn0 : In0
-  protected var bufOut0: Out
-
-  protected def allocOutBuf0(): Out
-
-  protected def in0 : Inlet [In0]
-  protected def out0: Outlet[Out]
+  protected def allocOutputBuffers(): Int
 
   protected def processChunk(): Boolean
 
@@ -62,9 +56,7 @@ trait ChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape] {
     }
 
     if (outSent) {
-      // XXX TODO -- use allocOutputBuffers
-      bufOut0       = allocOutBuf0()
-      outRemain     = bufOut0.size
+      outRemain     = allocOutputBuffers()
       outOff        = 0
       outSent       = false
       stateChange   = true
@@ -73,14 +65,8 @@ trait ChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape] {
     if (processChunk()) stateChange = true
 
     val flushOut = shouldComplete()
-    if (!outSent && (outRemain == 0 || flushOut) && isAvailable(out0)) {
-      if (outOff > 0) {
-        bufOut0.size = outOff
-        push(out0, bufOut0)
-      } else {
-        bufOut0.release()
-      }
-      bufOut0     = null
+    if (!outSent && (outRemain == 0 || flushOut) && canWrite) {
+      writeOuts(outOff)
       outSent     = true
       stateChange = true
     }
@@ -123,6 +109,8 @@ trait SameChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape]
 trait FilterChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape]
   extends SameChunkImpl[In0, Out, S] {
   _: InOutImpl[S] with GraphStageLogic =>
+
+  protected def in0 : Inlet [In0]
 
   protected final def shouldComplete(): Boolean = inRemain == 0 && isClosed(in0)
 }
