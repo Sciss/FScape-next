@@ -45,8 +45,8 @@ abstract class FFTStageImpl(name: String)
 abstract class FFTLogicImpl(name: String, shape: FanInShape3[BufD, BufI, BufI, BufD])
                            (implicit ctrl: Control)
   extends StageLogicImpl(name, shape)
-    with WindowedLogicImpl[BufD, FanInShape3[BufD, BufI, BufI, BufD]]
-    with FilterLogicImpl  [BufD, FanInShape3[BufD, BufI, BufI, BufD]]
+    with WindowedLogicImpl[FanInShape3[BufD, BufI, BufI, BufD]]
+    with FilterLogicImpl[BufD, FanInShape3[BufD, BufI, BufI, BufD]]
     with FilterIn3DImpl[BufD, BufI, BufI] {
 
   // ---- abstract ----

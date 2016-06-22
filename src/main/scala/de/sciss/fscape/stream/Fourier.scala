@@ -68,9 +68,9 @@ object Fourier {
 
   private final class Logic(shape: Shape)(implicit ctrl: Control)
     extends StageLogicImpl(name, shape)
-      with WindowedLogicImpl[BufD, Shape]
-      with FilterLogicImpl  [BufD, Shape]
-      with FilterIn5DImpl   [BufD, BufI, BufI, BufD, BufI] {
+      with WindowedLogicImpl[Shape]
+      with FilterLogicImpl[BufD, Shape]
+      with FilterIn5DImpl[BufD, BufI, BufI, BufD, BufI] {
 
     private[this] val fileBuffers   = new Array[FileBuffer](4)
     private[this] val tempFiles     = new Array[File      ](4)

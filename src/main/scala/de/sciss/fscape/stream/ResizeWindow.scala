@@ -61,8 +61,8 @@ object ResizeWindow {
   // XXX TODO -- abstract over data type (BufD vs BufI)?
   private final class Logic(shape: Shape)(implicit ctrl: Control)
     extends StageLogicImpl(name, shape)
-      with WindowedLogicImpl[BufD, Shape]
-      with FilterLogicImpl  [BufD, Shape]
+      with WindowedLogicImpl[Shape]
+      with FilterLogicImpl[BufD, Shape]
       with FilterIn4DImpl[BufD, BufI, BufI, BufI] {
 
     private[this] var winBuf      : Array[Double] = _

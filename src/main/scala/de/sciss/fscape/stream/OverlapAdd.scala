@@ -65,8 +65,8 @@ object OverlapAdd {
 
   private final class Logic(shape: Shape)(implicit ctrl: Control)
     extends StageLogicImpl(name, shape)
-      with WindowedLogicImpl[BufD, Shape]
-      with FilterLogicImpl  [BufD, Shape]
+      with WindowedLogicImpl[Shape]
+      with FilterLogicImpl[BufD, Shape]
       with FilterIn3DImpl[BufD, BufI, BufI] {
 
     private[this] var size  : Int  = _

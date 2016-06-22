@@ -18,8 +18,7 @@ package impl
 import akka.stream.Shape
 import akka.stream.stage.GraphStageLogic
 
-trait WindowedLogicImpl[In0 >: Null <: BufLike, S <: Shape]
-  extends ChunkImpl[S] {
+trait WindowedLogicImpl[S <: Shape] extends ChunkImpl[S] {
 
   _: GraphStageLogic =>
 

@@ -49,7 +49,7 @@ object GenWindow {
   // XXX TODO -- abstract over data type (BufD vs BufI)?
   private final class Logic(shape: Shape)(implicit ctrl: Control)
     extends StageLogicImpl(name, shape)
-      with WindowedLogicImpl[BufD, Shape]
+      with WindowedLogicImpl[Shape]
       with GenIn3DImpl[BufI, BufI, BufD] {
 
     // private[this] var winBuf : Array[Double] = _
