@@ -110,10 +110,9 @@ object Sliding {
     }
 
     protected def processWindow(writeToWinOff: Int): Int = {
-      val flush: Boolean = ???
-      val res = if (flush) {
-        windows.map(_.outRemain).sum
-      } else {
+      val res = /* if (flush) */ {
+      //   windows.map(_.outRemain).sum
+      // } else {
         var i = 0
         var sum = 0
         while (i < windows.length) {
@@ -128,7 +127,7 @@ object Sliding {
         sum
       }
 
-      println(s"SLID processWindow($writeToWinOff, $flush) -> $res")
+      // println(s"SLID processWindow($writeToWinOff, $flush) -> $res")
       res // -> readFromWinRemain
     }
 

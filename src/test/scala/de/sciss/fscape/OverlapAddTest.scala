@@ -43,7 +43,7 @@ object OverlapAddTest extends App {
     DiskOut(file = out, spec = AudioFileSpec(sampleRate = 44100.0, numChannels = 1), in = sig)
   }
 
-  // showStreamLog = true
+  showStreamLog = true
 
   val config = stream.Control.Config()
   config.blockSize = 1020

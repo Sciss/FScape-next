@@ -76,7 +76,7 @@ trait WindowedLogicImpl[In0 >: Null <: BufLike, S <: Shape]
 
     if (canWriteToWindow) {
       val flushIn0 = inRemain == 0 && shouldComplete()
-      if (isNextWindow && flushIn0) {
+      if (isNextWindow && !flushIn0) {
         writeToWinRemain  = startNextWindow(inOff = inOff)
         writeToWinOff     = 0
         isNextWindow      = false
