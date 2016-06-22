@@ -17,18 +17,23 @@ object OverlapAddTest extends App {
 
   lazy val g = Graph {
     import graph._
-    val disk          = DiskIn(file = in, numChannels = 1)
-    val disk1         = DiskIn(file = in, numChannels = 1)
+    // val disk          = DiskIn(file = in, numChannels = 1)
+    val disk = SinOsc(10.0/44100).take(44100)
+    // val disk1         = DiskIn(file = in, numChannels = 1)
     val inputWinSize  = 667 * 4 // 16384
     val stepSize      = 667
     val win           = GenWindow(size = inputWinSize, shape = GenWindow.Hann)
     val gain          = 0.5
-    val slide         = Sliding   (in = disk    , size = inputWinSize, step = stepSize)
+    val numPadLeft    = inputWinSize - stepSize
+    val padLeft       = DC(0.0).take(numPadLeft)
+    val slideIn       = padLeft ++ disk
+    val slide         = Sliding   (in = slideIn , size = inputWinSize, step = stepSize)
     val shiftXPad     = 0: GE
     val windowed      = slide * win
     val lap           = OverlapAdd(in = windowed, size = inputWinSize, step = stepSize + shiftXPad)
-    val sig0          = lap * gain
-    val sig           = sig0 - disk1
+    val drop          = lap.drop(numPadLeft)
+    val sig0          = drop * gain
+    val sig           = sig0 // - disk1
     DiskOut(file = out, spec = AudioFileSpec(sampleRate = 44100.0, numChannels = 1), in = sig)
   }
 
