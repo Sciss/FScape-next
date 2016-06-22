@@ -18,10 +18,8 @@ package impl
 import akka.stream.Shape
 import akka.stream.stage.GraphStageLogic
 
-import scala.annotation.tailrec
-
 trait WindowedLogicImpl[In0 >: Null <: BufLike, S <: Shape]
-  extends InOutImpl[S] {
+  extends ChunkImpl[S] {
 
   _: GraphStageLogic =>
 
@@ -36,7 +34,7 @@ trait WindowedLogicImpl[In0 >: Null <: BufLike, S <: Shape]
   protected def startNextWindow(inOff: Int): Int
 
   /** If crucial inputs have been closed. */
-  protected def shouldComplete(): Boolean
+  protected def inputsEnded: Boolean
 
   /** Issues a copy from input buffer to internal window buffer.
     *
@@ -60,40 +58,21 @@ trait WindowedLogicImpl[In0 >: Null <: BufLike, S <: Shape]
 
   protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit
 
-  protected def allocOutputBuffers(): Int
-
   // ---- impl ----
 
   private[this] final var writeToWinOff     = 0
   private[this] final var writeToWinRemain  = 0
   private[this] final var readFromWinOff    = 0
   private[this] final var readFromWinRemain = 0
-  private[this] final var inOff             = 0  // regarding `bufIn`
-  private[this] final var inRemain          = 0
-  private[this] final var outOff            = 0  // regarding `bufOut`
-  private[this] final var outRemain         = 0
 
   private[this] final var outSent           = true
   private[this] final var isNextWindow      = true
 
   @inline
-  private[this] final def shouldRead        = inRemain          == 0 && canRead
-  @inline
   private[this] final def canWriteToWindow  = readFromWinRemain == 0 && inValid
 
-  @tailrec
-  final def process(): Unit = {
-    // becomes `true` if state changes,
-    // in that case we run this method again.
+  protected final def processChunk(): Boolean = {
     var stateChange = false
-    logStream(s"process() $this")
-
-    if (shouldRead) {
-      inRemain    = readIns()
-      inOff       = 0
-      stateChange = true
-      // logStream(s"readIns(); inRemain = $inRemain")
-    }
 
     if (canWriteToWindow) {
       val flushIn0 = inRemain == 0 && shouldComplete()
@@ -149,17 +128,8 @@ trait WindowedLogicImpl[In0 >: Null <: BufLike, S <: Shape]
       }
     }
 
-    val flushOut = inRemain == 0 && writeToWinRemain == 0 && readFromWinRemain == 0 && shouldComplete()
-    if (!outSent && (outRemain == 0 || flushOut) && canWrite) {
-      writeOuts(outOff)
-      outSent     = true
-      stateChange = true
-    }
-
-    if (flushOut && outSent) {
-      logStream(s"completeStage() $this")
-      completeStage()
-    }
-    else if (stateChange) process()
+    stateChange
   }
+
+  protected final def shouldComplete(): Boolean = inputsEnded && writeToWinRemain == 0 && readFromWinRemain == 0
 }

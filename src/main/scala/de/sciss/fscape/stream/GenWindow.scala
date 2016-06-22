@@ -57,7 +57,7 @@ object GenWindow {
     private[this] var _shape : WinShape = Hann  // arbitrary default
     private[this] var param  : Double   = _
 
-    protected def shouldComplete(): Boolean = false         // never
+    protected def inputsEnded: Boolean = false         // never
 
     protected def startNextWindow(inOff: Int): Int = {
 //      val oldSize = winSize

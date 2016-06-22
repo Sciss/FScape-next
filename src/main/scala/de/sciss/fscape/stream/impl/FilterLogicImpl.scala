@@ -26,9 +26,11 @@ trait FilterLogicImpl[In0 >: Null <: BufLike, S <: Shape]
 
   protected def in0: Inlet[In0]
 
+  protected def inRemain: Int
+
   protected var bufIn0: In0
 
   // ---- impl ----
 
-  protected final def shouldComplete(): Boolean = isClosed(in0)
+  protected final def inputsEnded: Boolean = inRemain == 0 && isClosed(in0)
 }
