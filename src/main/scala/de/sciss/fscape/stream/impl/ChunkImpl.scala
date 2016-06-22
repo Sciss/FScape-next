@@ -21,8 +21,8 @@ import akka.stream.{Inlet, Shape}
 import scala.annotation.tailrec
 
 /** An I/O process that processes chunks. */
-trait ChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape] {
-  _: InOutImpl[S] with GraphStageLogic =>
+trait ChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape] extends InOutImpl[S] {
+  _: GraphStageLogic =>
 
   // ---- abstract ----
 
@@ -84,7 +84,7 @@ trait ChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape] {
   */
 trait SameChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape]
   extends ChunkImpl[In0, Out, S] {
-  _: InOutImpl[S] with GraphStageLogic =>
+  _: GraphStageLogic =>
 
   // ---- abstract ----
 
@@ -108,7 +108,7 @@ trait SameChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape]
 
 trait FilterChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape]
   extends SameChunkImpl[In0, Out, S] {
-  _: InOutImpl[S] with GraphStageLogic =>
+  _: GraphStageLogic =>
 
   protected def in0 : Inlet [In0]
 
@@ -117,7 +117,7 @@ trait FilterChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape
 
 trait GenChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape]
   extends SameChunkImpl[In0, Out, S] {
-  _: InOutImpl[S] with GraphStageLogic =>
+  _: GraphStageLogic =>
 
   protected final def shouldComplete(): Boolean = false
 }
