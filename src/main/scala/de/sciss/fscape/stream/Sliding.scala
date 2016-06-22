@@ -121,7 +121,7 @@ object Sliding {
         }
       }
 
-      val chunkOut = outRemain
+      val chunkOut = math.min(???, outRemain)
       if (chunkOut > 0) {
         val chunk1 = copyWindowsToOutput(chunkOut)
         if (chunk1 > 0) {
@@ -155,6 +155,7 @@ object Sliding {
         val chunk1 = math.min(win.inRemain, chunk)
         if (chunk1 > 0) {
           Util.copy(bufIn0.buf, inOff, win.buf, win.offIn, chunk1)
+          println(s"SLID copying $chunk1 frames from in at $inOff to window $i at ${win.offIn}")
           win.offIn += chunk1
           res = math.max(res, chunk1)
         }
@@ -170,17 +171,19 @@ object Sliding {
       var outOff0 = outOff
       while (chunk0 > 0 && i < windows.length) {  // take care of index as we drop windows on the way
         val win     = windows(i)
-        val chunk1  = math.min(chunk0, win.outRemain)
+        val chunk1  = math.min(chunk0, win.availableOut)
         if (chunk1 > 0) {
           Util.copy(win.buf, win.offOut, bufOut0.buf, outOff0, chunk1)
+          println(s"SLID copying $chunk1 frames from window $i at ${win.offOut} to out at $outOff0")
           win.offOut += chunk1
           chunk0     -= chunk1
           outOff0    += chunk1
         }
         if (win.outRemain == 0) {
-          windows.remove(0)
+          println("SLID dropping window 0")
+          windows.remove(i)
         } else {
-          i += 1
+          i = windows.length
         }
       }
       chunk - chunk0
