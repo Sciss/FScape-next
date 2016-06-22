@@ -90,12 +90,14 @@ object Sliding {
     private def canPrepareStep = stepRemain == 0 && bufIn0 != null &&
       (windows.isEmpty || windows.head.inRemain > 0)
 
-    protected def shouldComplete(): Boolean = inputsEnded && windows.isEmpty
+    protected def shouldComplete(): Boolean = inputsEnded &&
+      (windows.isEmpty || windows.head.offIn == 0)
 
     protected def processChunk(): Boolean = {
       var stateChange = false
 
       if (canPrepareStep && isNextWindow) {
+        println("next-window")
         stepRemain    = startNextWindow(inOff = inOff)
         windows      += new Window(new Array[Double](size))
         isNextWindow  = false
@@ -104,24 +106,30 @@ object Sliding {
 
       val chunkIn = math.min(stepRemain, inRemain)
       if (chunkIn > 0) {
-        val chunk1   = copyInputToWindow(chunkIn)
-        inOff       += chunk1
-        inRemain    -= chunk1
-        stepRemain  -= chunk1
-        stateChange  = true
-
-        if (stepRemain == 0) {
-          isNextWindow = true
+        val chunk1 = copyInputToWindows(chunkIn)
+        if (chunk1 > 0) {
+          println(s"copyInputToWindows($chunkIn) -> $chunk1")
+          inOff       += chunk1
+          inRemain    -= chunk1
+          stepRemain  -= chunk1
           stateChange  = true
+
+          if (stepRemain == 0) {
+            isNextWindow = true
+            stateChange  = true
+          }
         }
       }
 
       val chunkOut = outRemain
       if (chunkOut > 0) {
-        val chunk1   = copyWindowToOutput(chunkOut)
-        outOff      += chunk1
-        outRemain   -= chunk1
-        stateChange  = true
+        val chunk1 = copyWindowsToOutput(chunkOut)
+        if (chunk1 > 0) {
+          println(s"copyWindowsToOutput($chunkOut) -> $chunk1")
+          outOff      += chunk1
+          outRemain   -= chunk1
+          stateChange  = true
+        }
       }
 
       stateChange
@@ -139,7 +147,7 @@ object Sliding {
     }
 
     @inline
-    private def copyInputToWindow(chunk: Int): Int = {
+    private def copyInputToWindows(chunk: Int): Int = {
       var i = 0
       var res = 0
       while (i < windows.length) {
@@ -156,7 +164,7 @@ object Sliding {
     }
 
     @inline
-    private def copyWindowToOutput(chunk: Int): Int = {
+    private def copyWindowsToOutput(chunk: Int): Int = {
       var i = 0
       var chunk0  = chunk
       var outOff0 = outOff
