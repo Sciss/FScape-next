@@ -87,14 +87,18 @@ object OverlapAdd {
       // step
     }
 
+    var FRAMES_READ = 0
+
     protected def copyInputToWindow(inOff: Int, writeToWinOff: Int, chunk: Int): Unit = {
+      println(s"-- copyInputToWindow($inOff, $writeToWinOff, $chunk) $FRAMES_READ")
+      FRAMES_READ += chunk
       if (writeToWinOff == 0) {
-        // println(s"adding   window of size $size")
+        println(s"adding   window of size $size")
         windows += new Window(new Array[Double](size))
       }
       val win     = windows.last
       val chunk1  = math.min(chunk, win.inRemain)
-      // println(s"copying $chunk1 frames to   window ${windows.length - 1} at ${win.offIn}")
+      println(s"copying $chunk1 frames to   window ${windows.length - 1} at ${win.offIn}")
       if (chunk1 > 0) {
         Util.copy(bufIn0.buf, inOff, win.buf, win.offIn, chunk1)
         win.offIn += chunk1
@@ -107,22 +111,28 @@ object OverlapAdd {
 //      val res = if (win.inRemain > 0) win.offIn else step
 //      println(s"processWindow($writeToWinOff) -> $res")
 //      res
-      if (flush) windows.last.size else step
+      val res = if (flush) windows.last.size else step
+      println(s"processWindow($writeToWinOff, $flush) -> $res")
+      res
     }
 
+    var FRAMES_WRITTEN = 0
+
     protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit = {
+      println(s"-- copyWindowToOutput($readFromWinOff, $outOff, $chunk) $FRAMES_WRITTEN")
+      FRAMES_WRITTEN += chunk
       Util.clear(bufOut0.buf, outOff, chunk)
       var i = 0
       while (i < windows.length) {  // take care of index as we drop windows on the way
         val win = windows(i)
         val chunk1 = math.min(win.availableOut, chunk)
-        // println(s"copying $chunk1 frames from window $i at ${win.offOut}")
+        println(s"copying $chunk1 frames from window $i at ${win.offOut}")
         if (chunk1 > 0) {
           Util.add(win.buf, win.offOut, bufOut0.buf, outOff, chunk1)
           win.offOut += chunk1
         }
         if (win.outRemain == 0) {
-          // println(s"removing window $i")
+          println(s"removing window $i")
           windows.remove(i)
         } else {
           i += 1
