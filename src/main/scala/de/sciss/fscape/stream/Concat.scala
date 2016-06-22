@@ -48,7 +48,7 @@ object Concat {
   private final class Logic(shape: Shape)(implicit ctrl: Control)
     extends StageLogicImpl(name, shape)
       with InOutImpl[Shape]
-      with SameChunkImpl[BufD, BufD, Shape]
+      with SameChunkImpl[Shape]
       with Out1LogicImpl[BufD, Shape]
       with Out1DoubleImpl[Shape] {
 

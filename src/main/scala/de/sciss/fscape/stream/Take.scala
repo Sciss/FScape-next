@@ -49,7 +49,7 @@ object Take {
 
   private final class Logic(shape: Shape)(implicit ctrl: Control)
     extends StageLogicImpl(name, shape)
-      with ChunkImpl[BufD, BufD, Shape]
+      with ChunkImpl[Shape]
       with FilterIn2DImpl[BufD, BufI] {
 
     private[this] var takeRemain    = Int.MaxValue

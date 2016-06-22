@@ -21,7 +21,7 @@ import akka.stream.{Inlet, Shape}
 import scala.annotation.tailrec
 
 /** An I/O process that processes chunks. */
-trait ChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape] extends InOutImpl[S] {
+trait ChunkImpl[S <: Shape] extends InOutImpl[S] {
   _: GraphStageLogic =>
 
   // ---- abstract ----
@@ -82,8 +82,7 @@ trait ChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape] exte
 /** An I/O process that processes chunks with equal number of
   * input and output frames.
   */
-trait SameChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape]
-  extends ChunkImpl[In0, Out, S] {
+trait SameChunkImpl[S <: Shape] extends ChunkImpl[S] {
   _: GraphStageLogic =>
 
   // ---- abstract ----
@@ -106,8 +105,7 @@ trait SameChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape]
   }
 }
 
-trait FilterChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape]
-  extends SameChunkImpl[In0, Out, S] {
+trait FilterChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape] extends SameChunkImpl[S] {
   _: GraphStageLogic =>
 
   protected def in0 : Inlet [In0]
@@ -115,8 +113,7 @@ trait FilterChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape
   protected final def shouldComplete(): Boolean = inRemain == 0 && isClosed(in0)
 }
 
-trait GenChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape]
-  extends SameChunkImpl[In0, Out, S] {
+trait GenChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape] extends SameChunkImpl[S] {
   _: GraphStageLogic =>
 
   protected final def shouldComplete(): Boolean = false
