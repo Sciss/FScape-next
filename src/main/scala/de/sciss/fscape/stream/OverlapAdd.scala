@@ -81,10 +81,7 @@ object OverlapAdd {
       if (bufIn2 != null && inOff < bufIn2.size) {
         step = math.max(1, bufIn2.buf(inOff))
       }
-      // println(s"startNextWindow($inOff) -> size = $size, step = $step")
-      size
-      // math.min(size, step)
-      // step
+      size  // -> writeToWinRemain
     }
 
     var FRAMES_READ = 0
@@ -93,27 +90,25 @@ object OverlapAdd {
       println(s"-- copyInputToWindow($inOff, $writeToWinOff, $chunk) $FRAMES_READ")
       FRAMES_READ += chunk
       if (writeToWinOff == 0) {
-        println(s"adding   window of size $size")
+        println(s"OLAP adding   window of size $size")
         windows += new Window(new Array[Double](size))
       }
       val win     = windows.last
       val chunk1  = math.min(chunk, win.inRemain)
-      println(s"copying $chunk1 frames to   window ${windows.length - 1} at ${win.offIn}")
+      println(s"OLAP copying $chunk1 frames to   window ${windows.length - 1} at ${win.offIn}")
       if (chunk1 > 0) {
         Util.copy(bufIn0.buf, inOff, win.buf, win.offIn, chunk1)
         win.offIn += chunk1
-        // remain  -= chunk1
       }
     }
 
     protected def processWindow(writeToWinOff: Int, flush: Boolean): Int = {
-//      val win = windows.last
-//      val res = if (win.inRemain > 0) win.offIn else step
-//      println(s"processWindow($writeToWinOff) -> $res")
-//      res
-      val res = if (flush) windows.last.size else step
-      println(s"processWindow($writeToWinOff, $flush) -> $res")
-      res
+      val res = if (flush) {
+        if (windows.isEmpty) 0 else math.max(step, windows.maxBy(_.availableOut).availableOut)
+      } else step
+
+      println(s"OLAP processWindow($writeToWinOff, $flush) -> $res")
+      res // -> readFromWinRemain
     }
 
     var FRAMES_WRITTEN = 0
@@ -126,13 +121,13 @@ object OverlapAdd {
       while (i < windows.length) {  // take care of index as we drop windows on the way
         val win = windows(i)
         val chunk1 = math.min(win.availableOut, chunk)
-        println(s"copying $chunk1 frames from window $i at ${win.offOut}")
+        println(s"OLAP copying $chunk1 frames from window $i at ${win.offOut}")
         if (chunk1 > 0) {
           Util.add(win.buf, win.offOut, bufOut0.buf, outOff, chunk1)
           win.offOut += chunk1
         }
         if (win.outRemain == 0) {
-          println(s"removing window $i")
+          println(s"OLAP removing window $i")
           windows.remove(i)
         } else {
           i += 1

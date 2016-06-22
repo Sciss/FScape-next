@@ -20,7 +20,7 @@ object OverlapAddTest extends App {
     // val disk          = DiskIn(file = in, numChannels = 1)
     // val disk = SinOsc(10.0/44100).take(44100)
     // val disk = DC(0.5).take(2000)
-    val disk = SinOsc(1.0/200).take(3000) ++ DC(0.0).take(3000)
+    val disk = SinOsc(1.0/200).take(3000) // ++ DC(0.0).take(3000)
 //    // val disk1         = DiskIn(file = in, numChannels = 1)
     val stepSize      = 100
     val inputWinSize  = stepSize * 4 // 16384

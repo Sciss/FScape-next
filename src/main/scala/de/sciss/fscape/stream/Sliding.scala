@@ -16,9 +16,10 @@ package stream
 
 import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FanInShape3}
-import de.sciss.fscape.stream.impl.{FilterIn3DImpl, StageImpl, StageLogicImpl}
+import de.sciss.fscape.stream.impl.{FilterIn3DImpl, FilterLogicImpl, StageImpl, StageLogicImpl, WindowedLogicImpl}
 
 import scala.annotation.tailrec
+import scala.collection.mutable
 
 /** Sliding overlapping window.
   *
@@ -64,11 +65,81 @@ object Sliding {
     def createLogic(attr: Attributes): GraphStageLogic = new Logic(shape)
   }
 
+  private final class Logic(shape: Shape)(implicit ctrl: Control)
+    extends StageLogicImpl(name, shape)
+      with WindowedLogicImpl[BufD, Shape]
+      with FilterLogicImpl  [BufD, Shape]
+      with FilterIn3DImpl[BufD, BufI, BufI] {
+
+    private[this] var size  : Int  = _
+    private[this] var step  : Int  = _
+
+    private[this] val windows = mutable.Buffer.empty[Window]
+
+    protected def startNextWindow(inOff: Int): Int = {
+      if (bufIn1 != null && inOff < bufIn1.size) {
+        size = math.max(1, bufIn1.buf(inOff))
+      }
+      if (bufIn2 != null && inOff < bufIn2.size) {
+        step = math.max(1, bufIn2.buf(inOff))
+      }
+      size  // -> writeToWinRemain
+    }
+
+    /** Issues a copy from input buffer to internal window buffer.
+      *
+      * @param inOff         current offset into input buffer
+      * @param writeToWinOff current offset into internal window buffer
+      * @param chunk         number of frames to copy
+      */
+    protected def copyInputToWindow(inOff: Int, writeToWinOff: Int, chunk: Int): Unit = {
+      if (writeToWinOff == 0) {
+        println(s"SLID adding   window of size $size")
+        windows += new Window(new Array[Double](size))
+      }
+
+      var i = 0
+      while (i < windows.length) {
+        val win = windows(i)
+        val chunk1 = math.min(win.inRemain, chunk)
+        println(s"SLID copying $chunk1 frames to window $i at ${win.offIn}")
+        if (chunk1 > 0) {
+          Util.add(bufIn0.buf, inOff, win.buf, win.offIn, chunk1)
+          win.offIn += chunk1
+        }
+        i += 1
+      }
+    }
+
+    protected def processWindow(writeToWinOff: Int, flush: Boolean): Int = {
+      val res = if (flush) {
+        windows.map(_.availableOut).sum
+      } else step
+
+      println(s"SLID processWindow($writeToWinOff, $flush) -> $res")
+      res // -> readFromWinRemain
+    }
+
+    protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit = {
+      val win     = windows.head
+      val chunk1  = math.min(chunk, win.outRemain)
+      println(s"SLID copying $chunk1 frames from window 0 at ${win.offOut}")
+      if (chunk1 > 0) {
+        Util.copy(win.buf, win.offOut,  bufOut0.buf, outOff, chunk1)
+        win.offOut += chunk1
+        if (win.outRemain == 0) {
+          println("SLID removing window 0")
+          windows.remove(0)
+        }
+      }
+    }
+  }
+
   // XXX TODO --- we should try to see if this can be implemented
   // on top of windowed-logic-impl which would make it much simpler.
   // XXX TODO --- check that flushIn is correctly handled (we should
   // flush partial windows)
-  private final class Logic(shape: Shape)(implicit ctrl: Control)
+  private final class LogicOLD(shape: Shape)(implicit ctrl: Control)
     extends StageLogicImpl(name, shape)
       with FilterIn3DImpl[BufD, BufI, BufI] {
 
@@ -193,7 +264,7 @@ object Sliding {
         } else {
           bufOut0.release()
         }
-        bufOut0      = null
+        bufOut0     = null
         outSent     = true
         stateChange = true
       }
