@@ -16,7 +16,7 @@ package stream
 
 import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FanInShape3}
-import de.sciss.fscape.stream.impl.{FilterIn3DImpl, FilterLogicImpl, StageImpl, StageLogicImpl, WindowedLogicImpl}
+import de.sciss.fscape.stream.impl.{ChunkImpl, FilterIn3DImpl, FilterLogicImpl, StageImpl, StageLogicImpl, WindowedLogicImpl}
 
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -67,7 +67,7 @@ object Sliding {
 
   private final class Logic(shape: Shape)(implicit ctrl: Control)
     extends StageLogicImpl(name, shape)
-      with WindowedLogicImpl[Shape]
+      with ChunkImpl[Shape]
       with FilterLogicImpl  [BufD, Shape]
       with FilterIn3DImpl[BufD, BufI, BufI] {
 
@@ -76,7 +76,59 @@ object Sliding {
 
     private[this] val windows = mutable.Buffer.empty[Window]
 
-    protected def startNextWindow(inOff: Int): Int = {
+    private[this] var isNextWindow  = true
+    private[this] var stepRemain    = 0
+
+    /*
+      back-pressure algorithm:
+      - never begin a step if windows.head is full
+      - for example with a constant step size of 1/4 window size,
+        this means we halt processing input after window size
+        input frames (i.e. with four windows in memory).
+     */
+    @inline
+    private def canPrepareStep = stepRemain == 0 && bufIn0 != null &&
+      (windows.isEmpty || windows.head.inRemain > 0)
+
+    protected def shouldComplete(): Boolean = inputsEnded && windows.isEmpty
+
+    protected def processChunk(): Boolean = {
+      var stateChange = false
+
+      if (canPrepareStep && isNextWindow) {
+        stepRemain    = startNextWindow(inOff = inOff)
+        windows      += new Window(new Array[Double](size))
+        isNextWindow  = false
+        stateChange   = true
+      }
+
+      val chunkIn = math.min(stepRemain, inRemain)
+      if (chunkIn > 0) {
+        val chunk1   = copyInputToWindow(chunkIn)
+        inOff       += chunk1
+        inRemain    -= chunk1
+        stepRemain  -= chunk1
+        stateChange  = true
+
+        if (stepRemain == 0) {
+          isNextWindow = true
+          stateChange  = true
+        }
+      }
+
+      val chunkOut = outRemain
+      if (chunkOut > 0) {
+        val chunk1   = copyWindowToOutput(chunkOut)
+        outOff      += chunk1
+        outRemain   -= chunk1
+        stateChange  = true
+      }
+
+      stateChange
+    }
+
+    @inline
+    private def startNextWindow(inOff: Int): Int = {
       if (bufIn1 != null && inOff < bufIn1.size) {
         size = math.max(1, bufIn1.buf(inOff))
       }
@@ -86,63 +138,31 @@ object Sliding {
       step  // -> writeToWinRemain
     }
 
-    var FRAMES_READ = 0
-
-    protected def copyInputToWindow(inOff: Int, writeToWinOff: Int, chunk: Int): Unit = {
-      println(s"-- SLID copyInputToWindow(inOff = $inOff, writeToWinOff = $writeToWinOff, chunk = $chunk) $FRAMES_READ")
-      FRAMES_READ += chunk
-      if (writeToWinOff == 0) {
-        println(s"SLID adding   window of size $size")
-        windows += new Window(new Array[Double](size))
-      }
-
+    @inline
+    private def copyInputToWindow(chunk: Int): Int = {
       var i = 0
+      var res = 0
       while (i < windows.length) {
         val win = windows(i)
         val chunk1 = math.min(win.inRemain, chunk)
-        println(s"SLID copying $chunk1 frames to window $i at ${win.offIn}")
         if (chunk1 > 0) {
           Util.copy(bufIn0.buf, inOff, win.buf, win.offIn, chunk1)
           win.offIn += chunk1
+          res = math.max(res, chunk1)
         }
         i += 1
       }
+      res
     }
 
-    protected def processWindow(writeToWinOff: Int): Int = {
-      val res = /* if (flush) */ {
-        //   windows.map(_.outRemain).sum
-        // } else {
-        var i = 0
-        var sum = 0
-        while (i < windows.length) {
-          val win = windows(i)
-          sum += win.availableOut
-          if (win.inRemain == 0) {
-            i += 1
-          } else {
-            i = windows.length
-          }
-        }
-        sum
-      }
-
-      // println(s"SLID processWindow($writeToWinOff, $flush) -> $res")
-      res // -> readFromWinRemain
-    }
-
-    var FRAMES_WRITTEN = 0
-
-    protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit = {
-      println(s"-- SLID copyWindowToOutput(readFromWinOff = $readFromWinOff, outOff = $outOff, chunk = $chunk) $FRAMES_WRITTEN")
-      FRAMES_WRITTEN += chunk
+    @inline
+    private def copyWindowToOutput(chunk: Int): Int = {
       var i = 0
       var chunk0  = chunk
       var outOff0 = outOff
       while (chunk0 > 0 && i < windows.length) {  // take care of index as we drop windows on the way
-      val win     = windows(i)
+        val win     = windows(i)
         val chunk1  = math.min(chunk0, win.outRemain)
-        println(s"SLID copying $chunk1 frames from window 0 at ${win.offOut}")
         if (chunk1 > 0) {
           Util.copy(win.buf, win.offOut, bufOut0.buf, outOff0, chunk1)
           win.offOut += chunk1
@@ -150,12 +170,12 @@ object Sliding {
           outOff0    += chunk1
         }
         if (win.outRemain == 0) {
-          println("SLID removing window 0")
           windows.remove(0)
         } else {
           i += 1
         }
       }
+      chunk - chunk0
     }
   }
 

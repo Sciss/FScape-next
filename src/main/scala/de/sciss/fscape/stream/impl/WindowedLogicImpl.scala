@@ -63,8 +63,6 @@ trait WindowedLogicImpl[S <: Shape] extends ChunkImpl[S] {
   private[this] final var writeToWinRemain  = 0
   private[this] final var readFromWinOff    = 0
   private[this] final var readFromWinRemain = 0
-
-  private[this] final var outSent           = true
   private[this] final var isNextWindow      = true
 
   @inline
@@ -107,14 +105,6 @@ trait WindowedLogicImpl[S <: Shape] extends ChunkImpl[S] {
     }
 
     if (readFromWinRemain > 0) {
-      if (outSent) {
-        outRemain     = allocOutputBuffers()
-        outOff        = 0
-        outSent       = false
-        stateChange   = true
-        // logStream(s"allocOutBuf(); outRemain = $outRemain")
-      }
-
       val chunk = math.min(readFromWinRemain, outRemain)
       if (chunk > 0) {
         // logStream(s"readFromWindow(); readFromWinOff = $readFromWinOff, outOff = $outOff, chunk = $chunk")
