@@ -53,11 +53,10 @@ trait WindowedLogicImpl[In0 >: Null <: BufLike, S <: Shape]
     * @param writeToWinOff  the current offset into the internal window buffer.
     *                       this is basically the amount of frames available for
     *                       processing.
-    * @param flush          `true` if the input is exhausted.
     * @return the number of frames available for sending through `copyWindowToOutput`
     *         (this becomes `readFromWinRemain`).
     */
-  protected def processWindow(writeToWinOff: Int, flush: Boolean): Int
+  protected def processWindow(writeToWinOff: Int /* , flush: Boolean */): Int
 
   protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit
 
@@ -119,7 +118,7 @@ trait WindowedLogicImpl[In0 >: Null <: BufLike, S <: Shape]
         }
 
         if (writeToWinRemain == 0 || flushIn) {
-          readFromWinRemain = processWindow(writeToWinOff = writeToWinOff, flush = flushIn)
+          readFromWinRemain = processWindow(writeToWinOff = writeToWinOff) // , flush = flushIn)
           readFromWinOff    = 0
           isNextWindow      = true
           stateChange       = true

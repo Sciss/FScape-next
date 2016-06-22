@@ -177,7 +177,7 @@ object Fourier {
       }
     }
 
-    protected def processWindow(writeToWinOff: Int, flush: Boolean): Int = {
+    protected def processWindow(writeToWinOff: Int): Int = {
       var zero = (fftSize << 1) - writeToWinOff
       if (writeToWinOff < fftSize) {
         val chunk1 = math.min(zero, fftSize - writeToWinOff)

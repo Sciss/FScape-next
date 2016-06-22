@@ -86,11 +86,11 @@ object ReverseWindow {
     protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit =
       Util.copy(winBuf, readFromWinOff, bufOut0.buf, outOff, chunk)
 
-    protected def processWindow(writeToWinOff: Int, flush: Boolean): Int = {
+    protected def processWindow(writeToWinOff: Int): Int = {
       var i   = 0
       val cl  = clump
       val cl2 = cl + cl
-      var j   = writeToWinOff - cl
+      var j   = writeToWinOff - cl  // should use `winBuf.size` instead (flush)?
       val b   = winBuf
       while (i < j) {
         val k = i + cl

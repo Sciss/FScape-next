@@ -102,7 +102,8 @@ object OverlapAdd {
       }
     }
 
-    protected def processWindow(writeToWinOff: Int, flush: Boolean): Int = {
+    protected def processWindow(writeToWinOff: Int): Int = {
+      val flush: Boolean = ???
       val res = if (flush) {
         if (windows.isEmpty) 0 else math.max(step, windows.maxBy(_.availableOut).availableOut)
       } else step

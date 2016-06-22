@@ -118,7 +118,7 @@ object PeakCentroid2D {
     @inline
     private def pixel(x: Int, y: Int): Double = winBuf(y * width + x)
 
-    protected def processWindow(writeToWinOff: Int, flush: Boolean): Int = {
+    protected def processWindow(writeToWinOff: Int): Int = {
       if (writeToWinOff < size) Util.clear(winBuf, writeToWinOff, size - writeToWinOff)
 
       var i     = 0

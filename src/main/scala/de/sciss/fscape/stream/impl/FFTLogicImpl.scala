@@ -96,7 +96,7 @@ abstract class FFTLogicImpl(name: String, shape: FanInShape3[BufD, BufI, BufI, B
   protected final def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit =
     Util.copy(fftBuf, readFromWinOff, bufOut0.buf, outOff, chunk)
 
-  protected final def processWindow(writeToWinOff: Int, flush: Boolean): Int = {
+  protected final def processWindow(writeToWinOff: Int): Int = {
     Util.fill(fftBuf, writeToWinOff, fftBuf.length - writeToWinOff, 0.0)
     performFFT(fft, fftBuf)
     _fftSize * fftOutSizeFactor

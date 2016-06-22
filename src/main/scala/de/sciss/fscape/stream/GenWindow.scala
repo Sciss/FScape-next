@@ -85,6 +85,6 @@ object GenWindow {
         len = chunk, param = param)
     }
 
-    protected def processWindow(writeToWinOff: Int, flush: Boolean): Int = writeToWinOff
+    protected def processWindow(writeToWinOff: Int): Int = writeToWinOff
   }
 }

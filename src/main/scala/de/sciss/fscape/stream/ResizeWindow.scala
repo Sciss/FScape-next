@@ -143,6 +143,6 @@ object ResizeWindow {
       // println(f"out: winOff $readFromWinOff%4d, outOff $outOff%4d, chunk $chunk%4d >> zeroStart $zeroStart%4d, zeroStop $zeroStop%4d")
     }
 
-    protected def processWindow(writeToWinOff: Int, flush: Boolean): Int = winOutSize
+    protected def processWindow(writeToWinOff: Int): Int = winOutSize
   }
 }

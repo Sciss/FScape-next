@@ -107,7 +107,7 @@ object FoldCepstrum {
 
 //    private var DEBUG = true
 
-    protected def processWindow(writeToWinOff: Int, flush: Boolean): Int = {
+    protected def processWindow(writeToWinOff: Int): Int = {
       // println(s"crr = $crr, cri = $cri, clr = $clr, cli = $cli, ccr = $ccr, cci = $cci, car = $car, cai = $cai")
 
       // 'variant 1'

@@ -109,10 +109,24 @@ object Sliding {
       }
     }
 
-    protected def processWindow(writeToWinOff: Int, flush: Boolean): Int = {
+    protected def processWindow(writeToWinOff: Int): Int = {
+      val flush: Boolean = ???
       val res = if (flush) {
         windows.map(_.outRemain).sum
-      } else step
+      } else {
+        var i = 0
+        var sum = 0
+        while (i < windows.length) {
+          val win = windows(i)
+          sum += win.availableOut
+          if (win.inRemain == 0) {
+            i += 1
+          } else {
+            i = windows.length
+          }
+        }
+        sum
+      }
 
       println(s"SLID processWindow($writeToWinOff, $flush) -> $res")
       res // -> readFromWinRemain
@@ -131,7 +145,7 @@ object Sliding {
         val chunk1  = math.min(chunk0, win.outRemain)
         println(s"SLID copying $chunk1 frames from window 0 at ${win.offOut}")
         if (chunk1 > 0) {
-          Util.copy(win.buf, win.offOut, bufOut0.buf, outOff, chunk1)
+          Util.copy(win.buf, win.offOut, bufOut0.buf, outOff0, chunk1)
           win.offOut += chunk1
           chunk0     -= chunk1
           outOff0    += chunk1

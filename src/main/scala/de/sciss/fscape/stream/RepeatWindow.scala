@@ -92,7 +92,6 @@ object RepeatWindow {
       }
     }
 
-    protected def processWindow(writeToWinOff: Int, flush: Boolean): Int =
-      winSize * (num - 1) + writeToWinOff
+    protected def processWindow(writeToWinOff: Int): Int = winSize * (num - 1) + writeToWinOff
   }
 }
