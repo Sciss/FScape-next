@@ -16,7 +16,7 @@ package stream
 
 import akka.stream.stage.{GraphStageLogic, InHandler}
 import akka.stream.{Attributes, FanInShape2}
-import de.sciss.fscape.stream.impl.{ChunkImpl, InOutImpl, Out1DoubleImpl, Out1LogicImpl, ProcessOutHandlerImpl, StageImpl, StageLogicImpl}
+import de.sciss.fscape.stream.impl.{SameChunkImpl, InOutImpl, Out1DoubleImpl, Out1LogicImpl, ProcessOutHandlerImpl, StageImpl, StageLogicImpl}
 
 /** Binary operator assuming stream is complex signal (real and imaginary interleaved).
   * Outputs another complex stream even if the operator yields a purely real-valued result.
@@ -48,7 +48,7 @@ object Concat {
   private final class Logic(shape: Shape)(implicit ctrl: Control)
     extends StageLogicImpl(name, shape)
       with InOutImpl[Shape]
-      with ChunkImpl[BufD, BufD, Shape]
+      with SameChunkImpl[BufD, BufD, Shape]
       with Out1LogicImpl[BufD, Shape]
       with Out1DoubleImpl[Shape] {
 

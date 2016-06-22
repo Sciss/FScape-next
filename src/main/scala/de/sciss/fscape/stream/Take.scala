@@ -52,21 +52,30 @@ object Take {
       with ChunkImpl[BufD, BufD, Shape]
       with FilterIn2DImpl[BufD, BufI] {
 
-    private[this] var framesWritten     = 0
-    private[this] var numFrames         = -1
+    private[this] var takeRemain    = Int.MaxValue
+    private[this] var init          = true
 
-    protected def shouldComplete(): Boolean = framesWritten == numFrames || (inRemain == 0 && isClosed(in0))
+    protected def shouldComplete(): Boolean = (takeRemain == 0) || (inRemain == 0 && isClosed(in0))
 
-    protected def processChunk(inOff: Int, outOff: Int, len: Int): Unit = {
-      if (framesWritten == 0) {
-        numFrames = math.max(0, bufIn1.buf(0))
+    protected def processChunk(): Boolean = {
+      val len = math.min(inRemain, outRemain)
+      val res = len > 0
+      if (res) {
+        if (init) {
+          takeRemain = math.max(0, bufIn1.buf(0))
+          init = false
+        }
+        val chunk = math.min(len, takeRemain)
+        if (chunk > 0) {
+          Util.copy(bufIn0.buf, inOff, bufOut0.buf, outOff, chunk)
+          takeRemain -=chunk
+          outOff     += chunk
+          outRemain  -= chunk
+        }
+        inOff    += len
+        inRemain -= len
       }
-      val chunk = math.min(len, numFrames - framesWritten)
-      if (chunk > 0) {
-        Util.copy(bufIn0.buf, inOff, bufOut0.buf, outOff, chunk)
-        framesWritten += chunk
-      }
-      ??? // chunk
+      res
     }
   }
 }

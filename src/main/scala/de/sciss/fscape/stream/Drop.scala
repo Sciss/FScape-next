@@ -17,7 +17,7 @@ package stream
 import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FanInShape2}
 import de.sciss.fscape.graph.ConstantI
-import de.sciss.fscape.stream.impl.{FilterChunkImpl, FilterIn2DImpl, StageImpl, StageLogicImpl}
+import de.sciss.fscape.stream.impl.{ChunkImpl, FilterIn2DImpl, StageImpl, StageLogicImpl}
 
 object Drop {
   def tail(in: OutD)(implicit b: Builder): OutD = {
@@ -49,27 +49,34 @@ object Drop {
 
   private final class Logic(shape: Shape)(implicit ctrl: Control)
     extends StageLogicImpl(name, shape)
-      with FilterChunkImpl[BufD, BufD, Shape]
+      with ChunkImpl[BufD, BufD, Shape]
       with FilterIn2DImpl[BufD, BufI] {
 
-    private[this] var framesRead    = 0
-    private[this] var numFrames     = -1
+    private[this] var dropRemain    = -1
+    private[this] var init          = true
 
-    protected def processChunk(inOff: Int, outOff: Int, len: Int): Unit = {
-      if (framesRead == 0) {
-        numFrames = math.max(0, bufIn1.buf(0))
+    protected def processChunk(): Boolean = {
+      val len = math.min(inRemain, outRemain)
+      val res = len > 0
+      if (res) {
+        if (init) {
+          dropRemain = math.max(0, bufIn1.buf(0))
+          init = false
+        }
+        val skip  = math.min(len, dropRemain)
+        val chunk = len - skip
+        if (chunk > 0) {
+          Util.copy(bufIn0.buf, inOff + skip, bufOut0.buf, outOff, chunk)
+          outOff    += chunk
+          outRemain -= chunk
+        }
+        dropRemain -= skip
+        inOff      += len
+        inRemain   -= len
       }
-      val skip  = math.min(len, numFrames - framesRead)
-      val chunk = len - skip
-
-      if (chunk > 0) {
-        Util.copy(bufIn0.buf, inOff + skip, bufOut0.buf, outOff, chunk)
-      }
-
-      // println(s"inOff $inOff, outOff $outOff, len $len, skip $skip, chunk $chunk, framesRead $framesRead, numFrames $numFrames")
-
-      framesRead += skip
-      ??? // chunk
+      res
     }
+
+    protected def shouldComplete(): Boolean = inRemain == 0 && isClosed(in0)
   }
 }

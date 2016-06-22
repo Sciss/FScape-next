@@ -20,9 +20,7 @@ import akka.stream.{Inlet, Outlet, Shape}
 
 import scala.annotation.tailrec
 
-/** An I/O process that processes chunks with equal number of
-  * input and output frames.
-  */
+/** An I/O process that processes chunks. */
 trait ChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape] {
   _: InOutImpl[S] with GraphStageLogic =>
 
@@ -38,20 +36,19 @@ trait ChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape] {
   protected def in0 : Inlet [In0]
   protected def out0: Outlet[Out]
 
-  protected def processChunk(inOff: Int, outOff: Int, len: Int): Unit
+  protected def processChunk(): Boolean
 
   // ---- impl ----
 
-  private[this] var inOff             = 0  // regarding `bufIn`
-  private[this] var _inRemain         = 0
-  private[this] var outOff            = 0  // regarding `bufOut`
-  private[this] var outRemain         = 0
-  private[this] var outSent           = true
+  protected final var inOff           = 0  // regarding `bufIn`
+  protected final var inRemain        = 0
+  protected final var outOff          = 0  // regarding `bufOut`
+  protected final var outRemain       = 0
 
-  protected final def inRemain: Int = _inRemain
+  private[this] final var outSent     = true
 
   @inline
-  private[this] def shouldRead = _inRemain == 0 && canRead
+  private[this] def shouldRead = inRemain == 0 && canRead
 
   @tailrec
   final def process(): Unit = {
@@ -59,7 +56,7 @@ trait ChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape] {
     var stateChange = false
 
     if (shouldRead) {
-      _inRemain    = readIns()
+      inRemain    = readIns()
       inOff       = 0
       stateChange = true
     }
@@ -73,15 +70,7 @@ trait ChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape] {
       stateChange   = true
     }
 
-    val chunk = math.min(_inRemain, outRemain)
-    if (chunk > 0) {
-      processChunk(inOff = inOff, outOff = outOff, len = chunk)
-      inOff       += chunk
-      _inRemain   -= chunk
-      outOff      += chunk
-      outRemain   -= chunk
-      stateChange  = true
-    }
+    if (processChunk()) stateChange = true
 
     val flushOut = shouldComplete()
     if (!outSent && (outRemain == 0 || flushOut) && isAvailable(out0)) {
@@ -104,15 +93,42 @@ trait ChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape] {
   }
 }
 
-trait FilterChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape]
+/** An I/O process that processes chunks with equal number of
+  * input and output frames.
+  */
+trait SameChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape]
   extends ChunkImpl[In0, Out, S] {
+  _: InOutImpl[S] with GraphStageLogic =>
+
+  // ---- abstract ----
+
+  protected def processChunk(inOff: Int, outOff: Int, len: Int): Unit
+
+  // ---- impl ----
+
+  protected final def processChunk(): Boolean = {
+    val chunk = math.min(inRemain, outRemain)
+    val res   = chunk > 0
+    if (res) {
+      processChunk(inOff = inOff, outOff = outOff, len = chunk)
+      inOff       += chunk
+      inRemain    -= chunk
+      outOff      += chunk
+      outRemain   -= chunk
+    }
+    res
+  }
+}
+
+trait FilterChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape]
+  extends SameChunkImpl[In0, Out, S] {
   _: InOutImpl[S] with GraphStageLogic =>
 
   protected final def shouldComplete(): Boolean = inRemain == 0 && isClosed(in0)
 }
 
 trait GenChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape]
-  extends ChunkImpl[In0, Out, S] {
+  extends SameChunkImpl[In0, Out, S] {
   _: InOutImpl[S] with GraphStageLogic =>
 
   protected final def shouldComplete(): Boolean = false
