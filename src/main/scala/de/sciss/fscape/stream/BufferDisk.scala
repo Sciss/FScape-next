@@ -50,7 +50,7 @@ object BufferDisk {
     extends StageLogicImpl(name, shape) with InHandler with OutHandler {
 
     private[this] var af: FileBuffer  = _
-    private[this] val bufSize       = ctrl.bufSize
+    private[this] val bufSize       = ctrl.blockSize
     private[this] var buf           = new Array[Double](bufSize)
 
     private[this] var framesWritten = 0L

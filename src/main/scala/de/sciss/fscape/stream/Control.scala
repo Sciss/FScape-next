@@ -26,12 +26,12 @@ import scala.language.implicitConversions
 object Control {
   trait ConfigLike {
     /** The block size for buffers send between nodes. */
-    def bufSize: Int
+    def blockSize: Int
     /** Whether to isolate nodes through an asynchronous barrier. */
     def useAsync: Boolean
 
     def materializer: Materializer
-    
+
     def executionContext: ExecutionContext
   }
   object Config {
@@ -39,7 +39,7 @@ object Control {
     implicit def build(b: ConfigBuilder): Config = b.build
   }
 
-  final case class Config(bufSize: Int, useAsync: Boolean, materializer0: Materializer,
+  final case class Config(blockSize: Int, useAsync: Boolean, materializer0: Materializer,
                           executionContext0: ExecutionContext)
     extends ConfigLike {
 
@@ -49,7 +49,7 @@ object Control {
 
   final class ConfigBuilder extends ConfigLike {
     /** The default block size is 1024. */
-    var bufSize: Int = 1024
+    var blockSize: Int = 1024
     /** The default behavior is to isolate blocking nodes
       * into a separate graph. This should usually be the case.
       * It can be disabled for debugging purposes, for example
@@ -67,7 +67,7 @@ object Control {
     }
     def materializer_=(value: Materializer): Unit =
       _mat = value
-    
+
     private[this] var _exec: ExecutionContext = _
 
     def executionContext: ExecutionContext = {
@@ -77,7 +77,7 @@ object Control {
     def executionContext_=(value: ExecutionContext): Unit =
       _exec = value
 
-    def build = Config(bufSize = bufSize, useAsync = useAsync,
+    def build = Config(blockSize = blockSize, useAsync = useAsync,
       materializer0 = materializer, executionContext0 = executionContext)
   }
 
@@ -88,7 +88,7 @@ object Control {
   private final class Impl(val config: Config) extends Control {
     override def toString = s"Control@${hashCode().toHexString}"
 
-    def bufSize: Int = config.bufSize
+    def blockSize: Int = config.blockSize
 
     private[this] val queueD  = new ConcurrentLinkedQueue[BufD]
     private[this] val queueI  = new ConcurrentLinkedQueue[BufI]
@@ -104,7 +104,7 @@ object Control {
 
     def borrowBufD(): BufD = {
       val res0 = queueD.poll()
-      val res  = if (res0 == null) BufD.alloc(bufSize) else {
+      val res  = if (res0 == null) BufD.alloc(blockSize) else {
         res0.acquire()
         res0.size = res0.buf.length
         res0
@@ -121,7 +121,7 @@ object Control {
 
     def borrowBufI(): BufI = {
       val res0 = queueI.poll()
-      if (res0 == null) BufI.alloc(bufSize) else {
+      if (res0 == null) BufI.alloc(blockSize) else {
         res0.acquire()
         res0.size = res0.buf.length
         res0
@@ -154,7 +154,7 @@ trait Control {
   /** Global buffer size. The guaranteed size of the double and integer arrays.
     * A shortcut for `config.bufSize`.
     */
-  def bufSize: Int
+  def blockSize: Int
 
   /** Borrows a double buffer. Its size is reset to `bufSize`. */
   def borrowBufD(): BufD

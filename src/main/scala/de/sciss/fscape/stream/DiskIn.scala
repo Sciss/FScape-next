@@ -60,7 +60,7 @@ object DiskIn {
       if (af.numChannels != numChannels) {
         Console.err.println(s"Warning: DiskIn - channel mismatch (file has ${af.numChannels}, UGen has $numChannels)")
       }
-      bufSize     = ctrl.bufSize
+      bufSize     = ctrl.blockSize
       buf         = af.buffer(bufSize)
     }
 

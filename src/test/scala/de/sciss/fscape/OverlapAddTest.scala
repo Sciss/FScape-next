@@ -18,10 +18,11 @@ object OverlapAddTest extends App {
   lazy val g = Graph {
     import graph._
     // val disk          = DiskIn(file = in, numChannels = 1)
-    val disk = SinOsc(10.0/44100).take(44100)
+    // val disk = SinOsc(10.0/44100).take(44100)
+    val disk = DC(0.5).take(2000)
     // val disk1         = DiskIn(file = in, numChannels = 1)
-    val inputWinSize  = 667 * 4 // 16384
-    val stepSize      = 667
+    val stepSize      = 100
+    val inputWinSize  = stepSize * 4 // 16384
     val win           = GenWindow(size = inputWinSize, shape = GenWindow.Hann)
     val gain          = 0.5
     val numPadLeft    = inputWinSize - stepSize
@@ -40,6 +41,7 @@ object OverlapAddTest extends App {
   // showStreamLog = true
 
   val config = stream.Control.Config()
+  config.blockSize = 1024
   config.useAsync = false // for debugging
   val ctrl = stream.Control(config)
   ctrl.run(g)

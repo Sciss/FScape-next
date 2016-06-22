@@ -68,7 +68,7 @@ trait GenIn2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, Out >: Null <: 
 
     _inValid = true
     updateCanRead()
-    ctrl.bufSize
+    ctrl.blockSize
   }
 
   protected final def freeInputBuffers(): Unit = {

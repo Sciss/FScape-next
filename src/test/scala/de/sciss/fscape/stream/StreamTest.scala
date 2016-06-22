@@ -26,7 +26,7 @@ object StreamTest extends App {
 
   val blockSize = 1024
   val config = Control.Config()
-  config.bufSize = blockSize
+  config.blockSize = blockSize
   implicit val system = ActorSystem()
   config.materializer = ActorMaterializer(
     ActorMaterializerSettings(system)
