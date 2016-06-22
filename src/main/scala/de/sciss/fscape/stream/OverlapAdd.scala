@@ -87,7 +87,7 @@ object OverlapAdd {
     var FRAMES_READ = 0
 
     protected def copyInputToWindow(inOff: Int, writeToWinOff: Int, chunk: Int): Unit = {
-      println(s"-- copyInputToWindow($inOff, $writeToWinOff, $chunk) $FRAMES_READ")
+      println(s"-- OLAP copyInputToWindow(inOff = $inOff, writeToWinOff = $writeToWinOff, chunk = $chunk) $FRAMES_READ")
       FRAMES_READ += chunk
       if (writeToWinOff == 0) {
         println(s"OLAP adding   window of size $size")
@@ -114,7 +114,7 @@ object OverlapAdd {
     var FRAMES_WRITTEN = 0
 
     protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit = {
-      println(s"-- copyWindowToOutput($readFromWinOff, $outOff, $chunk) $FRAMES_WRITTEN")
+      println(s"-- OLAP copyWindowToOutput(readFromWinOff = $readFromWinOff, outOff = $outOff, chunk = $chunk) $FRAMES_WRITTEN")
       FRAMES_WRITTEN += chunk
       Util.clear(bufOut0.buf, outOff, chunk)
       var i = 0

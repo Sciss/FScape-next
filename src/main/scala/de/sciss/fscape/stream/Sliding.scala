@@ -83,16 +83,14 @@ object Sliding {
       if (bufIn2 != null && inOff < bufIn2.size) {
         step = math.max(1, bufIn2.buf(inOff))
       }
-      size  // -> writeToWinRemain
+      step  // -> writeToWinRemain
     }
 
-    /** Issues a copy from input buffer to internal window buffer.
-      *
-      * @param inOff         current offset into input buffer
-      * @param writeToWinOff current offset into internal window buffer
-      * @param chunk         number of frames to copy
-      */
+    var FRAMES_READ = 0
+
     protected def copyInputToWindow(inOff: Int, writeToWinOff: Int, chunk: Int): Unit = {
+      println(s"-- SLID copyInputToWindow(inOff = $inOff, writeToWinOff = $writeToWinOff, chunk = $chunk) $FRAMES_READ")
+      FRAMES_READ += chunk
       if (writeToWinOff == 0) {
         println(s"SLID adding   window of size $size")
         windows += new Window(new Array[Double](size))
@@ -104,7 +102,7 @@ object Sliding {
         val chunk1 = math.min(win.inRemain, chunk)
         println(s"SLID copying $chunk1 frames to window $i at ${win.offIn}")
         if (chunk1 > 0) {
-          Util.add(bufIn0.buf, inOff, win.buf, win.offIn, chunk1)
+          Util.copy(bufIn0.buf, inOff, win.buf, win.offIn, chunk1)
           win.offIn += chunk1
         }
         i += 1
@@ -113,23 +111,36 @@ object Sliding {
 
     protected def processWindow(writeToWinOff: Int, flush: Boolean): Int = {
       val res = if (flush) {
-        windows.map(_.availableOut).sum
+        windows.map(_.outRemain).sum
       } else step
 
       println(s"SLID processWindow($writeToWinOff, $flush) -> $res")
       res // -> readFromWinRemain
     }
 
+    var FRAMES_WRITTEN = 0
+
     protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit = {
-      val win     = windows.head
-      val chunk1  = math.min(chunk, win.outRemain)
-      println(s"SLID copying $chunk1 frames from window 0 at ${win.offOut}")
-      if (chunk1 > 0) {
-        Util.copy(win.buf, win.offOut,  bufOut0.buf, outOff, chunk1)
-        win.offOut += chunk1
+      println(s"-- SLID copyWindowToOutput(readFromWinOff = $readFromWinOff, outOff = $outOff, chunk = $chunk) $FRAMES_WRITTEN")
+      FRAMES_WRITTEN += chunk
+      var i = 0
+      var chunk0  = chunk
+      var outOff0 = outOff
+      while (chunk0 > 0 && i < windows.length) {  // take care of index as we drop windows on the way
+        val win     = windows(i)
+        val chunk1  = math.min(chunk0, win.outRemain)
+        println(s"SLID copying $chunk1 frames from window 0 at ${win.offOut}")
+        if (chunk1 > 0) {
+          Util.copy(win.buf, win.offOut, bufOut0.buf, outOff, chunk1)
+          win.offOut += chunk1
+          chunk0     -= chunk1
+          outOff0    += chunk1
+        }
         if (win.outRemain == 0) {
           println("SLID removing window 0")
           windows.remove(0)
+        } else {
+          i += 1
         }
       }
     }
