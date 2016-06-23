@@ -49,7 +49,7 @@ trait FilterIn2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, Out >: Null 
     freeOutputBuffers()
   }
 
-  protected /* final */ def readIns(): Int = {
+  protected final def readIns(): Int = {
     freeInputBuffers()
     bufIn0    = grab(in0)
     bufIn0.assertAllocated()

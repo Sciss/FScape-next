@@ -50,20 +50,18 @@ object BinaryOp {
 
     private[this] var bVal: Double = _
 
-    var LAST_BUF: BufD = null
-
-    override protected def readIns(): Int = {
-      println(s"bin readIns: ${isAvailable(in0)} | ${isAvailable(in1)}")
-      val res = super.readIns()
-      println(s"-->    : ${bufIn1.hashCode.toHexString} - ${bufIn1.buf.toVector.hashCode.toHexString} - $res")
-      res
-    }
+    //    override protected def readIns(): Int = {
+    //      println(s"bin readIns: ${isAvailable(in0)} | ${isAvailable(in1)}")
+    //      val res = super.readIns()
+    //      println(s"-->    : ${bufIn1.hashCode.toHexString} - ${bufIn1.buf.toVector.hashCode.toHexString} - $res")
+    //      res
+    //    }
 
     protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Unit = {
-      if (LAST_BUF != bufIn1) {
-        LAST_BUF = bufIn1
-        println(s"bin    : ${bufIn1.hashCode.toHexString} - ${bufIn1.buf.toVector.hashCode.toHexString}")
-      }
+//      if (LAST_BUF != bufIn1) {
+//        LAST_BUF = bufIn1
+//        println(s"bin    : ${bufIn1.hashCode.toHexString} - ${bufIn1.buf.toVector.hashCode.toHexString}")
+//      }
 
       var inOffI  = inOff
       var outOffI = outOff

@@ -62,7 +62,7 @@ object Elastic {
     private def canPushBuf = bufWritten - bufRead < num
 
     @inline
-    private def shouldRead  = canRead  && (canPushBuf || bufIn0 == null)
+    private def shouldRead  = canRead  && bufIn0 == null
 
     @inline
     private def shouldWrite = canWrite && (canPopBuf  || bufIn0 != null)
@@ -78,11 +78,20 @@ object Elastic {
     }
 
     private def pushBuffer(): Unit = {
-      assert(bufIn0 != null)
       val idx = bufWritten % num
       buffers(idx) = bufIn0
       bufIn0 = null
       bufWritten += 1
+    }
+
+    @inline
+    private def popBuffer(): BufD = {
+      val idx = bufRead % num
+      val res = buffers(idx)
+      buffers(idx) = null
+      bufRead += 1
+      if (bufIn0 != null) pushBuffer()
+      res
     }
 
     @tailrec
@@ -92,10 +101,11 @@ object Elastic {
       var stateChange = false
 
       if (shouldRead) {
+        assert(bufIn0 == null)
         readIns()
         assert(bufIn0 != null)
         // println(s"elastic: $bufIn0 | ${bufIn0.allocCount()}")
-        println(s"ela in : ${bufIn0.hashCode.toHexString} - ${bufIn0.buf.toVector.hashCode.toHexString}")
+        // println(s"ela in : ${bufIn0.hashCode.toHexString} - ${bufIn0.buf.toVector.hashCode.toHexString}")
 
         if (init) {
           num     = math.max(0, bufIn1.buf(0))
@@ -110,11 +120,7 @@ object Elastic {
 
       if (shouldWrite) {
         val buf = if (canPopBuf) {
-          val idx = bufRead % num
-          val res = buffers(idx)
-          buffers(idx) = null
-          bufRead += 1
-          res
+          popBuffer()
         } else {
           val res = bufIn0
           bufIn0 = null
