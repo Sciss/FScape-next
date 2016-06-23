@@ -88,8 +88,7 @@ object Sliding {
     private def canPrepareStep = stepRemain == 0 && bufIn0 != null &&
       (windows.isEmpty || windows.head.inRemain > 0)
 
-    protected def shouldComplete(): Boolean =
-      inputsEnded && (windows.isEmpty || windows.head.offIn == 0)
+    protected def shouldComplete(): Boolean = inputsEnded && windows.isEmpty
 
     protected def processChunk(): Boolean = {
       var stateChange = false
