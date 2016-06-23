@@ -72,10 +72,9 @@ trait WindowedLogicImpl[S <: Shape] extends ChunkImpl[S] {
     var stateChange = false
 
     if (canWriteToWindow) {
-      val flushIn0 = inRemain == 0 && shouldComplete()
+      val flushIn0 = inputsEnded // inRemain == 0 && shouldComplete()
       if (isNextWindow && !flushIn0) {
         writeToWinRemain  = startNextWindow(inOff = inOff)
-        writeToWinOff     = 0
         isNextWindow      = false
         stateChange       = true
         // logStream(s"startNextWindow(); writeToWinRemain = $writeToWinRemain")
@@ -96,6 +95,7 @@ trait WindowedLogicImpl[S <: Shape] extends ChunkImpl[S] {
 
         if (writeToWinRemain == 0 || flushIn) {
           readFromWinRemain = processWindow(writeToWinOff = writeToWinOff) // , flush = flushIn)
+          writeToWinOff     = 0
           readFromWinOff    = 0
           isNextWindow      = true
           stateChange       = true
@@ -120,5 +120,5 @@ trait WindowedLogicImpl[S <: Shape] extends ChunkImpl[S] {
     stateChange
   }
 
-  protected final def shouldComplete(): Boolean = inputsEnded && writeToWinRemain == 0 && readFromWinRemain == 0
+  protected final def shouldComplete(): Boolean = inputsEnded && writeToWinOff /* writeToWinRemain */ == 0 && readFromWinRemain == 0
 }

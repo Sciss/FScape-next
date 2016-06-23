@@ -116,6 +116,9 @@ object OverlapAdd {
     protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit = {
       println(s"-- OLAP copyWindowToOutput(readFromWinOff = $readFromWinOff, outOff = $outOff, chunk = $chunk) $FRAMES_WRITTEN")
       FRAMES_WRITTEN += chunk
+      if (FRAMES_WRITTEN == 3000) {
+        println("AQUI")
+      }
       Util.clear(bufOut0.buf, outOff, chunk)
       var i = 0
       while (i < windows.length) {  // take care of index as we drop windows on the way

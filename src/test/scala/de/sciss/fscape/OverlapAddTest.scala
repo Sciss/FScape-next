@@ -31,15 +31,15 @@ object OverlapAddTest extends App {
     val slideIn       = disk // spadLeft ++ disk
     val slide0        = Sliding   (in = slideIn , size = inputWinSize, step = stepSize)
     val slide = slide0.take(12000)
-//    // val shiftXPad     = 0: GE
-//    val windowed      = slide * win
-////     val windowed = DC(0.125).take(12000)
-////    val windowed = SinOsc(0.25).take(12000) * 0.25
-//    val lap           = OverlapAdd(in = windowed, size = inputWinSize, step = stepSize /* + shiftXPad */)
-//    val drop          = lap // .drop(numPadLeft)
-//    val sig0          = drop * gain
-//    val sig           = sig0 // - disk1
-    val sig = slide
+    // val shiftXPad     = 0: GE
+    val windowed      = slide * win
+//     val windowed = DC(0.125).take(12000)
+//    val windowed = SinOsc(0.25).take(12000) * 0.25
+    val lap           = OverlapAdd(in = windowed, size = inputWinSize, step = stepSize /* + shiftXPad */)
+    val drop          = lap // .drop(numPadLeft)
+    val sig0          = drop * gain
+    val sig           = sig0 // - disk1
+//    val sig = slide
     DiskOut(file = out, spec = AudioFileSpec(sampleRate = 44100.0, numChannels = 1), in = sig)
   }
 
