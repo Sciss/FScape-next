@@ -54,7 +54,9 @@ object BinaryOp {
 
     override protected def readIns(): Int = {
       println(s"bin readIns: ${isAvailable(in0)} | ${isAvailable(in1)}")
-      super.readIns()
+      val res = super.readIns()
+      println(s"-->    : ${bufIn1.hashCode.toHexString} - ${bufIn1.buf.toVector.hashCode.toHexString} - $res")
+      res
     }
 
     protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Unit = {
