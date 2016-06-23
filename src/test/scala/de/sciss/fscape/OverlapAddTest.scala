@@ -45,10 +45,10 @@ object OverlapAddTest extends App {
     val drop          = lap.drop(numPadLeft).take(numFrames)
     val sig0          = drop * gain
 //    val disk1         = DiskIn(file = in, numChannels = 1)
-//    val disk1         = disk.elastic((numPadLeft + config.blockSize - 1) / config.blockSize)
-    val disk1         = BufferDisk(disk)
-    sig0 .poll(1.0/44100, "out")
-    disk1.poll(1.0/44100, "in ")
+    val disk1         = disk.elastic((numPadLeft + config.blockSize - 1) / config.blockSize)
+//    val disk1         = BufferDisk(disk)
+//    sig0 .poll(1.0/44100, "out")
+    disk.poll(1.0/44100, "in ")
     // es ist zum Heulen -- mit der folgenden Zeile werden die Buffer wieder korrupt
      val sig           = sig0 - disk1
 //    val sig           = sig0

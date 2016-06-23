@@ -94,6 +94,8 @@ object Elastic {
       if (shouldRead) {
         readIns()
         assert(bufIn0 != null)
+        // println(s"elastic: $bufIn0 | ${bufIn0.allocCount()}")
+        println(s"elastic: ${bufIn0.hashCode.toHexString} - ${bufIn0.buf.toVector.hashCode.toHexString}")
 
         if (init) {
           num     = math.max(0, bufIn1.buf(0))

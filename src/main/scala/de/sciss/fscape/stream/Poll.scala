@@ -63,6 +63,7 @@ object Poll {
       val stop0   = readIns()
       // println(s"Poll($label).process(in $bufIn0, trig $bufIn1, chunk $stop0)")
       // bufIn0.assertAllocated()
+      // println(s"poll   : $bufIn0 | ${bufIn0.allocCount()}")
 
       val b0      = bufIn0.buf
       val b1      = if (bufIn1 == null) null else bufIn1.buf
