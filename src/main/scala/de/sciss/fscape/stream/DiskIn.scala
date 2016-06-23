@@ -108,7 +108,7 @@ object DiskIn {
               Util.clear(b, 0, chunk)
             }
             bufOut.size = chunk
-            println(s"disk   : ${bufOut.hashCode.toHexString} - ${bufOut.buf.toVector.hashCode.toHexString}")
+            // println(s"disk   : ${bufOut.hashCode.toHexString} - ${bufOut.buf.toVector.hashCode.toHexString}")
             push(out, bufOut)
           }
           ch += 1

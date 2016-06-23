@@ -211,7 +211,8 @@ object BinaryOp {
 
   case object Trunc extends Op {
     final val id = 21
-    def apply(a: Double, b: Double): Double = rd.trunc(a, b)
+    println("WARNING: Trunc DEBUG")
+    def apply(a: Double, b: Double): Double = b // rd.trunc(a, b)
   }
 
   case object Atan2 extends Op {
