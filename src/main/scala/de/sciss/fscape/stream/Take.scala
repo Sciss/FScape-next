@@ -57,7 +57,14 @@ object Take {
 
     protected def shouldComplete(): Boolean = (takeRemain == 0) || (inRemain == 0 && isClosed(in0))
 
+    var LAST_BUF: BufD = null
+
     protected def processChunk(): Boolean = {
+      if (LAST_BUF != bufOut0) {
+        LAST_BUF = bufOut0
+        println(s"take   : ${bufOut0.hashCode.toHexString} - ${bufOut0.buf.toVector.hashCode.toHexString}")
+      }
+
       val len = math.min(inRemain, outRemain)
       val res = len > 0
       if (res) {

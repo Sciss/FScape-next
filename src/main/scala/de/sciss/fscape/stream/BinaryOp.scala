@@ -50,7 +50,14 @@ object BinaryOp {
 
     private[this] var bVal: Double = _
 
+    var LAST_BUF: BufD = null
+
     protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Unit = {
+      if (LAST_BUF != bufIn1) {
+        LAST_BUF = bufIn1
+        println(s"bin    : ${bufIn1.hashCode.toHexString} - ${bufIn1.buf.toVector.hashCode.toHexString}")
+      }
+
       var inOffI  = inOff
       var outOffI = outOff
       val aStop   = inOffI + chunk
