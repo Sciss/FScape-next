@@ -15,6 +15,11 @@ object OverlapAddTest extends App {
   import numbers.Implicits._
   val fftSize = numFrames.nextPowerOfTwo
 
+  val config = stream.Control.Config()
+  config.blockSize = 1024
+  config.useAsync = false // for debugging
+  val ctrl = stream.Control(config)
+
   lazy val g = Graph {
     import graph._
    val disk          = DiskIn(file = in, numChannels = 1)
@@ -37,19 +42,20 @@ object OverlapAddTest extends App {
 //     val windowed = DC(0.125).take(12000)
 //    val windowed = SinOsc(0.25).take(12000) * 0.25
     val lap           = OverlapAdd(in = windowed, size = inputWinSize, step = stepSize /* + shiftXPad */)
-    val drop          = lap.drop(numPadLeft)
+    val drop          = lap.drop(numPadLeft).take(numFrames)
     val sig0          = drop * gain
-    val sig           = sig0 // - disk1
+    val disk1         = disk.elastic((numPadLeft + config.blockSize - 1) / config.blockSize)
+    sig0 .poll(1.0/44100, "out")
+    disk1.poll(1.0/44100, "in ")
+    // es ist zum Heulen -- mit der folgenden Zeile werden die Buffer wieder korrupt
+    // val sig           = sig0 - disk1
+    val sig           = sig0
 //    val sig = slide
     DiskOut(file = out, spec = AudioFileSpec(sampleRate = 44100.0, numChannels = 1), in = sig)
   }
 
   // showStreamLog = true
 
-  val config = stream.Control.Config()
-  config.blockSize = 1024
-  config.useAsync = false // for debugging
-  val ctrl = stream.Control(config)
   ctrl.run(g)
 
   Swing.onEDT {
