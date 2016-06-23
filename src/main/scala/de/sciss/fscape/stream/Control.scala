@@ -117,7 +117,7 @@ object Control {
     def returnBufD(buf: BufD): Unit = {
       require(buf.allocCount() == 0)
       // println(s"control: ${buf.hashCode.toHexString} - ${buf.buf.toVector.hashCode.toHexString}")
-      // queueD.offer(buf) // XXX TODO -- limit size?
+      queueD.offer(buf) // XXX TODO -- limit size?
     }
 
     def borrowBufI(): BufI = {
