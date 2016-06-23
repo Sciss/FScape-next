@@ -52,6 +52,11 @@ object BinaryOp {
 
     var LAST_BUF: BufD = null
 
+    override protected def readIns(): Int = {
+      println(s"bin readIns: ${isAvailable(in0)} | ${isAvailable(in1)}")
+      super.readIns()
+    }
+
     protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Unit = {
       if (LAST_BUF != bufIn1) {
         LAST_BUF = bufIn1
