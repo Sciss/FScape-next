@@ -122,12 +122,12 @@ object MorassTest extends App {
     val iFFT      = Real1FullIFFT(in = elemNorm, size = fftSize)
 
     val prod      = PeakCentroid1D(in = iFFT, size = fftSize, radius = radiusI)
-    val transX    = prod.translate.roundTo(1)
+    val transX    = prod.translate.roundTo(1) * 0  // XXX TODO: * 0 for testing
     val shiftX    = /* if (keepFileLength) transX else */ transX + winSizeH
 
-    val amp       = (ampModulation: GE).linlin(0, 1, 1.0, prod.peak)
-    val ampPad    = 1.0: GE // RepeatWindow(in = amp   , num = winSize)
-    val shiftXPad = 0.0: GE // RepeatWindow(in = shiftX, num = winSize)
+    val amp       = 1.0: GE // (ampModulation: GE).linlin(0, 1, 1.0, prod.peak)
+    val ampPad    = RepeatWindow(in = amp   , num = winSize)
+    val shiftXPad = RepeatWindow(in = shiftX, num = winSize)
 
     // ---- synthesis ----
     // make sure to insert a large enough buffer
@@ -137,10 +137,10 @@ object MorassTest extends App {
     // So a solution is to prepend one empty
     // window and drop it later.
     val prepend   = DC(0.0).take(winSize)
-    val lapIn     = synth // XXX TODO: prepend ++ synth
+    val lapIn     = prepend ++ synth
     // XXX TODO --- probably have to introduce some buffer here
     val lap       = OverlapAdd(in = lapIn, size = winSize, step = shiftXPad + stepSize)
-    val sig       = if (!keepFileLength) lap else lap // XXX TODO: lap.drop(winSizeH) // .take()
+    val sig       = if (!keepFileLength) lap.drop(winSize) else lap.drop(winSize + winSizeH).take(numFrames)
 
     sig
   }
@@ -203,11 +203,11 @@ object MorassTest extends App {
 
         val config = MorassConfig(input = fftAZ, template = fftBZ,
           synthesizeWinType = GenWindow.Rectangle,
-          inputWinSize = 4096, templateWinSize = 32768, stepSize = 1024 /* 64 */ /* 16 */, ampModulation = 0.0675 /* 1.0 */,
+          inputWinSize = 4096, templateWinSize = 32768, stepSize = 16, ampModulation = 0.0675 /* 1.0 */,
           synthesizeWinAmt = 1.0 /* XXX TODO: 0.0625 */,
           numFrames = numFrames)
-        val morass0 = fftAZ // mkMorass(config)
-        val morass  = morass0.take(fftSize << 1)
+        val morass0 = mkMorass(config)
+        val morass  = morass0 // .take(fftSize << 1)
 //val morass = fftAZ // + fftBZ
         val morassZ = ZipWindow(ChannelProxy(morass, 0).elastic(1024), ChannelProxy(morass, 1).elastic(1024))
 
