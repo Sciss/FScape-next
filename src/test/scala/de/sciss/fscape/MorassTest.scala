@@ -181,7 +181,7 @@ object MorassTest extends App {
       val numFramesA = AudioFile.readSpec(inA).numFrames.toInt
       val numFramesB = AudioFile.readSpec(inB).numFrames.toInt
       import numbers.Implicits._
-      val truncate  = false
+      val truncate  = true // false
       val fftSizeA  = if (truncate) (numFramesA + 1).nextPowerOfTwo / 2 else numFramesA.nextPowerOfTwo
       val fftSizeB  = if (truncate) (numFramesB + 1).nextPowerOfTwo / 2 else numFramesB.nextPowerOfTwo
       val fftSize   = math.max(fftSizeA, fftSizeB)
@@ -192,11 +192,14 @@ object MorassTest extends App {
         val fftA = mkFourierFwd(in = inA, size = fftSize /* A */, gain = Gain.normalized)
         val fftB = mkFourierFwd(in = inB, size = fftSize /* B */, gain = Gain.normalized)
 
-        val fftAZ = UnzipWindow(fftA).elastic(1024) // treat Re and Im as two channels
-        val fftBZ = UnzipWindow(fftB).elastic(1024) // treat Re and Im as two channels
+//        val fftAZ = UnzipWindow(fftA).elastic(1024) // treat Re and Im as two channels
+//        val fftBZ = UnzipWindow(fftB).elastic(1024) // treat Re and Im as two channels
 
 //        val fftAZ = SinOsc(1.0/64).take(44100 * 10)
 //        val fftBZ = SinOsc(1.0/64).take(44100 * 10)
+
+        val fftAZ = DiskIn(file = inA, numChannels = 1).take(fftSizeA)
+        val fftBZ = DiskIn(file = inB, numChannels = 1).take(fftSizeB)
 
         val numFrames = math.min(fftSizeA, fftSizeB)
         assert(numFrames.isPowerOfTwo)
@@ -214,8 +217,10 @@ object MorassTest extends App {
 //        (fftAZ + fftBZ).poll(1.0/44100)
 //        morassZ.poll(1.0/44100)
 
-        mkFourierInv(in = morassZ, size = numFrames, out = output,
-          spec = OutputSpec.aiffInt, gain = Gain.normalized)
+        DiskOut(file = output, spec = OutputSpec.aiffInt, in = morass)
+
+        //        mkFourierInv(in = morassZ, size = numFrames, out = output,
+//          spec = OutputSpec.aiffInt, gain = Gain.normalized)
       }
 
       val config = stream.Control.Config()
