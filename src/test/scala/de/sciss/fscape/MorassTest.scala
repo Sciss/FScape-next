@@ -122,8 +122,21 @@ object MorassTest extends App {
     val iFFT      = Real1FullIFFT(in = elemNorm, size = fftSize)
 
     val prod      = PeakCentroid1D(in = iFFT, size = fftSize, radius = radiusI)
-    val transX    = prod.translate.roundTo(1) * 0  // XXX TODO: * 0 for testing
-    val shiftX    = /* if (keepFileLength) transX else */ transX + winSizeH
+    val transX    = 0.0: GE // prod.translate.roundTo(1) * 0  // XXX TODO: * 0 for testing
+    /*
+
+    the problem is that we have `-winSizeH <= transX <= +winSizeH`,
+    but overlap-add doesn't support negative step sizes
+    (which may occur between adjacent frames).
+    adding `winSizeH` doesn't solve the problem, because we
+    cannot compensate for this spacing in any way.
+    Looks like we'll need another, different overlap-add
+    that allows for a "max-negative" step setting.
+    That max-negative between adjacent frames would thus
+    be `winSize - stepSize`.
+
+     */
+    val shiftX    = /* if (keepFileLength) transX else */ transX // + winSizeH
 
     val amp       = 1.0: GE // (ampModulation: GE).linlin(0, 1, 1.0, prod.peak)
     val ampPad    = RepeatWindow(in = amp   , num = winSize)
@@ -132,15 +145,15 @@ object MorassTest extends App {
     // ---- synthesis ----
     // make sure to insert a large enough buffer
     val slideABuf = BufferDisk(slideA)      // XXX TODO -- measure max delay
-    val synth     = slideABuf * ampPad * winSynth
+    val synth     = slideABuf * winSynth * ampPad
     // The first window will not be shifted.
     // So a solution is to prepend one empty
     // window and drop it later.
     val prepend   = DC(0.0).take(winSize)
-    val lapIn     = prepend ++ synth
+    val lapIn     = synth // prepend ++ synth
     // XXX TODO --- probably have to introduce some buffer here
     val lap       = OverlapAdd(in = lapIn, size = winSize, step = shiftXPad + stepSize)
-    val sig       = if (!keepFileLength) lap.drop(winSize) else lap.drop(winSize + winSizeH).take(numFrames)
+    val sig       = lap // if (!keepFileLength) lap.drop(winSize) else lap.drop(winSize + winSizeH).take(numFrames)
 
     sig
   }
@@ -217,7 +230,13 @@ object MorassTest extends App {
 //        (fftAZ + fftBZ).poll(1.0/44100)
 //        morassZ.poll(1.0/44100)
 
-        DiskOut(file = output, spec = OutputSpec.aiffInt, in = morass)
+        val re   = morass
+        val gain = Gain.normalized
+        val sig   =
+          if     (gain.isUnity   ) re
+          else if(gain.normalized) realNormalize(re, headroom = gain.value)
+          else                     re * gain.value
+        DiskOut(file = output, spec = OutputSpec.aiffInt, in = sig)
 
         //        mkFourierInv(in = morassZ, size = numFrames, out = output,
 //          spec = OutputSpec.aiffInt, gain = Gain.normalized)

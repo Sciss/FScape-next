@@ -188,3 +188,14 @@ StorageFFT:
 
 - calculate `mMax`
 - first loop where `n2` goes from `len` down to `memAmount`; transforming two files into two files
+
+## OffsetOverlapAdd
+
+A variant of overlap-add that allows negative step sizes, by restricting step size to a min/max boundary.
+Perhaps we only need one extra parameter ("min-step").
+    
+    OffsetOverlapAdd(in, size, step, offset, minOffset)
+
+Where `minOffset` is only accepted at initial time. As in `OverlapAdd`, `step` may be updated
+repeatedly but is restricted to positive numbers.
+

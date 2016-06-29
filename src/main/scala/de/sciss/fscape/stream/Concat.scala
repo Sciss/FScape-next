@@ -90,7 +90,7 @@ object Concat {
         tryPull(in1)
       }
 
-      _canRead = false
+      updateCanRead()
       bufIn0.size
     }
 
@@ -114,13 +114,11 @@ object Concat {
     protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Unit =
       Util.copy(bufIn0.buf, inOff, bufOut0.buf, outOff, chunk)
 
-    private def testRead(): Unit = {
-      updateCanRead()
-      if (canRead) process()
-    }
-
     private object InHandlerImpl extends InHandler {
-      def onPush(): Unit = testRead()
+      def onPush(): Unit = {
+        updateCanRead()
+        if (canRead) process()
+      }
 
       override def onUpstreamFinish(): Unit = {
         updateCanRead()
