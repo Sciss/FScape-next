@@ -199,3 +199,23 @@ Perhaps we only need one extra parameter ("min-step").
 Where `minOffset` is only accepted at initial time. As in `OverlapAdd`, `step` may be updated
 repeatedly but is restricted to positive numbers.
 
+(What we should also do in `Sliding`?) We may have `size + offset-range >> step`, thus to avoid
+excessive memory usage, we'll use a dynamically growing, single circular buffer. At any time, 
+the dynamic size be `>= size + offset - minOffset`. It will be easier we track overall `framesRead` and 
+`framesWritten`. If we want to make sure that `framesRead|Written % bufSize == bufIndex` at all times,
+we have to ensure that content is newly laid out upon buffer growth.
+
+We can then technically split `writeToBufIndex = framesRead + (offset - minOffset) + windowWritten`, 
+where `framesRead` is updated after the window finishes, so that `frameRead - framesWritten` gives the 
+amount of data available for pushing to out. As a consequence, output will be aligned by `minOffset`
+which makes sense but must be stated in the docs. If the caller wants to "keep the length" of some
+original input, one would thus `.drop(-minOffset)`. E.g. if `minOffset = -winSize/2` then one would
+have to `.drop(winSize/2)` which is easy to understand.
+
+The back-pressure for pulling could be defined in terms of some `def canStartNextWindow = outRemain == 0`.
+So we have the input-copying loop, and when `writeToWinRemain` becomes zero, `outRemain` becomes `step`.
+Or if `inRemain` becomes zero and `isClosed(in0)`, then we start flushing by setting `outRemain` instead
+to cover to the end of the written data. Technically, we'll never need to use `frameRead - framesWritten`
+as defined above, because through the pressure cycle, we'll always set `outRemain` to `step`.
+
+This algorithm then naturally expands to `OverlapAdd` where `offset = minOffset = 0` at all times.
