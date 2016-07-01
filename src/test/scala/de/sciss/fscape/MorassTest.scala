@@ -106,8 +106,13 @@ object MorassTest extends App {
     val winSizeH  = winSize >> 1
     val radiusI   = math.max(1, math.min(winSizeH - 1, (radius * winSizeH + 0.5).toInt))
 
-    val slideA    = Sliding(in = input   , size = inputWinSize   , step = stepSize)
-    val slideB    = Sliding(in = template, size = templateWinSize, step = stepSize)
+    val inputPadLen     = inputWinSize    - stepSize
+    val templatePadLen  = templateWinSize - stepSize
+    val inputPad        = DC(0.0).take(inputPadLen   ) ++ input
+    val templatePad     = DC(0.0).take(templatePadLen) ++ template
+
+    val slideA    = Sliding(in = inputPad   , size = inputWinSize   , step = stepSize)
+    val slideB    = Sliding(in = templatePad, size = templateWinSize, step = stepSize)
     val winA      = slideA * winAnaIn
     val winB      = slideB * winAnaTemp
     val winARes   = ResizeWindow(in = winA, size = fftSize, start = 0, stop = fftSize - inputWinSize   )
@@ -133,14 +138,8 @@ object MorassTest extends App {
     // make sure to insert a large enough buffer
     val slideABuf = BufferDisk(slideA)      // XXX TODO -- measure max delay
     val synth     = slideABuf * winSynth * ampPad
-    // The first window will not be shifted.
-    // So a solution is to prepend one empty
-    // window and drop it later.
-    // val prepend   = DC(0.0).take(winSize)
-    // XXX TODO --- probably have to introduce some buffer here
-    // val lap       = OverlapAdd(in = lapIn, size = winSize, step = shiftXPad + stepSize)
     val lap       = OffsetOverlapAdd(in = synth, size = inputWinSize /* winSize */, step = stepSize, offset = shiftXPad, minOffset = -winSizeH)
-    val sig       = if (!keepFileLength) lap else lap.drop(winSizeH).take(numFrames)
+    val sig       = if (!keepFileLength) lap.drop(inputPadLen) else lap.drop(inputPadLen + winSizeH).take(numFrames)
 
     sig
   }
