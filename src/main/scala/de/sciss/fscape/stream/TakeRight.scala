@@ -52,7 +52,7 @@ object TakeRight {
       with FilterIn2DImpl[BufD, BufI] {
 
     private[this] var len     : Int           = _
-    private[this] var bufWin  : Array[Double] = _
+    private[this] var bufWin  : Array[Double] = _     // circular
     private[this] var bufWritten = 0L
 
     private[this] var outOff            = 0
@@ -102,7 +102,7 @@ object TakeRight {
       if (chunk2 > 0) {
         // println(s"copy2($inOff / $inRemain -> $bufOff / $len -> $chunk2")
         Util.copy(bufIn0.buf, inOff, bufWin, bufOff, chunk2)
-        bufOff = (bufOff + chunk2) % len
+        // bufOff = (bufOff + chunk2) % len
         // inOff += chunk2
       }
       bufWritten += inRemain

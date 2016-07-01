@@ -18,8 +18,6 @@ import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FanInShape5}
 import de.sciss.fscape.stream.impl.{ChunkImpl, FilterIn5DImpl, FilterLogicImpl, StageImpl, StageLogicImpl}
 
-import scala.collection.mutable
-
 /** Overlapping window summation with offset (fuzziness) that can be modulated. */
 object OffsetOverlapAdd {
   /**
@@ -77,84 +75,66 @@ object OffsetOverlapAdd {
 
     private[this] var size     : Int  = _
     private[this] var step     : Int  = _
-    private[this] var offset   : Int  = _
+    private[this] var offset   : Int  = _   // this is already corrected against `minOffset`!
     private[this] var minOffset: Int  = _
 
-    private[this] var init = false
+    private[this] var bufSize         = 0
+    private[this] var bufWin: Array[Double] = _     // circular
 
-    private[this] val windows = mutable.Buffer.empty[Window]
+    private[this] var isNextWindow    = true
+    private[this] var mixToBufRemain  = 0
+    private[this] var mixToBufOff     = 0
+    private[this] var bufWritten      = 0L
+    private[this] var bufRead         = 0L
+    private[this] var maxStop         = 0L
 
-    protected def shouldComplete(): Boolean = ???
+    private[this] var init            = false
+    private[this] var flushed         = false
 
-    private[this] var isNextWindow  = true
-    private[this] var stepRemain    = 0
+    protected def shouldComplete(): Boolean = flushed && bufRead == bufWritten
 
     @inline
-    private def canPrepareStep: Boolean = stepRemain == 0 && bufIn0 != null && ???
+    private def canPrepareStep: Boolean = bufRead == bufWritten && bufIn0 != null && !flushed
 
     protected def processChunk(): Boolean = {
+      // println(s"processChunk(); inOff = $inOff, outOff = $outOff, inRemain = $inRemain, outRemain = $outRemain, bufRead $bufRead, bufWritten $bufWritten, inputsEnded $inputsEnded")
       var stateChange = false
 
       if (canPrepareStep && isNextWindow) {
-        // println("SLID next-window")
-        stepRemain    = startNextWindow(inOff = inOff)
-        windows      += new Window(new Array[Double](size))
+        startNextWindow()
+        maxStop       = math.max(maxStop, bufWritten + size + offset)
+        // println(s"maxStop = $maxStop")
         isNextWindow  = false
         stateChange   = true
       }
 
-      val chunkIn = math.min(stepRemain, inRemain)
+      val chunkIn = math.min(mixToBufRemain, inRemain)
       if (chunkIn > 0) {
-        ???
-//        val chunk1 = copyInputToWindows(chunkIn)
-//        if (chunk1 > 0) {
-//          // println(s"--- SLID copyInputToWindows($chunkIn) -> $chunk1")
-//          inOff       += chunk1
-//          inRemain    -= chunk1
-//          stepRemain  -= chunk1
-//          stateChange  = true
-//
-//          if (stepRemain == 0) {
-//            isNextWindow = true
-//            stateChange  = true
-//          }
-//        }
+        mixInputToBuffer(chunkIn)
+        stateChange = true
+
+        if (mixToBufRemain == 0) {
+          isNextWindow   = true
+          bufWritten    += step
+        }
       }
-      else if (inputsEnded) { // flush
-      var i = 0
-        while (i < windows.length - 1) {
-          val win = windows(i)
-          if (win.inRemain > 0) {
-            win.offIn   = win.size    // 'zeroed'
-            stateChange = true
-          }
-          i += 1
-        }
-        if (windows.nonEmpty) {
-          val win = windows.last
-          if (win.inRemain > 0) {
-            win.size    = win.offIn   // 'trimmed'
-            stateChange = true
-          }
-        }
+      else if (inputsEnded && !flushed) {
+        bufWritten  = maxStop
+        flushed     = true
+        stateChange = true
+        // println(s"flushed = true; bufWritten = $bufWritten")
       }
 
-      val chunkOut = outRemain
+      val chunkOut = math.min(bufWritten - bufRead, outRemain).toInt
       if (chunkOut > 0) {
-        ???
-//        val chunk1 = copyWindowsToOutput(chunkOut)
-//        if (chunk1 > 0) {
-//          // println(s"--- SLID copyWindowsToOutput($chunkOut) -> $chunk1")
-//          outOff      += chunk1
-//          outRemain   -= chunk1
-//          stateChange  = true
-//        }
+        copyBufferToOutput(chunkOut)
+        stateChange = true
       }
 
       stateChange
     }
 
-    private def startNextWindow(inOff: Int): Int = {
+    private def startNextWindow(): Unit = {
       if (bufIn1 != null && inOff < bufIn1.size) {
         size = math.max(1, bufIn1.buf(inOff))
       }
@@ -166,47 +146,74 @@ object OffsetOverlapAdd {
         init      = false
       }
       if (bufIn3 != null && inOff < bufIn3.size) {
-        offset = math.max(minOffset, bufIn3.buf(inOff))
+        offset = math.max(0, bufIn3.buf(inOff) - minOffset)
       }
-      size  // -> writeToWinRemain
-    }
 
-    private def copyInputToWindows(inOff: Int, writeToWinOff: Int, chunk: Int): Unit = {
-      if (writeToWinOff == 0) {
-        windows += new Window(new Array[Double](size))
-      }
-      val win     = windows.last
-      val chunk1  = math.min(chunk, win.inRemain)
-      if (chunk1 > 0) {
-        Util.copy(bufIn0.buf, inOff, win.buf, win.offIn, chunk1)
-        win.offIn += chunk1
-      }
-    }
-
-    private def processWindow(writeToWinOff: Int): Int = {
-      val res = /* if (flush) {
-        if (windows.isEmpty) 0 else math.max(step, windows.maxBy(_.availableOut).availableOut)
-      } else */ step
-
-      // println(s"OLAP processWindow($writeToWinOff, $flush) -> $res")
-      res // -> readFromWinRemain
-    }
-
-    private def copyWindowsToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit = {
-      Util.clear(bufOut0.buf, outOff, chunk)
-      var i = 0
-      while (i < windows.length) {  // take care of index as we drop windows on the way
-      val win = windows(i)
-        val chunk1 = math.min(win.availableOut, chunk)
-        if (chunk1 > 0) {
-          Util.add(win.buf, win.offOut, bufOut0.buf, outOff, chunk1)
-          win.offOut += chunk1
+      val newBufSize = size + offset
+      if (bufSize < newBufSize) {
+        // cf. https://stackoverflow.com/questions/38134091/
+        val oldBufSize  = bufSize
+        val newBuf      = new Array[Double](newBufSize)
+        if (bufWin != null) {
+          val off0      = (bufRead % oldBufSize).toInt
+          val off1      = (bufRead % newBufSize).toInt
+          val chunk0    = math.min(oldBufSize - off0, newBufSize - off1)
+          System.arraycopy(bufWin, off0, newBuf, off1, chunk0)
+          val off2      = (off0 + chunk0) % oldBufSize
+          val off3      = (off1 + chunk0) % newBufSize
+          val chunk1    = math.min(oldBufSize - math.max(chunk0, off2), newBufSize - off3)
+          System.arraycopy(bufWin, off2, newBuf, off3, chunk1)
+          val off4      = (off2 + chunk1) % oldBufSize
+          val off5      = (off3 + chunk1) % newBufSize
+          val chunk2    = oldBufSize - (chunk0 + chunk1)
+          System.arraycopy(bufWin, off4, newBuf, off5, chunk2)
+          bufWin = newBuf
         }
-        if (win.outRemain == 0) {
-          windows.remove(i)
-        } else {
-          i += 1
-        }
+        bufWin  = newBuf
+        bufSize = newBufSize
+      }
+
+      mixToBufRemain  = size
+      mixToBufOff     = ((bufWritten + offset) % bufSize).toInt // 'reset'
+
+      // println(s"startNextWindow - size = $size; bufWritten  = $bufWritten; mixToBufOff = $mixToBufOff")
+    }
+
+    private def mixIn(chunk: Int): Unit = {
+      Util.add(bufIn0.buf, inOff, bufWin, mixToBufOff, chunk)
+      mixToBufOff     = (mixToBufOff + chunk) % bufSize
+      mixToBufRemain -= chunk
+      inOff          += chunk
+      inRemain       -= chunk
+    }
+
+    private def mixInputToBuffer(chunk: Int): Unit = {
+      // println(s"mixInputToBuffer($chunk); inOff = $inOff, mixToBufOff = $mixToBufOff")
+      val chunk1 = math.min(chunk, bufSize - mixToBufOff)
+      mixIn(chunk1)
+      val chunk2 = chunk - chunk1
+      if (chunk2 > 0) {
+        mixIn(chunk2)
+      }
+    }
+
+    private def copyOut(bufOff: Int, chunk: Int): Unit = {
+      Util.copy(bufWin, bufOff, bufOut0.buf, outOff, chunk)
+      // we "clean up after ourselves" here, because this is the easiest spot
+      Util.clear(bufWin, bufOff, chunk)
+      outOff    += chunk
+      outRemain -= chunk
+      bufRead   += chunk
+    }
+
+    private def copyBufferToOutput(chunk: Int): Unit = {
+      val bufOff1 = (bufRead % bufSize).toInt
+      // println(s"copyBufferToOutput($chunk); outOff = $outOff, bufRead = $bufRead, bufOff1 = $bufOff1")
+      val chunk1  = math.min(chunk, bufSize - bufOff1)
+      copyOut(bufOff1, chunk1)
+      val chunk2 = chunk - chunk1
+      if (chunk2 > 0) {
+        copyOut(0, chunk2)
       }
     }
   }

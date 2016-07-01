@@ -122,22 +122,7 @@ object MorassTest extends App {
     val iFFT      = Real1FullIFFT(in = elemNorm, size = fftSize)
 
     val prod      = PeakCentroid1D(in = iFFT, size = fftSize, radius = radiusI)
-    val transX    = 0.0: GE // prod.translate.roundTo(1) * 0  // XXX TODO: * 0 for testing
-    /*
-
-    the problem is that we have `-winSizeH <= transX <= +winSizeH`,
-    but overlap-add doesn't support negative step sizes
-    (which may occur between adjacent frames).
-    adding `winSizeH` doesn't solve the problem, because we
-    cannot compensate for this spacing in any way.
-    Looks like we'll need another, different overlap-add
-    that allows for a "max-negative" step setting.
-    That max-negative between adjacent frames would thus
-    be `winSize - stepSize`.
-
-     */
-    val shiftX    = /* if (keepFileLength) transX else */ transX // + winSizeH
-
+    val shiftX    = 0.0: GE // prod.translate.roundTo(1) * 0  // XXX TODO: * 0 for testing
     val amp       = 1.0: GE // (ampModulation: GE).linlin(0, 1, 1.0, prod.peak)
     val ampPad    = RepeatWindow(in = amp   , num = winSize)
     val shiftXPad = RepeatWindow(in = shiftX, num = winSize)
@@ -149,11 +134,11 @@ object MorassTest extends App {
     // The first window will not be shifted.
     // So a solution is to prepend one empty
     // window and drop it later.
-    val prepend   = DC(0.0).take(winSize)
-    val lapIn     = synth // prepend ++ synth
+    // val prepend   = DC(0.0).take(winSize)
     // XXX TODO --- probably have to introduce some buffer here
-    val lap       = OverlapAdd(in = lapIn, size = winSize, step = shiftXPad + stepSize)
-    val sig       = lap // if (!keepFileLength) lap.drop(winSize) else lap.drop(winSize + winSizeH).take(numFrames)
+    // val lap       = OverlapAdd(in = lapIn, size = winSize, step = shiftXPad + stepSize)
+    val lap       = OffsetOverlapAdd(in = synth, size = winSize, step = stepSize, offset = shiftXPad, minOffset = -winSizeH)
+    val sig       = if (!keepFileLength) lap else lap.drop(winSizeH).take(numFrames)
 
     sig
   }

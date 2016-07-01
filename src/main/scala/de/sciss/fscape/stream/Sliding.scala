@@ -96,7 +96,6 @@ object Sliding {
       if (canPrepareStep && isNextWindow) {
         // println("SLID next-window")
         stepRemain    = startNextWindow(inOff = inOff)
-        windows      += new Window(new Array[Double](size))
         isNextWindow  = false
         stateChange   = true
       }
@@ -158,6 +157,7 @@ object Sliding {
       if (bufIn2 != null && inOff < bufIn2.size) {
         step = math.max(1, bufIn2.buf(inOff))
       }
+      windows += new Window(new Array[Double](size))
       step  // -> writeToWinRemain
     }
 

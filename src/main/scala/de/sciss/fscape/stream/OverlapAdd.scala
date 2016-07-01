@@ -81,6 +81,7 @@ object OverlapAdd {
       if (bufIn2 != null && inOff < bufIn2.size) {
         step = math.max(1, bufIn2.buf(inOff))
       }
+      windows += new Window(new Array[Double](size))
       size  // -> writeToWinRemain
     }
 
@@ -89,10 +90,6 @@ object OverlapAdd {
     protected def copyInputToWindow(inOff: Int, writeToWinOff: Int, chunk: Int): Unit = {
       // println(s"-- OLAP copyInputToWindow(inOff = $inOff, writeToWinOff = $writeToWinOff, chunk = $chunk) $FRAMES_READ")
       // FRAMES_READ += chunk
-      if (writeToWinOff == 0) {
-        // println(s"OLAP adding   window of size $size")
-        windows += new Window(new Array[Double](size))
-      }
       val win     = windows.last
       val chunk1  = math.min(chunk, win.inRemain)
       // println(s"OLAP copying $chunk1 frames to   window ${windows.length - 1} at ${win.offIn}")
