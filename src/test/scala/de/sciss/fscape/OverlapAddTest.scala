@@ -42,8 +42,8 @@ object OverlapAddTest extends App {
     val windowed      = slide * win
 //     val windowed = DC(0.125).take(12000)
 //    val windowed = SinOsc(0.25).take(12000) * 0.25
-    // val lap           = OverlapAdd(in = windowed, size = inputWinSize, step = stepSize /* + shiftXPad */)
-    val lap           = OffsetOverlapAdd(in = windowed, size = inputWinSize, step = stepSize, offset = 0, minOffset = 0)
+     val lap           = OverlapAdd(in = windowed, size = inputWinSize, step = stepSize)
+//    val lap           = OffsetOverlapAdd(in = windowed, size = inputWinSize, step = stepSize, offset = 0, minOffset = 0)
     val drop          = lap.drop(numPadLeft).take(numFrames)
     val sig0          = drop * gain
 //    val disk1         = DiskIn(file = in, numChannels = 1)

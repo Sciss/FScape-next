@@ -88,7 +88,7 @@ object OffsetOverlapAdd {
     private[this] var bufRead         = 0L
     private[this] var maxStop         = 0L
 
-    private[this] var init            = false
+    private[this] var init            = true
     private[this] var flushed         = false
 
     protected def shouldComplete(): Boolean = flushed && bufRead == bufWritten
