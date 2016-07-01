@@ -22,6 +22,7 @@ import de.sciss.file.File
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.implicitConversions
+import scala.util.Random
 
 object Control {
   trait ConfigLike {
@@ -29,6 +30,9 @@ object Control {
     def blockSize: Int
     /** Whether to isolate nodes through an asynchronous barrier. */
     def useAsync: Boolean
+
+    /** Random number generator seed. */
+    def seed: Long
 
     def materializer: Materializer
 
@@ -39,7 +43,7 @@ object Control {
     implicit def build(b: ConfigBuilder): Config = b.build
   }
 
-  final case class Config(blockSize: Int, useAsync: Boolean, materializer0: Materializer,
+  final case class Config(blockSize: Int, useAsync: Boolean, seed: Long, materializer0: Materializer,
                           executionContext0: ExecutionContext)
     extends ConfigLike {
 
@@ -57,6 +61,16 @@ object Control {
       * GraphViz representation.
       */
     var useAsync: Boolean = true
+
+    private[this] var _seed = Option.empty[Long]
+    private[this] lazy val defaultSeed: Long = System.currentTimeMillis()
+
+    def seed: Long = _seed.getOrElse {
+      _seed = Some(defaultSeed)
+      defaultSeed
+    }
+
+    def seed_=(value: Long): Unit = _seed = Some(value)
 
     private[this] var _mat: Materializer = _
     private[this] lazy val defaultMat: Materializer = ActorMaterializer()(ActorSystem())
@@ -77,7 +91,7 @@ object Control {
     def executionContext_=(value: ExecutionContext): Unit =
       _exec = value
 
-    def build = Config(blockSize = blockSize, useAsync = useAsync,
+    def build = Config(blockSize = blockSize, useAsync = useAsync, seed = seed,
       materializer0 = materializer, executionContext0 = executionContext)
   }
 
@@ -101,6 +115,10 @@ object Control {
       ugens.runnable.run()(config.materializer)
       ugens
     }
+
+    private[this] val metaRand = new Random(config.seed)
+
+    def mkRandom(): Random = new Random(metaRand.nextLong())   // XXX TODO --- thread safe?
 
     def borrowBufD(): BufD = {
       val res0 = queueD.poll()
@@ -134,7 +152,7 @@ object Control {
       queueI.offer(buf) // XXX TODO -- limit size?
     }
 
-    def addLeaf(l: Leaf): Unit = leaves ::= l
+    def addLeaf(l: Leaf): Unit = leaves ::= l // XXX TODO --- thread safe?
 
     def status: Future[Unit] = {
       import config.executionContext
@@ -200,4 +218,6 @@ trait Control {
   def debugDotGraph(): Unit
 
   def run(graph: Graph): UGenGraph
+
+  def mkRandom(): Random
 }

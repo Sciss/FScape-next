@@ -18,7 +18,7 @@ package impl
 import akka.stream.{FlowShape, Inlet, Outlet}
 import akka.stream.stage.GraphStageLogic
 
-/** Building block for generators with `FanInShape2` type graph stage logic.
+/** Building block for generators with `FlowShape` type graph stage logic.
   * A generator keeps producing output until down-stream is closed, and does
   * not care about upstream inlets being closed.
   */
