@@ -110,10 +110,12 @@ object MorassTest extends App {
     val slideB    = Sliding(in = template, size = templateWinSize, step = stepSize)
     val winA      = slideA * winAnaIn
     val winB      = slideB * winAnaTemp
+    val winARes   = ResizeWindow(in = winA, size = fftSize, start = 0, stop = fftSize - inputWinSize   )
+    val winBRes   = ResizeWindow(in = winB, size = fftSize, start = 0, stop = fftSize - templateWinSize)
 
     // XXX TODO --- should use Real1FFT when the DC-packing is solved
-    val fftA      = Real1FullFFT(in = winA, size = fftSize)
-    val fftB      = Real1FullFFT(in = winB, size = fftSize)
+    val fftA      = Real1FullFFT(in = winARes, size = fftSize)
+    val fftB      = Real1FullFFT(in = winBRes, size = fftSize)
     val conjA     = fftA .complex.conj   // XXX TODO -- is there a reason we take the conj of A and not B?
     val conv      = conjA.complex * fftB
     val convMag   = conv .complex.mag.reciprocal
@@ -124,8 +126,8 @@ object MorassTest extends App {
     val prod      = PeakCentroid1D(in = iFFT, size = fftSize, radius = radiusI)
     val shiftX    = 0.0: GE // prod.translate.roundTo(1) * 0  // XXX TODO: * 0 for testing
     val amp       = 1.0: GE // (ampModulation: GE).linlin(0, 1, 1.0, prod.peak)
-    val ampPad    = RepeatWindow(in = amp   , num = winSize)
-    val shiftXPad = RepeatWindow(in = shiftX, num = winSize)
+    val ampPad    = RepeatWindow(in = amp   , num = inputWinSize /* winSize */)
+    val shiftXPad = RepeatWindow(in = shiftX, num = inputWinSize /* winSize */)
 
     // ---- synthesis ----
     // make sure to insert a large enough buffer
@@ -137,7 +139,7 @@ object MorassTest extends App {
     // val prepend   = DC(0.0).take(winSize)
     // XXX TODO --- probably have to introduce some buffer here
     // val lap       = OverlapAdd(in = lapIn, size = winSize, step = shiftXPad + stepSize)
-    val lap       = OffsetOverlapAdd(in = synth, size = winSize, step = stepSize, offset = shiftXPad, minOffset = -winSizeH)
+    val lap       = OffsetOverlapAdd(in = synth, size = inputWinSize /* winSize */, step = stepSize, offset = shiftXPad, minOffset = -winSizeH)
     val sig       = if (!keepFileLength) lap else lap.drop(winSizeH).take(numFrames)
 
     sig
