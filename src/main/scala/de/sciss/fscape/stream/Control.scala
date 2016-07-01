@@ -107,6 +107,7 @@ object Control {
     private[this] val queueD  = new ConcurrentLinkedQueue[BufD]
     private[this] val queueI  = new ConcurrentLinkedQueue[BufI]
     private[this] var leaves  = List.empty[Leaf]
+    private[this] val sync    = new AnyRef
 
     def debugDotGraph(): Unit = akka.stream.sciss.Util.debugDotGraph()(config.materializer)
 
@@ -118,7 +119,7 @@ object Control {
 
     private[this] val metaRand = new Random(config.seed)
 
-    def mkRandom(): Random = new Random(metaRand.nextLong())   // XXX TODO --- thread safe?
+    def mkRandom(): Random = sync.synchronized(new Random(metaRand.nextLong()))
 
     def borrowBufD(): BufD = {
       val res0 = queueD.poll()
@@ -152,7 +153,7 @@ object Control {
       queueI.offer(buf) // XXX TODO -- limit size?
     }
 
-    def addLeaf(l: Leaf): Unit = leaves ::= l // XXX TODO --- thread safe?
+    def addLeaf(l: Leaf): Unit = sync.synchronized(leaves ::= l)
 
     def status: Future[Unit] = {
       import config.executionContext
