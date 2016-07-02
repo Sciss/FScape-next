@@ -121,11 +121,11 @@ object MorassTest extends App {
     val winBRes   = ResizeWindow(in = winB, size = templateWinSize, start = 0, stop = fftSize - templateWinSize)
 
     // XXX TODO --- should use Real1FFT when the DC-packing is solved
-
+    val fftGain   = fftSize/2 // XXX TODO -- why does this have an effect if we normalise in `elemNorm` anyway?
     val fftA0     = Real1FullFFT(in = winARes, size = fftSize)
-    val fftA      = fftA0 * fftSize
+    val fftA      = fftA0 * fftGain
     val fftB0     = Real1FullFFT(in = winBRes, size = fftSize)
-    val fftB      = fftB0 * fftSize
+    val fftB      = fftB0 * fftGain
 
 //    val TEST = fftA - fftB
 //    TEST.poll(1.0/16, "TEST")
@@ -137,13 +137,13 @@ object MorassTest extends App {
     val convBuf   = BufferDisk(conv)    // XXX TODO -- measure max delay
     val elemNorm  = convBuf * RepeatWindow(convMagR)
     val iFFT0     = Real1FullIFFT(in = elemNorm, size = fftSize)
-    val iFFT      = iFFT0 / fftSize
+    val iFFT      = iFFT0 / fftGain
 
-    Plot1D(fftA    , fftSize * 2, "fft-a")
-    Plot1D(fftB    , fftSize * 2, "fft-b")
-    Plot1D(conv    , fftSize * 2, "mul"  )
-    Plot1D(elemNorm, fftSize * 2, "norm" )
-    Plot1D(iFFT    , fftSize, "ifft")
+//    Plot1D(fftA    , fftSize * 2, "fft")
+//    Plot1D(conjA   , fftSize * 2, "conjA")
+//    Plot1D(conv    , fftSize * 2, "mul"  )
+//    Plot1D(elemNorm, fftSize * 2, "norm" )
+//    Plot1D(iFFT    , fftSize    , "ifft")
 
 //    RunningMax(in = elemNorm).poll(1.0/fftSize, "MAX-BEFORE")
 //    RunningMax(in = iFFT    ).poll(1.0/fftSize, "MAX-AFTER ")
@@ -188,7 +188,7 @@ object MorassTest extends App {
   def run(): Unit = {
 //    val Seq(inA, inB) = scala.util.Random.shuffle(inputs.combinations(2)).next()
     val inA = inputs.find(_.name.contains("b1269fa6")).get
-    // val inB = inputs.find(_.name.contains("65929a65")).get
+//    val inB = inputs.find(_.name.contains("65929a65")).get
     val inB = inA
     run(inA, inB)
     // run(inB, inA)
@@ -215,8 +215,8 @@ object MorassTest extends App {
         val fftA = mkFourierFwd(in = inA, size = fftSize /* A */, gain = Gain.normalized)
         val fftB = mkFourierFwd(in = inB, size = fftSize /* B */, gain = Gain.normalized)
 
-        val fftAZ = UnzipWindow(fftA).elastic(1024) \ 0 // treat Re and Im as two channels
-        val fftBZ = UnzipWindow(fftB).elastic(1024) \ 0 // treat Re and Im as two channels
+        val fftAZ = UnzipWindow(fftA).elastic(1024) // treat Re and Im as two channels
+        val fftBZ = UnzipWindow(fftB).elastic(1024) // treat Re and Im as two channels
 
 //        val fftAZ = SinOsc(1.0/64).take(44100 * 10)
 //        val fftBZ = SinOsc(1.0/64).take(44100 * 10)
@@ -229,13 +229,13 @@ object MorassTest extends App {
 
         val config = MorassConfig(input = fftAZ, template = fftBZ,
           synthesizeWinType = GenWindow.Rectangle,
-          inputWinSize = 4096, templateWinSize = 4096 /* 32768 */, stepSize = 1024 /* 16 */, ampModulation = 0.0675 /* 1.0 */,
+          inputWinSize = 4096, templateWinSize = 32768, stepSize = 16, ampModulation = 0.0675 /* 1.0 */,
           synthesizeWinAmt = 1.0 /* XXX TODO: 0.0625 */,
           numFrames = numFrames)
         val morass0 = mkMorass(config)
         val morass  = morass0 // .take(fftSize << 1)
 //val morass = fftAZ // + fftBZ
-        val morassZ = morass // ZipWindow(ChannelProxy(morass, 0).elastic(1024), ChannelProxy(morass, 1).elastic(1024))
+        val morassZ = ZipWindow(ChannelProxy(morass, 0).elastic(1024), ChannelProxy(morass, 1).elastic(1024))
 
 //        (fftAZ + fftBZ).poll(1.0/44100)
 //        morassZ.poll(1.0/44100)

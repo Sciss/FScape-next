@@ -87,6 +87,9 @@ object Plot1D {
       ds.addSeries(series)
       if (initGUI) {
         initGUI = false
+//        val plot      = chart.getPlot.asInstanceOf[XYPlot]
+//        val xAxis     = plot.getDomainAxis
+//        val renderer  = plot.getRenderer
         frame.open()
       }
     }

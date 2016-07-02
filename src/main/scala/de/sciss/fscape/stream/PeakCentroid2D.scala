@@ -96,7 +96,7 @@ object PeakCentroid2D {
       if (bufIn4 != null && inOff < bufIn4.size) thresh2 = bufIn4.buf(inOff)
       if (bufIn5 != null && inOff < bufIn5.size) radius  = math.max(1, bufIn5.buf(inOff))
 
-      // println(s"width = $width, height = $height; thresh1 = $thresh1, thresh2 = $thresh2; radius = $radius")
+//      println(s"width = $width, height = $height; thresh1 = $thresh1, thresh2 = $thresh2; radius = $radius")
 
       size
     }
@@ -104,7 +104,7 @@ object PeakCentroid2D {
     protected def copyInputToWindow(inOff: Int, writeToWinOff: Int, chunk: Int): Unit =
       Util.copy(bufIn0.buf, inOff, winBuf, writeToWinOff, chunk)
 
-    private var COUNT = 0
+    // private var COUNT = 0
 
     protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit = {
       assert(readFromWinOff == 0 && chunk == 1)
@@ -112,8 +112,8 @@ object PeakCentroid2D {
       bufOut0.buf(outOff) = translateX
       bufOut1.buf(outOff) = translateY
       bufOut2.buf(outOff) = peak
-      COUNT += 1
-      // println(f"elapsed = ${COUNT * 1024 / 44100.0}%1.2f sec - tx $translateX%1.2f; ty $translateY%1.2f, pk $peak%1.2f")
+//      COUNT += 1
+//      println(f"elapsed = ${COUNT * 1024 / 44100.0}%1.2f sec - tx $translateX%1.2f; ty $translateY%1.2f, pk $peak%1.2f")
       println(f"tx ${(translateX + 0.5).toInt}, pk = $peak%1.2f")
     }
 
@@ -132,7 +132,7 @@ object PeakCentroid2D {
         }
         i += 1
       }
-      // println(f"max = $max%1.3f")
+//      println(f"max = $max%1.3f")
 
       // ---- first run ----
 
@@ -173,7 +173,7 @@ object PeakCentroid2D {
       val xMax    = (xMin + trDiam).wrap(0, wm)
       val yMax    = (yMin + trDiam).wrap(0, hm)
 
-      println(f"peak run 1 - ($cx%1.2f, $cy%1.2f, $cs%1.2f)")
+//      println(f"peak run 1 - ($cx%1.2f, $cy%1.2f, $cs%1.2f)")
 
       val threshM2 = thresh2 * max
       cx = 0.0
@@ -201,7 +201,7 @@ object PeakCentroid2D {
         cy /= cs
       }
 
-      println(f"peak run 2 - ($cx%1.2f, $cy%1.2f, $cs%1.2f)")
+//      println(f"peak run 2 - ($cx%1.2f, $cy%1.2f, $cs%1.2f)")
 
 //      val peak = Product(translateX = cx, translateY = cy, peak = cs)
 //      peak

@@ -138,8 +138,8 @@ object ComplexBinaryOp {
         val aIm   = a(i); i += 1
         val bRe   = b(j); j += 1
         val bIm   = b(j); j += 1
-        val outRe = aRe - bRe
-        val outIm = aIm - bIm
+        val outRe = aRe * bRe - aIm * bIm
+        val outIm = aRe * bIm + aIm * bRe
         out(k) = outRe; k += 1
         out(k) = outIm; k += 1
       }
