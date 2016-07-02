@@ -9,7 +9,8 @@ import de.sciss.synth.io.{AudioFile, AudioFileSpec, AudioFileType, SampleFormat}
 import scala.swing.Swing
 
 object MorassTest extends App {
-  val inputs    = (userHome / "Music" / "work").children(f => f.name.startsWith("mentasm-") && f.ext == "aif")
+  val inputDir  = userHome / "Music" / "work"
+  val inputs    = inputDir.children(f => f.name.startsWith("mentasm-") && f.ext == "aif")
   val outputDir = userHome / "Documents" / "projects" / "Unlike" / "audio_work"
 
   println(s"There are ${inputs.size} input files.")
@@ -108,8 +109,11 @@ object MorassTest extends App {
 
     // println(s"fftSize = $fftSize; numFrames = $numFrames; stepSize = $stepSize; inputWinsize = $inputWinSize")
 
-    val inputPadLen     = inputWinSize    - stepSize
-    val templatePadLen  = templateWinSize - stepSize
+    // val inputPadLen     = inputWinSize - stepSize
+    val inputPadLen     = inputWinSize/2
+    val templatePadLen  = inputPadLen // templateWinSize - stepSize
+    // we pad the input so the when we apply the window, we don't
+    // lose the first frames
     val inputPad        = DC(0.0).take(inputPadLen   ) ++ input
     val templatePad     = DC(0.0).take(templatePadLen) ++ template
 
@@ -139,11 +143,14 @@ object MorassTest extends App {
     val iFFT0     = Real1FullIFFT(in = elemNorm, size = fftSize)
     val iFFT      = iFFT0 / fftGain
 
-//    Plot1D(fftA    , fftSize * 2, "fft")
-//    Plot1D(conjA   , fftSize * 2, "conjA")
-//    Plot1D(conv    , fftSize * 2, "mul"  )
-//    Plot1D(elemNorm, fftSize * 2, "norm" )
-//    Plot1D(iFFT    , fftSize    , "ifft")
+//    Plot1D(winARes.elastic(), fftSize, "in-a")
+//    Plot1D(fftA.complex.mag.elastic(), fftSize/2, "fft-a")
+//    Plot1D(winBRes.elastic(), fftSize, "in-b")
+//    Plot1D(fftB.complex.mag.elastic()    , fftSize/2, "fft-b")
+////    Plot1D(conjA   , fftSize * 2, "conjA")
+//    Plot1D(conv.elastic(), fftSize, "mul"  )
+////    Plot1D(elemNorm, fftSize * 2, "norm" )
+//    Plot1D(iFFT.complex.mag.elastic(), fftSize/2 , "ifft")
 
 //    RunningMax(in = elemNorm).poll(1.0/fftSize, "MAX-BEFORE")
 //    RunningMax(in = iFFT    ).poll(1.0/fftSize, "MAX-AFTER ")
@@ -187,9 +194,10 @@ object MorassTest extends App {
 
   def run(): Unit = {
 //    val Seq(inA, inB) = scala.util.Random.shuffle(inputs.combinations(2)).next()
-    val inA = inputs.find(_.name.contains("b1269fa6")).get
+    val inA = inputDir / "mentasm-b1269fa6.aif"
 //    val inB = inputs.find(_.name.contains("65929a65")).get
-    val inB = inA
+//    val inB = inA
+    val inB = inA.parent / s"${inA.base}Hlb-2.aif"
     run(inA, inB)
     // run(inB, inA)
   }
@@ -208,6 +216,8 @@ object MorassTest extends App {
       val fftSizeA  = if (truncate) (numFramesA + 1).nextPowerOfTwo / 2 else numFramesA.nextPowerOfTwo
       val fftSizeB  = if (truncate) (numFramesB + 1).nextPowerOfTwo / 2 else numFramesB.nextPowerOfTwo
       val fftSize   = math.max(fftSizeA, fftSizeB)
+      
+      val TEST_RE = false
 
       val g = Graph {
         import graph._
@@ -215,8 +225,10 @@ object MorassTest extends App {
         val fftA = mkFourierFwd(in = inA, size = fftSize /* A */, gain = Gain.normalized)
         val fftB = mkFourierFwd(in = inB, size = fftSize /* B */, gain = Gain.normalized)
 
-        val fftAZ = UnzipWindow(fftA).elastic(1024) // treat Re and Im as two channels
-        val fftBZ = UnzipWindow(fftB).elastic(1024) // treat Re and Im as two channels
+        val fftAZ0 = UnzipWindow(fftA).elastic(1024) // treat Re and Im as two channels
+        val fftBZ0 = UnzipWindow(fftB).elastic(1024) // treat Re and Im as two channels
+        val fftAZ   = if (TEST_RE) fftAZ0 \ 0 else fftAZ0
+        val fftBZ   = if (TEST_RE) fftBZ0 \ 0 else fftBZ0
 
 //        val fftAZ = SinOsc(1.0/64).take(44100 * 10)
 //        val fftBZ = SinOsc(1.0/64).take(44100 * 10)
@@ -225,17 +237,18 @@ object MorassTest extends App {
 //        val fftBZ = DiskIn(file = inB, numChannels = 1).take(fftSizeB)
 
         val numFrames = math.min(fftSizeA, fftSizeB)
+        println(s"numFrames = $numFrames")
         assert(numFrames.isPowerOfTwo)
 
         val config = MorassConfig(input = fftAZ, template = fftBZ,
           synthesizeWinType = GenWindow.Rectangle,
-          inputWinSize = 4096, templateWinSize = 32768, stepSize = 16, ampModulation = 0.0675 /* 1.0 */,
+          inputWinSize = 16384 /* 4096 */, templateWinSize = 16384 /* 32768 */, stepSize = 16, ampModulation = 0.0675 /* 1.0 */,
           synthesizeWinAmt = 1.0 /* XXX TODO: 0.0625 */,
           numFrames = numFrames)
         val morass0 = mkMorass(config)
         val morass  = morass0 // .take(fftSize << 1)
 //val morass = fftAZ // + fftBZ
-        val morassZ = ZipWindow(ChannelProxy(morass, 0).elastic(1024), ChannelProxy(morass, 1).elastic(1024))
+        val morassZ = if (TEST_RE) morass else ZipWindow(ChannelProxy(morass, 0).elastic(1024), ChannelProxy(morass, 1).elastic(1024))
 
 //        (fftAZ + fftBZ).poll(1.0/44100)
 //        morassZ.poll(1.0/44100)
