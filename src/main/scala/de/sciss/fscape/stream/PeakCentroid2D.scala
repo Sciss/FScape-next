@@ -85,7 +85,7 @@ object PeakCentroid2D {
         width = math.max(1, bufIn1.buf(inOff))
       }
       if (bufIn2 != null && inOff < bufIn2.size) {
-        height = math.max(2, bufIn2.buf(inOff))
+        height = math.max(1, bufIn2.buf(inOff))
       }
       size = width * height
       if (size != oldSize) {
@@ -95,6 +95,8 @@ object PeakCentroid2D {
       if (bufIn3 != null && inOff < bufIn3.size) thresh1 = bufIn3.buf(inOff)
       if (bufIn4 != null && inOff < bufIn4.size) thresh2 = bufIn4.buf(inOff)
       if (bufIn5 != null && inOff < bufIn5.size) radius  = math.max(1, bufIn5.buf(inOff))
+
+      // println(s"width = $width, height = $height; thresh1 = $thresh1, thresh2 = $thresh2; radius = $radius")
 
       size
     }
@@ -111,7 +113,7 @@ object PeakCentroid2D {
       bufOut1.buf(outOff) = translateY
       bufOut2.buf(outOff) = peak
       COUNT += 1
-      println(f"elapsed = ${COUNT * 1024 / 44100.0}%1.2f sec")
+      // println(f"elapsed = ${COUNT * 1024 / 44100.0}%1.2f sec - tx $translateX%1.2f; ty $translateY%1.2f, pk $peak%1.2f")
       // println(f"tr($translateX%1.2f, $translateY%1.2f), p $peak%1.2f")
     }
 

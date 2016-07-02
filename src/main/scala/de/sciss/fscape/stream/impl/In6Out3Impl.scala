@@ -76,20 +76,21 @@ Out1 >: Null <: BufLike, Out2 >: Null <: BufLike]
       bufIn1 = grab(sh.in1)
       tryPull(sh.in1)
     }
-
     if (isAvailable(sh.in2)) {
       bufIn2 = grab(sh.in2)
       tryPull(sh.in2)
     }
-
     if (isAvailable(sh.in3)) {
       bufIn3 = grab(sh.in3)
       tryPull(sh.in3)
     }
-
     if (isAvailable(sh.in4)) {
       bufIn4 = grab(sh.in4)
       tryPull(sh.in4)
+    }
+    if (isAvailable(sh.in5)) {
+      bufIn5 = grab(sh.in5)
+      tryPull(sh.in5)
     }
 
     _inValid = true
@@ -145,7 +146,8 @@ Out1 >: Null <: BufLike, Out2 >: Null <: BufLike]
       ((isClosed(sh.in1) && _inValid) || isAvailable(sh.in1)) &&
       ((isClosed(sh.in2) && _inValid) || isAvailable(sh.in2)) &&
       ((isClosed(sh.in3) && _inValid) || isAvailable(sh.in3)) &&
-      ((isClosed(sh.in4) && _inValid) || isAvailable(sh.in4))
+      ((isClosed(sh.in4) && _inValid) || isAvailable(sh.in4)) &&
+      ((isClosed(sh.in5) && _inValid) || isAvailable(sh.in5))
   }
 
   final def updateCanWrite(): Unit = {
