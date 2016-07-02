@@ -270,7 +270,7 @@ object MorassTest extends App {
       config.useAsync = false // for debugging
       val ctrl = stream.Control(config)
 
-//      showStreamLog = true
+      showStreamLog = true
 
       ctrl.run(g)
 

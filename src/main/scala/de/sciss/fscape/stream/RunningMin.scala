@@ -1,5 +1,5 @@
 /*
- *  RunningMax.scala
+ *  RunningMin.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2016 Hanns Holger Rutz. All rights reserved.
@@ -18,7 +18,7 @@ import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FanInShape2}
 import de.sciss.fscape.stream.impl.{FilterIn2DImpl, RunningValueImpl, StageImpl, StageLogicImpl}
 
-object RunningMax {
+object RunningMin {
   def apply(in: OutD, trig: OutI)(implicit b: Builder): OutD = {
     val stage0  = new Stage
     val stage   = b.add(stage0)
@@ -27,7 +27,7 @@ object RunningMax {
     stage.out
   }
 
-  private final val name = "RunningMax"
+  private final val name = "RunningMin"
 
   private type Shape = FanInShape2[BufD, BufI, BufD]
 
@@ -46,8 +46,8 @@ object RunningMax {
       with RunningValueImpl[Shape]
       with FilterIn2DImpl[BufD, BufI] {
 
-    protected def neutralValue: Double = Double.NegativeInfinity
+    protected def neutralValue: Double = Double.PositiveInfinity
 
-    protected def combine(a: Double, b: Double): Double = math.max(a, b)
+    protected def combine(a: Double, b: Double): Double = math.min(a, b)
   }
 }
