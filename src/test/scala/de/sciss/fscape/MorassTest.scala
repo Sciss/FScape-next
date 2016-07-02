@@ -126,9 +126,13 @@ object MorassTest extends App {
     val fftA      = fftA0 * fftSize
     val fftB0     = Real1FullFFT(in = winBRes, size = fftSize)
     val fftB      = fftB0 * fftSize
+
+//    val TEST = fftA - fftB
+//    TEST.poll(1.0/16, "TEST")
+
     val conjA     = fftA .complex.conj  // A is to be shift against B!
     val conv      = conjA.complex * fftB
-    val convMag   = conv .complex.mag.reciprocal
+    val convMag   = conv .complex.mag.max(1.0e-06).reciprocal
     val convBuf   = BufferDisk(conv)    // XXX TODO -- measure max delay
     val elemNorm  = convBuf * RepeatWindow(convMag)
     val iFFT0     = Real1FullIFFT(in = elemNorm, size = fftSize)
