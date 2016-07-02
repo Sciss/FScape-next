@@ -85,7 +85,13 @@ object Plot1D {
       val ds = dataset
       ds.removeAllSeries()
       ds.addSeries(series)
+      if (initGUI) {
+        initGUI = false
+        frame.open()
+      }
     }
+
+    private[this] var initGUI = true
 
     private[this] lazy val panelJ = {
       val ch        = chart
@@ -112,12 +118,12 @@ object Plot1D {
 
     // ---- methods ----
 
-    override def preStart(): Unit = {
-      super.preStart()
-      Swing.onEDT {
-        frame.open()
-      }
-    }
+//    override def preStart(): Unit = {
+//      super.preStart()
+//      Swing.onEDT {
+//        frame.open()
+//      }
+//    }
 
     @inline
     private[this] def shouldRead = inRemain == 0 && canRead
