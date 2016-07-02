@@ -22,8 +22,11 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 
 object BroadcastBuf {
   def apply[B <: BufLike](in: Outlet[B], numOutputs: Int)(implicit b: Builder): Vec[Outlet[B]] = {
-    // println(s"BroadcastBuf($in, $numOutputs)")
-    val stage0 = new Stage[B](numOutputs = numOutputs, eagerCancel = true)
+    // N.B. `eagerCancel` means that if we have outdegree two and
+    // any of the two sinks closes, the entire `BroadcastBuf` closes.
+    // This is usually _not_ what we want. We want to be able to
+    // keep feeding the remaining sink.
+    val stage0 = new Stage[B](numOutputs = numOutputs, eagerCancel = false)
     val stage  = b.add(stage0)
     b.connect(in, stage.in)
     stage.outArray.toIndexedSeq
@@ -47,7 +50,7 @@ object BroadcastBuf {
   }
 
   private final class Logic[B <: BufLike](shape: Shape[B], eagerCancel: Boolean)(implicit ctrl: Control)
-    extends StageLogicImpl(name, shape) with InHandler {
+    extends StageLogicImpl(name, shape) with InHandler { self =>
 
     private[this] val numOutputs    = shape.outArray.length
     private[this] var pendingCount  = numOutputs
@@ -97,13 +100,13 @@ object BroadcastBuf {
 
           override def onDownstreamFinish(): Unit = {
             if (eagerCancel) {
-              logStream(s"completeStage() $this")
+              logStream(s"completeStage() $self")
               completeStage()
             }
             else {
               sinksRunning -= 1
               if (sinksRunning == 0) {
-                logStream(s"completeStage() $this")
+                logStream(s"completeStage() $self")
                 completeStage()
               }
               else if (pending(idx0)) {

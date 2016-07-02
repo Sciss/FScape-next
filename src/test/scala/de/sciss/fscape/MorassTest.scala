@@ -203,6 +203,14 @@ object MorassTest extends App {
     // run(inB, inA)
   }
 
+  def printLength(in: GE, label: String): Unit = {
+    import graph._
+    val one       = in sig_!= Double.NaN
+    val count     = RunningSum(one)
+    val numFrames = count.last
+    numFrames.poll(0, label)
+  }
+
   def run(inA: File, inB: File): Unit = {
     val idA = inA.base.substring(8)
     val idB = inB.base.substring(8)
@@ -226,12 +234,17 @@ object MorassTest extends App {
         val fftA = mkFourierFwd(in = inA, size = fftSize /* A */, gain = Gain.normalized)
         val fftB = mkFourierFwd(in = inB, size = fftSize /* B */, gain = Gain.normalized)
 
+//        printLength(fftA, "fftA-len")
+//        printLength(fftB, "fftB-len")
+
         val fftAZ0 = UnzipWindow(fftA).elastic(1024) // treat Re and Im as two channels
         val fftBZ0 = UnzipWindow(fftB).elastic(1024) // treat Re and Im as two channels
         val fftAZ   = if (TEST_RE) fftAZ0 \ 0 else fftAZ0
         val fftBZ   = if (TEST_RE) fftBZ0 \ 0 else fftBZ0
 
-//        val fftAZ = SinOsc(1.0/64).take(44100 * 10)
+        printLength(fftAZ0, "fftAZ0-len")
+
+        //        val fftAZ = SinOsc(1.0/64).take(44100 * 10)
 //        val fftBZ = SinOsc(1.0/64).take(44100 * 10)
 
 //        val fftAZ = DiskIn(file = inA, numChannels = 1).take(fftSizeA)
