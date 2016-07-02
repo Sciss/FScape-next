@@ -32,8 +32,14 @@ package object fscape {
   var showGraphLog  = false
   var showStreamLog = false
 
+//  @elidable(CONFIG) private[fscape] def logStream(what: => String): Unit =
+//    if (showStreamLog) Console.out.println(s"${logHeader.format(new Date())}stream $what")
+
   @elidable(CONFIG) private[fscape] def logStream(what: => String): Unit =
-    if (showStreamLog) Console.out.println(s"${logHeader.format(new Date())}stream $what")
+    if (showStreamLog) {
+      val w = what
+      if (w.contains("onUpstreamFinish")) Console.out.println(s"${logHeader.format(new Date())}stream $w")
+    }
 
   @elidable(CONFIG) private[fscape] def logGraph(what: => String): Unit =
     if (showGraphLog) Console.out.println(s"${logHeader.format(new Date())}graph $what")

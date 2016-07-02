@@ -157,6 +157,7 @@ object MorassTest extends App {
 
     val prod      = PeakCentroid1D(in = iFFT, size = fftSize, radius = radiusI)
     val shiftX    = prod.translate
+    RepeatWindow(shiftX).poll(0.5, "shift-x")
     val amp       = (ampModulation: GE).linlin(0, 1, 1.0, prod.peak)
     val ampPad    = RepeatWindow(in = amp   , num = inputWinSize /* winSize */)
     val shiftXPad = RepeatWindow(in = shiftX, num = inputWinSize /* winSize */)
@@ -217,7 +218,7 @@ object MorassTest extends App {
       val fftSizeB  = if (truncate) (numFramesB + 1).nextPowerOfTwo / 2 else numFramesB.nextPowerOfTwo
       val fftSize   = math.max(fftSizeA, fftSizeB)
       
-      val TEST_RE = false
+      val TEST_RE = true
 
       val g = Graph {
         import graph._
@@ -253,18 +254,19 @@ object MorassTest extends App {
 //        (fftAZ + fftBZ).poll(1.0/44100)
 //        morassZ.poll(1.0/44100)
 
-//        val re   = morass
-//        val gain = Gain.normalized
-//        val sig   =
-//          if     (gain.isUnity   ) re
-//          else if(gain.normalized) realNormalize(re, headroom = gain.value)
-//          else                     re * gain.value
-//        DiskOut(file = output, spec = OutputSpec.aiffInt, in = sig)
+        val re   = morass
+        val gain = Gain.normalized
+        val sig   =
+          if     (gain.isUnity   ) re
+          else if(gain.normalized) realNormalize(re, headroom = gain.value)
+          else                     re * gain.value
+        DiskOut(file = output, spec = OutputSpec.aiffInt, in = sig)
 
-        mkFourierInv(in = morassZ, size = numFrames, out = output, spec = OutputSpec.aiffInt, gain = Gain.normalized)
+//        mkFourierInv(in = morassZ, size = numFrames, out = output, spec = OutputSpec.aiffInt, gain = Gain.normalized)
       }
 
       val config = stream.Control.Config()
+      config.blockSize = config.blockSize/4
       config.useAsync = false // for debugging
       val ctrl = stream.Control(config)
 
