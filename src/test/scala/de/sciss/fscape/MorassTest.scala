@@ -138,6 +138,8 @@ object MorassTest extends App {
     val iFFT0     = Real1FullIFFT(in = elemNorm, size = fftSize)
     val iFFT      = iFFT0 / fftSize
 
+    Plot1D(iFFT, fftSize, "ifft")
+
 //    RunningMax(in = elemNorm).poll(1.0/fftSize, "MAX-BEFORE")
 //    RunningMax(in = iFFT    ).poll(1.0/fftSize, "MAX-AFTER ")
 

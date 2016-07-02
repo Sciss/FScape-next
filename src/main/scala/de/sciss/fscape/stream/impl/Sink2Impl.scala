@@ -47,6 +47,9 @@ trait Sink2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike]
   protected final var bufIn0: In0 = _
   protected final var bufIn1: In1 = _
 
+  protected final val in0  = shape.in0
+  protected final val in1  = shape.in1
+
   private[this] final var _canRead = false
   private[this] final var _inValid = false
 
@@ -54,9 +57,8 @@ trait Sink2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike]
   final def inValid: Boolean = _inValid
 
   override def preStart(): Unit = {
-    val sh = shape
-    pull(sh.in0)
-    pull(sh.in1)
+    pull(in0)
+    pull(in1)
   }
 
   override def postStop(): Unit = {
@@ -66,15 +68,14 @@ trait Sink2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike]
 
   protected final def readIns(): Int = {
     freeInputBuffers()
-    val sh = shape
 
-    bufIn0 = grab(sh.in0)
+    bufIn0 = grab(in0)
     bufIn0.assertAllocated()
-    tryPull(sh.in0)
+    tryPull(in0)
 
-    if (isAvailable(sh.in1)) {
-      bufIn1 = grab(sh.in1)
-      tryPull(sh.in1)
+    if (isAvailable(in1)) {
+      bufIn1 = grab(in1)
+      tryPull(in1)
     }
 
     _inValid = true
@@ -94,13 +95,12 @@ trait Sink2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike]
   }
 
   final def updateCanRead(): Unit = {
-    val sh = shape
     // XXX TODO -- actually we should require that we have
     // acquired at least one buffer of each inlet. that could
     // be checked in `onUpstreamFinish` which should probably
     // close the stage if not a single buffer had been read!
-    _canRead = isAvailable(sh.in0) &&
-      ((isClosed(sh.in1) && _inValid) || isAvailable(sh.in1))
+    _canRead = isAvailable(in0) &&
+      ((isClosed(in1) && _inValid) || isAvailable(in1))
   }
 
   new ProcessInHandlerImpl(shape.in0, this)
