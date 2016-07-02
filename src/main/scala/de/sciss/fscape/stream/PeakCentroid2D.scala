@@ -114,7 +114,7 @@ object PeakCentroid2D {
       bufOut2.buf(outOff) = peak
       COUNT += 1
       // println(f"elapsed = ${COUNT * 1024 / 44100.0}%1.2f sec - tx $translateX%1.2f; ty $translateY%1.2f, pk $peak%1.2f")
-      // println(f"tr($translateX%1.2f, $translateY%1.2f), p $peak%1.2f")
+      println(f"tx ${(translateX + 0.5).toInt}, pk = $peak%1.2f")
     }
 
     @inline
@@ -173,7 +173,7 @@ object PeakCentroid2D {
       val xMax    = (xMin + trDiam).wrap(0, wm)
       val yMax    = (yMin + trDiam).wrap(0, hm)
 
-      // println(f"peak run 1 - ($cx%1.2f, $cy%1.2f, $cs%1.2f)")
+      println(f"peak run 1 - ($cx%1.2f, $cy%1.2f, $cs%1.2f)")
 
       val threshM2 = thresh2 * max
       cx = 0.0
@@ -201,7 +201,7 @@ object PeakCentroid2D {
         cy /= cs
       }
 
-      // println(f"peak run 2 - ($cx%1.2f, $cy%1.2f, $cs%1.2f)")
+      println(f"peak run 2 - ($cx%1.2f, $cy%1.2f, $cs%1.2f)")
 
 //      val peak = Product(translateX = cx, translateY = cy, peak = cs)
 //      peak

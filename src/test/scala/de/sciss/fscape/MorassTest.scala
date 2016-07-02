@@ -122,14 +122,17 @@ object MorassTest extends App {
 
     // XXX TODO --- should use Real1FFT when the DC-packing is solved
 
-    val fftA      = Real1FullFFT(in = winARes, size = fftSize)
-    val fftB      = Real1FullFFT(in = winBRes, size = fftSize)
-    val conjA     = fftA .complex.conj   // XXX TODO -- is there a reason we take the conj of A and not B?
+    val fftA0     = Real1FullFFT(in = winARes, size = fftSize)
+    val fftA      = fftA0 * fftSize
+    val fftB0     = Real1FullFFT(in = winBRes, size = fftSize)
+    val fftB      = fftB0 * fftSize
+    val conjA     = fftA .complex.conj  // A is to be shift against B!
     val conv      = conjA.complex * fftB
     val convMag   = conv .complex.mag.reciprocal
     val convBuf   = BufferDisk(conv)    // XXX TODO -- measure max delay
     val elemNorm  = convBuf * RepeatWindow(convMag)
-    val iFFT      = Real1FullIFFT(in = elemNorm, size = fftSize)
+    val iFFT0     = Real1FullIFFT(in = elemNorm, size = fftSize)
+    val iFFT      = iFFT0 / fftSize
 
 //    RunningMax(in = elemNorm).poll(1.0/fftSize, "MAX-BEFORE")
 //    RunningMax(in = iFFT    ).poll(1.0/fftSize, "MAX-AFTER ")
@@ -174,7 +177,8 @@ object MorassTest extends App {
   def run(): Unit = {
 //    val Seq(inA, inB) = scala.util.Random.shuffle(inputs.combinations(2)).next()
     val inA = inputs.find(_.name.contains("b1269fa6")).get
-    val inB = inputs.find(_.name.contains("65929a65")).get
+    // val inB = inputs.find(_.name.contains("65929a65")).get
+    val inB = inA
     run(inA, inB)
     // run(inB, inA)
   }
@@ -214,7 +218,7 @@ object MorassTest extends App {
 
         val config = MorassConfig(input = fftAZ, template = fftBZ,
           synthesizeWinType = GenWindow.Rectangle,
-          inputWinSize = 4096, templateWinSize = 32768, stepSize = 16, ampModulation = 0.0675 /* 1.0 */,
+          inputWinSize = 4096, templateWinSize = 4096 /* 32768 */, stepSize = 1024 /* 16 */, ampModulation = 0.0675 /* 1.0 */,
           synthesizeWinAmt = 1.0 /* XXX TODO: 0.0625 */,
           numFrames = numFrames)
         val morass0 = mkMorass(config)
