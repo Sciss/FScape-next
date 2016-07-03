@@ -282,7 +282,7 @@ object MorassTest extends App {
       }
 
       val config = stream.Control.Config()
-      config.blockSize = config.blockSize/4
+      config.blockSize = config.blockSize * 2 // /4
       config.useAsync = false // for debugging
       val ctrl = stream.Control(config)
 
