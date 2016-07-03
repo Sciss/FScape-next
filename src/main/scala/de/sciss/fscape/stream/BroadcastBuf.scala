@@ -22,7 +22,7 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 
 object BroadcastBuf {
   def apply[B <: BufLike](in: Outlet[B], numOutputs: Int)(implicit b: Builder): Vec[Outlet[B]] = {
-    // N.B. `eagerCancel` means that if we have outdegree two and
+    // N.B. `eagerCancel` means that if we have out-degree two and
     // any of the two sinks closes, the entire `BroadcastBuf` closes.
     // This is usually _not_ what we want. We want to be able to
     // keep feeding the remaining sink.

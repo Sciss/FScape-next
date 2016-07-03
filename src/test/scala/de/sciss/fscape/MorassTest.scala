@@ -131,7 +131,10 @@ object MorassTest extends App {
     val fftB0     = Real1FullFFT(in = winBRes, size = fftSize)
     val fftB      = fftB0 * fftGain
 
-//    val TEST = fftA - fftB
+    printLength(fftA, "fftA-len")
+    printLength(fftB, "fftB-len")
+
+    //    val TEST = fftA - fftB
 //    TEST.poll(1.0/16, "TEST")
 
     // cf. https://en.wikipedia.org/wiki/Phase_correlation
@@ -157,7 +160,7 @@ object MorassTest extends App {
 
     val prod      = PeakCentroid1D(in = iFFT, size = fftSize, radius = radiusI)
     val shiftX    = prod.translate
-    RepeatWindow(shiftX).poll(0.5, "shift-x")
+//    RepeatWindow(shiftX).poll(0.5, "shift-x")
     val amp       = (ampModulation: GE).linlin(0, 1, 1.0, prod.peak)
     val ampPad    = RepeatWindow(in = amp   , num = inputWinSize /* winSize */)
     val shiftXPad = RepeatWindow(in = shiftX, num = inputWinSize /* winSize */)
@@ -196,9 +199,9 @@ object MorassTest extends App {
   def run(): Unit = {
 //    val Seq(inA, inB) = scala.util.Random.shuffle(inputs.combinations(2)).next()
     val inA = inputDir / "mentasm-b1269fa6.aif"
-//    val inB = inputs.find(_.name.contains("65929a65")).get
+    val inB = inputs.find(_.name.contains("65929a65")).get
 //    val inB = inA
-    val inB = inA.parent / s"${inA.base}Hlb-2.aif"
+//    val inB = inA.parent / s"${inA.base}Hlb-2.aif"
     run(inA, inB)
     // run(inB, inA)
   }
@@ -226,7 +229,7 @@ object MorassTest extends App {
       val fftSizeB  = if (truncate) (numFramesB + 1).nextPowerOfTwo / 2 else numFramesB.nextPowerOfTwo
       val fftSize   = math.max(fftSizeA, fftSizeB)
       
-      val TEST_RE = true
+      val TEST_RE = false
 
       val g = Graph {
         import graph._
@@ -242,8 +245,6 @@ object MorassTest extends App {
         val fftAZ   = if (TEST_RE) fftAZ0 \ 0 else fftAZ0
         val fftBZ   = if (TEST_RE) fftBZ0 \ 0 else fftBZ0
 
-        printLength(fftAZ0, "fftAZ0-len")
-
         //        val fftAZ = SinOsc(1.0/64).take(44100 * 10)
 //        val fftBZ = SinOsc(1.0/64).take(44100 * 10)
 
@@ -256,7 +257,7 @@ object MorassTest extends App {
 
         val config = MorassConfig(input = fftAZ, template = fftBZ,
           synthesizeWinType = GenWindow.Rectangle,
-          inputWinSize = 16384 /* 4096 */, templateWinSize = 16384 /* 32768 */, stepSize = 16, ampModulation = 0.0675 /* 1.0 */,
+          inputWinSize = 16384 /* 4096 */, templateWinSize = 16384 /* 32768 */, stepSize = 1024 /* 16 */, ampModulation = 0.0675 /* 1.0 */,
           synthesizeWinAmt = 1.0 /* XXX TODO: 0.0625 */,
           numFrames = numFrames)
         val morass0 = mkMorass(config)
@@ -267,15 +268,17 @@ object MorassTest extends App {
 //        (fftAZ + fftBZ).poll(1.0/44100)
 //        morassZ.poll(1.0/44100)
 
-        val re   = morass
-        val gain = Gain.normalized
-        val sig   =
-          if     (gain.isUnity   ) re
-          else if(gain.normalized) realNormalize(re, headroom = gain.value)
-          else                     re * gain.value
-        DiskOut(file = output, spec = OutputSpec.aiffInt, in = sig)
-
-//        mkFourierInv(in = morassZ, size = numFrames, out = output, spec = OutputSpec.aiffInt, gain = Gain.normalized)
+        if (TEST_RE) {
+          val re   = morassZ
+          val gain = Gain.normalized
+          val sig   =
+            if     (gain.isUnity   ) re
+            else if(gain.normalized) realNormalize(re, headroom = gain.value)
+            else                     re * gain.value
+          DiskOut(file = output, spec = OutputSpec.aiffInt, in = sig)
+        } else {
+          mkFourierInv(in = morassZ, size = numFrames, out = output, spec = OutputSpec.aiffInt, gain = Gain.normalized)
+        }
       }
 
       val config = stream.Control.Config()
