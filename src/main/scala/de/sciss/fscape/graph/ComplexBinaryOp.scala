@@ -42,6 +42,8 @@ object ComplexBinaryOp {
     }
   }
 
+  final class Complex(var re: Double, var im: Double)
+
   sealed trait Op {
     op =>
 
@@ -49,23 +51,25 @@ object ComplexBinaryOp {
 
     final def make(a: GE, b: GE): GE = new ComplexBinaryOp(op, a = a, b = b)
 
-    /** Transfers values from an input buffer
-      * to an output buffer,
-      * applying the operator.
-      *
-      * @param a        the buffer of the first operand to read from, assuming interleaved re, im data
-      * @param b        the buffer of the second operand to read from, assuming interleaved re, im data
-      * @param aOff     the index into `a`. this is a direct array index, not
-      *                 a logical index which must be multiplied by two!
-      * @param bOff     the index into `b`.
-      * @param out      the buffer to read from, assuming interleaved re, im data
-      * @param outOff   the index into `out`. this is a direct array index, not
-      *                 a logical index which must be multiplied by two!
-      * @param len      logical length of the operation, that is the number of
-      *                 complex numbers to transfer. the number of `Double` values
-      *                 read from `in` and written to `out` is twice `len`!
-      */
-    def apply(a: Array[Double], aOff: Int, b: Array[Double], bOff: Int, out: Array[Double], outOff: Int, len: Int): Unit
+//    /** Transfers values from an input buffer
+//      * to an output buffer,
+//      * applying the operator.
+//      *
+//      * @param a        the buffer of the first operand to read from, assuming interleaved re, im data
+//      * @param b        the buffer of the second operand to read from, assuming interleaved re, im data
+//      * @param aOff     the index into `a`. this is a direct array index, not
+//      *                 a logical index which must be multiplied by two!
+//      * @param bOff     the index into `b`.
+//      * @param out      the buffer to read from, assuming interleaved re, im data
+//      * @param outOff   the index into `out`. this is a direct array index, not
+//      *                 a logical index which must be multiplied by two!
+//      * @param len      logical length of the operation, that is the number of
+//      *                 complex numbers to transfer. the number of `Double` values
+//      *                 read from `in` and written to `out` is twice `len`!
+//      */
+//    def apply(a: Array[Double], aOff: Int, b: Array[Double], bOff: Int, out: Array[Double], outOff: Int, len: Int): Unit
+
+    def apply(aRe: Double, aIm: Double, bRe:Double, bIm: Double, out: Array[Double], outOff: Int): Unit
 
     def name: String = plainName.capitalize
 
@@ -81,22 +85,27 @@ object ComplexBinaryOp {
     final val id = 0
     override val name = "+"
 
-    def apply(a: Array[Double], aOff: Int, b: Array[Double], bOff: Int, out: Array[Double],
-              outOff: Int, len: Int): Unit = {
-      val aStop = aOff + (len << 1)
-      var i     = aOff
-      var j     = bOff
-      var k     = outOff
-      while (i < aStop) {
-        val aRe   = a(i); i += 1
-        val aIm   = a(i); i += 1
-        val bRe   = b(j); j += 1
-        val bIm   = b(j); j += 1
-        val outRe = aRe + bRe
-        val outIm = aIm + bIm
-        out(k) = outRe; k += 1
-        out(k) = outIm; k += 1
-      }
+//    def apply(a: Array[Double], aOff: Int, b: Array[Double], bOff: Int, out: Array[Double],
+//              outOff: Int, len: Int): Unit = {
+//      val aStop = aOff + (len << 1)
+//      var i     = aOff
+//      var j     = bOff
+//      var k     = outOff
+//      while (i < aStop) {
+//        val aRe   = a(i); i += 1
+//        val aIm   = a(i); i += 1
+//        val bRe   = b(j); j += 1
+//        val bIm   = b(j); j += 1
+//        val outRe = aRe + bRe
+//        val outIm = aIm + bIm
+//        out(k) = outRe; k += 1
+//        out(k) = outIm; k += 1
+//      }
+//    }
+
+    def apply(aRe: Double, aIm: Double, bRe:Double, bIm: Double, out: Array[Double], outOff: Int): Unit = {
+      out(outOff)     = aRe + bRe
+      out(outOff + 1) = aIm + bIm
     }
   }
 
@@ -104,22 +113,27 @@ object ComplexBinaryOp {
     final val id = 1
     override val name = "-"
 
-    def apply(a: Array[Double], aOff: Int, b: Array[Double], bOff: Int, out: Array[Double],
-              outOff: Int, len: Int): Unit = {
-      val aStop = aOff + (len << 1)
-      var i     = aOff
-      var j     = bOff
-      var k     = outOff
-      while (i < aStop) {
-        val aRe   = a(i); i += 1
-        val aIm   = a(i); i += 1
-        val bRe   = b(j); j += 1
-        val bIm   = b(j); j += 1
-        val outRe = aRe - bRe
-        val outIm = aIm - bIm
-        out(k) = outRe; k += 1
-        out(k) = outIm; k += 1
-      }
+//    def apply(a: Array[Double], aOff: Int, b: Array[Double], bOff: Int, out: Array[Double],
+//              outOff: Int, len: Int): Unit = {
+//      val aStop = aOff + (len << 1)
+//      var i     = aOff
+//      var j     = bOff
+//      var k     = outOff
+//      while (i < aStop) {
+//        val aRe   = a(i); i += 1
+//        val aIm   = a(i); i += 1
+//        val bRe   = b(j); j += 1
+//        val bIm   = b(j); j += 1
+//        val outRe = aRe - bRe
+//        val outIm = aIm - bIm
+//        out(k) = outRe; k += 1
+//        out(k) = outIm; k += 1
+//      }
+//    }
+
+    def apply(aRe: Double, aIm: Double, bRe:Double, bIm: Double, out: Array[Double], outOff: Int): Unit = {
+      out(outOff)     = aRe - bRe
+      out(outOff + 1) = aIm - bIm
     }
   }
 
@@ -127,22 +141,27 @@ object ComplexBinaryOp {
     final val id = 2
     override val name = "*"
 
-    def apply(a: Array[Double], aOff: Int, b: Array[Double], bOff: Int, out: Array[Double], 
-              outOff: Int, len: Int): Unit = {
-      val aStop = aOff + (len << 1)
-      var i     = aOff
-      var j     = bOff
-      var k     = outOff
-      while (i < aStop) {
-        val aRe   = a(i); i += 1
-        val aIm   = a(i); i += 1
-        val bRe   = b(j); j += 1
-        val bIm   = b(j); j += 1
-        val outRe = aRe * bRe - aIm * bIm
-        val outIm = aRe * bIm + aIm * bRe
-        out(k) = outRe; k += 1
-        out(k) = outIm; k += 1
-      }
+//    def apply(a: Array[Double], aOff: Int, b: Array[Double], bOff: Int, out: Array[Double],
+//              outOff: Int, len: Int): Unit = {
+//      val aStop = aOff + (len << 1)
+//      var i     = aOff
+//      var j     = bOff
+//      var k     = outOff
+//      while (i < aStop) {
+//        val aRe   = a(i); i += 1
+//        val aIm   = a(i); i += 1
+//        val bRe   = b(j); j += 1
+//        val bIm   = b(j); j += 1
+//        val outRe = aRe * bRe - aIm * bIm
+//        val outIm = aRe * bIm + aIm * bRe
+//        out(k) = outRe; k += 1
+//        out(k) = outIm; k += 1
+//      }
+//    }
+
+    def apply(aRe: Double, aIm: Double, bRe:Double, bIm: Double, out: Array[Double], outOff: Int): Unit = {
+      out(outOff)     = aRe * bRe - aIm * bIm
+      out(outOff + 1) = aRe * bIm + aIm * bRe
     }
   }
 }

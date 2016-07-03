@@ -51,10 +51,40 @@ object ComplexBinaryOp {
       with FilterChunkImpl[BufD, BufD, Shape]
       with FilterIn2DImpl[BufD, BufD] {
 
+    private[this] var bRe: Double = _
+    private[this] var bIm: Double = _
+
     protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Unit = {
-      require((chunk & 1) == 0)// must be even
-      op(a = bufIn0.buf, aOff = inOff, b = bufIn1.buf, bOff = inOff,
-        out = bufOut0.buf, outOff = outOff, len = chunk >> 1)
+      require((chunk & 1) == 0) // must be even
+
+//      op(a = bufIn0.buf, aOff = inOff, b = bufIn1.buf, bOff = inOff,
+//        out = bufOut0.buf, outOff = outOff, len = chunk >> 1)
+
+      var inOffI  = inOff
+      var outOffI = outOff
+      val aStop   = inOffI + chunk
+      val a       = bufIn0.buf
+      val b       = if (bufIn1 == null) null else bufIn1.buf
+      val out     = bufOut0.buf
+      val bStop   = if (b      == null) 0    else bufIn1.size
+      var _bRe    = bRe
+      var _bIm    = bIm
+      while (inOffI < aStop) {
+        val aRe = a(inOffI)
+        if (inOffI < bStop) {
+          _bRe = b(inOffI)
+        }
+        inOffI += 1
+        val aIm = a(inOffI)
+        if (inOffI < bStop) {
+          _bIm = b(inOffI)
+        }
+        inOffI += 1
+        op(aRe = aRe, aIm = aIm, bRe = _bRe, bIm = _bIm, out = out, outOff = outOffI)
+        outOffI += 2
+      }
+      bRe = _bRe
+      bIm = _bIm
     }
   }
 }
