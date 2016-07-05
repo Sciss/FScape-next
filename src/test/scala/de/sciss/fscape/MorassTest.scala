@@ -146,14 +146,14 @@ object MorassTest extends App {
     val iFFT0     = Real1FullIFFT(in = elemNorm, size = fftSize)
     val iFFT      = iFFT0 / fftGain
 
-//    Plot1D(winARes.elastic(), fftSize, "in-a")
-//    Plot1D(fftA.complex.mag.elastic(), fftSize/2, "fft-a")
-//    Plot1D(winBRes.elastic(), fftSize, "in-b")
-//    Plot1D(fftB.complex.mag.elastic()    , fftSize/2, "fft-b")
-////    Plot1D(conjA   , fftSize * 2, "conjA")
-//    Plot1D(conv.elastic(), fftSize, "mul"  )
-////    Plot1D(elemNorm, fftSize * 2, "norm" )
-//    Plot1D(iFFT.complex.mag.elastic(), fftSize/2 , "ifft")
+    Plot1D(winARes.elastic(), fftSize, "in-a")
+    Plot1D(fftA.complex.mag.elastic(), fftSize/2, "fft-a")
+    Plot1D(winBRes.elastic(), fftSize, "in-b")
+    Plot1D(fftB.complex.mag.elastic()    , fftSize/2, "fft-b")
+//    Plot1D(conjA   , fftSize * 2, "conjA")
+    Plot1D(conv.elastic(), fftSize, "mul"  )
+//    Plot1D(elemNorm, fftSize * 2, "norm" )
+    Plot1D(iFFT.complex.mag.elastic(), fftSize/2 , "ifft")
 
 //    RunningMax(in = elemNorm).poll(1.0/fftSize, "MAX-BEFORE")
 //    RunningMax(in = iFFT    ).poll(1.0/fftSize, "MAX-AFTER ")

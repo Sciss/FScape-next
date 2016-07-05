@@ -19,6 +19,7 @@ import java.awt.Color
 import akka.stream.Attributes
 import akka.stream.stage.GraphStageLogic
 import de.sciss.fscape.stream.impl.{FilterLogicImpl, Sink2Impl, SinkShape2, StageImpl, StageLogicImpl}
+import org.jfree.chart.axis.NumberAxis
 import org.jfree.chart.plot.{PlotOrientation, XYPlot}
 import org.jfree.chart.{ChartFactory, ChartPanel}
 import org.jfree.data.xy.{XYSeries, XYSeriesCollection}
@@ -73,13 +74,22 @@ object Plot1D {
 
     private[this] lazy val dataset = new XYSeriesCollection
 
-    private[this] lazy val chart = ChartFactory.createXYStepChart /* createXYLineChart */(
-      null, null, null, dataset,
-      PlotOrientation.VERTICAL,
-      false,  // legend
-      false,  // tooltips
-      false   // urls
-    )
+    private[this] lazy val chart = {
+      val res = ChartFactory.createXYStepChart /* createXYLineChart */(
+        null, null, null, dataset,
+        PlotOrientation.VERTICAL,
+        false,  // legend
+        false,  // tooltips
+        false   // urls
+      )
+      // cf. https://stackoverflow.com/questions/38163136/
+      val plot = res.getPlot.asInstanceOf[XYPlot]
+      val axis = new NumberAxis()
+      // axis.getTickUnit   ...
+//      axis.setTickUnit(new NumberTickUnit(1, NumberFormat.getIntegerInstance(Locale.US)))
+      plot.setDomainAxis(axis)
+      res
+    }
 
     private def updateData(series: XYSeries): Unit = {
       val ds = dataset
