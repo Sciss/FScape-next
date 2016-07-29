@@ -13,7 +13,11 @@ object TransposeTest extends App {
 
   val g = Graph {
     import graph._
-    val in    = ImageFileIn(file = fIn, numChannels = 3)
+//    val in    = ImageFileIn(file = fIn, numChannels = 3)
+    val xSin  = SinOsc(Seq[GE](0.5/width, 1.0/width, 1.5/width)).abs
+    val ySin  = SinOsc(0.5/(height * width))
+    val in    = xSin * ySin
+
     val sig   = TransposeMatrix(in = in, rows = height, columns = width)
     val spec  = ImageFile.Spec(width = height, height = width, numChannels = 3,
       fileType = ImageFile.Type.JPG, sampleFormat = ImageFile.SampleFormat.Int8,
