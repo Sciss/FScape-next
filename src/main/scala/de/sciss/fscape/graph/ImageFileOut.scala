@@ -33,11 +33,14 @@ object ImageFileOut {
   }
   sealed trait SampleFormat
 
+  /** @param quality  only used for JPEG
+    */
   final case class Spec(fileType     : FileType     = FileType.PNG,
                         sampleFormat : SampleFormat = SampleFormat.Int8,
                         width        : Int,
                         height       : Int,
-                        numChannels  : Int)
+                        numChannels  : Int,
+                        quality      : Int = 80)
 }
 final case class ImageFileOut(file: File, spec: ImageFileOut.Spec, in: GE) extends UGenSource.ZeroOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): Unit = unwrap(in.expand.outputs)

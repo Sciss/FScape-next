@@ -17,7 +17,9 @@ package stream
 import java.awt.Transparency
 import java.awt.color.ColorSpace
 import java.awt.image.{BandedSampleModel, BufferedImage, ComponentColorModel, DataBuffer, Raster}
-import javax.imageio.ImageIO
+import javax.imageio.plugins.jpeg.JPEGImageWriteParam
+import javax.imageio.stream.FileImageOutputStream
+import javax.imageio.{IIOImage, ImageIO, ImageTypeSpecifier, ImageWriteParam, ImageWriter}
 
 import akka.stream.Attributes
 import akka.stream.stage.InHandler
@@ -63,15 +65,18 @@ object ImageFileOut {
     private[this] val bufIns        = new Array[BufD](spec.numChannels)
     private[this] var framesWritten = 0
 
-    private[this] var gain     : Double = _
-    private[this] var numFrames: Int = _
+    private[this] var writer    : ImageWriter     = _
+    private[this] var gain      : Double          = _
+    private[this] var numFrames : Int             = _
+    private[this] var imgParam  : ImageWriteParam = _
 
     private /* [this] */ val result = Promise[Long]()
 
     shape.inlets.foreach(setHandler(_, this))
 
     override def preStart(): Unit = {
-      require(if (f.exists()) f.isFile && f.canWrite else f.absolute.parent.canWrite)
+//      require(if (f.exists()) f.isFile && f.canWrite else f.absolute.parent.canWrite)
+
       val asyncCancel = getAsyncCallback[Unit] { _ =>
         val ex = Cancelled()
         if (result.tryFailure(ex)) failStage(ex)
@@ -99,6 +104,23 @@ object ImageFileOut {
       val cm        = new ComponentColorModel(cs, hasAlpha, false, Transparency.TRANSLUCENT, dataType)
       numFrames     = spec.width * spec.height
       img           = new BufferedImage(cm, r, false, null)
+
+      val (fmtName, _param) = spec.fileType match {
+        case FileType.PNG => "png" -> null
+        case FileType.JPG =>
+          val p = new JPEGImageWriteParam(null)
+          p.setCompressionMode(ImageWriteParam.MODE_EXPLICIT)
+          p.setCompressionQuality(spec.quality * 0.01f)
+          "jpg" -> p
+      }
+      imgParam = _param
+
+      val iter = ImageIO.getImageWriters(ImageTypeSpecifier.createFromRenderedImage(img), fmtName)
+      if (!iter.hasNext) throw new IllegalArgumentException(s"No image writer for $spec")
+      writer = iter.next()
+      val out = new FileImageOutputStream(f)
+      writer.setOutput(out)
+
       shape.inlets.foreach(pull)
     }
 
@@ -111,14 +133,13 @@ object ImageFileOut {
         ch += 1
       }
       try {
-        val fmtName = spec.fileType match {
-          case FileType.PNG => "png"
-          case FileType.JPG => "jpg"
-        }
-        ImageIO.write(img, fmtName, f)
+        writer.write(null /* meta */ , new IIOImage(img, null /* thumb */ , null /* meta */), imgParam)
         result.trySuccess(numFrames)
       } catch {
-        case NonFatal(ex) => result.tryFailure(ex)
+        case NonFatal(ex) =>
+          result.tryFailure(ex)
+      } finally {
+        writer.dispose()
       }
     }
 
