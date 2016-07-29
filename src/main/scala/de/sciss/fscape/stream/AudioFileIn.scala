@@ -1,5 +1,5 @@
 /*
- *  DiskIn.scala
+ *  AudioFileIn.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2016 Hanns Holger Rutz. All rights reserved.
@@ -23,14 +23,14 @@ import de.sciss.synth.io
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.util.control.NonFatal
 
-object DiskIn {
+object AudioFileIn {
   def apply(file: File, numChannels: Int)(implicit b: Builder): Vec[OutD] = {
     val source  = new Stage(file, numChannels = numChannels)
     val stage   = b.add(source)
     stage.outlets.toIndexedSeq
   }
 
-  private final val name = "DiskIn"
+  private final val name = "AudioFileIn"
 
   private type Shape = UniformSourceShape[BufD]
 

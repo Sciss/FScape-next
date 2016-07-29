@@ -53,7 +53,7 @@ object ZipWindowTest extends App {
 
   def mkFourierFwd(in: File, size: GE, gain: Gain): GE = {
     import graph._
-    val disk      = DiskIn(file = in, numChannels = 1).take(size)
+    val disk      = AudioFileIn(file = in, numChannels = 1).take(size)
     val complex   = ZipWindow(disk, DC(0.0))
     val fft       = Fourier(in = complex, size = size, dir = +1.0)
     val sig       =

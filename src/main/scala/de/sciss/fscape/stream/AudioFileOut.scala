@@ -1,5 +1,5 @@
 /*
- *  DiskOut.scala
+ *  AudioFileOut.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2016 Hanns Holger Rutz. All rights reserved.
@@ -25,7 +25,7 @@ import scala.collection.immutable.{Seq => ISeq}
 import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal
 
-object DiskOut {
+object AudioFileOut {
   def apply(file: File, spec: AudioFileSpec, in: ISeq[OutD])(implicit b: Builder): Unit = {
     require (spec.numChannels == in.size, s"Channel mismatch (spec has ${spec.numChannels}, in has ${in.size})")
     val sink = new Stage(file, spec)
@@ -35,7 +35,7 @@ object DiskOut {
     }
   }
 
-  private final val name = "DiskOut"
+  private final val name = "AudioFileOut"
 
   private type Shape = UniformSinkShape[BufD]
 

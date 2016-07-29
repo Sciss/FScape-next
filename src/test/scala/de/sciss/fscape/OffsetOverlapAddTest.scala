@@ -24,7 +24,7 @@ object OffsetOverlapAddTest extends App {
     val minOffset     = -4
     val sig           = OffsetOverlapAdd(in = impulse, size = winSize, step = stepSize,
       offset = offset, minOffset = minOffset)
-    DiskOut(file = out, spec = AudioFileSpec(sampleRate = 44100.0, numChannels = 1), in = sig)
+    AudioFileOut(file = out, spec = AudioFileSpec(sampleRate = 44100.0, numChannels = 1), in = sig)
   }
 
   // showStreamLog = true

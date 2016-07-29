@@ -39,23 +39,23 @@ object StreamTest extends App {
   lazy val graphFFT = GraphDSL.create() { implicit dsl =>
     implicit val b = Builder()
 
-    val in      = DiskIn(file = fIn, numChannels = 1).head
+    val in      = AudioFileIn(file = fIn, numChannels = 1).head
     val size    = b.add(Source.single(BufI(65536))).out
     val padding = b.add(Source.single(BufI(    0))).out
     val fft     = Real1FFT(in, size = size, padding = padding)
-    DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = fft :: Nil)
+    AudioFileOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = fft :: Nil)
     ClosedShape
   }
 
   lazy val graphWin = GraphDSL.create() { implicit dsl =>
     implicit val b = Builder()
 
-    val in      = DiskIn(file = fIn, numChannels = 1).head
+    val in      = AudioFileIn(file = fIn, numChannels = 1).head
     val fftSize = 32768 // 8192
     val winIn   = GenWindow(size = const(fftSize), shape = const(graph.GenWindow.Hann.id), param = const(0.0))
     val winOut  = BinaryOp(in1 = in, in2 = winIn, op = graph.BinaryOp.Times)
     val sig     = winOut
-    DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig :: Nil)
+    AudioFileOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig :: Nil)
     ClosedShape
   }
 
@@ -109,7 +109,7 @@ object StreamTest extends App {
 
     // 'analysis'
 //    val in          = DiskIn(file = fIn)
-    val in          = DiskIn(file = fIn2, numChannels = 1).head
+    val in          = AudioFileIn(file = fIn2, numChannels = 1).head
 //    val fftSize     = 131072
     val fftSize     = 32768 // 8192
     val winStep     = fftSize // / 4
@@ -211,7 +211,7 @@ object StreamTest extends App {
     // 'synthesis'
     val outW        = Real1FullIFFT (in = fftOut, size = const(fftSize), padding = const(0))
     val sig         = outW  // XXX TODO: apply window function and overlap-add
-    DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig :: Nil)
+    AudioFileOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig :: Nil)
     ClosedShape
   }
 
@@ -221,7 +221,7 @@ object StreamTest extends App {
     import graph.BinaryOp.{Max, Times}
 
     // 'analysis'
-    val in          = DiskIn(file = fIn, numChannels = 1).head
+    val in          = AudioFileIn(file = fIn, numChannels = 1).head
     val fftSize     = 131072 // 32768 // 8192
     val winStep     = fftSize / 4
     val inW         = Sliding       (in = in  , size = const(fftSize), step    = const(winStep))
@@ -270,7 +270,7 @@ object StreamTest extends App {
     val winOut      = BinaryOp(in1 = gain, in2 = winIn, op = Times)
     val sig         = OverlapAdd(winOut, size = const(fftSize), step = const(winStep))
 
-    DiskOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig :: Nil)
+    AudioFileOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig :: Nil)
     ClosedShape
   }
 
@@ -280,7 +280,7 @@ object StreamTest extends App {
     import graph.BinaryOp.{Max, Times}
 
     // 'analysis'
-    val in          = DiskIn(file = fIn, numChannels = 1).head
+    val in          = AudioFileIn(file = fIn, numChannels = 1).head
     val fftSize     = 131072 // 32768 // 8192
     val winStep     = fftSize / 4
     val inW         = Sliding       (in = in  , size = const(fftSize), step    = const(winStep))
@@ -315,7 +315,7 @@ object StreamTest extends App {
       lap
     }
 
-    DiskOut(file = fOut, spec = AudioFileSpec(numChannels = sig.size, sampleRate = 44100), in = sig)
+    AudioFileOut(file = fOut, spec = AudioFileSpec(numChannels = sig.size, sampleRate = 44100), in = sig)
     ClosedShape
   }
 

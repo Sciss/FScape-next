@@ -1,5 +1,5 @@
 /*
- *  DiskIn.scala
+ *  ImageFileIn.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2016 Hanns Holger Rutz. All rights reserved.
@@ -15,11 +15,11 @@ package de.sciss.fscape
 package graph
 
 import de.sciss.file.File
-import de.sciss.fscape.stream.{Control, GBuilder, StreamIn, StreamOut}
+import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-final case class DiskIn(file: File, numChannels: Int) extends UGenSource.MultiOut {
+final case class ImageFileIn(file: File, numChannels: Int) extends UGenSource.MultiOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = makeUGen(Vector.empty)
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
@@ -27,5 +27,5 @@ final case class DiskIn(file: File, numChannels: Int) extends UGenSource.MultiOu
       isIndividual = true, hasSideEffect = true)
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Vec[StreamOut] =
-    stream.DiskIn(file = file, numChannels = numChannels)
+    stream.ImageFileIn(file = file, numChannels = numChannels)
 }
