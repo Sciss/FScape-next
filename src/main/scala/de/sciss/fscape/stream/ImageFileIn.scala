@@ -14,7 +14,7 @@
 package de.sciss.fscape
 package stream
 
-import java.awt.image.BufferedImage
+import java.awt.image.{BufferedImage, DataBuffer}
 import javax.imageio.ImageIO
 
 import akka.stream.Attributes
@@ -55,9 +55,10 @@ object ImageFileIn {
     private[this] var numBands  : Int           = _
     private[this] var buf       : Array[Double] = _
     private[this] var bufSize   : Int           = _
+    private[this] var numFrames : Int           = _
+    private[this] var gain      : Double        = _
 
     private[this] var framesRead  = 0
-    private[this] var numFrames: Int = _
     private[this] val outBuffers  = new Array[BufD](numChannels)
 
     shape.outlets.foreach(setHandler(_, this))
@@ -72,6 +73,13 @@ object ImageFileIn {
       numFrames   = img.getWidth * img.getHeight
       bufSize     = numBands * img.getWidth
       buf         = new Array(bufSize)
+
+      val gainR = img.getSampleModel.getDataType match {
+        case DataBuffer.TYPE_BYTE   =>   255.0
+        case DataBuffer.TYPE_USHORT => 65535.0
+        case DataBuffer.TYPE_FLOAT  =>     1.0
+      }
+      gain = 1.0 / gainR
     }
 
     override def postStop(): Unit = {
@@ -104,6 +112,7 @@ object ImageFileIn {
           var ch  = 0
           val a   = buf
           val nb  = numBands
+          val g   = gain
           while (ch < numChannels) {
             val out = shape.out(ch)
             if (!isClosed(out)) {
@@ -114,7 +123,7 @@ object ImageFileIn {
                 var i = ch
                 var j = offIn
                 while (j < offOut) {
-                  b(j) = a(i)
+                  b(j) = a(i) * g
                   i   += nb
                   j   += 1
                 }
