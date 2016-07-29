@@ -14,7 +14,7 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.stage.GraphStageLogic
+import akka.stream.stage.{GraphStageLogic, InHandler}
 import akka.stream.{Attributes, UniformFanOutShape}
 import de.sciss.file._
 import de.sciss.fscape.stream.impl.{BlockingGraphStage, ImageFileInImpl, StageLogicImpl}
@@ -50,31 +50,107 @@ object ImageFileSeqIn {
   }
 
   private final class Logic(shape: Shape, template: File, protected val numChannels: Int)(implicit ctrl: Control)
-    extends StageLogicImpl(s"$name(${template.name})", shape) with ImageFileInImpl[Shape] {
+    extends StageLogicImpl(s"$name(${template.name})", shape)
+    with ImageFileInImpl[Shape]
+    with InHandler {
 
-    protected val outBuffers  = new Array[BufD](numChannels)
-    protected val outlets     = shape.outArray.toIndexedSeq
+    protected val outBufs = new Array[BufD](numChannels)
+    protected val outlets = shape.outArray.toIndexedSeq
+    private val in0       = shape.in
+
+    private[this] var bufIn0: BufI = _
+
+    private[this] var _canRead = false
+    private[this] var _inValid = false
+    private[this] var inOff    = 0
+    private[this] var inRemain = 0
 
     shape.outlets.foreach(setHandler(_, this))
+    setHandler(in0, this)
 
     override def preStart(): Unit = {
       logStream(s"preStart() $this")
-      ??? // openImage(f)
+      pull(in0)
     }
 
     override def postStop(): Unit = {
       logStream(s"postStop() $this")
+      freeInputBuffers()
       closeImage()
     }
 
+    private def inputsEnded: Boolean = inRemain == 0 && isClosed(in0)
+
+    @inline
+    private[this] def shouldRead = inRemain == 0 && _canRead
+
     protected def process(): Unit = {
+      logStream(s"process() $this")
+      var stateChange = false
+
+      if (shouldRead) {
+        inRemain    = readIns()
+        inOff       = 0
+        stateChange = true
+      }
+
+      if (img == null || !allOutsReady()) return
+
+      ???
+
       val chunk = math.min(ctrl.blockSize, numFrames - framesRead)
       if (chunk == 0) {
         logStream(s"completeStage() $this")
         completeStage()
       } else {
         processChunk(chunk)
-        pushBuffers (chunk)
+        writeOuts   (chunk)
+      }
+    }
+
+    private def updateCanRead(): Unit = {
+      val sh = shape
+      _canRead = (isClosed(sh.in) && _inValid) || isAvailable(sh.in)
+    }
+
+    private def readIns(): Int = {
+      freeInputBuffers()
+      val sh = shape
+      if (isAvailable(sh.in)) {
+        bufIn0 = grab(sh.in)
+        tryPull(sh.in)
+      }
+
+      _inValid = true
+      updateCanRead()
+      ctrl.blockSize
+    }
+
+    private def freeInputBuffers(): Unit =
+      if (bufIn0 != null) {
+        bufIn0.release()
+        bufIn0 = null
+      }
+
+    // ---- InHandler ----
+
+    def onPush(): Unit = {
+      logStream(s"onPush($in0)")
+      testRead()
+    }
+
+    private def testRead(): Unit = {
+      updateCanRead()
+      if (_canRead) process()
+    }
+
+    override def onUpstreamFinish(): Unit = {
+      logStream(s"onUpstreamFinish($in0)")
+      if (_inValid || isAvailable(in0)) {
+        testRead()
+      } else {
+        println(s"Invalid aux $in0")
+        completeStage()
       }
     }
   }

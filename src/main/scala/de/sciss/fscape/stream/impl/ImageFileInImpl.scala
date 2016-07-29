@@ -31,7 +31,7 @@ trait ImageFileInImpl[S <: Shape] extends OutHandler {
   // ---- abstract ----
 
   protected def numChannels : Int
-  protected def outBuffers  : Array[BufD]
+  protected def outBufs     : Array[BufD]
   protected def outlets     : Vec[OutD]
 
   protected def process(): Unit
@@ -43,7 +43,7 @@ trait ImageFileInImpl[S <: Shape] extends OutHandler {
   protected final var framesRead  : Int             = _
   private[this]   var gain        : Double          = _
   private[this]   var pixBuf      : Array[Double]   = _
-  private[this]   var img         : BufferedImage   = _
+  protected final var img         : BufferedImage   = _
 
   /** Resets `framesRead`. */
   protected final def openImage(f: File): Unit = {
@@ -86,8 +86,8 @@ trait ImageFileInImpl[S <: Shape] extends OutHandler {
     while (ch < numChannels) {
       val out = outlets(ch)
       if (!isClosed(out)) {
-        if (outBuffers(ch) == null) outBuffers(ch) = ctrl.borrowBufD()
-        val bufOut  = outBuffers(ch)
+        if (outBufs(ch) == null) outBufs(ch) = ctrl.borrowBufD()
+        val bufOut  = outBufs(ch)
         val b       = bufOut.buf
         if (ch < nb) {
           var i = ch
@@ -145,15 +145,19 @@ trait ImageFileInImpl[S <: Shape] extends OutHandler {
     framesRead += chunk
   }
 
-  protected final def pushBuffers(chunk: Int): Unit = {
+  protected final def writeOuts(chunk: Int): Unit = {
     var ch = 0
     while (ch < numChannels) {
       val out     = outlets(ch)
-      val bufOut  = outBuffers(ch)
+      val bufOut  = outBufs(ch)
       if (bufOut != null) {
-        bufOut.size = chunk
-        push(out, bufOut)
-        outBuffers(ch) = null
+        if (chunk > 0) {
+          bufOut.size = chunk
+          push(out, bufOut)
+        } else {
+          bufOut.release()
+        }
+        outBufs(ch) = null
       }
       ch += 1
     }

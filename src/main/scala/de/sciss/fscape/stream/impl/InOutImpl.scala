@@ -50,6 +50,11 @@ trait InOutImpl[S <: Shape] {
     /** Exposed from `GraphStageLogic` API. */
   def completeStage(): Unit
 
+  protected def freeInputBuffers (): Unit
+  protected def freeOutputBuffers(): Unit
+
+  // ---- impl ----
+
   /** Exposed from protected `GraphStageLogic` API. */
   final def isInAvailable[A](in: Inlet[A]): Boolean = isAvailable(in)
 
@@ -61,7 +66,4 @@ trait InOutImpl[S <: Shape] {
 
   /** Exposed from protected `GraphStageLogic` API. */
   final def setOutHandler[A](out: Outlet[A], h: OutHandler): Unit = setHandler(out, h)
-
-  protected def freeInputBuffers (): Unit
-  protected def freeOutputBuffers(): Unit
 }
