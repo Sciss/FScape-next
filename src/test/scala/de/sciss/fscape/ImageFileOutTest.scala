@@ -14,8 +14,8 @@ object ImageFileOutTest extends App {
     val xSin  = SinOsc(Seq[GE](0.5/width, 1.0/width, 1.5/width)).abs
     val ySin  = SinOsc(0.5/(height * width))
     val amp   = xSin * ySin
-    val spec  = ImageFileOut.Spec(width = width, height = height, numChannels = 3 /* 1 */,
-      fileType = ImageFileOut.FileType.JPG, sampleFormat = ImageFileOut.SampleFormat.Int8,
+    val spec  = ImageFile.Spec(width = width, height = height, numChannels = 3 /* 1 */,
+      fileType = ImageFile.Type.JPG, sampleFormat = ImageFile.SampleFormat.Int8,
       quality = 100)
     val f     = userHome / "Documents" / "temp" / "test.jpg"
     ImageFileOut(file = f, spec = spec, in = amp)

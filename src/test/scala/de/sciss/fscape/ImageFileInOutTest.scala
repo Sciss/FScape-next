@@ -15,8 +15,8 @@ object ImageFileInOutTest extends App {
     import graph._
     val in    = ImageFileIn(file = fIn, numChannels = 3)
     val sig   = in.pow(1.4) // 'gamma'
-    val spec  = ImageFileOut.Spec(width = width, height = height, numChannels = 3 /* 1 */,
-      fileType = ImageFileOut.FileType.JPG, sampleFormat = ImageFileOut.SampleFormat.Int8,
+    val spec  = ImageFile.Spec(width = width, height = height, numChannels = 3 /* 1 */,
+      fileType = ImageFile.Type.JPG, sampleFormat = ImageFile.SampleFormat.Int8,
       quality = 100)
     ImageFileOut(file = fOut, spec = spec, in = sig)
   }

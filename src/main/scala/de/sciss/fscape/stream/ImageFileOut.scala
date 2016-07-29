@@ -24,7 +24,7 @@ import javax.imageio.{IIOImage, ImageIO, ImageTypeSpecifier, ImageWriteParam, Im
 import akka.stream.Attributes
 import akka.stream.stage.InHandler
 import de.sciss.file._
-import de.sciss.fscape.graph.ImageFileOut.{FileType, SampleFormat, Spec}
+import de.sciss.fscape.graph.ImageFile.{Type, SampleFormat, Spec}
 import de.sciss.fscape.stream.impl.{BlockingGraphStage, StageLogicImpl, UniformSinkShape}
 
 import scala.collection.immutable.{Seq => ISeq}
@@ -106,8 +106,8 @@ object ImageFileOut {
       img           = new BufferedImage(cm, r, false, null)
 
       val (fmtName, _param) = spec.fileType match {
-        case FileType.PNG => "png" -> null
-        case FileType.JPG =>
+        case Type.PNG => "png" -> null
+        case Type.JPG =>
           val p = new JPEGImageWriteParam(null)
           p.setCompressionMode(ImageWriteParam.MODE_EXPLICIT)
           p.setCompressionQuality(spec.quality * 0.01f)
