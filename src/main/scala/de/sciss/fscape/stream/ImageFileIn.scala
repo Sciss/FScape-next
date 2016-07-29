@@ -60,6 +60,7 @@ object ImageFileIn {
 
     override def postStop(): Unit = {
       logStream(s"postStop() $this")
+      freeOutputBuffers()
       closeImage()
     }
 

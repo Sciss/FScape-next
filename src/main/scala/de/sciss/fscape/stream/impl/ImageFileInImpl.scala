@@ -48,10 +48,11 @@ trait ImageFileInImpl[S <: Shape] extends OutHandler {
   /** Resets `framesRead`. */
   protected final def openImage(f: File): Unit = {
     closeImage()
+//    println(s"openImage($f)")
     img         = ImageIO.read(f)
     numBands    = img.getSampleModel.getNumBands
     if (numBands != numChannels) {
-      Console.err.println(s"Warning: $name - channel mismatch (file has $numBands, UGen has $numChannels)")
+      Console.err.println(s"Warning: ImageFileIn - $f - channel mismatch (file has $numBands, UGen has $numChannels)")
     }
     numFrames   = img.getWidth * img.getHeight
     val bufSize = numBands * img.getWidth
@@ -72,6 +73,17 @@ trait ImageFileInImpl[S <: Shape] extends OutHandler {
     if (img != null) {
       img.flush()
       img = null
+    }
+  }
+
+  protected final def freeOutputBuffers(): Unit = {
+    var i = 0
+    while (i < outBufs.length) {
+      if (outBufs(i) != null) {
+        outBufs(i).release()
+        outBufs(i) = null
+      }
+      i += 1
     }
   }
 
@@ -169,9 +181,9 @@ trait ImageFileInImpl[S <: Shape] extends OutHandler {
       completeStage()
     }
 
-  protected final def allOutsReady(): Boolean =
+  protected final def canWrite: Boolean =
     shape.outlets.forall(out => isClosed(out) || isAvailable(out))
 
   override final def onPull(): Unit =
-    if (numChannels == 1 || allOutsReady()) process()
+    if (numChannels == 1 || canWrite) process()
 }

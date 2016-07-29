@@ -19,6 +19,7 @@ import akka.stream.{Attributes, UniformFanOutShape}
 import de.sciss.file._
 import de.sciss.fscape.stream.impl.{BlockingGraphStage, ImageFileInImpl, StageLogicImpl}
 
+import scala.annotation.tailrec
 import scala.collection.immutable.{IndexedSeq => Vec}
 
 /*
@@ -56,7 +57,8 @@ object ImageFileSeqIn {
 
     protected val outBufs = new Array[BufD](numChannels)
     protected val outlets = shape.outArray.toIndexedSeq
-    private val in0       = shape.in
+
+    private[this] val in0 = shape.in
 
     private[this] var bufIn0: BufI = _
 
@@ -64,6 +66,8 @@ object ImageFileSeqIn {
     private[this] var _inValid      = false
     private[this] var inOff         = 0
     private[this] var inRemain      = 0
+    private[this] var outOff        = 0
+    private[this] var outRemain     = ctrl.blockSize
     private[this] var framesRemain  = 0
 
     shape.outlets.foreach(setHandler(_, this))
@@ -77,6 +81,7 @@ object ImageFileSeqIn {
     override def postStop(): Unit = {
       logStream(s"postStop() $this")
       freeInputBuffers()
+      freeOutputBuffers()
       closeImage()
     }
 
@@ -85,6 +90,7 @@ object ImageFileSeqIn {
     @inline
     private[this] def shouldRead = inRemain == 0 && _canRead
 
+    @tailrec
     protected def process(): Unit = {
       logStream(s"process() $this")
       var stateChange = false
@@ -105,36 +111,50 @@ object ImageFileSeqIn {
         stateChange   = true
       }
 
-      if (framesRemain > 0 && allOutsReady()) {
-        val chunk = math.min(ctrl.blockSize, framesRemain)
-        processChunk(???, chunk)
-        writeOuts   (chunk)
+      val chunk = math.min(outRemain, framesRemain)
+
+      if (chunk > 0) {
+        processChunk(outOff = outOff, chunk = chunk)
+        outOff       += chunk
+        outRemain    -= chunk
         framesRemain -= chunk
         stateChange   = true
       }
 
-      if (framesRemain == 0 && inputsEnded) {
-        logStream(s"completeStage() $this")
-        completeStage()
+      val flushOut = framesRemain == 0 && inputsEnded
+
+      if ((outRemain == 0 || flushOut) && canWrite) {
+        if (outOff > 0) {
+          writeOuts(outOff)
+          outOff      = 0
+          outRemain   = ctrl.blockSize
+          stateChange = true
+        }
+
+        if (flushOut) {
+          logStream(s"completeStage() $this")
+          completeStage()
+          stateChange = false
+        }
       }
+
+      if (stateChange) process()
     }
 
-    private def updateCanRead(): Unit = {
-      val sh = shape
-      _canRead = (isClosed(sh.in) && _inValid) || isAvailable(sh.in)
-    }
+    private def updateCanRead(): Unit =
+      _canRead = isAvailable(in0)
 
     private def readIns(): Int = {
       freeInputBuffers()
       val sh = shape
-      if (isAvailable(sh.in)) {
+//      if (isAvailable(sh.in)) {
         bufIn0 = grab(sh.in)
         tryPull(sh.in)
-      }
+//      }
 
       _inValid = true
       updateCanRead()
-      ctrl.blockSize
+      bufIn0.size
     }
 
     private def freeInputBuffers(): Unit =
