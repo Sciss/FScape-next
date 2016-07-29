@@ -14,8 +14,9 @@
 package de.sciss.fscape
 package stream
 
+import java.awt.Transparency
 import java.awt.color.ColorSpace
-import java.awt.image.{BandedSampleModel, BufferedImage, ColorModel, DataBuffer, Raster}
+import java.awt.image.{BandedSampleModel, BufferedImage, ComponentColorModel, DataBuffer, Raster}
 import javax.imageio.ImageIO
 
 import akka.stream.Attributes
@@ -61,6 +62,8 @@ object ImageFileOut {
     private[this] val numChannels   = spec.numChannels
     private[this] val bufIns        = new Array[BufD](spec.numChannels)
     private[this] var framesWritten = 0
+
+    private[this] var gain     : Double = _
     private[this] var numFrames: Int = _
 
     private /* [this] */ val result = Promise[Long]()
@@ -80,16 +83,20 @@ object ImageFileOut {
       })
 
       logStream(s"$this - preStart()")
-      val dataType  = spec.sampleFormat match {
-        case SampleFormat.Int8  => DataBuffer.TYPE_BYTE
-        case SampleFormat.Int16 => DataBuffer.TYPE_USHORT
-        case SampleFormat.Float => DataBuffer.TYPE_FLOAT  // XXX TODO --- currently not supported by ImageIO?
+      // XXX TODO --- gain correct?
+      val (dataType, _gain) = spec.sampleFormat match {
+        case SampleFormat.Int8  => DataBuffer.TYPE_BYTE   ->   255.0
+        case SampleFormat.Int16 => DataBuffer.TYPE_USHORT -> 65535.0
+        case SampleFormat.Float => DataBuffer.TYPE_FLOAT  ->     1.0 // XXX TODO --- currently not supported by ImageIO?
       }
+      gain          = _gain
+
       // XXX TODO --- which is more efficient - BandedSampleModel or PixelInterleavedSampleModel?
       val sm        = new BandedSampleModel(dataType, spec.width, spec.height, spec.numChannels)
       val r         = Raster.createWritableRaster(sm, null)
       val cs        = ColorSpace.getInstance(if (numChannels == 1) ColorSpace.CS_GRAY else ColorSpace.CS_sRGB)
-      val cm        = ??? : ColorModel // new ColorModel()
+      val hasAlpha  = numChannels == 4
+      val cm        = new ComponentColorModel(cs, hasAlpha, false, Transparency.TRANSLUCENT, dataType)
       numFrames     = spec.width * spec.height
       img           = new BufferedImage(cm, r, false, null)
       shape.inlets.foreach(pull)
@@ -141,17 +148,19 @@ object ImageFileOut {
         var ch      = 0
         val a       = buf
         val nb      = numChannels
+        val g       = gain
         while (ch < nb) {
           val b = bufIns(ch).buf
           var i = ch
           var j = offIn
           while (j < offOut) {
-            a(i) = b(j)
+            a(i) = b(j) * g
             i   += nb
             j   += 1
           }
           ch += 1
         }
+//        println(s"setPixels($x, $y, $width, $height)")
         r.setPixels(x, y, width, height, buf)
 
         offOut
@@ -161,8 +170,10 @@ object ImageFileOut {
       val w     = img.getWidth
       val x0    = framesWritten % w
       val y0    = framesWritten / w
-      val x1    = stop       % w
-      val y1    = stop       / w
+      val x1    = stop          % w
+      val y1    = stop          / w
+
+//      println(s"IMAGE WRITE chunk = $chunk, x0 = $x0, y0 = $y0, x1 = $x1, y1 = $y1")
 
       // first (partial) line
       val off0 = write(
@@ -184,7 +195,7 @@ object ImageFileOut {
       )
 
       // last (partial) line
-      if (y1 > y0) write(
+      if (y1 > y0 && x1 > 0) write(
         x       = 0,
         y       = y1,
         width   = x1,

@@ -154,7 +154,7 @@ object ImageFileIn {
         )
 
         // last (partial) line
-        if (y1 > y0) read(
+        if (y1 > y0 && x1 > 0) read(
           x       = 0,
           y       = y1,
           width   = x1,
