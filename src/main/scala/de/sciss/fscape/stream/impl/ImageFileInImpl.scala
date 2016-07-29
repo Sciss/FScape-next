@@ -51,7 +51,7 @@ trait ImageFileInImpl[S <: Shape] extends OutHandler {
     img         = ImageIO.read(f)
     numBands    = img.getSampleModel.getNumBands
     if (numBands != numChannels) {
-      Console.err.println(s"Warning: ImageIn - channel mismatch (file has $numBands, UGen has $numChannels)")
+      Console.err.println(s"Warning: $name - channel mismatch (file has $numBands, UGen has $numChannels)")
     }
     numFrames   = img.getWidth * img.getHeight
     val bufSize = numBands * img.getWidth
@@ -165,6 +165,9 @@ trait ImageFileInImpl[S <: Shape] extends OutHandler {
       completeStage()
     }
 
+  protected final def allOutsReady(): Boolean =
+    shape.outlets.forall(out => isClosed(out) || isAvailable(out))
+
   override final def onPull(): Unit =
-    if (numChannels == 1 || shape.outlets.forall(out => isClosed(out) || isAvailable(out))) process()
+    if (numChannels == 1 || allOutsReady()) process()
 }
