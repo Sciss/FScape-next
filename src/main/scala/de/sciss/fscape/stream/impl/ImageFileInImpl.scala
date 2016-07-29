@@ -106,7 +106,7 @@ trait ImageFileInImpl[S <: Shape] extends OutHandler {
     offOut
   }
 
-  protected final def processChunk(chunk: Int): Unit = {
+  protected final def processChunk(outOff: Int, chunk: Int): Unit = {
     val stop  = framesRead + chunk
     val w     = img.getWidth
     val x0    = framesRead % w
@@ -120,7 +120,7 @@ trait ImageFileInImpl[S <: Shape] extends OutHandler {
       y       = y0,
       width   = (if (y1 == y0) x1 else w) - x0,
       height  = 1,
-      offIn   = 0
+      offIn   = outOff
     )
 
     // middle lines

@@ -65,12 +65,13 @@ object ImageFileIn {
 
     protected def process(): Unit = {
       val chunk = math.min(ctrl.blockSize, numFrames - framesRead)
-      if (chunk == 0) {
+      if (chunk > 0) {
+        processChunk(outOff = 0, chunk = chunk)
+        writeOuts(chunk)
+      }
+      if (framesRead == numFrames) {
         logStream(s"completeStage() $this")
         completeStage()
-      } else {
-        processChunk(chunk)
-        writeOuts   (chunk)
       }
     }
   }

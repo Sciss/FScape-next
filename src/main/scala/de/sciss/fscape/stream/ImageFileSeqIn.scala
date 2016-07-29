@@ -60,10 +60,11 @@ object ImageFileSeqIn {
 
     private[this] var bufIn0: BufI = _
 
-    private[this] var _canRead = false
-    private[this] var _inValid = false
-    private[this] var inOff    = 0
-    private[this] var inRemain = 0
+    private[this] var _canRead      = false
+    private[this] var _inValid      = false
+    private[this] var inOff         = 0
+    private[this] var inRemain      = 0
+    private[this] var framesRemain  = 0
 
     shape.outlets.foreach(setHandler(_, this))
     setHandler(in0, this)
@@ -94,17 +95,27 @@ object ImageFileSeqIn {
         stateChange = true
       }
 
-      if (img == null || !allOutsReady()) return
+      if (framesRemain == 0 && inRemain > 0) {
+        val name      = template.name.format(bufIn0.buf(inOff))
+        val f         = template.parentOption.fold(file(name))(_ / name)
+        openImage(f)
+        framesRemain  = numFrames
+        inOff        += 1
+        inRemain     -= 1
+        stateChange   = true
+      }
 
-      ???
+      if (framesRemain > 0 && allOutsReady()) {
+        val chunk = math.min(ctrl.blockSize, framesRemain)
+        processChunk(???, chunk)
+        writeOuts   (chunk)
+        framesRemain -= chunk
+        stateChange   = true
+      }
 
-      val chunk = math.min(ctrl.blockSize, numFrames - framesRead)
-      if (chunk == 0) {
+      if (framesRemain == 0 && inputsEnded) {
         logStream(s"completeStage() $this")
         completeStage()
-      } else {
-        processChunk(chunk)
-        writeOuts   (chunk)
       }
     }
 
