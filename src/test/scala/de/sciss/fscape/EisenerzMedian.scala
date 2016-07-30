@@ -68,7 +68,7 @@ object EisenerzMedian {
 //
 //      val lumC      = lumWin(sideLen)
 
-      val lumSlide  = Sliding(lum, size = frameSize * medianLen, step = frameSize)
+      val lumSlide  = lum // Sliding(lum, size = frameSize * medianLen, step = frameSize)
       val lumT      = TransposeMatrix(lumSlide, columns = frameSize, rows = medianLen)
 //      val comp      = delayFrame(lum, n = sideLen)
       val runTrig   = Impulse(1.0 / medianLen)
@@ -101,7 +101,7 @@ object EisenerzMedian {
     }
 
     val config        = stream.Control.Config()
-    config.blockSize  = 599 // 1024 exposes problem
+    config.blockSize  = 400 // 599 // 1024 exposes problem
     config.useAsync   = false
     val ctrl          = stream.Control(config)
     ctrl.run(g)

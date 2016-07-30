@@ -77,6 +77,8 @@ object Sliding {
     private[this] var isNextWindow  = true
     private[this] var stepRemain    = 0
 
+    DEBUG = true
+
     /*
       back-pressure algorithm:
       - never begin a step if windows.head is full
@@ -93,18 +95,20 @@ object Sliding {
     protected def processChunk(): Boolean = {
       var stateChange = false
 
+      println(s"--- SLID canPrepareStep = $canPrepareStep; isNextWindow = $isNextWindow")
       if (canPrepareStep && isNextWindow) {
-        // println("SLID next-window")
         stepRemain    = startNextWindow(inOff = inOff)
+        println(s"--- SLID stepRemain = $stepRemain")
         isNextWindow  = false
         stateChange   = true
       }
 
       val chunkIn = math.min(stepRemain, inRemain)
+      println(s"--- SLID chunkIn = $chunkIn")
       if (chunkIn > 0) {
         val chunk1 = copyInputToWindows(chunkIn)
+        println(s"--- SLID copyInputToWindows($chunkIn) -> $chunk1")
         if (chunk1 > 0) {
-          // println(s"--- SLID copyInputToWindows($chunkIn) -> $chunk1")
           inOff       += chunk1
           inRemain    -= chunk1
           stepRemain  -= chunk1
@@ -117,6 +121,7 @@ object Sliding {
         }
       }
       else if (inputsEnded) { // flush
+        println(s"--- SLID inputsEnded")
         var i = 0
         while (i < windows.length - 1) {
           val win = windows(i)
@@ -136,6 +141,7 @@ object Sliding {
       }
 
       val chunkOut = outRemain
+      println(s"--- SLID chunkOut = $chunkOut")
       if (chunkOut > 0) {
         val chunk1 = copyWindowsToOutput(chunkOut)
         if (chunk1 > 0) {
