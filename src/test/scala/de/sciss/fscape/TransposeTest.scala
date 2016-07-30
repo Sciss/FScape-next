@@ -26,7 +26,7 @@ object TransposeTest extends App {
   }
 
   val config  = stream.Control.Config()
-  config.blockSize = 1024
+  config.blockSize = 1024   // exposes problem
   val ctrl    = stream.Control(config)
   ctrl.run(g)
 
