@@ -25,7 +25,9 @@ object Sliding {
   /**
     * @param in     the signal to window
     * @param size   the window size. this is clipped to be `&lt;= 1`
-    * @param step   the step size. this is clipped to be `&lt;= 1` and `&lt;= size`
+    * @param step   the step size. this is clipped to be `&lt;= 1`.
+    *               If step size is larger than window size, frames in
+    *               the input are skipped.
     */
   def apply(in: OutD, size: OutI, step: OutI)(implicit b: Builder): OutD = {
     val stage0  = new Stage
@@ -77,8 +79,6 @@ object Sliding {
     private[this] var isNextWindow  = true
     private[this] var stepRemain    = 0
 
-    DEBUG = true
-
     /*
       back-pressure algorithm:
       - never begin a step if windows.head is full
@@ -95,33 +95,33 @@ object Sliding {
     protected def processChunk(): Boolean = {
       var stateChange = false
 
-      println(s"--- SLID canPrepareStep = $canPrepareStep; isNextWindow = $isNextWindow")
+//      println(s"--- SLID canPrepareStep = $canPrepareStep; isNextWindow = $isNextWindow")
       if (canPrepareStep && isNextWindow) {
         stepRemain    = startNextWindow(inOff = inOff)
-        println(s"--- SLID stepRemain = $stepRemain")
+//        println(s"--- SLID stepRemain = $stepRemain")
         isNextWindow  = false
         stateChange   = true
       }
 
       val chunkIn = math.min(stepRemain, inRemain)
-      println(s"--- SLID chunkIn = $chunkIn")
+//      println(s"--- SLID chunkIn = $chunkIn")
       if (chunkIn > 0) {
-        val chunk1 = copyInputToWindows(chunkIn)
-        println(s"--- SLID copyInputToWindows($chunkIn) -> $chunk1")
-        if (chunk1 > 0) {
-          inOff       += chunk1
-          inRemain    -= chunk1
-          stepRemain  -= chunk1
+        /* val chunk1 = */ copyInputToWindows(chunkIn)
+//        println(s"--- SLID copyInputToWindows($chunkIn) -> $chunk1")
+//        if (chunk1 > 0) {
+          inOff       += chunkIn // chunk1
+          inRemain    -= chunkIn // chunk1
+          stepRemain  -= chunkIn // chunk1
           stateChange  = true
 
           if (stepRemain == 0) {
             isNextWindow = true
             stateChange  = true
           }
-        }
+//        }
       }
       else if (inputsEnded) { // flush
-        println(s"--- SLID inputsEnded")
+//        println(s"--- SLID inputsEnded")
         var i = 0
         while (i < windows.length - 1) {
           val win = windows(i)
@@ -141,7 +141,7 @@ object Sliding {
       }
 
       val chunkOut = outRemain
-      println(s"--- SLID chunkOut = $chunkOut")
+//      println(s"--- SLID chunkOut = $chunkOut")
       if (chunkOut > 0) {
         val chunk1 = copyWindowsToOutput(chunkOut)
         if (chunk1 > 0) {
@@ -168,9 +168,9 @@ object Sliding {
     }
 
     @inline
-    private def copyInputToWindows(chunk: Int): Int = {
+    private def copyInputToWindows(chunk: Int): Unit /* Int */ = {
       var i = 0
-      var res = 0
+//      var res = 0
       while (i < windows.length) {
         val win = windows(i)
         val chunk1 = math.min(win.inRemain, chunk)
@@ -178,11 +178,11 @@ object Sliding {
           Util.copy(bufIn0.buf, inOff, win.buf, win.offIn, chunk1)
           // println(s"SLID copying $chunk1 frames from in at $inOff to window $i at ${win.offIn}")
           win.offIn += chunk1
-          res = math.max(res, chunk1)
+//          res = math.max(res, chunk1)
         }
         i += 1
       }
-      res
+//      res
     }
 
     @inline

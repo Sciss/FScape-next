@@ -4,6 +4,7 @@ import de.sciss.fscape.gui.SimpleGUI
 
 import scala.swing.Swing
 
+/** Tests function of `stepSize > winSize` */
 object SlidingTest extends App {
   val config = stream.Control.Config()
   config.blockSize = 1024

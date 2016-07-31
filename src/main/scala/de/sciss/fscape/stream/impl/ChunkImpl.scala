@@ -44,28 +44,19 @@ trait ChunkImpl[S <: Shape] extends InOutImpl[S] {
   @inline
   private[this] def shouldRead = inRemain == 0 && canRead
 
-  protected var DEBUG = false
-
   @tailrec
   final def process(): Unit = {
     logStream(s"process() $this")
     var stateChange = false
 
-    if (DEBUG) {
-      println(s"CHUNK shouldRead = $shouldRead")
-    }
-
     if (shouldRead) {
       inRemain    = readIns()
-      if (DEBUG) println(s"CHUNK inRemain = $inRemain")
       inOff       = 0
       stateChange = true
     }
 
-    if (DEBUG) println(s"CHUNK outSent = $outSent")
     if (outSent) {
       outRemain     = allocOutputBuffers()
-      if (DEBUG) println(s"CHUNK outRemain = $outRemain")
       outOff        = 0
       outSent       = false
       stateChange   = true
@@ -74,7 +65,6 @@ trait ChunkImpl[S <: Shape] extends InOutImpl[S] {
     if (processChunk()) stateChange = true
 
     val flushOut = shouldComplete()
-    if (DEBUG) println(s"CHUNK flushOut = $flushOut, canWrite = $canWrite")
     if (!outSent && (outRemain == 0 || flushOut) && canWrite) {
       writeOuts(outOff)
       outSent     = true
