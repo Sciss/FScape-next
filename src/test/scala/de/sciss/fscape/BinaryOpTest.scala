@@ -15,8 +15,8 @@ object BinaryOpTest extends App {
   lazy val g = Graph {
     import graph._
 
-    val width     = 200
-    val height    = 200
+    val width     = 2000
+    val height    = 2000
     val frameSize = width * height
 
     def normalize(in: GE, headroom: GE = 1): GE = {

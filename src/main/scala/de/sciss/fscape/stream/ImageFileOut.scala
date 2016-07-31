@@ -162,10 +162,12 @@ object ImageFileOut {
       }
       chunk = math.min(chunk, numFrames - framesWritten)
 
-      def write(x: Int, y: Int, width: Int, height: Int, offIn: Int): Int = {
+//      println(s"process(): framesWritten = $framesWritten, numFrames = $numFrames, chunk = $chunk")
+
+      def write(x: Int, y: Int, width: Int, offIn: Int): Int = {
+//        println(s"setPixels($x, $y, $width, $height)")
         val r       = img.getRaster
-        val sz      = width * height
-        val offOut  = offIn + sz
+        val offOut  = offIn + width
         var ch      = 0
         val a       = buf
         val nb      = numChannels
@@ -181,8 +183,7 @@ object ImageFileOut {
           }
           ch += 1
         }
-//        println(s"setPixels($x, $y, $width, $height)")
-        r.setPixels(x, y, width, height, buf)
+        r.setPixels(x, y, width, 1, buf)
 
         offOut
       }
@@ -197,31 +198,31 @@ object ImageFileOut {
 //      println(s"IMAGE WRITE chunk = $chunk, x0 = $x0, y0 = $y0, x1 = $x1, y1 = $y1")
 
       // first (partial) line
-      val off0 = write(
+      var off0 = write(
         x       = x0,
         y       = y0,
         width   = (if (y1 == y0) x1 else w) - x0,
-        height  = 1,
         offIn   = 0
       )
 
       // middle lines
-      val hMid  = y1 - y0 - 2
-      val off1 = if (hMid <= 0) off0 else write(
-        x       = 0,
-        y       = y0 + 1,
-        width   = w,
-        height  = hMid,
-        offIn   = off0
-      )
+      var y2 = y0 + 1
+      while (y2 < y1) {
+        off0 = write(
+          x       = 0,
+          y       = y2,
+          width   = w,
+          offIn   = off0
+        )
+        y2 += 1
+      }
 
       // last (partial) line
       if (y1 > y0 && x1 > 0) write(
         x       = 0,
         y       = y1,
         width   = x1,
-        height  = 1,
-        offIn   = off1
+        offIn   = off0
       )
 
       ch = 0
