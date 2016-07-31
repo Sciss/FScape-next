@@ -9,7 +9,7 @@ import scala.swing.Swing
 object BinaryOpTest extends App {
   val config = stream.Control.Config()
   config.blockSize  = 1024
-  config.useAsync   = false // for debugging
+//  config.useAsync   = false // for debugging
   val ctrl = stream.Control(config)
 
   lazy val g = Graph {
