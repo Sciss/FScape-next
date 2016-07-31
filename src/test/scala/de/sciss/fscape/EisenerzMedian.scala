@@ -32,6 +32,10 @@ object EisenerzMedian {
 //    fltBlur.setRadius(7)
 //    fltBlur.setThreshold(20)
 
+    val config  = stream.Control.Config()
+    config.blockSize  = width * 2
+    config.useAsync   = false
+
     val g = Graph {
       import graph._
 
@@ -57,13 +61,15 @@ object EisenerzMedian {
         buf * gain
       }
 
-      val bufIn     = ImageFileSeqIn(template = template, numChannels = 3, indices = indices)
+      def mkImgSeq() = ImageFileSeqIn(template = template, numChannels = 3, indices = indices)
+
+      val bufIn     = mkImgSeq()
 //      val bufIn     = WhiteNoise(Seq.fill[GE](3)(0.5)).take(frameSize * idxRange.size)
       val blurImg   = blur(bufIn)
       val lum       = extractBrightness(blurImg)
 
 //      Length(bufIn).poll(0, "bufIn.length")
-      Length(lum  ).poll(0, "lum  .length")
+//      Length(lum  ).poll(0, "lum  .length")
 //      RunningSum(bufIn).poll(1.0/frameSize, "PING")
 
 //      // XXX TODO --- or Sliding(lum, frameSize * medianLen, frameSize) ?
@@ -75,7 +81,12 @@ object EisenerzMedian {
 
       val lumSlide  = Sliding(lum, size = frameSize * medianLen, step = frameSize)
 //      val lumT      = TransposeMatrix(lumSlide, columns = frameSize, rows = medianLen)
-//      val comp      = delayFrame(lum, n = sideLen)
+//      val comp0     = delayFrame(lum, n = sideLen)
+////      val comp      = comp0.elastic((sideLen * frameSize + config.blockSize - 1) / config.blockSize)
+//      val comp      = BufferDisk(comp0)
+      val dly   = delayFrame(mkImgSeq(), n = sideLen).dropRight(sideLen * frameSize)
+      val comp  = extractBrightness(blur(dly))
+
 //      val runTrig   = Impulse(1.0 / medianLen)
 //      val minR      = RunningMin(lumT, runTrig)
 //      val maxR      = RunningMax(lumT, runTrig)
@@ -94,14 +105,14 @@ object EisenerzMedian {
       val max       = ResizeWindow(maxR, size = frameSize * medianLen, start = frameSize * (medianLen - 1), stop = 0)
       val mean      = ResizeWindow(sumR, size = frameSize * medianLen, start = frameSize * (medianLen - 1), stop = 0) / medianLen
 
-      Length(min  ).poll(0, "min  .length")
+//      Length(min  ).poll(0, "min  .length")
 
-      //      val maskIf    = (max - min > thresh) * ((comp sig_== min) max (comp sig_== max))
-//      val mask      = maskIf * {
-//        val med = mean // medianArr(sideLen)
-//        comp absdif med
-//      }
-//      val maskBlur  = blur(mask)
+      val maskIf    = (max - min > thresh) * ((comp sig_== min) max (comp sig_== max))
+      val mask      = maskIf * {
+        val med = mean // medianArr(sideLen)
+        comp absdif med
+      }
+      val maskBlur  = blur(mask)
 
       // XXX TODO
       // mix to composite
@@ -109,12 +120,15 @@ object EisenerzMedian {
 
 //      lumSlide.poll(1.0/frameSize, "lumSlide")
 //      lumT    .poll(1.0/frameSize, "lumT    ")
-      min     .poll(1.0/frameSize, "min     ")
-      max     .poll(1.0/frameSize, "max     ")
-//      maskBlur.poll(1.0/frameSize, "maskBlur")
+//      min     .poll(1.0/frameSize, "min     ")
+//      max     .poll(1.0/frameSize, "max     ")
+      maskBlur.poll(1.0/frameSize, "maskBlur")
+
+      val sel     = maskBlur * dly
+      val expose  = RunningWindowMax(sel, size = frameSize)
 
 //      val test  = min /* maskBlur */ .take(frameSize * (numInput - (medianLen - 1))).takeRight(frameSize)
-      val test  = max.take(frameSize * (numInput - (medianLen - 1))).takeRight(frameSize)
+      val test  = expose.take(frameSize * (numInput - (medianLen - 1))).takeRight(frameSize)
                   // min.take(frameSize * (numInput - (medianLen - 1))).takeRight(frameSize)
       val sig   = normalize(test)
       val spec  = ImageFile.Spec(width = width, height = height, numChannels = 1 /* 3 */,
@@ -123,9 +137,6 @@ object EisenerzMedian {
       ImageFileOut(file = fOut, spec = spec, in = sig)
     }
 
-    val config  = stream.Control.Config()
-    config.blockSize  = width * 2
-    config.useAsync   = false
     val ctrl    = stream.Control(config)
     ctrl.run(g)
 
