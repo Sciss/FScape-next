@@ -13,7 +13,7 @@ object EisenerzMedian {
   def median(): Unit = {
     val baseDir   = userHome / "Documents" / "projects" / "Eisenerz" / "image_work6"
     val template  = baseDir / "frame-%d.jpg"
-    val idxRange  = (276 to 628).map(x => x: GE)
+    val idxRange  = (276 to 628) .take(10) .map(x => x: GE)
 //    val numInput  = idxRange.size
     val indices   = idxRange.reduce(_ ++ _)
     val width     = 3280
@@ -60,6 +60,10 @@ object EisenerzMedian {
       val bufIn     = ImageFileSeqIn(template = template, numChannels = 3, indices = indices)
       val blurImg   = blur(bufIn)
       val lum       = extractBrightness(blurImg)
+
+      Length(bufIn).poll(0, "bufIn.length")
+      Length(lum  ).poll(0, "lum  .length")
+      RunningSum(bufIn).poll(1.0/frameSize, "PING")
 
 //      // XXX TODO --- or Sliding(lum, frameSize * medianLen, frameSize) ?
 //      val lumWin    = (Vector(lum) /: (0 until medianLen)) { case (res @ (init :+ last), _) =>
