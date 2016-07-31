@@ -68,8 +68,8 @@ object Control {
     /** The default block size is 1024. */
     var blockSize: Int = 1024
 
-    /** The default internal node buffer size is 8192. */
-    var nodeBufferSize: Int = 8192
+    /** The default internal node buffer size is 65536. */
+    var nodeBufferSize: Int = 65536
 
     /** The default behavior is to isolate blocking nodes
       * into a separate graph. This should usually be the case.
@@ -125,7 +125,8 @@ object Control {
   private final class Impl(val config: Config) extends Control {
     override def toString = s"Control@${hashCode().toHexString}"
 
-    def blockSize: Int = config.blockSize
+    def blockSize     : Int = config.blockSize
+    def nodeBufferSize: Int = config.nodeBufferSize
 
     private[this] val queueD  = new ConcurrentLinkedQueue[BufD]
     private[this] val queueI  = new ConcurrentLinkedQueue[BufI]
@@ -198,6 +199,10 @@ trait Control {
     * A shortcut for `config.bufSize`.
     */
   def blockSize: Int
+
+  /** A shortcut for `config.nodeBufferSize`.
+    */
+  def nodeBufferSize: Int
 
   /** Borrows a double buffer. Its size is reset to `bufSize`. */
   def borrowBufD(): BufD

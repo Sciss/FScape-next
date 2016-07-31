@@ -75,28 +75,32 @@ object EisenerzMedian {
 
       val lumSlide  = Sliding(lum, size = frameSize * medianLen, step = frameSize)
       val lumT      = TransposeMatrix(lumSlide, columns = frameSize, rows = medianLen)
-      val comp      = delayFrame(lum, n = sideLen)
-      val runTrig   = Impulse(1.0 / medianLen)
-      val minR      = RunningMin(lumT, runTrig)
-      val maxR      = RunningMax(lumT, runTrig)
-      val meanR     = RunningSum(lumT, runTrig) / medianLen
-      val min       = Sliding(minR .drop(medianLen - 1), size = 1, step = medianLen)
-      val max       = Sliding(maxR .drop(medianLen - 1), size = 1, step = medianLen)
-      // XXX TODO --- use median instead of mean
-      val mean      = Sliding(meanR.drop(medianLen - 1), size = 1, step = medianLen)
-
-      val maskIf    = (max - min > thresh) * ((comp sig_== min) max (comp sig_== max))
-      val mask      = maskIf * {
-        val med = mean // medianArr(sideLen)
-        comp absdif med
-      }
-      val maskBlur  = blur(mask)
+//      val comp      = delayFrame(lum, n = sideLen)
+//      val runTrig   = Impulse(1.0 / medianLen)
+//      val minR      = RunningMin(lumT, runTrig)
+//      val maxR      = RunningMax(lumT, runTrig)
+//      val meanR     = RunningSum(lumT, runTrig) / medianLen
+//      val min       = Sliding(minR .drop(medianLen - 1), size = 1, step = medianLen)
+//      val max       = Sliding(maxR .drop(medianLen - 1), size = 1, step = medianLen)
+//      // XXX TODO --- use median instead of mean
+//      val mean      = Sliding(meanR.drop(medianLen - 1), size = 1, step = medianLen)
+//
+//      val maskIf    = (max - min > thresh) * ((comp sig_== min) max (comp sig_== max))
+//      val mask      = maskIf * {
+//        val med = mean // medianArr(sideLen)
+//        comp absdif med
+//      }
+//      val maskBlur  = blur(mask)
 
       // XXX TODO
       // mix to composite
       // - collect 'max' pixels for comp * maskBlur
 
-      val test  = maskBlur.takeRight(frameSize)
+      lumSlide.poll(1.0/frameSize, "lumSlide")
+      lumT    .poll(1.0/frameSize, "lumT    ")
+//      maskBlur.poll(1.0/frameSize, "maskBlur")
+
+      val test  = lumT /* maskBlur */.takeRight(frameSize)
       val sig   = normalize(test)
       val spec  = ImageFile.Spec(width = width, height = height, numChannels = 1 /* 3 */,
         fileType = ImageFile.Type.JPG /* PNG */, sampleFormat = ImageFile.SampleFormat.Int8,
@@ -105,8 +109,8 @@ object EisenerzMedian {
     }
 
     val config  = stream.Control.Config()
-    config.blockSize = 599  // 1024 exposes problem
-    config.useAsync = false // graph hangs when `true`
+    config.blockSize  = width * 2
+    config.useAsync   = false
     val ctrl    = stream.Control(config)
     ctrl.run(g)
 

@@ -14,8 +14,13 @@
 package de.sciss.fscape
 package stream
 
+import java.io.RandomAccessFile
+import java.nio.DoubleBuffer
+import java.nio.channels.FileChannel
+
 import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FanInShape3}
+import de.sciss.file.File
 import de.sciss.fscape.stream.impl.{ChunkImpl, FilterIn3DImpl, FilterLogicImpl, StageImpl, StageLogicImpl}
 
 import scala.collection.mutable
@@ -38,14 +43,21 @@ object Sliding {
     stage.out
   }
 
-  private final class Window(val buf: Array[Double]) {
+  private final class Window(val buf: DoubleBuffer, val size0: Int, f: File, raf: RandomAccessFile) {
+    def this(arr: Array[Double]) = this(DoubleBuffer.wrap(arr), arr.length, null, null)
+
     var offIn   = 0
     var offOut  = 0
-    var size    = buf.length
+    var size    = size0
 
     def inRemain    : Int = size  - offIn
     def availableOut: Int = offIn - offOut
     def outRemain   : Int = size  - offOut
+
+    def dispose(): Unit = if (raf != null) {
+      raf.close()
+      f.delete()
+    }
 
     override def toString = s"Window(offIn = $offIn, offOut = $offOut, size = $size)"
   }
@@ -74,7 +86,8 @@ object Sliding {
     private[this] var size  : Int  = _
     private[this] var step  : Int  = _
 
-    private[this] val windows = mutable.Buffer.empty[Window]
+    private[this] val windows       = mutable.Buffer.empty[Window]
+    private[this] var windowFrames  = 0
 
     private[this] var isNextWindow  = true
     private[this] var stepRemain    = 0
@@ -91,6 +104,12 @@ object Sliding {
       (windows.isEmpty || windows.head.inRemain > 0)
 
     protected def shouldComplete(): Boolean = inputsEnded && windows.isEmpty
+
+    override def postStop(): Unit = {
+      super.postStop()
+      windows.foreach(_.dispose())
+      windows.clear()
+    }
 
     protected def processChunk(): Boolean = {
       var stateChange = false
@@ -163,12 +182,20 @@ object Sliding {
       if (bufIn2 != null && inOff < bufIn2.size) {
         step = math.max(1, bufIn2.buf(inOff))
       }
-//      try {
-        windows += new Window(new Array[Double](size))
-//      } catch {
-//        case _: OutOfMemoryError =>
-//          println(s"OutOfMemoryError. $this; windows.size = ${windows.size}; size = $size")
-//      }
+      val sz  = size
+      val win = if (sz <= ctrl.nodeBufferSize) {
+        val arr = new Array[Double](sz)
+        new Window(arr)
+      } else {
+        val f     = ctrl.createTempFile()
+        val raf   = new RandomAccessFile(f, "rw")
+        val fch   = raf.getChannel
+        val bb    = fch.map(FileChannel.MapMode.READ_WRITE, 0L, sz * 8)
+        val buf   = bb.asDoubleBuffer()
+        new Window(buf, sz, f, raf)
+      }
+      windows += win
+      windowFrames += sz
       step  // -> writeToWinRemain
     }
 
@@ -180,8 +207,11 @@ object Sliding {
         val win = windows(i)
         val chunk1 = math.min(win.inRemain, chunk)
         if (chunk1 > 0) {
-          Util.copy(bufIn0.buf, inOff, win.buf, win.offIn, chunk1)
-          // println(s"SLID copying $chunk1 frames from in at $inOff to window $i at ${win.offIn}")
+          val wb = win.buf
+          wb.position(win.offIn)
+          wb.put(bufIn0.buf, inOff, chunk1)
+//          Util.copy(bufIn0.buf, inOff, win.buf, win.offIn, chunk1)
+//          println(s"SLID copying $chunk1 frames from in at $inOff to window $i at ${win.offIn}")
           win.offIn += chunk1
 //          res = math.max(res, chunk1)
         }
@@ -199,7 +229,10 @@ object Sliding {
         val win     = windows(i)
         val chunk1  = math.min(chunk0, win.availableOut)
         if (chunk1 > 0) {
-          Util.copy(win.buf, win.offOut, bufOut0.buf, outOff0, chunk1)
+          val wb = win.buf
+          wb.position(win.offOut)
+          wb.get(bufOut0.buf, outOff0, chunk1)
+//          Util.copy(win.buf, win.offOut, bufOut0.buf, outOff0, chunk1)
           // println(s"SLID copying $chunk1 frames from window $i at ${win.offOut} to out at $outOff0")
           win.offOut += chunk1
           chunk0     -= chunk1
@@ -208,6 +241,8 @@ object Sliding {
         if (win.outRemain == 0) {
           // println("SLID dropping window 0")
           windows.remove(i)
+          windowFrames -= win.size0
+          win.dispose()
         } else {
           i = windows.length
         }
