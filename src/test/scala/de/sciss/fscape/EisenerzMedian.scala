@@ -14,7 +14,7 @@ object EisenerzMedian {
     val baseDir   = userHome / "Documents" / "projects" / "Eisenerz" / "image_work6"
     val template  = baseDir / "frame-%d.jpg"
     val idxRange  = (276 to 628) .take(10) .map(x => x: GE)
-//    val numInput  = idxRange.size
+    val numInput  = idxRange.size
     val indices   = idxRange.reduce(_ ++ _)
     val width     = 3280
     val height    = 2464
@@ -76,14 +76,14 @@ object EisenerzMedian {
       val lumSlide  = Sliding(lum, size = frameSize * medianLen, step = frameSize)
       val lumT      = TransposeMatrix(lumSlide, columns = frameSize, rows = medianLen)
 //      val comp      = delayFrame(lum, n = sideLen)
-//      val runTrig   = Impulse(1.0 / medianLen)
-//      val minR      = RunningMin(lumT, runTrig)
-//      val maxR      = RunningMax(lumT, runTrig)
-//      val meanR     = RunningSum(lumT, runTrig) / medianLen
-//      val min       = Sliding(minR .drop(medianLen - 1), size = 1, step = medianLen)
-//      val max       = Sliding(maxR .drop(medianLen - 1), size = 1, step = medianLen)
-//      // XXX TODO --- use median instead of mean
-//      val mean      = Sliding(meanR.drop(medianLen - 1), size = 1, step = medianLen)
+      val runTrig   = Impulse(1.0 / medianLen)
+      val minR      = RunningMin(lumT, runTrig)
+      val maxR      = RunningMax(lumT, runTrig)
+      val meanR     = RunningSum(lumT, runTrig) / medianLen
+      val min       = Sliding(minR .drop(medianLen - 1), size = 1, step = medianLen)
+      val max       = Sliding(maxR .drop(medianLen - 1), size = 1, step = medianLen)
+      // XXX TODO --- use median instead of mean
+      val mean      = Sliding(meanR.drop(medianLen - 1), size = 1, step = medianLen)
 //
 //      val maskIf    = (max - min > thresh) * ((comp sig_== min) max (comp sig_== max))
 //      val mask      = maskIf * {
@@ -98,9 +98,10 @@ object EisenerzMedian {
 
       lumSlide.poll(1.0/frameSize, "lumSlide")
       lumT    .poll(1.0/frameSize, "lumT    ")
+      min     .poll(1.0/frameSize, "min     ")
 //      maskBlur.poll(1.0/frameSize, "maskBlur")
 
-      val test  = lumT /* maskBlur */.takeRight(frameSize)
+      val test  = min /* maskBlur */ .take(frameSize * (numInput - (medianLen - 1))).takeRight(frameSize)
       val sig   = normalize(test)
       val spec  = ImageFile.Spec(width = width, height = height, numChannels = 1 /* 3 */,
         fileType = ImageFile.Type.JPG /* PNG */, sampleFormat = ImageFile.SampleFormat.Int8,
