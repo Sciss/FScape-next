@@ -62,7 +62,7 @@ trait ChunkImpl[S <: Shape] extends InOutImpl[S] {
       stateChange   = true
     }
 
-    if (processChunk()) stateChange = true
+    if (inValid && processChunk()) stateChange = true
 
     val flushOut = shouldComplete()
     if (!outSent && (outRemain == 0 || flushOut) && canWrite) {

@@ -16,7 +16,7 @@ package stream
 
 import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FanInShape2}
-import de.sciss.fscape.stream.impl.{FilterChunkImpl, FilterIn2DImpl, StageImpl, StageLogicImpl}
+import de.sciss.fscape.stream.impl.{BinaryInDImpl, SameChunkImpl, StageImpl, StageLogicImpl}
 
 /** Binary operator assuming stream is complex signal (real and imaginary interleaved).
   * Outputs another complex stream even if the operator yields a purely real-valued result.
@@ -48,11 +48,15 @@ object ComplexBinaryOp {
 
   private final class Logic(op: Op, shape: Shape)(implicit ctrl: Control)
     extends StageLogicImpl(s"$name(${op.name})", shape)
-      with FilterChunkImpl[BufD, BufD, Shape]
-      with FilterIn2DImpl[BufD, BufD] {
+      with SameChunkImpl[Shape]
+      with BinaryInDImpl[BufD, BufD] {
 
+    private[this] var aRe: Double = _
+    private[this] var aIm: Double = _
     private[this] var bRe: Double = _
     private[this] var bIm: Double = _
+
+    protected def shouldComplete(): Boolean = inRemain == 0 && isClosed(in0) && isClosed(in1)
 
     protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Unit = {
       require((chunk & 1) == 0) // must be even
@@ -62,27 +66,28 @@ object ComplexBinaryOp {
 
       var inOffI  = inOff
       var outOffI = outOff
-      val aStop   = inOffI + chunk
-      val a       = bufIn0.buf
+      val inStop  = inOffI + chunk
+      val a       = if (bufIn0 == null) null else bufIn0.buf
       val b       = if (bufIn1 == null) null else bufIn1.buf
-      val out     = bufOut0.buf
+      val aStop   = if (a      == null) 0    else bufIn0.size
       val bStop   = if (b      == null) 0    else bufIn1.size
+      val out     = bufOut0.buf
+      var _aRe    = aRe
+      var _aIm    = aIm
       var _bRe    = bRe
       var _bIm    = bIm
-      while (inOffI < aStop) {
-        val aRe = a(inOffI)
-        if (inOffI < bStop) {
-          _bRe = b(inOffI)
-        }
+      while (inOffI < inStop) {
+        if (inOffI < aStop) _aRe = a(inOffI)
+        if (inOffI < bStop) _bRe = b(inOffI)
         inOffI += 1
-        val aIm = a(inOffI)
-        if (inOffI < bStop) {
-          _bIm = b(inOffI)
-        }
+        if (inOffI < aStop) _aIm = a(inOffI)
+        if (inOffI < bStop) _bIm = b(inOffI)
         inOffI += 1
-        op(aRe = aRe, aIm = aIm, bRe = _bRe, bIm = _bIm, out = out, outOff = outOffI)
+        op(aRe = _aRe, aIm = _aIm, bRe = _bRe, bIm = _bIm, out = out, outOff = outOffI)
         outOffI += 2
       }
+      aRe = _aRe
+      aIm = _aIm
       bRe = _bRe
       bIm = _bIm
     }

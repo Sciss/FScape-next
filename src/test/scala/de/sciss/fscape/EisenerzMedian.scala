@@ -44,8 +44,8 @@ object EisenerzMedian {
         val r   = ChannelProxy(in, 0)
         val g   = ChannelProxy(in, 1)
         val b   = ChannelProxy(in, 2)
-//        (0.299 * r.squared + 0.587 * g.squared + 0.114 * b.squared).sqrt
-        (r.squared * 0.299 + g.squared * 0.587 + b.squared * 0.114).sqrt
+        (0.299 * r.squared + 0.587 * g.squared + 0.114 * b.squared).sqrt
+//        (r.squared * 0.299 + g.squared * 0.587 + b.squared * 0.114).sqrt
       }
 
       def normalize(in: GE, headroom: GE = 1): GE = {

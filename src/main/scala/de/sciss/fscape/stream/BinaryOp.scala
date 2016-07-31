@@ -16,7 +16,7 @@ package stream
 
 import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FanInShape2}
-import de.sciss.fscape.stream.impl.{FilterChunkImpl, FilterIn2DImpl, StageImpl, StageLogicImpl}
+import de.sciss.fscape.stream.impl.{BinaryInDImpl, SameChunkImpl, StageImpl, StageLogicImpl}
 
 object BinaryOp {
   import graph.BinaryOp.Op
@@ -45,39 +45,33 @@ object BinaryOp {
 
   private final class Logic(op: Op, shape: Shape)(implicit ctrl: Control)
     extends StageLogicImpl(s"$name(${op.name})", shape)
-      with FilterChunkImpl[BufD, BufD, Shape]
-      with FilterIn2DImpl[BufD, BufD] {
+      with SameChunkImpl[Shape]
+      with BinaryInDImpl[BufD, BufD] {
 
+    private[this] var aVal: Double = _
     private[this] var bVal: Double = _
 
-    //    override protected def readIns(): Int = {
-    //      println(s"bin readIns: ${isAvailable(in0)} | ${isAvailable(in1)}")
-    //      val res = super.readIns()
-    //      println(s"-->    : ${bufIn1.hashCode.toHexString} - ${bufIn1.buf.toVector.hashCode.toHexString} - $res")
-    //      res
-    //    }
+    protected def shouldComplete(): Boolean = inRemain == 0 && isClosed(in0) && isClosed(in1)
 
     protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Unit = {
-//      if (LAST_BUF != bufIn1) {
-//        LAST_BUF = bufIn1
-//        println(s"bin    : ${bufIn1.hashCode.toHexString} - ${bufIn1.buf.toVector.hashCode.toHexString}")
-//      }
-
       var inOffI  = inOff
       var outOffI = outOff
-      val aStop   = inOffI + chunk
-      val a       = bufIn0.buf
+      val inStop  = inOffI + chunk
+      val a       = if (bufIn0 == null) null else bufIn0.buf
       val b       = if (bufIn1 == null) null else bufIn1.buf
+      val aStop   = if (a == null) 0 else bufIn0.size
+      val bStop   = if (b == null) 0 else bufIn1.size
       val out     = bufOut0.buf
-      val bStop   = if (b      == null) 0    else bufIn1.size
+      var av      = aVal
       var bv      = bVal
-      while (inOffI < aStop) {
-        val                 av = a(inOffI)
+      while (inOffI < inStop) {
+        if (inOffI < aStop) av = a(inOffI)
         if (inOffI < bStop) bv = b(inOffI)
         out(outOffI) = op(av, bv)
         inOffI  += 1
         outOffI += 1
       }
+      aVal = av
       bVal = bv
     }
   }
