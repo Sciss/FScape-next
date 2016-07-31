@@ -85,10 +85,10 @@ object EisenerzMedian {
 //      // XXX TODO --- use median instead of mean
 //      val mean      = Sliding(meanR.drop(medianLen - 1), size = 1, step = medianLen)
 
-      val frameTrig = Impulse(1.0/frameSize)
-      val minR      = RunningWindowMin(lumSlide, size = frameSize, trig = frameTrig)
-      val maxR      = RunningWindowMax(lumSlide, size = frameSize, trig = frameTrig)
-      val sumR      = RunningWindowSum(lumSlide, size = frameSize, trig = frameTrig)
+      val medianTrig = Impulse(1.0/(frameSize * medianLen))
+      val minR      = RunningWindowMin(lumSlide, size = frameSize, trig = medianTrig)
+      val maxR      = RunningWindowMax(lumSlide, size = frameSize, trig = medianTrig)
+      val sumR      = RunningWindowSum(lumSlide, size = frameSize, trig = medianTrig)
 //      val min       = ResizeWindow(minR, size = medianLen, start = medianLen - 1, stop = 0)
       val min       = ResizeWindow(minR, size = frameSize * medianLen, start = frameSize * (medianLen - 1), stop = 0)
       val max       = ResizeWindow(maxR, size = frameSize * medianLen, start = frameSize * (medianLen - 1), stop = 0)

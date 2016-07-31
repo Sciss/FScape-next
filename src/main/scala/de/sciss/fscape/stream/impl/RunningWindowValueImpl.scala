@@ -68,7 +68,7 @@ trait RunningWindowValueImpl[S <: Shape]
     val b0      = bufIn0.buf
     val b2      = if (bufIn2 == null) null else bufIn2.buf
     val out     = winBuf
-    val stop2   = if (b2 == null) 0 else bufIn2.size
+    val stop2   = if (b2     == null) 0    else bufIn2.size
     var t0      = trig0
     while (inOffI < stop0) {
       val x0 = b0(inOffI)
