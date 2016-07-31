@@ -44,7 +44,8 @@ object EisenerzMedian {
         val r   = ChannelProxy(in, 0)
         val g   = ChannelProxy(in, 1)
         val b   = ChannelProxy(in, 2)
-        (0.299 * r.squared + 0.587 * g.squared + 0.114 * b.squared).sqrt
+//        (0.299 * r.squared + 0.587 * g.squared + 0.114 * b.squared).sqrt
+        (r.squared * 0.299 + g.squared * 0.587 + b.squared * 0.114).sqrt
       }
 
       def normalize(in: GE, headroom: GE = 1): GE = {
@@ -52,7 +53,7 @@ object EisenerzMedian {
         val gain      = max.reciprocal * headroom
         gain.ampdb.roundTo(0.01).poll(0, "gain [dB]")
         // Plot1D(in, width * height)
-        in.poll(1.0/32, label = "test")
+        // in.poll(1.0/32, label = "test")
         val buf       = BufferDisk(in)
         buf * gain
       }
@@ -63,7 +64,7 @@ object EisenerzMedian {
 
       Length(bufIn).poll(0, "bufIn.length")
       Length(lum  ).poll(0, "lum  .length")
-      RunningSum(bufIn).poll(1.0/frameSize, "PING")
+//      RunningSum(bufIn).poll(1.0/frameSize, "PING")
 
 //      // XXX TODO --- or Sliding(lum, frameSize * medianLen, frameSize) ?
 //      val lumWin    = (Vector(lum) /: (0 until medianLen)) { case (res @ (init :+ last), _) =>
