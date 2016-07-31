@@ -106,8 +106,8 @@ object EisenerzMedian {
     }
 
     val config  = stream.Control.Config()
-    config.blockSize = 599 // 1024 exposes problem
-    config.useAsync = false
+    config.blockSize = 599  // 1024 exposes problem
+    config.useAsync = false // graph hangs when `true`
     val ctrl    = stream.Control(config)
     ctrl.run(g)
 
