@@ -28,8 +28,20 @@ object Control {
   trait ConfigLike {
     /** The block size for buffers send between nodes. */
     def blockSize: Int
+
     /** Whether to isolate nodes through an asynchronous barrier. */
     def useAsync: Boolean
+
+    /** The recommended maximum number of frames internally
+      * stored in memory by a single node (UGen). Some UGen
+      * may allow for ad-hoc disk buffering and thus can check
+      * this user-defined value to decide whether to keep a buffer
+      * in memory or swap it to disk.
+      *
+      * Note that because a frame is considered to be a `Double`,
+      * the actual memory size will be eight times this value.
+      */
+    def nodeBufferSize: Int
 
     /** Random number generator seed. */
     def seed: Long
@@ -43,7 +55,8 @@ object Control {
     implicit def build(b: ConfigBuilder): Config = b.build
   }
 
-  final case class Config(blockSize: Int, useAsync: Boolean, seed: Long, materializer0: Materializer,
+  final case class Config(blockSize: Int, nodeBufferSize: Int,
+                          useAsync: Boolean, seed: Long, materializer0: Materializer,
                           executionContext0: ExecutionContext)
     extends ConfigLike {
 
@@ -54,6 +67,10 @@ object Control {
   final class ConfigBuilder extends ConfigLike {
     /** The default block size is 1024. */
     var blockSize: Int = 1024
+
+    /** The default internal node buffer size is 8192. */
+    var nodeBufferSize: Int = 8192
+
     /** The default behavior is to isolate blocking nodes
       * into a separate graph. This should usually be the case.
       * It can be disabled for debugging purposes, for example
@@ -91,8 +108,14 @@ object Control {
     def executionContext_=(value: ExecutionContext): Unit =
       _exec = value
 
-    def build = Config(blockSize = blockSize, useAsync = useAsync, seed = seed,
-      materializer0 = materializer, executionContext0 = executionContext)
+    def build = Config(
+      blockSize         = blockSize,
+      nodeBufferSize    = nodeBufferSize,
+      useAsync          = useAsync,
+      seed              = seed,
+      materializer0     = materializer,
+      executionContext0 = executionContext
+    )
   }
 
   def apply(config: Config = Config()): Control = new Impl(config)
