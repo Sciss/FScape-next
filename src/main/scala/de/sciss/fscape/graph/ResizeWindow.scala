@@ -18,6 +18,18 @@ import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+/** A UGen that resizes the windowed input signal by trimming each
+  * windows boundaries (if `start` is greater than zero
+  * or `stop` is less than zero) or padding the boundaries
+  * with zeroes (if `start` is less than zero or `stop` is
+  * greater than zero). The output window size is thus
+  * `size - start + stop`.
+  *
+  * @param in     the signal to window and resize
+  * @param size   the input window size
+  * @param start  the delta window size at the output window's beginning
+  * @param stop   the delta window size at the output window's ending
+  */
 final case class ResizeWindow(in: GE, size: GE, start: GE = 0, stop: GE = 0) extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
     unwrap(Vector(in.expand, size.expand, start.expand, stop.expand))

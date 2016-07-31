@@ -1,5 +1,5 @@
 /*
- *  RunningWindowMin.scala
+ *  RunningWindowSum.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2016 Hanns Holger Rutz. All rights reserved.
@@ -18,7 +18,7 @@ import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FanInShape3}
 import de.sciss.fscape.stream.impl.{FilterIn3DImpl, RunningWindowValueImpl, StageImpl, StageLogicImpl}
 
-object RunningWindowMin {
+object RunningWindowSum {
   def apply(in: OutD, size: OutI, trig: OutI)(implicit b: Builder): OutD = {
     val stage0  = new Stage
     val stage   = b.add(stage0)
@@ -28,7 +28,7 @@ object RunningWindowMin {
     stage.out
   }
 
-  private final val name = "RunningWindowMin"
+  private final val name = "RunningWindowSum"
 
   private type Shape = FanInShape3[BufD, BufI, BufI, BufD]
 
@@ -48,6 +48,6 @@ object RunningWindowMin {
       with RunningWindowValueImpl[Shape]
       with FilterIn3DImpl[BufD, BufI, BufI] {
 
-    protected def combine(a: Double, b: Double): Double = math.min(a, b)
+    protected def combine(a: Double, b: Double): Double = a + b
   }
 }
