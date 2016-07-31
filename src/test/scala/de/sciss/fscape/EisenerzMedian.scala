@@ -1,7 +1,5 @@
 package de.sciss.fscape
 
-import java.awt.image.BufferedImage
-
 import de.sciss.file._
 import de.sciss.fscape.gui.SimpleGUI
 
@@ -15,7 +13,7 @@ object EisenerzMedian {
   def median(): Unit = {
     val baseDir   = userHome / "Documents" / "projects" / "Eisenerz" / "image_work6"
     val template  = baseDir / "frame-%d.jpg"
-    val idxRange  = (276 to 628) .take(10) .map(x => x: GE)
+    val idxRange  = (276 to 628).map(x => x: GE)
 //    val numInput  = idxRange.size
     val indices   = idxRange.reduce(_ ++ _)
     val width     = 3280
@@ -43,16 +41,18 @@ object EisenerzMedian {
       def delayFrame(in: GE, n: Int = 1): GE = in.drop(frameSize * n)
 
       def extractBrightness(in: GE): GE = {
-        val r   = in.`\\`(0) // ChannelProxy(in, 0)
-        val g   = in.`\\`(1) // ChannelProxy(in, 1)
-        val b   = in.`\\`(2) // ChannelProxy(in, 2)
+        val r   = ChannelProxy(in, 0)
+        val g   = ChannelProxy(in, 1)
+        val b   = ChannelProxy(in, 2)
         (0.299 * r.squared + 0.587 * g.squared + 0.114 * b.squared).sqrt
       }
 
       def normalize(in: GE, headroom: GE = 1): GE = {
         val max       = RunningMax(in.abs).last
         val gain      = max.reciprocal * headroom
-        max.poll(0, "gain")
+        gain.ampdb.roundTo(0.01).poll(0, "gain [dB]")
+        // Plot1D(in, width * height)
+        in.poll(1.0/32, label = "test")
         val buf       = BufferDisk(in)
         buf * gain
       }
@@ -68,19 +68,18 @@ object EisenerzMedian {
 //
 //      val lumC      = lumWin(sideLen)
 
-      val lumSlide  = lum // Sliding(lum, size = frameSize * medianLen, step = frameSize)
-      val lumT      = TransposeMatrix(lumSlide, columns = frameSize, rows = medianLen)
+//      val lumSlide  = Sliding(lum, size = frameSize * medianLen, step = frameSize)
+//      val lumT      = TransposeMatrix(lumSlide, columns = frameSize, rows = medianLen)
 //      val comp      = delayFrame(lum, n = sideLen)
-      val runTrig   = Impulse(1.0 / medianLen)
+//      val runTrig   = Impulse(1.0 / medianLen)
 //      val minR      = RunningMin(lumT, runTrig)
-      val maxR      = RunningMax(lumT, runTrig)
+//      val maxR      = RunningMax(lumT, runTrig)
 //      val meanR     = RunningSum(lumT, runTrig) / medianLen
 //      val min       = Sliding(minR .drop(medianLen - 1), size = 1, step = medianLen)
 //      val max       = Sliding(maxR .drop(medianLen - 1), size = 1, step = medianLen)
-      val max       = Sliding(maxR /* .drop(medianLen - 1) */, size = 1, step = medianLen)
-      // XXX TODO --- use median instead of mean
+//      // XXX TODO --- use median instead of mean
 //      val mean      = Sliding(meanR.drop(medianLen - 1), size = 1, step = medianLen)
-
+//
 //      val maskIf    = (max - min > thresh) * ((comp sig_== min) max (comp sig_== max))
 //      val mask      = maskIf * {
 //        val med = mean // medianArr(sideLen)
@@ -92,21 +91,18 @@ object EisenerzMedian {
       // mix to composite
       // - collect 'max' pixels for comp * maskBlur
 
-      val test  = max /* lum */ /* maskBlur */.takeRight(frameSize)
-      val sig   = test // normalize(test)
+      val test  = lum /* maskBlur */.takeRight(frameSize)
+      val sig   = normalize(test)
       val spec  = ImageFile.Spec(width = width, height = height, numChannels = 1 /* 3 */,
         fileType = ImageFile.Type.JPG /* PNG */, sampleFormat = ImageFile.SampleFormat.Int8,
         quality = 100)
       ImageFileOut(file = fOut, spec = spec, in = sig)
     }
 
-    val config        = stream.Control.Config()
-    config.blockSize  = 400 // 599 // 1024 exposes problem
-    config.useAsync   = false
-    val ctrl          = stream.Control(config)
+    val config  = stream.Control.Config()
+    config.blockSize = 599 // 1024 exposes problem
+    val ctrl    = stream.Control(config)
     ctrl.run(g)
-
-    showStreamLog = true
 
     Swing.onEDT {
       SimpleGUI(ctrl)
