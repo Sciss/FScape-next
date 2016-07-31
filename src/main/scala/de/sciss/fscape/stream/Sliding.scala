@@ -163,7 +163,12 @@ object Sliding {
       if (bufIn2 != null && inOff < bufIn2.size) {
         step = math.max(1, bufIn2.buf(inOff))
       }
-      windows += new Window(new Array[Double](size))
+//      try {
+        windows += new Window(new Array[Double](size))
+//      } catch {
+//        case _: OutOfMemoryError =>
+//          println(s"OutOfMemoryError. $this; windows.size = ${windows.size}; size = $size")
+//      }
       step  // -> writeToWinRemain
     }
 

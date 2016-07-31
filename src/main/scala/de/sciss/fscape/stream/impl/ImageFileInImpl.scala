@@ -87,10 +87,9 @@ trait ImageFileInImpl[S <: Shape] extends OutHandler {
     }
   }
 
-  private[this] def read(x: Int, y: Int, width: Int, height: Int, offIn: Int): Int = {
-    val sz      = width * height
-    val offOut  = offIn + sz
-    img.getRaster.getPixels(x, y, width, height, pixBuf)
+  private[this] def read(x: Int, y: Int, width: Int, offIn: Int): Int = {
+    val offOut  = offIn + width
+    img.getRaster.getPixels(x, y, width, 1, pixBuf)
     var ch  = 0
     val a   = pixBuf
     val nb  = numBands
@@ -110,7 +109,7 @@ trait ImageFileInImpl[S <: Shape] extends OutHandler {
             j   += 1
           }
         } else {
-          Util.clear(b, offIn, sz)
+          Util.clear(b, offIn, width)
         }
       }
       ch += 1
@@ -127,31 +126,31 @@ trait ImageFileInImpl[S <: Shape] extends OutHandler {
     val y1    = stop       / w
 
     // first (partial) line
-    val off0 = read(
+    var off0 = read(
       x       = x0,
       y       = y0,
       width   = (if (y1 == y0) x1 else w) - x0,
-      height  = 1,
       offIn   = outOff
     )
 
     // middle lines
-    val hMid  = y1 - y0 - 2
-    val off1 = if (hMid <= 0) off0 else read(
-      x       = 0,
-      y       = y0 + 1,
-      width   = w,
-      height  = hMid,
-      offIn   = off0
-    )
+    var y2    = y0 + 1
+    while (y2 < y1) {
+      off0 = read(
+        x       = 0,
+        y       = y2,
+        width   = w,
+        offIn   = off0
+      )
+      y2 += 1
+    }
 
     // last (partial) line
     if (y1 > y0 && x1 > 0) read(
       x       = 0,
       y       = y1,
       width   = x1,
-      height  = 1,
-      offIn   = off1
+      offIn   = off0
     )
 
     framesRead += chunk

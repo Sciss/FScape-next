@@ -45,7 +45,6 @@ object EisenerzMedian {
         val g   = ChannelProxy(in, 1)
         val b   = ChannelProxy(in, 2)
         (0.299 * r.squared + 0.587 * g.squared + 0.114 * b.squared).sqrt
-//        (r.squared * 0.299 + g.squared * 0.587 + b.squared * 0.114).sqrt
       }
 
       def normalize(in: GE, headroom: GE = 1): GE = {
@@ -58,13 +57,13 @@ object EisenerzMedian {
         buf * gain
       }
 
-//      val bufIn     = ImageFileSeqIn(template = template, numChannels = 3, indices = indices)
-      val bufIn     = WhiteNoise(Seq.fill[GE](3)(0.5)).take(frameSize * idxRange.size)
+      val bufIn     = ImageFileSeqIn(template = template, numChannels = 3, indices = indices)
+//      val bufIn     = WhiteNoise(Seq.fill[GE](3)(0.5)).take(frameSize * idxRange.size)
       val blurImg   = blur(bufIn)
       val lum       = extractBrightness(blurImg)
 
-      Length(bufIn).poll(0, "bufIn.length")
-      Length(lum  ).poll(0, "lum  .length")
+//      Length(bufIn).poll(0, "bufIn.length")
+//      Length(lum  ).poll(0, "lum  .length")
 //      RunningSum(bufIn).poll(1.0/frameSize, "PING")
 
 //      // XXX TODO --- or Sliding(lum, frameSize * medianLen, frameSize) ?
@@ -74,30 +73,30 @@ object EisenerzMedian {
 //
 //      val lumC      = lumWin(sideLen)
 
-//      val lumSlide  = Sliding(lum, size = frameSize * medianLen, step = frameSize)
-//      val lumT      = TransposeMatrix(lumSlide, columns = frameSize, rows = medianLen)
-//      val comp      = delayFrame(lum, n = sideLen)
-//      val runTrig   = Impulse(1.0 / medianLen)
-//      val minR      = RunningMin(lumT, runTrig)
-//      val maxR      = RunningMax(lumT, runTrig)
-//      val meanR     = RunningSum(lumT, runTrig) / medianLen
-//      val min       = Sliding(minR .drop(medianLen - 1), size = 1, step = medianLen)
-//      val max       = Sliding(maxR .drop(medianLen - 1), size = 1, step = medianLen)
-//      // XXX TODO --- use median instead of mean
-//      val mean      = Sliding(meanR.drop(medianLen - 1), size = 1, step = medianLen)
-//
-//      val maskIf    = (max - min > thresh) * ((comp sig_== min) max (comp sig_== max))
-//      val mask      = maskIf * {
-//        val med = mean // medianArr(sideLen)
-//        comp absdif med
-//      }
-//      val maskBlur  = blur(mask)
+      val lumSlide  = Sliding(lum, size = frameSize * medianLen, step = frameSize)
+      val lumT      = TransposeMatrix(lumSlide, columns = frameSize, rows = medianLen)
+      val comp      = delayFrame(lum, n = sideLen)
+      val runTrig   = Impulse(1.0 / medianLen)
+      val minR      = RunningMin(lumT, runTrig)
+      val maxR      = RunningMax(lumT, runTrig)
+      val meanR     = RunningSum(lumT, runTrig) / medianLen
+      val min       = Sliding(minR .drop(medianLen - 1), size = 1, step = medianLen)
+      val max       = Sliding(maxR .drop(medianLen - 1), size = 1, step = medianLen)
+      // XXX TODO --- use median instead of mean
+      val mean      = Sliding(meanR.drop(medianLen - 1), size = 1, step = medianLen)
+
+      val maskIf    = (max - min > thresh) * ((comp sig_== min) max (comp sig_== max))
+      val mask      = maskIf * {
+        val med = mean // medianArr(sideLen)
+        comp absdif med
+      }
+      val maskBlur  = blur(mask)
 
       // XXX TODO
       // mix to composite
       // - collect 'max' pixels for comp * maskBlur
 
-      val test  = lum /* maskBlur */.takeRight(frameSize)
+      val test  = maskBlur.takeRight(frameSize)
       val sig   = normalize(test)
       val spec  = ImageFile.Spec(width = width, height = height, numChannels = 1 /* 3 */,
         fileType = ImageFile.Type.JPG /* PNG */, sampleFormat = ImageFile.SampleFormat.Int8,
