@@ -58,7 +58,8 @@ object EisenerzMedian {
         buf * gain
       }
 
-      val bufIn     = ImageFileSeqIn(template = template, numChannels = 3, indices = indices)
+//      val bufIn     = ImageFileSeqIn(template = template, numChannels = 3, indices = indices)
+      val bufIn     = WhiteNoise(Seq.fill[GE](3)(0.5)).take(frameSize * idxRange.size)
       val blurImg   = blur(bufIn)
       val lum       = extractBrightness(blurImg)
 
@@ -106,6 +107,7 @@ object EisenerzMedian {
 
     val config  = stream.Control.Config()
     config.blockSize = 599 // 1024 exposes problem
+    config.useAsync = false
     val ctrl    = stream.Control(config)
     ctrl.run(g)
 
