@@ -16,8 +16,8 @@ object EisenerzMedian {
     val idxRange  = (276 to 628) .take(12) .map(x => x: GE)
     val numInput  = idxRange.size
     val indices   = idxRange.reduce(_ ++ _)
-    val width     = 3280
-    val height    = 2464
+    val width     = 3280  /2
+    val height    = 2464  /2
     val frameSize = width * height
 
     val sideLen   = 3 // 2
@@ -51,6 +51,12 @@ object EisenerzMedian {
         (0.299 * r.squared + 0.587 * g.squared + 0.114 * b.squared).sqrt
       }
 
+      def quarter(in: GE): GE = {
+        val half1     = ResizeWindow(in   , size = width * 2, start = width, stop = 0)
+        val half2     = ResizeWindow(half1, size = width * height * 2, start = width * height, stop = 0)
+        half2
+      }
+
       def normalize(in: GE, headroom: GE = 1): GE = {
         val max       = RunningMax(in.abs).last
         val gain      = max.reciprocal * headroom
@@ -61,7 +67,10 @@ object EisenerzMedian {
         buf * gain
       }
 
-      def mkImgSeq() = ImageFileSeqIn(template = template, numChannels = 3, indices = indices)
+      def mkImgSeq() = {
+        val res = ImageFileSeqIn(template = template, numChannels = 3, indices = indices)
+        quarter(res)
+      }
 
       val bufIn     = mkImgSeq()
 //      val bufIn     = WhiteNoise(Seq.fill[GE](3)(0.5)).take(frameSize * idxRange.size)
@@ -84,7 +93,7 @@ object EisenerzMedian {
 //      val comp0     = delayFrame(lum, n = sideLen)
 ////      val comp      = comp0.elastic((sideLen * frameSize + config.blockSize - 1) / config.blockSize)
 //      val comp      = BufferDisk(comp0)
-      val dly   = delayFrame(mkImgSeq(), n = sideLen).dropRight(sideLen * frameSize)
+      val dly   = delayFrame(mkImgSeq(), n = sideLen).take(frameSize * (numInput - (medianLen - 1))) // .dropRight(sideLen * frameSize)
       val comp  = extractBrightness(blur(dly))
 
 //      val runTrig   = Impulse(1.0 / medianLen)
@@ -125,13 +134,13 @@ object EisenerzMedian {
       maskBlur.poll(1.0/frameSize, "maskBlur")
 
       val sel     = maskBlur * dly
-      val expose  = RunningWindowMax(sel, size = frameSize)
+      val expose  = RunningWindowSum /* Max */(sel, size = frameSize)
 
 //      val test  = min /* maskBlur */ .take(frameSize * (numInput - (medianLen - 1))).takeRight(frameSize)
       val test  = expose.take(frameSize * (numInput - (medianLen - 1))).takeRight(frameSize)
                   // min.take(frameSize * (numInput - (medianLen - 1))).takeRight(frameSize)
       val sig   = normalize(test)
-      val spec  = ImageFile.Spec(width = width, height = height, numChannels = 1 /* 3 */,
+      val spec  = ImageFile.Spec(width = width, height = height, numChannels = /* 1 */ 3,
         fileType = ImageFile.Type.JPG /* PNG */, sampleFormat = ImageFile.SampleFormat.Int8,
         quality = 100)
       ImageFileOut(file = fOut, spec = spec, in = sig)
