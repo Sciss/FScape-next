@@ -28,8 +28,8 @@ object EisenerzMedian {
     val height        = 1080
     val trimLeft      = 840
     val trimTop       = 720
-    val gain          = 9.0
-    val gamma         = 1.4
+    val gain          = 4.5 // 9.0
+    val gamma         = 1.2 // 1.4
     val seqLen        = 30
     val trimRight     = widthIn  - width  - trimLeft
     val trimBottom    = heightIn - height - trimTop
@@ -158,12 +158,13 @@ object EisenerzMedian {
 //      val test  = min /* maskBlur */ .take(frameSize * (numInput - (medianLen - 1))).takeRight(frameSize)
 
       if (SEQUENCE) {
-        val selDly      = delayFrame(expose, n = seqLen)
-        val exposeDly   = RunningWindowSum(selDly, size = frameSize)
+//        val selDly      = delayFrame(sel, n = seqLen)
+//        val exposeDly   = RunningWindowSum(selDly, size = frameSize)
+        val exposeDly = delayFrame(expose, n = seqLen)
 //        val dlyElastic  = (seqLen * frameSize) / config.blockSize + 1
 //        val exposeSlid  = expose.elastic(dlyElastic) - exposeDly
         // OutOfMemoryError -- buffer to disk instead
-        val exposeSlid  = BufferDisk(expose) - exposeDly
+        val exposeSlid  = exposeDly - BufferDisk(expose)
         val sig         = (exposeSlid * gain).max(0.0).min(1.0).pow(gamma)
         val spec  = ImageFile.Spec(width = width, height = height, numChannels = /* 1 */ 3,
           fileType = ImageFile.Type.JPG /* PNG */, sampleFormat = ImageFile.SampleFormat.Int8,
