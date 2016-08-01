@@ -12,7 +12,7 @@ object EisenerzMedian {
   }
 
   def median(): Unit = {
-    val SEQUENCE      = false
+    val SEQUENCE      = true
 
     val baseDirIn     = userHome / "Documents" / "projects" / "Eisenerz" / "image_work6"
     val templateIn    = baseDirIn / "frame-%d.jpg"
@@ -160,8 +160,10 @@ object EisenerzMedian {
       if (SEQUENCE) {
         val selDly      = delayFrame(expose, n = seqLen)
         val exposeDly   = RunningWindowSum(selDly, size = frameSize)
-        val dlyElastic  = (seqLen * frameSize) / config.blockSize + 1
-        val exposeSlid  = expose.elastic(dlyElastic) - exposeDly
+//        val dlyElastic  = (seqLen * frameSize) / config.blockSize + 1
+//        val exposeSlid  = expose.elastic(dlyElastic) - exposeDly
+        // OutOfMemoryError -- buffer to disk instead
+        val exposeSlid  = BufferDisk(expose) - exposeDly
         val sig         = (exposeSlid * gain).max(0.0).min(1.0).pow(gamma)
         val spec  = ImageFile.Spec(width = width, height = height, numChannels = /* 1 */ 3,
           fileType = ImageFile.Type.JPG /* PNG */, sampleFormat = ImageFile.SampleFormat.Int8,
