@@ -12,18 +12,26 @@ object EisenerzMedian {
   }
 
   def median(): Unit = {
-    val baseDir       = userHome / "Documents" / "projects" / "Eisenerz" / "image_work6"
-    val template      = baseDir / "frame-%d.jpg"
-    val idxRange      = (276 to 628) .take(30) .map(x => x: GE)
+    val SEQUENCE      = true
+
+    val baseDirIn     = userHome / "Documents" / "projects" / "Eisenerz" / "image_work6"
+    val templateIn    = baseDirIn / "frame-%d.jpg"
+    val baseDirOut    = userHome / "Documents" / "projects" / "Imperfect" / "image_diff6"
+    val templateOut   = baseDirOut / "frame-%d.jpg"
+    val idxRange0     = 276 to 628
+    val idxRange      = (if (SEQUENCE) idxRange0 else idxRange0.take(30)).map(x => x: GE)
     val numInput      = idxRange.size
-    val indices       = idxRange.reduce(_ ++ _)
+    val indices       = idxRange.reduce(_ ++ _)   // XXX TODO --- we need a better abstraction for this
     val widthIn       = 3280
     val heightIn      = 2464
     val width         = 1920
     val height        = 1080
     val trimLeft      = 840
     val trimTop       = 720
-    val trimRight     = widthIn - width - trimLeft
+    val gain          = 9.0
+    val gamma         = 1.4
+    val seqLen        = 30
+    val trimRight     = widthIn  - width  - trimLeft
     val trimBottom    = heightIn - height - trimTop
 //    val frameSizeIn   = widthIn * heightIn
     val frameSize     = width * height
@@ -78,7 +86,7 @@ object EisenerzMedian {
       }
 
       def mkImgSeq() = {
-        val res = ImageFileSeqIn(template = template, numChannels = 3, indices = indices)
+        val res = ImageFileSeqIn(template = templateIn, numChannels = 3, indices = indices)
         quarter(res)
       }
 
@@ -148,16 +156,30 @@ object EisenerzMedian {
       val expose  = RunningWindowSum(sel, size = frameSize)
 
 //      val test  = min /* maskBlur */ .take(frameSize * (numInput - (medianLen - 1))).takeRight(frameSize)
-      val test  = expose.take(frameSize * (numInput - (medianLen - 1))).takeRight(frameSize)
-                  // min.take(frameSize * (numInput - (medianLen - 1))).takeRight(frameSize)
-      val sig   = normalize(test)
-      val spec  = ImageFile.Spec(width = width, height = height, numChannels = /* 1 */ 3,
-        fileType = ImageFile.Type.JPG /* PNG */, sampleFormat = ImageFile.SampleFormat.Int8,
-        quality = 100)
-      ImageFileOut(file = fOut, spec = spec, in = sig)
-      // "full resolution copy"
-      AudioFileOut(file = fOut.replaceExt("aif"),
-        spec = AudioFileSpec(numChannels = 3, sampleRate = 44100), in = sig)
+
+      if (SEQUENCE) {
+        val selDly      = delayFrame(expose, n = seqLen)
+        val exposeDly   = RunningWindowSum(selDly, size = frameSize)
+        val dlyElastic  = (seqLen * frameSize) / config.blockSize + 1
+        val exposeSlid  = expose.elastic(dlyElastic) - exposeDly
+        val sig         = (exposeSlid * gain).max(0.0).min(1.0).pow(gamma)
+        val spec  = ImageFile.Spec(width = width, height = height, numChannels = /* 1 */ 3,
+          fileType = ImageFile.Type.JPG /* PNG */, sampleFormat = ImageFile.SampleFormat.Int8,
+          quality = 100)
+        ImageFileSeqOut(template = templateOut, spec = spec, in = sig, indices = ???)
+
+      } else {
+        val test  = expose.take(frameSize * (numInput - (medianLen - 1))).takeRight(frameSize)
+        // min.take(frameSize * (numInput - (medianLen - 1))).takeRight(frameSize)
+        val sig   = normalize(test)
+        val spec  = ImageFile.Spec(width = width, height = height, numChannels = /* 1 */ 3,
+          fileType = ImageFile.Type.JPG /* PNG */, sampleFormat = ImageFile.SampleFormat.Int8,
+          quality = 100)
+        ImageFileOut(file = fOut, spec = spec, in = sig)
+        // "full resolution copy"
+        AudioFileOut(file = fOut.replaceExt("aif"),
+          spec = AudioFileSpec(numChannels = 3, sampleRate = 44100), in = sig)
+      }
     }
 
     val ctrl    = stream.Control(config)

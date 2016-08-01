@@ -1,5 +1,5 @@
 /*
- *  ImageFileOut.scala
+ *  ImageFileSeqOut.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2016 Hanns Holger Rutz. All rights reserved.
@@ -19,13 +19,17 @@ import de.sciss.fscape.stream.StreamIn
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-final case class ImageFileOut(file: File, spec: ImageFile.Spec, in: GE) extends UGenSource.ZeroOut {
-  protected def makeUGens(implicit b: UGenGraph.Builder): Unit = unwrap(in.expand.outputs)
+final case class ImageFileSeqOut(template: File, spec: ImageFile.Spec, indices: GE, in: GE)
+  extends UGenSource.ZeroOut {
+
+  protected def makeUGens(implicit b: UGenGraph.Builder): Unit =
+    unwrap(indices.expand +: in.expand.outputs)
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit =
-    UGen.ZeroOut(this, inputs = args, rest = file :: spec :: Nil, isIndividual = true)
+    UGen.ZeroOut(this, inputs = args, rest = template :: spec :: Nil, isIndividual = true)
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit = {
-    stream.ImageFileOut(file = file, spec = spec, in = args.map(_.toDouble))
+    val Vec(indices, in @ _*) = args
+    stream.ImageFileSeqOut(template = template, spec = spec, indices = indices.toInt, in = args.map(_.toDouble))
   }
 }

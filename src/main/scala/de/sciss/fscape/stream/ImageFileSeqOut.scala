@@ -1,5 +1,5 @@
 /*
- *  ImageFileOut.scala
+ *  ImageFileSeqOut.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2016 Hanns Holger Rutz. All rights reserved.
@@ -21,40 +21,44 @@ import javax.imageio.plugins.jpeg.JPEGImageWriteParam
 import javax.imageio.stream.FileImageOutputStream
 import javax.imageio.{IIOImage, ImageIO, ImageTypeSpecifier, ImageWriteParam, ImageWriter}
 
-import akka.stream.Attributes
+import akka.stream.{Attributes, UniformFanOutShape}
 import akka.stream.stage.InHandler
 import de.sciss.file._
 import de.sciss.fscape.graph.ImageFile.{SampleFormat, Spec, Type}
-import de.sciss.fscape.stream.impl.{BlockingGraphStage, StageLogicImpl, UniformSinkShape}
+import de.sciss.fscape.stream.impl.{BlockingGraphStage, StageLogicImpl, In1UniformSinkShape}
 
 import scala.collection.immutable.{Seq => ISeq}
 import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal
 
-object ImageFileOut {
-  def apply(file: File, spec: Spec, in: ISeq[OutD])(implicit b: Builder): Unit = {
+object ImageFileSeqOut {
+  def apply(template: File, spec: Spec, indices: OutI, in: ISeq[OutD])(implicit b: Builder): Unit = {
     require (spec.numChannels == in.size, s"Channel mismatch (spec has ${spec.numChannels}, in has ${in.size})")
-    val sink = new Stage(file, spec)
+    val sink = new Stage(template, spec)
     val stage = b.add(sink)
-    (in zip stage.inlets).foreach { case (output, input) =>
+    b.connect(indices, stage.in0)
+    (in zip stage.inlets1).foreach { case (output, input) =>
       b.connect(output, input)
     }
   }
 
-  private final val name = "ImageFileOut"
+  private final val name = "ImageFileSeqOut"
 
-  private type Shape = UniformSinkShape[BufD]
+  private type Shape = In1UniformSinkShape[BufI, BufD]
 
-  private final class Stage(f: File, spec: Spec)(implicit protected val ctrl: Control)
-    extends BlockingGraphStage[Shape](s"$name(${f.name})") {
+  private final class Stage(template: File, spec: Spec)(implicit protected val ctrl: Control)
+    extends BlockingGraphStage[Shape](s"$name(${template.name})") {
 
-    override val shape = UniformSinkShape[BufD](Vector.tabulate(spec.numChannels)(ch => InD(s"$name.in$ch")))
+    override val shape = In1UniformSinkShape[BufI, BufD](
+      InI(s"$name.indices"),
+      Vector.tabulate(spec.numChannels)(ch => InD(s"$name.in$ch"))
+    )
 
-    def createLogic(attr: Attributes) = new Logic(shape, f, spec)
+    def createLogic(attr: Attributes) = new Logic(shape, template, spec)
   }
 
-  private final class Logic(shape: Shape, f: File, spec: Spec)(implicit ctrl: Control)
-    extends StageLogicImpl(s"$name(${f.name})", shape) with InHandler { logic =>
+  private final class Logic(shape: Shape, template: File, spec: Spec)(implicit ctrl: Control)
+    extends StageLogicImpl(s"$name(${template.name})", shape) with InHandler { logic =>
 
     private[this] var img     : BufferedImage = _
 
@@ -75,7 +79,7 @@ object ImageFileOut {
     shape.inlets.foreach(setHandler(_, this))
 
     override def preStart(): Unit = {
-//      require(if (f.exists()) f.isFile && f.canWrite else f.absolute.parent.canWrite)
+      //      require(if (f.exists()) f.isFileSeq && f.canWrite else f.absolute.parent.canWrite)
 
       val asyncCancel = getAsyncCallback[Unit] { _ =>
         val ex = Cancelled()
@@ -118,10 +122,10 @@ object ImageFileOut {
       val iter = ImageIO.getImageWriters(ImageTypeSpecifier.createFromRenderedImage(img), fmtName)
       if (!iter.hasNext) throw new IllegalArgumentException(s"No image writer for $spec")
       writer = iter.next()
-      val out = new FileImageOutputStream(f)
+      val out = new FileImageOutputStream(template)
       writer.setOutput(out)
 
-      shape.inlets.foreach(pull)
+      ??? // shape.inlets.foreach(pull)
     }
 
     override def postStop(): Unit = {
@@ -155,17 +159,17 @@ object ImageFileOut {
       var ch    = 0
       var chunk = 0
       while (ch < numChannels) {
-        val bufIn = grab(shape.in(ch))
+        val bufIn = ??? // grab(shape.in(ch))
         bufIns(ch)  = bufIn
-        chunk       = if (ch == 0) bufIn.size else math.min(chunk, bufIn.size)
+        chunk       = ??? // if (ch == 0) bufIn.size else math.min(chunk, bufIn.size)
         ch += 1
       }
       chunk = math.min(chunk, numFrames - framesWritten)
 
-//      println(s"process(): framesWritten = $framesWritten, numFrames = $numFrames, chunk = $chunk")
+      //      println(s"process(): framesWritten = $framesWritten, numFrames = $numFrames, chunk = $chunk")
 
       def write(x: Int, y: Int, width: Int, offIn: Int): Int = {
-//        println(s"setPixels($x, $y, $width, $height)")
+        //        println(s"setPixels($x, $y, $width, $height)")
         val r       = img.getRaster
         val offOut  = offIn + width
         var ch      = 0
@@ -195,7 +199,7 @@ object ImageFileOut {
       val x1    = stop          % w
       val y1    = stop          / w
 
-//      println(s"IMAGE WRITE chunk = $chunk, x0 = $x0, y0 = $y0, x1 = $x1, y1 = $y1")
+      //      println(s"IMAGE WRITE chunk = $chunk, x0 = $x0, y0 = $y0, x1 = $x1, y1 = $y1")
 
       // first (partial) line
       var off0 = write(
@@ -228,7 +232,7 @@ object ImageFileOut {
       ch = 0
       while (ch < numChannels) {
         bufIns(ch).release()
-        pull(shape.in(ch))
+        pull(shape.inlets1(ch))
         ch += 1
       }
 
