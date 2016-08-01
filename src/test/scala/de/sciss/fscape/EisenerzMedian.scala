@@ -21,12 +21,13 @@ object EisenerzMedian {
     val heightIn      = 2464
     val width         = 1920
     val height        = 1080
-    val trimLeft      = 400
+    val trimLeft      = 840
+    val trimTop       = 720
     val trimRight     = widthIn - width - trimLeft
-    val trimTop       = 400
     val trimBottom    = heightIn - height - trimTop
-    val frameSizeIn   = widthIn * heightIn
+//    val frameSizeIn   = widthIn * heightIn
     val frameSize     = width * height
+    require(trimLeft >= 0 && trimRight >= 0 && trimTop >= 0 && trimBottom >= 0)
 
     val sideLen       = 3 // 2
     val medianLen     = sideLen * 2 + 1
@@ -60,8 +61,9 @@ object EisenerzMedian {
       }
 
       def quarter(in: GE): GE = {
-        val half1     = ResizeWindow(in   , size = widthIn, start = trimLeft, stop = -trimRight)
-        val half2     = ResizeWindow(half1, size = frameSizeIn, start = width * trimTop, stop = -width * trimBottom)
+        val half1 = ResizeWindow(in   , size = widthIn         , start = trimLeft       , stop = -trimRight)
+        // strange-artifact-1: use `size = frameSizeIn`, `trimLeft = 400`, `trimTop = 400`.
+        val half2 = ResizeWindow(half1, size = width * heightIn, start = width * trimTop, stop = -width * trimBottom)
         half2
       }
 
