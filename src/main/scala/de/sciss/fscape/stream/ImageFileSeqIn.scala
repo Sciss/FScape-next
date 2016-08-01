@@ -55,8 +55,7 @@ object ImageFileSeqIn {
     with ImageFileInImpl[Shape]
     with InHandler {
 
-    protected val bufOuts = new Array[BufD](numChannels)
-    protected val outlets = shape.outArray.toIndexedSeq
+    protected val outlets: Vec[OutD] = shape.outArray.toIndexedSeq
 
     private[this] val in0 = shape.in
 
@@ -76,13 +75,6 @@ object ImageFileSeqIn {
     override def preStart(): Unit = {
       logStream(s"preStart() $this")
       pull(in0)
-    }
-
-    override def postStop(): Unit = {
-      logStream(s"postStop() $this")
-      freeInputBuffers()
-      freeOutputBuffers()
-      closeImage()
     }
 
     private def inputsEnded: Boolean = inRemain == 0 && isClosed(in0)
@@ -157,7 +149,7 @@ object ImageFileSeqIn {
       bufIn0.size
     }
 
-    private def freeInputBuffers(): Unit =
+    protected def freeInputBuffers(): Unit =
       if (bufIn0 != null) {
         bufIn0.release()
         bufIn0 = null

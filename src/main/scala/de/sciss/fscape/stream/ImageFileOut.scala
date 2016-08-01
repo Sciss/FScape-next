@@ -47,15 +47,24 @@ object ImageFileOut {
     extends StageLogicImpl(s"$name(${f.name})", shape)
     with ImageFileOutImpl[Shape] {
 
-    protected val bufIns1: Array[BufD] = ???
-    protected val inlets1: Vec  [InD ] = ???
+    protected val inlets1: Vec[InD ] = shape.inlets.toIndexedSeq
 
     shape.inlets.foreach(setHandler(_, this))
 
+    override def preStart(): Unit = {
+      super.preStart()
+      openImage(f)
+    }
+
     protected def process(): Unit = {
-      readIns1()
-      processChunk(???, ???)
-      if (framesWritten == numFrames) completeStage()
+      val chunk = readIns1()
+      if (chunk > 0) {
+        processChunk(inOff = 0, chunk = chunk)
+      }
+      if (framesWritten == numFrames) {
+        logStream(s"completeStage() $this")
+        completeStage()
+      }
     }
   }
 }

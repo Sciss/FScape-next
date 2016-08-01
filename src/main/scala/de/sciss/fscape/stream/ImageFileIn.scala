@@ -48,8 +48,7 @@ object ImageFileIn {
   private final class Logic(shape: Shape, f: File, protected val numChannels: Int)(implicit ctrl: Control)
     extends StageLogicImpl(s"$name(${f.name})", shape) with ImageFileInImpl[Shape] {
 
-    protected val bufOuts  = new Array[BufD](numChannels)
-    protected val outlets     = shape.outlets.toIndexedSeq
+    protected val outlets: Vec[OutD] = shape.outlets.toIndexedSeq
 
     shape.outlets.foreach(setHandler(_, this))
 
@@ -58,11 +57,7 @@ object ImageFileIn {
       openImage(f)
     }
 
-    override def postStop(): Unit = {
-      logStream(s"postStop() $this")
-      freeOutputBuffers()
-      closeImage()
-    }
+    protected def freeInputBuffers(): Unit = ()
 
     protected def process(): Unit = {
       val chunk = math.min(ctrl.blockSize, numFrames - framesRead)

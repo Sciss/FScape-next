@@ -31,13 +31,14 @@ trait ImageFileInImpl[S <: Shape] extends OutHandler {
   // ---- abstract ----
 
   protected def numChannels : Int
-  protected def bufOuts     : Array[BufD]
   protected def outlets     : Vec[OutD]
 
   protected def process(): Unit
+  protected def freeInputBuffers(): Unit
 
   // ---- impl ----
 
+  private[this]   val bufOuts     : Array[BufD]     = new Array(numChannels)
   private[this]   var numBands    : Int             = _
   protected final var numFrames   : Int             = _
   protected final var framesRead  : Int             = _
@@ -74,6 +75,13 @@ trait ImageFileInImpl[S <: Shape] extends OutHandler {
       img.flush()
       img = null
     }
+  }
+
+  override def postStop(): Unit = {
+    logStream(s"postStop() $this")
+    freeInputBuffers()
+    freeOutputBuffers()
+    closeImage()
   }
 
   protected final def freeOutputBuffers(): Unit = {

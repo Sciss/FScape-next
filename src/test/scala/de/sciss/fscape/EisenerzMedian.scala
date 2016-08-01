@@ -12,7 +12,7 @@ object EisenerzMedian {
   }
 
   def median(): Unit = {
-    val SEQUENCE      = true
+    val SEQUENCE      = false
 
     val baseDirIn     = userHome / "Documents" / "projects" / "Eisenerz" / "image_work6"
     val templateIn    = baseDirIn / "frame-%d.jpg"

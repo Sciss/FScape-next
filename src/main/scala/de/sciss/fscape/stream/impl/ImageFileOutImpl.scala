@@ -38,7 +38,6 @@ trait ImageFileOutImpl[S <: Shape] extends InHandler {
 
   // ---- abstract ----
 
-  protected def bufIns1     : Array[BufD]
   protected def inlets1     : Vec[InD]
   protected def spec        : ImageFile.Spec
 
@@ -48,6 +47,7 @@ trait ImageFileOutImpl[S <: Shape] extends InHandler {
   // ---- impl ----
 
   private[this]   val numChannels   : Int             = spec.numChannels
+  private[this]   val bufIns1       : Array[BufD]     = new Array[BufD](numChannels)
   protected final val numFrames     : Int             = spec.width * spec.height
   protected final var framesWritten : Int             = _
 
@@ -218,6 +218,7 @@ trait ImageFileOutImpl[S <: Shape] extends InHandler {
     var ch = 0
     while (ch < numChannels) {
       bufIns1(ch).release()
+      bufIns1(ch) = null
       pull(inlets1(ch))
       ch += 1
     }
