@@ -56,7 +56,7 @@ object ImageFileOut {
       openImage(f)
     }
 
-    protected def process(): Unit = {
+    protected def process1(): Unit = {
       val chunk = readIns1()
       if (chunk > 0) {
         processChunk(inOff = 0, chunk = chunk)

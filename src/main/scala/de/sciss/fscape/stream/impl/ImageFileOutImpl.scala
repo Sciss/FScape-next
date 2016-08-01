@@ -42,7 +42,7 @@ trait ImageFileOutImpl[S <: Shape] extends InHandler {
   protected def spec        : ImageFile.Spec
 
   /** Called when all of `inlets1` are ready. */
-  protected def process(): Unit
+  protected def process1(): Unit
 
   // ---- impl ----
 
@@ -96,7 +96,7 @@ trait ImageFileOutImpl[S <: Shape] extends InHandler {
     pushed += 1
     if (pushed == numChannels) {
       pushed = 0
-      process()
+      process1()
     }
   }
 
