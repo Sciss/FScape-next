@@ -2,6 +2,7 @@ package de.sciss.fscape
 
 import de.sciss.file._
 import de.sciss.fscape.gui.SimpleGUI
+import de.sciss.synth.io.AudioFileSpec
 
 import scala.swing.Swing
 
@@ -13,7 +14,7 @@ object EisenerzMedian {
   def median(): Unit = {
     val baseDir   = userHome / "Documents" / "projects" / "Eisenerz" / "image_work6"
     val template  = baseDir / "frame-%d.jpg"
-    val idxRange  = (276 to 628) .take(12) .map(x => x: GE)
+    val idxRange  = (276 to 628) .take(30) .map(x => x: GE)
     val numInput  = idxRange.size
     val indices   = idxRange.reduce(_ ++ _)
     val width     = 3280  /2
@@ -134,7 +135,8 @@ object EisenerzMedian {
       maskBlur.poll(1.0/frameSize, "maskBlur")
 
       val sel     = maskBlur * dly
-      val expose  = RunningWindowSum /* Max */(sel, size = frameSize)
+      val expose  = RunningWindowMax(sel, size = frameSize)
+//      val expose  = RunningWindowSum(sel, size = frameSize)
 
 //      val test  = min /* maskBlur */ .take(frameSize * (numInput - (medianLen - 1))).takeRight(frameSize)
       val test  = expose.take(frameSize * (numInput - (medianLen - 1))).takeRight(frameSize)
@@ -144,6 +146,9 @@ object EisenerzMedian {
         fileType = ImageFile.Type.JPG /* PNG */, sampleFormat = ImageFile.SampleFormat.Int8,
         quality = 100)
       ImageFileOut(file = fOut, spec = spec, in = sig)
+      // "full resolution copy"
+      AudioFileOut(file = fOut.replaceExt("aif"),
+        spec = AudioFileSpec(numChannels = 3, sampleRate = 44100), in = sig)
     }
 
     val ctrl    = stream.Control(config)

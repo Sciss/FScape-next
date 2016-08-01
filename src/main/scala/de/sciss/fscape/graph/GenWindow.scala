@@ -31,10 +31,11 @@ object GenWindow {
       case Rectangle.id => Rectangle
       case Hann     .id => Hann
       case Triangle .id => Triangle
+      case Gauss    .id => Gauss
     }
 
     final val MinId = Hamming.id
-    final val MaxId = Hann   .id
+    final val MaxId = Gauss  .id
 
     implicit def toGE(in: Shape): GE = in.id
   }
@@ -152,6 +153,27 @@ object GenWindow {
       }
     }
   }
+  case object Gauss extends Shape {
+    final val id = 6
+
+    def fill(winSize: Int, winOff: Int, buf: Array[Double], bufOff: Int, len: Int, param: Double): Unit = {
+      val radius        = 0.5 * winSize
+      val sigma         = radius/3
+      val sigmaSqr2     = 2 * sigma * sigma
+      val sigmaPi2Sqrt  = math.sqrt(Pi2 * sigma)
+      var i             = winOff
+      val stop          = i + len
+      var j             = bufOff
+      while (i < stop) {
+        val dist    = i - radius
+        val distSqr = dist * dist
+        buf(j)      = math.exp(-distSqr / sigmaSqr2) / sigmaPi2Sqrt
+        i          += 1
+        j          += 1
+      }
+    }
+  }
+
   // XXX TODO --- we should add some standard SuperCollider curve shapes like Welch
 }
 final case class GenWindow(size: GE, shape: GE, param: GE = 0.0) extends UGenSource.SingleOut {
