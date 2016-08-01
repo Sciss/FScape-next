@@ -14,22 +14,13 @@
 package de.sciss.fscape
 package stream
 
-import java.awt.Transparency
-import java.awt.color.ColorSpace
-import java.awt.image.{BandedSampleModel, BufferedImage, ComponentColorModel, DataBuffer, Raster}
-import javax.imageio.plugins.jpeg.JPEGImageWriteParam
-import javax.imageio.stream.FileImageOutputStream
-import javax.imageio.{IIOImage, ImageIO, ImageTypeSpecifier, ImageWriteParam, ImageWriter}
-
-import akka.stream.{Attributes, UniformFanOutShape}
+import akka.stream.Attributes
 import akka.stream.stage.InHandler
 import de.sciss.file._
-import de.sciss.fscape.graph.ImageFile.{SampleFormat, Spec, Type}
-import de.sciss.fscape.stream.impl.{BlockingGraphStage, StageLogicImpl, In1UniformSinkShape}
+import de.sciss.fscape.graph.ImageFile.Spec
+import de.sciss.fscape.stream.impl.{BlockingGraphStage, ImageFileOutImpl, In1UniformSinkShape, StageLogicImpl}
 
-import scala.collection.immutable.{Seq => ISeq}
-import scala.concurrent.{Future, Promise}
-import scala.util.control.NonFatal
+import scala.collection.immutable.{IndexedSeq => Vec, Seq => ISeq}
 
 object ImageFileSeqOut {
   def apply(template: File, spec: Spec, indices: OutI, in: ISeq[OutD])(implicit b: Builder): Unit = {
@@ -57,192 +48,38 @@ object ImageFileSeqOut {
     def createLogic(attr: Attributes) = new Logic(shape, template, spec)
   }
 
-  private final class Logic(shape: Shape, template: File, spec: Spec)(implicit ctrl: Control)
-    extends StageLogicImpl(s"$name(${template.name})", shape) with InHandler { logic =>
+  private final class Logic(shape: Shape, template: File, val spec: Spec)(implicit ctrl: Control)
+    extends StageLogicImpl(s"$name(${template.name})", shape)
+    with ImageFileOutImpl[Shape] { logic =>
 
-    private[this] var img     : BufferedImage = _
+    shape.inlets1.foreach(setHandler(_, this))
 
-    private[this] val bufSize       = spec.width * spec.numChannels
-    private[this] var buf           = new Array[Double](bufSize)
-    private[this] var pushed        = 0
-    private[this] val numChannels   = spec.numChannels
-    private[this] val bufIns        = new Array[BufD](spec.numChannels)
-    private[this] var framesWritten = 0
+    protected val inlets1: Vec[InD] = shape.inlets1.toIndexedSeq
 
-    private[this] var writer    : ImageWriter     = _
-    private[this] var gain      : Double          = _
-    private[this] var numFrames : Int             = _
-    private[this] var imgParam  : ImageWriteParam = _
-
-    private /* [this] */ val result = Promise[Long]()
-
-    shape.inlets.foreach(setHandler(_, this))
-
-    override def preStart(): Unit = {
-      //      require(if (f.exists()) f.isFileSeq && f.canWrite else f.absolute.parent.canWrite)
-
-      val asyncCancel = getAsyncCallback[Unit] { _ =>
-        val ex = Cancelled()
-        if (result.tryFailure(ex)) failStage(ex)
+    setHandler(shape.in0, new InHandler {
+      def onPush(): Unit = {
+        logStream(s"onPush(${shape.in0})")
+        testRead()
       }
-      ctrl.addLeaf(new Leaf {
-        def result: Future[Any] = logic.result.future
 
-        def cancel(): Unit = asyncCancel.invoke(())
-      })
-
-      logStream(s"$this - preStart()")
-      // XXX TODO --- gain correct?
-      val (dataType, _gain) = spec.sampleFormat match {
-        case SampleFormat.Int8  => DataBuffer.TYPE_BYTE   ->   255.0
-        case SampleFormat.Int16 => DataBuffer.TYPE_USHORT -> 65535.0
-        case SampleFormat.Float => DataBuffer.TYPE_FLOAT  ->     1.0 // XXX TODO --- currently not supported by ImageIO?
+      private def testRead(): Unit = {
+        ???
+//        updateCanRead()
+//        if (_canRead) process()
       }
-      gain          = _gain
 
-      // XXX TODO --- which is more efficient - BandedSampleModel or PixelInterleavedSampleModel?
-      val sm        = new BandedSampleModel(dataType, spec.width, spec.height, spec.numChannels)
-      val r         = Raster.createWritableRaster(sm, null)
-      val cs        = ColorSpace.getInstance(if (numChannels == 1) ColorSpace.CS_GRAY else ColorSpace.CS_sRGB)
-      val hasAlpha  = numChannels == 4
-      val cm        = new ComponentColorModel(cs, hasAlpha, false, Transparency.TRANSLUCENT, dataType)
-      numFrames     = spec.width * spec.height
-      img           = new BufferedImage(cm, r, false, null)
-
-      val (fmtName, _param) = spec.fileType match {
-        case Type.PNG => "png" -> null
-        case Type.JPG =>
-          val p = new JPEGImageWriteParam(null)
-          p.setCompressionMode(ImageWriteParam.MODE_EXPLICIT)
-          p.setCompressionQuality(spec.quality * 0.01f)
-          "jpg" -> p
-      }
-      imgParam = _param
-
-      val iter = ImageIO.getImageWriters(ImageTypeSpecifier.createFromRenderedImage(img), fmtName)
-      if (!iter.hasNext) throw new IllegalArgumentException(s"No image writer for $spec")
-      writer = iter.next()
-      val out = new FileImageOutputStream(template)
-      writer.setOutput(out)
-
-      shape.inlets.foreach(pull(_))
-    }
-
-    override def postStop(): Unit = {
-      logStream(s"$this - postStop()")
-      buf = null
-      var ch = 0
-      while (ch < numChannels) {
-        bufIns(ch) = null
-        ch += 1
-      }
-      try {
-        writer.write(null /* meta */ , new IIOImage(img, null /* thumb */ , null /* meta */), imgParam)
-        result.trySuccess(numFrames)
-      } catch {
-        case NonFatal(ex) =>
-          result.tryFailure(ex)
-      } finally {
-        writer.dispose()
-      }
-    }
-
-    override def onPush(): Unit = {
-      pushed += 1
-      if (pushed == numChannels) {
-        pushed = 0
-        process()
-      }
-    }
-
-    private def process(): Unit = {
-      var ch    = 0
-      var chunk = 0
-      while (ch < numChannels) {
-        val bufIn = grab(shape.inlets1(ch))
-        bufIns(ch)  = bufIn
-        chunk       = if (ch == 0) bufIn.size else math.min(chunk, bufIn.size)
-        ch += 1
-      }
-      chunk = math.min(chunk, numFrames - framesWritten)
-
-      //      println(s"process(): framesWritten = $framesWritten, numFrames = $numFrames, chunk = $chunk")
-
-      def write(x: Int, y: Int, width: Int, offIn: Int): Int = {
-        //        println(s"setPixels($x, $y, $width, $height)")
-        val r       = img.getRaster
-        val offOut  = offIn + width
-        var ch      = 0
-        val a       = buf
-        val nb      = numChannels
-        val g       = gain
-        while (ch < nb) {
-          val b = bufIns(ch).buf
-          var i = ch
-          var j = offIn
-          while (j < offOut) {
-            a(i) = b(j) * g
-            i   += nb
-            j   += 1
-          }
-          ch += 1
+      override def onUpstreamFinish(): Unit = {
+        logStream(s"onUpstreamFinish(${shape.in0})")
+        if ((??? : Boolean) /* _inValid */ || isAvailable({shape.in0})) {
+          testRead()
+        } else {
+          println(s"Invalid aux ${shape.in0}")
+          completeStage()
         }
-        r.setPixels(x, y, width, 1, buf)
-
-        offOut
       }
+    })
 
-      val stop  = framesWritten + chunk
-      val w     = img.getWidth
-      val x0    = framesWritten % w
-      val y0    = framesWritten / w
-      val x1    = stop          % w
-      val y1    = stop          / w
-
-      //      println(s"IMAGE WRITE chunk = $chunk, x0 = $x0, y0 = $y0, x1 = $x1, y1 = $y1")
-
-      // first (partial) line
-      var off0 = write(
-        x       = x0,
-        y       = y0,
-        width   = (if (y1 == y0) x1 else w) - x0,
-        offIn   = 0
-      )
-
-      // middle lines
-      var y2 = y0 + 1
-      while (y2 < y1) {
-        off0 = write(
-          x       = 0,
-          y       = y2,
-          width   = w,
-          offIn   = off0
-        )
-        y2 += 1
-      }
-
-      // last (partial) line
-      if (y1 > y0 && x1 > 0) write(
-        x       = 0,
-        y       = y1,
-        width   = x1,
-        offIn   = off0
-      )
-
-      ch = 0
-      while (ch < numChannels) {
-        bufIns(ch).release()
-        pull(shape.inlets1(ch))
-        ch += 1
-      }
-
-      framesWritten += chunk
-      if (framesWritten == numFrames) completeStage()
-    }
-
-    override def onUpstreamFailure(ex: Throwable): Unit = {
-      result.failure(ex)
-      super.onUpstreamFailure(ex)
-    }
+    /** Called when all of `inlets1` are ready. */
+    protected def process(): Unit = ???
   }
 }
