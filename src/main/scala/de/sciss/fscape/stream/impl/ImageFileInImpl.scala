@@ -31,7 +31,7 @@ trait ImageFileInImpl[S <: Shape] extends OutHandler {
   // ---- abstract ----
 
   protected def numChannels : Int
-  protected def outBufs     : Array[BufD]
+  protected def bufOuts     : Array[BufD]
   protected def outlets     : Vec[OutD]
 
   protected def process(): Unit
@@ -78,10 +78,10 @@ trait ImageFileInImpl[S <: Shape] extends OutHandler {
 
   protected final def freeOutputBuffers(): Unit = {
     var i = 0
-    while (i < outBufs.length) {
-      if (outBufs(i) != null) {
-        outBufs(i).release()
-        outBufs(i) = null
+    while (i < bufOuts.length) {
+      if (bufOuts(i) != null) {
+        bufOuts(i).release()
+        bufOuts(i) = null
       }
       i += 1
     }
@@ -97,8 +97,8 @@ trait ImageFileInImpl[S <: Shape] extends OutHandler {
     while (ch < numChannels) {
       val out = outlets(ch)
       if (!isClosed(out)) {
-        if (outBufs(ch) == null) outBufs(ch) = ctrl.borrowBufD()
-        val bufOut  = outBufs(ch)
+        if (bufOuts(ch) == null) bufOuts(ch) = ctrl.borrowBufD()
+        val bufOut  = bufOuts(ch)
         val b       = bufOut.buf
         if (ch < nb) {
           var i = ch
@@ -160,7 +160,7 @@ trait ImageFileInImpl[S <: Shape] extends OutHandler {
     var ch = 0
     while (ch < numChannels) {
       val out     = outlets(ch)
-      val bufOut  = outBufs(ch)
+      val bufOut  = bufOuts(ch)
       if (bufOut != null) {
         if (isClosed(out)) {
           println(s"Wowowo - $out closed")
@@ -173,7 +173,7 @@ trait ImageFileInImpl[S <: Shape] extends OutHandler {
             bufOut.release()
           }
         }
-        outBufs(ch) = null
+        bufOuts(ch) = null
       }
       ch += 1
     }

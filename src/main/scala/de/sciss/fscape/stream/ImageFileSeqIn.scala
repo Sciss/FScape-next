@@ -55,7 +55,7 @@ object ImageFileSeqIn {
     with ImageFileInImpl[Shape]
     with InHandler {
 
-    protected val outBufs = new Array[BufD](numChannels)
+    protected val bufOuts = new Array[BufD](numChannels)
     protected val outlets = shape.outArray.toIndexedSeq
 
     private[this] val in0 = shape.in

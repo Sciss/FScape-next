@@ -151,6 +151,30 @@ object ImageFileOut {
       }
     }
 
+    private def write(x: Int, y: Int, width: Int, offIn: Int): Int = {
+      //        println(s"setPixels($x, $y, $width, $height)")
+      val r       = img.getRaster
+      val offOut  = offIn + width
+      var ch      = 0
+      val a       = buf
+      val nb      = numChannels
+      val g       = gain
+      while (ch < nb) {
+        val b = bufIns(ch).buf
+        var i = ch
+        var j = offIn
+        while (j < offOut) {
+          a(i) = b(j) * g
+          i   += nb
+          j   += 1
+        }
+        ch += 1
+      }
+      r.setPixels(x, y, width, 1, buf)
+
+      offOut
+    }
+
     private def process(): Unit = {
       var ch    = 0
       var chunk = 0
@@ -163,30 +187,6 @@ object ImageFileOut {
       chunk = math.min(chunk, numFrames - framesWritten)
 
 //      println(s"process(): framesWritten = $framesWritten, numFrames = $numFrames, chunk = $chunk")
-
-      def write(x: Int, y: Int, width: Int, offIn: Int): Int = {
-//        println(s"setPixels($x, $y, $width, $height)")
-        val r       = img.getRaster
-        val offOut  = offIn + width
-        var ch      = 0
-        val a       = buf
-        val nb      = numChannels
-        val g       = gain
-        while (ch < nb) {
-          val b = bufIns(ch).buf
-          var i = ch
-          var j = offIn
-          while (j < offOut) {
-            a(i) = b(j) * g
-            i   += nb
-            j   += 1
-          }
-          ch += 1
-        }
-        r.setPixels(x, y, width, 1, buf)
-
-        offOut
-      }
 
       val stop  = framesWritten + chunk
       val w     = img.getWidth

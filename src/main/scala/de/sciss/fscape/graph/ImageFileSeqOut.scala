@@ -29,7 +29,7 @@ final case class ImageFileSeqOut(template: File, spec: ImageFile.Spec, indices: 
     UGen.ZeroOut(this, inputs = args, rest = template :: spec :: Nil, isIndividual = true)
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit = {
-    val Vec(indices, in @ _*) = args
-    stream.ImageFileSeqOut(template = template, spec = spec, indices = indices.toInt, in = args.map(_.toDouble))
+    val indices +: in = args
+    stream.ImageFileSeqOut(template = template, spec = spec, indices = indices.toInt, in = in.map(_.toDouble))
   }
 }

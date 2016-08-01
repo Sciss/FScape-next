@@ -48,7 +48,7 @@ object ImageFileIn {
   private final class Logic(shape: Shape, f: File, protected val numChannels: Int)(implicit ctrl: Control)
     extends StageLogicImpl(s"$name(${f.name})", shape) with ImageFileInImpl[Shape] {
 
-    protected val outBufs  = new Array[BufD](numChannels)
+    protected val bufOuts  = new Array[BufD](numChannels)
     protected val outlets     = shape.outlets.toIndexedSeq
 
     shape.outlets.foreach(setHandler(_, this))

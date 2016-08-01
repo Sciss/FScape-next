@@ -166,7 +166,8 @@ object EisenerzMedian {
         val spec  = ImageFile.Spec(width = width, height = height, numChannels = /* 1 */ 3,
           fileType = ImageFile.Type.JPG /* PNG */, sampleFormat = ImageFile.SampleFormat.Int8,
           quality = 100)
-        ImageFileSeqOut(template = templateOut, spec = spec, in = sig, indices = ???)
+        val indicesOut = indices.drop(sideLen).take(idxRange.size - (medianLen - 1))
+        ImageFileSeqOut(template = templateOut, spec = spec, in = sig, indices = indicesOut)
 
       } else {
         val test  = expose.take(frameSize * (numInput - (medianLen - 1))).takeRight(frameSize)

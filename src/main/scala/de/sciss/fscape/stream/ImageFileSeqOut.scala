@@ -125,7 +125,7 @@ object ImageFileSeqOut {
       val out = new FileImageOutputStream(template)
       writer.setOutput(out)
 
-      ??? // shape.inlets.foreach(pull)
+      shape.inlets.foreach(pull(_))
     }
 
     override def postStop(): Unit = {
@@ -159,9 +159,9 @@ object ImageFileSeqOut {
       var ch    = 0
       var chunk = 0
       while (ch < numChannels) {
-        val bufIn = ??? // grab(shape.in(ch))
+        val bufIn = grab(shape.inlets1(ch))
         bufIns(ch)  = bufIn
-        chunk       = ??? // if (ch == 0) bufIn.size else math.min(chunk, bufIn.size)
+        chunk       = if (ch == 0) bufIn.size else math.min(chunk, bufIn.size)
         ch += 1
       }
       chunk = math.min(chunk, numFrames - framesWritten)
