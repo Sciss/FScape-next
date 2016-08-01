@@ -12,18 +12,25 @@ object EisenerzMedian {
   }
 
   def median(): Unit = {
-    val baseDir   = userHome / "Documents" / "projects" / "Eisenerz" / "image_work6"
-    val template  = baseDir / "frame-%d.jpg"
-    val idxRange  = (276 to 628) .take(30) .map(x => x: GE)
-    val numInput  = idxRange.size
-    val indices   = idxRange.reduce(_ ++ _)
-    val width     = 3280  /2
-    val height    = 2464  /2
-    val frameSize = width * height
+    val baseDir       = userHome / "Documents" / "projects" / "Eisenerz" / "image_work6"
+    val template      = baseDir / "frame-%d.jpg"
+    val idxRange      = (276 to 628) .take(30) .map(x => x: GE)
+    val numInput      = idxRange.size
+    val indices       = idxRange.reduce(_ ++ _)
+    val widthIn       = 3280
+    val heightIn      = 2464
+    val width         = 1920
+    val height        = 1080
+    val trimLeft      = 400
+    val trimRight     = widthIn - width - trimLeft
+    val trimTop       = 400
+    val trimBottom    = heightIn - height - trimTop
+    val frameSizeIn   = widthIn * heightIn
+    val frameSize     = width * height
 
-    val sideLen   = 3 // 2
-    val medianLen = sideLen * 2 + 1
-    val thresh    = 0.2 // 0.01 // 0.05 // 0.0 // 0.3333
+    val sideLen       = 3 // 2
+    val medianLen     = sideLen * 2 + 1
+    val thresh        = 0.2 // 0.01 // 0.05 // 0.0 // 0.3333
     //    val thresh    = 0.2 / 150
 
 //    val fOut      = userHome / "Documents" / "temp" / "out_median.png"
@@ -53,8 +60,8 @@ object EisenerzMedian {
       }
 
       def quarter(in: GE): GE = {
-        val half1     = ResizeWindow(in   , size = width * 2, start = width, stop = 0)
-        val half2     = ResizeWindow(half1, size = width * height * 2, start = width * height, stop = 0)
+        val half1     = ResizeWindow(in   , size = widthIn, start = trimLeft, stop = -trimRight)
+        val half2     = ResizeWindow(half1, size = frameSizeIn, start = width * trimTop, stop = -width * trimBottom)
         half2
       }
 
@@ -135,8 +142,8 @@ object EisenerzMedian {
       maskBlur.poll(1.0/frameSize, "maskBlur")
 
       val sel     = maskBlur * dly
-      val expose  = RunningWindowMax(sel, size = frameSize)
-//      val expose  = RunningWindowSum(sel, size = frameSize)
+//      val expose  = RunningWindowMax(sel, size = frameSize)
+      val expose  = RunningWindowSum(sel, size = frameSize)
 
 //      val test  = min /* maskBlur */ .take(frameSize * (numInput - (medianLen - 1))).takeRight(frameSize)
       val test  = expose.take(frameSize * (numInput - (medianLen - 1))).takeRight(frameSize)
