@@ -38,10 +38,11 @@ trait ImageFileOutImpl[S <: Shape] extends InHandler {
 
   // ---- abstract ----
 
-  protected def bufIns      : Array[BufD]
-  protected def inlets      : Vec[InD]
+  protected def bufIns1     : Array[BufD]
+  protected def inlets1     : Vec[InD]
   protected def spec        : ImageFile.Spec
 
+  /** Called when all of `inlets1` are ready. */
   protected def process(): Unit
 
   // ---- impl ----
@@ -49,6 +50,9 @@ trait ImageFileOutImpl[S <: Shape] extends InHandler {
   private[this]   val numChannels   : Int             = spec.numChannels
   protected final val numFrames     : Int             = spec.width * spec.height
   protected final var framesWritten : Int             = _
+
+  private[this] var imagesWritten = 0
+  private[this] var pushed        = 0
 
   private /* [this] */ val result = Promise[Long]()
 
@@ -58,8 +62,8 @@ trait ImageFileOutImpl[S <: Shape] extends InHandler {
     case SampleFormat.Float => DataBuffer.TYPE_FLOAT  ->     1.0 // XXX TODO --- currently not supported by ImageIO?
   }
 
-  private[this]   var pixBuf        : Array[Double]   = new Array(numChannels * spec.width)
-  protected final var img           : BufferedImage   = {
+  private[this]   var pixBuf: Array[Double]   = new Array(numChannels * spec.width)
+  protected final var img   : BufferedImage   = {
     val sm        = new BandedSampleModel(dataType, spec.width, spec.height, spec.numChannels)
     val r         = Raster.createWritableRaster(sm, null)
     val cs        = ColorSpace.getInstance(if (numChannels == 1) ColorSpace.CS_GRAY else ColorSpace.CS_sRGB)
@@ -68,7 +72,7 @@ trait ImageFileOutImpl[S <: Shape] extends InHandler {
     new BufferedImage(cm, r, false, null)
   }
 
-  private[this] val imgParam: ImageWriteParam= spec.fileType match {
+  private[this] val imgParam: ImageWriteParam = spec.fileType match {
     case Type.PNG => null
     case Type.JPG =>
       val p = new JPEGImageWriteParam(null)
@@ -88,11 +92,18 @@ trait ImageFileOutImpl[S <: Shape] extends InHandler {
     it.next()
   }
 
+  override def onPush(): Unit = {
+    pushed += 1
+    if (pushed == numChannels) {
+      pushed = 0
+      process()
+    }
+  }
+
   /** Resets `framesWritten`. */
   protected final def openImage(f: File): Unit = {
     closeImage()
     val out = new FileImageOutputStream(f)
-    writer.reset()
     writer.setOutput(out)
     framesWritten = 0
   }
@@ -116,23 +127,27 @@ trait ImageFileOutImpl[S <: Shape] extends InHandler {
 
   override def postStop(): Unit = {
     logStream(s"$this - postStop()")
+    closeImage()
     pixBuf = null
-    img    = null
-    freeInputBuffers()
-    writer.dispose()
-  }
-
-  protected final def closeImage(): Unit = {
-    try {
-      writer.write(null /* meta */ , new IIOImage(img, null /* thumb */ , null /* meta */), imgParam)
-      result.trySuccess(numFrames)
-    } catch {
-      case NonFatal(ex) =>
-        result.tryFailure(ex)
-    }
     if (img != null) {
       img.flush()
       img = null
+    }
+    freeInputBuffers()
+    writer.dispose()
+    result.trySuccess(numFrames.toLong * imagesWritten)
+  }
+
+  protected final def closeImage(): Unit = if (writer.getOutput != null) {
+    try {
+      writer.write(null /* meta */ , new IIOImage(img, null /* thumb */ , null /* meta */), imgParam)
+      imagesWritten += 1
+    } catch {
+      case NonFatal(ex) =>
+        result.tryFailure(ex)
+        throw ex
+    } finally {
+      writer.reset()
     }
   }
 
@@ -145,7 +160,7 @@ trait ImageFileOutImpl[S <: Shape] extends InHandler {
     val nb      = numChannels
     val g       = gain
     while (ch < nb) {
-      val b = bufIns(ch).buf
+      val b = bufIns1(ch).buf
       var i = ch
       var j = offIn
       while (j < offOut) {
@@ -161,16 +176,6 @@ trait ImageFileOutImpl[S <: Shape] extends InHandler {
   }
 
   protected final def processChunk(inOff: Int, chunk: Int): Unit = {
-//    var ch    = 0
-//    var chunk = 0
-//    while (ch < numChannels) {
-//      val bufIn = grab(inlets(ch))
-//      bufIns(ch)  = bufIn
-//      chunk       = if (ch == 0) bufIn.size else math.min(chunk, bufIn.size)
-//      ch += 1
-//    }
-//    chunk = math.min(chunk, numFrames - framesWritten)
-
     //      println(s"process(): framesWritten = $framesWritten, numFrames = $numFrames, chunk = $chunk")
 
     val stop  = framesWritten + chunk
@@ -212,8 +217,8 @@ trait ImageFileOutImpl[S <: Shape] extends InHandler {
 
     var ch = 0
     while (ch < numChannels) {
-      bufIns(ch).release()
-      pull(inlets(ch))
+      bufIns1(ch).release()
+      pull(inlets1(ch))
       ch += 1
     }
 
@@ -221,12 +226,25 @@ trait ImageFileOutImpl[S <: Shape] extends InHandler {
 //    if (framesWritten == numFrames) completeStage()
   }
 
+  protected final def readIns1(): Int = {
+    var ch    = 0
+    var chunk = 0
+    while (ch < numChannels) {
+      val bufIn = grab(inlets1(ch))
+      bufIns1(ch)  = bufIn
+      chunk       = if (ch == 0) bufIn.size else math.min(chunk, bufIn.size)
+      ch += 1
+    }
+    chunk = math.min(chunk, numFrames - framesWritten)
+    chunk
+  }
+
   protected final def freeInputBuffers(): Unit = {
     var i = 0
-    while (i < bufIns.length) {
-      if (bufIns(i) != null) {
-        bufIns(i).release()
-        bufIns(i) = null
+    while (i < bufIns1.length) {
+      if (bufIns1(i) != null) {
+        bufIns1(i).release()
+        bufIns1(i) = null
       }
       i += 1
     }
