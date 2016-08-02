@@ -28,11 +28,11 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * the next samples constitute the second row, etc.
   *
   * The output matrix is transposed (rows and columns
-  * exchanged). So an input of `[a, b, c, d, e, f]`
+  * exchanged). So an input of `(a, b, c, d, e, f)`
   * with `rows = 2` and `columns = 3` is interpreted
-  * as `[[a, b, c], [d, e, f]]`, transposed as
-  * `[[a, d], [b, e], [c, f]]` and output flat as
-  * `[a, d, b, e, c, f]`.
+  * as `((a, b, c), (d, e, f))`, transposed as
+  * `((a, d), (b, e), (c, f))` and output flat as
+  * `(a, d, b, e, c, f)`.
   *
   * To rotate an image ninety
   * degrees clockwise, you would have `rows = height`
