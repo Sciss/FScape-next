@@ -173,9 +173,9 @@ object EisenerzMedian {
         ImageFileSeqOut(template = templateOut, spec = spec, in = sig, indices = indicesOut)
 
       } else {
-        val test  = expose.take(frameSize * (numInput - (medianLen - 1))).takeRight(frameSize)
+        val last  = expose.take(frameSize * (numInput - (medianLen - 1))).takeRight(frameSize)
         // min.take(frameSize * (numInput - (medianLen - 1))).takeRight(frameSize)
-        val sig   = normalize(test)
+        val sig   = normalize(last)
         val spec  = ImageFile.Spec(width = width, height = height, numChannels = /* 1 */ 3,
           fileType = ImageFile.Type.JPG /* PNG */, sampleFormat = ImageFile.SampleFormat.Int8,
           quality = 100)
@@ -194,104 +194,5 @@ object EisenerzMedian {
     }
 
     println("Running.")
-
-    /*
-    val mask  = Array.ofDim[Double](height, width)
-    val maskB = Array.ofDim[Double](height, width)
-
-    val medianArr = new Array[Double](medianLen)
-
-    for (idx <- (medianLen - 1) until numInput) {
-      readOne(sorted(idx), idx = idx % medianLen)
-      val cIdx = (idx - sideLen) % medianLen
-      val lumC = luminances(cIdx)
-
-      // calculate mask
-      {
-        var y = 0
-        while (y < height) {
-          var x = 0
-          while (x < width) {
-            val comp = lumC(y)(x)
-            //            var min  = comp
-            //            var max  = comp
-            var i = 0
-            while (i < medianLen) {
-              val d = luminances(i)(y)(x)
-              //              if (d < min) min = d
-              //              if (d > max) max = d
-              medianArr(i) = d
-              i += 1
-            }
-            java.util.Arrays.sort(medianArr)
-            val min = medianArr(0)
-            val max = medianArr(medianLen - 1)
-            //            mask(y)(x) = if (max - min > thresh && (comp == min || comp == max)) 1.0 else 0.0
-            mask(y)(x) = if (max - min > thresh && (comp == min || comp == max)) {
-              val med = medianArr(sideLen)
-              comp absdif med
-            } else {
-              0.0
-            }
-            x += 1
-          }
-          y += 1
-        }
-      }
-      // blur mask
-      for (_ <- 0 until 3 /* 2 */) {
-        var y = 0
-        while (y < height) {
-          var x = 0
-          while (x < width) {
-            var sum = 0.0
-            var cnt = 0
-            var yi = math.max(0, y - 1)
-            val ys = math.min(height, y + 2)
-            while (yi < ys) {
-              var xi = math.max(0, x - 1)
-              val xs = math.min(width, x + 2)
-              while (xi < xs) {
-                sum += mask(yi)(xi)
-                cnt += 1
-                xi += 1
-              }
-              yi += 1
-            }
-            maskB(y)(x) = sum / cnt
-            x += 1
-          }
-          y += 1
-        }
-
-        // copy back for recursion
-        y = 0
-        while (y < height) {
-          System.arraycopy(maskB(y), 0, mask(y), 0, width)
-          y += 1
-        }
-      } // recursion
-
-      // mix to composite
-      (0 until 3).foreach { ch =>
-        val chan  = extractChannel(images(cIdx), ch)
-        val compC = composite(ch)
-        var y = 0
-        while (y < height) {
-          var x = 0
-          while (x < width) {
-            // compC(y * width + x) += maskB(y)(x) * chan(y)(x)
-            val z     = y * width + x
-            val m     = maskB(y)(x)
-            val in    = chan (y)(x)
-            val value = m * in
-            if (compC(z) < value) compC(z) = value
-            x += 1
-          }
-          y += 1
-        }
-      }
-    }
-    */
  }
 }
