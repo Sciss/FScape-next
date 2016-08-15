@@ -22,6 +22,7 @@ object GE {
 
   implicit def fromInt   (x: Int   ): ConstantI = new ConstantI(x)
   implicit def fromDouble(x: Double): ConstantD = new ConstantD(x)
+  implicit def fromLong  (x: Long  ): ConstantD = new ConstantD(x)
 
   implicit def fromSeq(xs: scala.Seq[GE]): GE = xs match {
     case scala.Seq(x) => x

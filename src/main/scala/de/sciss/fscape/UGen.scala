@@ -19,12 +19,6 @@ import scala.annotation.switch
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.language.implicitConversions
 
-///** The raw UGen information as it is found in a final `UGenGraph`. */
-//trait RawUGen {
-//  def numInputs : Int
-//  def numOutputs: Int
-//}
-
 /** A UGen during graph building process is a more
   * rich thing than `RawUGen`: it implements equality
   * based on `isIndividual` status and may be omitted
@@ -171,12 +165,12 @@ sealed trait UGenIn extends UGenInLike {
 package graph {
 
   import akka.stream.scaladsl
-  import de.sciss.fscape.stream.{BufD, BufI, OutD, OutI, StreamIn}
+  import de.sciss.fscape.stream.{BufD, BufI, BufL, OutD, OutI, OutL, StreamIn}
 
   object UGenInGroup {
-    private final val emptyVal = new Apply(Vector.empty)
+    private final val emptyVal = Apply(Vector.empty)
     def empty: UGenInGroup = emptyVal
-    def apply(xs: Vec[UGenInLike]): UGenInGroup = new Apply(xs)
+    def apply(xs: Vec[UGenInLike]): UGenInGroup = Apply(xs)
 
     private final case class Apply(outputs: Vec[UGenInLike]) extends UGenInGroup {
       override def productPrefix = "UGenInGroup"
@@ -206,9 +200,11 @@ package graph {
   sealed trait Constant extends UGenIn with StreamIn {
     def doubleValue : Double
     def intValue    : Int
+    def longValue   : Long
 
     def toDouble(implicit b: stream.Builder): OutD = b.add(scaladsl.Source.single(BufD(doubleValue))).out
     def toInt   (implicit b: stream.Builder): OutI = b.add(scaladsl.Source.single(BufI(intValue   ))).out
+    def toLong  (implicit b: stream.Builder): OutL = b.add(scaladsl.Source.single(BufL(longValue  ))).out
   }
   object ConstantI {
     final val C0  = new ConstantI(0)
@@ -216,17 +212,10 @@ package graph {
     final val Cm1 = new ConstantI(-1)
   }
   final case class ConstantI(value: Int) extends Constant {
-    def doubleValue = value.toDouble
-    def intValue    = value
-    override def toString = value.toString
-  }
-  final case class ConstantL(value: Long) extends Constant {
-    def doubleValue = value.toDouble
-    def intValue    = {
-      val res = value.toInt
-      if (res != value) throw new ArithmeticException(s"Long $value exceeds Int range")
-      res
-    }
+    def doubleValue: Double = value.toDouble
+    def intValue   : Int    = value
+    def longValue  : Long   = value.toLong
+
     override def toString = value.toString
   }
   object ConstantD {
@@ -235,30 +224,40 @@ package graph {
     final val Cm1 = new ConstantD(-1)
   }
   final case class ConstantD(value: Double) extends Constant {
-    def doubleValue = value
-    def intValue    = {
+    def doubleValue: Double = value
+    def intValue   : Int    = {
       if (value.isNaN) throw new ArithmeticException("NaN cannot be translated to Int")
       val r = math.rint(value)
       if (r < Int.MinValue || r > Int.MaxValue)
         throw new ArithmeticException(s"Double $value exceeds Int range")
       r.toInt
     }
+    def longValue  : Long = {
+      if (value.isNaN) throw new ArithmeticException("NaN cannot be translated to Long")
+      val r = math.round(value)
+      if (r < Int.MinValue || r > Int.MaxValue)
+        throw new ArithmeticException(s"Double $value exceeds Int range")
+      r
+    }
+
     override def toString = value.toString
   }
+  object ConstantL {
+    final val C0  = new ConstantI(0)
+    final val C1  = new ConstantI(1)
+    final val Cm1 = new ConstantI(-1)
+  }
+  final case class ConstantL(value: Long) extends Constant {
+    def doubleValue: Double = value.toDouble
+    def intValue   : Int    = {
+      val res = value.toInt
+      if (res != value) throw new ArithmeticException(s"Long $value exceeds Int range")
+      res
+    }
+    def longValue  : Long = value
 
-  //  /** A ControlOutProxy is similar to a UGenOutProxy in that it denotes
-//    * an output channel of a control UGen. However it refers to a control-proxy
-//    * instead of a real control ugen, since the proxies are synthesized into
-//    * actual ugens only at the end of a synth graph creation, in order to
-//    * clump several controls together. ControlOutProxy instance are typically
-//    * returned from the ControlProxyFactory class, that is, using the package
-//    * implicits, from calls such as "myControl".kr.
-//    */
-//  final case class ControlUGenOutProxy(source: ControlProxyLike, outputIndex: Int)
-//    extends UGenIn {
-//
-//    override def toString = s"$source.\\($outputIndex)"
-//  }
+    override def toString = value.toString
+  }
 
   /** A UGenOutProxy refers to a particular output of a multi-channel UGen.
     * A sequence of these form the representation of a multi-channel-expanded

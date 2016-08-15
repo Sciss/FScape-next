@@ -16,16 +16,16 @@ package stream
 
 import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FanInShape2}
-import de.sciss.fscape.graph.ConstantI
+import de.sciss.fscape.graph.ConstantL
 import de.sciss.fscape.stream.impl.{ChunkImpl, FilterIn2DImpl, StageImpl, StageLogicImpl}
 
 object Drop {
   def tail(in: OutD)(implicit b: Builder): OutD = {
-    val len = ConstantI(1).toInt
+    val len = ConstantL(1).toLong
     apply(in = in, len = len)
   }
 
-  def apply(in: OutD, len: OutI)(implicit b: Builder): OutD = {
+  def apply(in: OutD, len: OutL)(implicit b: Builder): OutD = {
     val stage0  = new Stage
     val stage   = b.add(stage0)
     b.connect(in , stage.in0)
@@ -35,12 +35,12 @@ object Drop {
 
   private final val name = "Drop"
 
-  private type Shape = FanInShape2[BufD, BufI, BufD]
+  private type Shape = FanInShape2[BufD, BufL, BufD]
 
   private final class Stage(implicit ctrl: Control) extends StageImpl[Shape](name) {
     val shape = new FanInShape2(
       in0 = InD (s"$name.in" ),
-      in1 = InI (s"$name.len"),
+      in1 = InL (s"$name.len"),
       out = OutD(s"$name.out")
     )
 
@@ -50,9 +50,9 @@ object Drop {
   private final class Logic(shape: Shape)(implicit ctrl: Control)
     extends StageLogicImpl(name, shape)
       with ChunkImpl[Shape]
-      with FilterIn2DImpl[BufD, BufI] {
+      with FilterIn2DImpl[BufD, BufL] {
 
-    private[this] var dropRemain    = -1
+    private[this] var dropRemain    = -1L
     private[this] var init          = true
 
     protected def processChunk(): Boolean = {
@@ -63,7 +63,7 @@ object Drop {
           dropRemain = math.max(0, bufIn1.buf(0))
           init = false
         }
-        val skip  = math.min(len, dropRemain)
+        val skip  = math.min(len, dropRemain).toInt
         val chunk = len - skip
         if (chunk > 0) {
           Util.copy(bufIn0.buf, inOff + skip, bufOut0.buf, outOff, chunk)

@@ -27,6 +27,6 @@ final case class Drop(in: GE, len: GE) extends UGenSource.SingleOut {
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
     val Vec(in, len) = args
-    stream.Drop(in = in.toDouble, len = len.toInt)
+    stream.Drop(in = in.toDouble, len = len.toLong)
   }
 }

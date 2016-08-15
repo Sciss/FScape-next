@@ -28,19 +28,25 @@ package object stream {
 
   type InI                     = Inlet[BufI]
   type InD                     = Inlet[BufD]
+  type InL                     = Inlet[BufL]
 
   @inline
   def  InI(name: String): InI = Inlet[BufI](name)
   @inline
   def  InD(name: String): InD = Inlet[BufD](name)
+  @inline
+  def  InL(name: String): InL = Inlet[BufL](name)
 
   type OutI                     = Outlet[BufI]
   type OutD                     = Outlet[BufD]
+  type OutL                     = Outlet[BufL]
 
   @inline
   def  OutI(name: String): OutI = Outlet[BufI](name)
   @inline
   def  OutD(name: String): OutD = Outlet[BufD](name)
+  @inline
+  def  OutL(name: String): OutL = Outlet[BufL](name)
 
   type GBuilder = GraphDSL.Builder[NotUsed]
 }

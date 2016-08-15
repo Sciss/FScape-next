@@ -130,6 +130,7 @@ object Control {
 
     private[this] val queueD  = new ConcurrentLinkedQueue[BufD]
     private[this] val queueI  = new ConcurrentLinkedQueue[BufI]
+    private[this] val queueL  = new ConcurrentLinkedQueue[BufL]
     private[this] var leaves  = List.empty[Leaf]
     private[this] val sync    = new AnyRef
 
@@ -177,6 +178,20 @@ object Control {
       queueI.offer(buf) // XXX TODO -- limit size?
     }
 
+    def borrowBufL(): BufL = {
+      val res0 = queueL.poll()
+      if (res0 == null) BufL.alloc(blockSize) else {
+        res0.acquire()
+        res0.size = res0.buf.length
+        res0
+      }
+    }
+
+    def returnBufL(buf: BufL): Unit = {
+      require(buf.allocCount() == 0)
+      queueL.offer(buf) // XXX TODO -- limit size?
+    }
+
     def addLeaf(l: Leaf): Unit = sync.synchronized(leaves ::= l)
 
     def status: Future[Unit] = {
@@ -210,6 +225,9 @@ trait Control {
   /** Borrows an integer buffer. Its size is reset to `bufSize`. */
   def borrowBufI(): BufI
 
+  /** Borrows a long buffer. Its size is reset to `bufSize`. */
+  def borrowBufL(): BufL
+
   /** Returns a double buffer. When `buf.borrowed` is `false`, this is a no-op.
     * This should never be called directly but only by the buffer itself
     * through `buf.release()`.
@@ -221,6 +239,12 @@ trait Control {
     * through `buf.release()`.
     */
   def returnBufI(buf: BufI): Unit
+
+  /** Returns an integer buffer. When `buf.borrowed` is `false`, this is a no-op.
+    * This should never be called directly but only by the buffer itself
+    * through `buf.release()`.
+    */
+  def returnBufL(buf: BufL): Unit
 
   /** Adds a leaf node that can be cancelled. Must be called during materialization. */
   def addLeaf(l: Leaf): Unit

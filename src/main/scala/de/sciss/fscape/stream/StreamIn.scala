@@ -25,6 +25,7 @@ object StreamIn {
   object unused extends StreamIn {
     def toDouble(implicit b: Builder): OutD = throw new UnsupportedOperationException("StreamIn.unused.toDouble")
     def toInt   (implicit b: Builder): OutI = throw new UnsupportedOperationException("StreamIn.unused.toInt"   )
+    def toLong  (implicit b: Builder): OutL = throw new UnsupportedOperationException("StreamIn.unused.toLong"  )
   }
 
   private final class Single(peer: OutD) extends StreamIn {
@@ -56,6 +57,27 @@ object StreamIn {
         bufI
       }
     }
+
+    def toLong(implicit builder: Builder): OutL = {
+      require(!exhausted)
+      exhausted = true
+      val ctrl = builder.control
+      builder.map(peer) { bufD =>
+        val bufL = ctrl.borrowBufL()
+        val sz = bufD.size
+        bufL.size = sz
+        val a = bufD.buf
+        val b = bufL.buf
+        var i = 0
+        while (i < sz) {
+          val x = a(i)
+          b(i) = math.round(x)
+          i += 1
+        }
+        bufD.release()
+        bufL
+      }
+    }
   }
 
   private final class Multi(peer: OutD, numSinks: Int) extends StreamIn {
@@ -72,13 +94,14 @@ object StreamIn {
     }
 
     def toDouble(implicit b: Builder): OutD = alloc()
-
-    def toInt(implicit b: Builder): OutI = single(alloc()).toInt  // just reuse this functionality
+    def toInt   (implicit b: Builder): OutI = single(alloc()).toInt   // just reuse this functionality
+    def toLong  (implicit b: Builder): OutL = single(alloc()).toLong  // just reuse this functionality
   }
 }
 trait StreamIn {
   def toDouble(implicit b: Builder): OutD
   def toInt   (implicit b: Builder): OutI
+  def toLong  (implicit b: Builder): OutL
 }
 
 object StreamOut {

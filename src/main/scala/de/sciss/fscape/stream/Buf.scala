@@ -89,3 +89,33 @@ final class BufI private(val buf: Array[Int], var size: Int, borrowed: Boolean) 
   override def toString =
     if (size == 1) buf(0).toString else s"BufI(size = $size)@${hashCode.toHexString}"
 }
+
+object BufL {
+  def apply(elems: Long*): BufL = {
+    val arr = elems.toArray
+    new BufL(arr, size = arr.length, borrowed = false)
+  }
+
+  def alloc(size: Int): BufL = {
+    new BufL(new Array[Long](size), size = size, borrowed = true)
+  }
+}
+final class BufL private(val buf: Array[Long], var size: Int, borrowed: Boolean) extends BufLike {
+  private[this] val _allocCount = if (borrowed) new AtomicInteger(1) else null
+
+  def assertAllocated(): Unit = require(!borrowed || _allocCount.get() > 0)
+
+  def allocCount(): Int = _allocCount.get()
+
+  def acquire(): Unit = if (borrowed)
+    _allocCount.getAndIncrement()
+
+  def release()(implicit ctrl: Control): Unit = if (borrowed) {
+    val newCount = _allocCount.decrementAndGet()
+    require(newCount >= 0)
+    if (newCount == 0) ctrl.returnBufL(this)
+  }
+
+  override def toString =
+    if (size == 1) buf(0).toString else s"BufL(size = $size)@${hashCode.toHexString}"
+}
