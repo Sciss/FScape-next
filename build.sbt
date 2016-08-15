@@ -1,12 +1,13 @@
-name          := "FScape"
-organization  := "de.sciss"
-description   := "An Audio Rendering Library"
-version       := "2.0.0-SNAPSHOT"
-scalaVersion  := "2.11.8"
-licenses      := Seq("GPL v2+" -> url("http://www.gnu.org/licenses/gpl-2.0.txt"))
-homepage      := Some(url("https://github.com/Sciss/FScape-next"))
+name               := "FScape"
+organization       := "de.sciss"
+description        := "An Audio Rendering Library"
+version            := "2.0.0-SNAPSHOT"
+scalaVersion       := "2.11.8"
+crossScalaVersions := Seq("2.11.8", "2.10.6")
+licenses           := Seq("GPL v2+" -> url("http://www.gnu.org/licenses/gpl-2.0.txt"))
+homepage           := Some(url("https://github.com/Sciss/FScape-next"))
 
-scalacOptions ++= Seq("-deprecation", "-unchecked", "-feature", "-encoding", "utf8", "-Xfuture", "-Xlint")
+scalacOptions     ++= Seq("-deprecation", "-unchecked", "-feature", "-encoding", "utf8", "-Xfuture", "-Xlint")
 
 lazy val dspVersion         = "1.2.2"
 lazy val numbersVersion     = "0.1.1"
