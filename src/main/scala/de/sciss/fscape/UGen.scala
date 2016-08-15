@@ -235,8 +235,6 @@ package graph {
     def longValue  : Long = {
       if (value.isNaN) throw new ArithmeticException("NaN cannot be translated to Long")
       val r = math.round(value)
-      if (r < Int.MinValue || r > Int.MaxValue)
-        throw new ArithmeticException(s"Double $value exceeds Int range")
       r
     }
 
