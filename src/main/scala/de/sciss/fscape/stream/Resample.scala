@@ -132,6 +132,8 @@ object Resample {
       freeMainInputBuffers()
       bufIn = grab(shape.in0)
       tryPull(shape.in0)
+      _inMainValid = true
+      _canReadMain = false
       bufIn.size
     }
 
@@ -170,12 +172,7 @@ object Resample {
         res = if (res == 0) bufZeroCrossings.size else math.min(res, bufZeroCrossings.size)
       }
 
-//      if (!_inAuxValid) {
-//        // calculate buffer only once
-//        val fltLen = ((fltSmpPerCrossing * zeroCrossings) / rollOff + 0.5).toInt
-        _inAuxValid = true
-//      }
-
+      _inAuxValid = true
       _canReadAux = false
       res
     }
