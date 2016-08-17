@@ -14,9 +14,9 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.stage.{GraphStageLogic, InHandler}
+import akka.stream.stage.{GraphStageLogic, InHandler, OutHandler}
 import akka.stream.{Attributes, FanInShape6, Inlet}
-import de.sciss.fscape.stream.impl.{ChunkImpl, FilterIn6DImpl, FilterLogicImpl, StageImpl, StageLogicImpl}
+import de.sciss.fscape.stream.impl.{StageImpl, StageLogicImpl}
 
 import scala.annotation.tailrec
 
@@ -52,12 +52,10 @@ object Resample {
     def createLogic(attr: Attributes): GraphStageLogic = new Logic(shape)
   }
 
+  private val fltSmpPerCrossing = 4096
+
   private final class Logic(shape: Shape)(implicit ctrl: Control)
-    extends StageLogicImpl(name, shape)
-//      with ChunkImpl[Shape]
-//      with FilterLogicImpl[BufD, Shape]
-//      with FilterIn6DImpl[BufD, BufD, BufD, BufD, BufD, BufI]
-  {
+    extends StageLogicImpl(name, shape) {
 
     private[this] var factor        = -1.0
     private[this] var minFactor     = -1.0
@@ -73,8 +71,11 @@ object Resample {
     private[this] var bufZeroCrossings: BufI = _
     private[this] var bufOut          : BufD = _
 
-    private[this] var _inAuxValid = false
-    private[this] var _canReadAux = false
+    private[this] var _inMainValid  = false
+    private[this] var _inAuxValid   = false
+    private[this] var _canReadMain  = false
+    private[this] var _canReadAux   = false
+    private[this] var _canWrite     = false
 
     override def preStart(): Unit = {
       val sh = shape
@@ -87,9 +88,16 @@ object Resample {
     }
 
     override def postStop(): Unit = {
+      freeMainInputBuffers()
       freeAuxInputBuffers()
       freeOutputBuffers()
     }
+
+    private def freeMainInputBuffers(): Unit =
+      if (bufIn != null) {
+        bufIn.release()
+        bufIn = null
+      }
 
     private def freeAuxInputBuffers(): Unit = {
       if (bufFactor != null) {
@@ -120,7 +128,12 @@ object Resample {
         bufOut = null
       }
 
-    private[this] val fltSmpPerCrossing = 4096
+    private def readMainIns(): Int = {
+      freeMainInputBuffers()
+      bufIn = grab(shape.in0)
+      tryPull(shape.in0)
+      bufIn.size
+    }
 
     private def readAuxIns(): Int = {
       freeAuxInputBuffers()
@@ -199,9 +212,51 @@ object Resample {
     new AuxInHandler(shape.in4)
     new AuxInHandler(shape.in5)
 
-    // @tailrec
-    private[this] def process(): Unit = {
+    setHandler(shape.in0, new InHandler {
+      def onPush(): Unit = {
+        logStream(s"onPush(${shape.in0})")
+        _canReadMain = true
+        process()
+      }
+
+      override def onUpstreamFinish(): Unit = {
+        logStream(s"onUpstreamFinish(${shape.in0})")
+        if (_inMainValid) process() // may lead to `flushOut`
+        else {
+          if (!isAvailable(shape.in0)) {
+            println(s"Invalid process ${shape.in0}")
+            completeStage()
+          }
+        }
+      }
+    })
+
+    setHandler(shape.out, new OutHandler {
+      def onPull(): Unit = {
+        logStream(s"onPull(${shape.out})")
+        _canWrite = true
+        process()
+      }
+
+      override def onDownstreamFinish(): Unit = {
+        logStream(s"onDownstreamFinish(${shape.out})")
+        super.onDownstreamFinish()
+      }
+    })
+
+    @tailrec
+    private def process(): Unit = {
+      logStream(s"process() $this")
+      var stateChange = false
+
       ???
+
+//      if (flushOut && outSent) {
+//        logStream(s"completeStage() $this")
+//        completeStage()
+//      }
+//      else
+      if (stateChange) process()
     }
 
     private def updateCanReadAux(): Unit = {
