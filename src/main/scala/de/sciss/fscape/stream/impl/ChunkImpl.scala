@@ -30,6 +30,10 @@ trait ChunkImpl[S <: Shape] extends InOutImpl[S] {
 
   protected def allocOutputBuffers(): Int
 
+  /** Should read and possibly update `inRemain`, `outRemain`, `inOff`, `outOff`.
+    *
+    * @return `true` if this method did any actual processing.
+    */
   protected def processChunk(): Boolean
 
   // ---- impl ----
