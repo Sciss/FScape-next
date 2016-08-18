@@ -19,7 +19,7 @@ import akka.stream.{Attributes, FlowShape}
 import de.sciss.fscape.stream.impl.{StageImpl, StageLogicImpl}
 
 object Length {
-  def apply(in: OutD)(implicit b: Builder): OutD = {
+  def apply(in: OutD)(implicit b: Builder): OutL = {
     val stage0  = new Stage
     val stage   = b.add(stage0)
     b.connect(in, stage.in)
@@ -28,13 +28,12 @@ object Length {
 
   private final val name = "Length"
 
-  // XXX TODO --- should have BufL output
-  private type Shape = FlowShape[BufD, BufD]
+  private type Shape = FlowShape[BufD, BufL]
 
   private final class Stage(implicit ctrl: Control) extends StageImpl[Shape](name) {
     val shape = new FlowShape(
       in  = InD (s"$name.in" ),
-      out = OutD(s"$name.out")
+      out = OutL(s"$name.out")
     )
 
     def createLogic(attr: Attributes): GraphStageLogic = new Logic(shape)
@@ -67,9 +66,9 @@ object Length {
     def onPull(): Unit = if (isClosed(shape.in)) writeAndFinish()
 
     private def writeAndFinish(): Unit = {
-      val buf     = ctrl.borrowBufD()
+      val buf     = ctrl.borrowBufL()
       buf.size    = 1
-      buf.buf(0)  = framesRead.toDouble
+      buf.buf(0)  = framesRead
       push(shape.out, buf)
       completeStage()
     }

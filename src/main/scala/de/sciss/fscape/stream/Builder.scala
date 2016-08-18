@@ -23,6 +23,8 @@ object Builder {
   private final class Impl(val control: Control)(implicit b: GraphDSL.Builder[NotUsed]) extends Builder {
     def add[S <: Shape](graph: Graph[S, _]): S = b.add(graph)
 
+    def dsl: GraphDSL.Builder[NotUsed] = b
+
     def connect[A](out: Outlet[A], in: Inlet[A]): Unit = {
       import GraphDSL.Implicits._
       out ~> in
@@ -36,6 +38,8 @@ object Builder {
 }
 trait Builder {
   def control: Control
+
+  def dsl: GraphDSL.Builder[NotUsed]
 
   def add[S <: Shape](graph: Graph[S, _]): S
 

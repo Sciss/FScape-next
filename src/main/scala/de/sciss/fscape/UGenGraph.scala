@@ -15,11 +15,10 @@ package de.sciss.fscape
 
 import akka.NotUsed
 import akka.stream.ClosedShape
-import akka.stream.scaladsl.{GraphDSL, RunnableGraph, Sink}
+import akka.stream.scaladsl.{GraphDSL, RunnableGraph}
 import de.sciss.fscape.graph.{Constant, UGenProxy}
 import de.sciss.fscape.stream.StreamIn
 
-import scala.annotation.switch
 import scala.collection.breakOut
 import scala.collection.immutable.{IndexedSeq => Vec}
 
@@ -93,15 +92,6 @@ object UGenGraph {
             case u: UGenProxyIndex  => ugenOutMap(u.iu)(u.outIdx)
           } (breakOut)
 
-          def mkOut(outlet: stream.OutD, numChildren: Int): StreamIn = (numChildren: @switch) match {
-            case 0 =>
-              import GraphDSL.Implicits._
-              outlet ~> Sink.ignore // in Akka all outlets must be connected
-              StreamIn.unused
-            case 1 => StreamIn.single(outlet)
-            case n => StreamIn.multi (outlet, numChildren)
-          }
-
           @inline def add(value: Array[StreamIn]): Unit = {
             // println(s"map += $iu -> ${value.mkString("[", ", ", "]")}")
             ugenOutMap += iu -> value
@@ -111,14 +101,14 @@ object UGenGraph {
             case ugen: UGen.SingleOut =>
               val out         = ugen.source.makeStream(args)
               val numChildren = iu.children(0).size
-              val value       = Array(mkOut(out.peer, numChildren))
+              val value       = Array(out.toIn(numChildren))
               add(value)
 
             case ugen: UGen.MultiOut  =>
               val outs  = ugen.source.makeStream(args)
               val value = outs.zipWithIndex.map { case (out, outIdx) =>
                 val numChildren = iu.children(outIdx).size
-                mkOut(out.peer, numChildren)
+                out.toIn(numChildren)
               } (breakOut) : Array[StreamIn]
               add(value)
 
