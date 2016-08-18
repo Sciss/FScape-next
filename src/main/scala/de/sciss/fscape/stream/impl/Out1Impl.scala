@@ -24,6 +24,12 @@ trait Out1DoubleImpl[S <: Shape] extends InOutImpl[S] {
   protected final def allocOutBuf0(): BufD = ctrl.borrowBufD()
 }
 
+trait Out1IntImpl[S <: Shape] extends InOutImpl[S] {
+  _: GraphStageLogic =>
+
+  protected final def allocOutBuf0(): BufI = ctrl.borrowBufI()
+}
+
 trait Out1LongImpl[S <: Shape] extends InOutImpl[S] {
   _: GraphStageLogic =>
 

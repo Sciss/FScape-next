@@ -75,7 +75,7 @@ object ZipWindowTest extends App {
 
     val numFrames = math.min(fftSizeA, fftSizeB)
     assert(numFrames.isPowerOfTwo)
-    fftAZ.pollFOO(44100, "A")
+    fftAZ.poll(44100, "A")
     // fftBZ.poll(1.0/44100, "B")
   }
 

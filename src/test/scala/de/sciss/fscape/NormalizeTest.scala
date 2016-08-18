@@ -19,7 +19,7 @@ object NormalizeTest extends App {
   // stream.showStreamLog = true
 
   lazy val gOLD = Graph {
-    val trig  = ImpulseFOO(44100)
+    val trig  = Metro(44100)
     val in    = AudioFileIn(file = fIn, numChannels = 1)
     Poll(in = in, trig = trig, label = "test")
   }
@@ -29,16 +29,16 @@ object NormalizeTest extends App {
 
     val in        = mkIn()
     /* val max = */ RunningMax(in.abs) // .last
-    val trig  = ImpulseFOO(44100)
-    in /* max */     . pollFOO(trig, "max [Lin]")
-    in /* max */.ampdb.pollFOO(trig, "max [dB ]")
+    val trig  = Metro(44100)
+    in /* max */     . poll(trig, "max [Lin]")
+    in /* max */.ampdb.poll(trig, "max [dB ]")
   }
 
   lazy val gFORK = Graph {
     val in    = DC(-33.0)
-    val trig  = ImpulseFOO(44100)
-    in     .pollFOO(trig, "[Lin]")
-    in .abs.pollFOO(trig, "[Abs]")
+    val trig  = Metro(44100)
+    in     .poll(trig, "[Lin]")
+    in .abs.poll(trig, "[Abs]")
   }
 
   lazy val gConst = Graph {
@@ -53,7 +53,7 @@ object NormalizeTest extends App {
 
     val in        = mkIn()
     val max       = RunningMax(in.abs).last
-    max.ampdb.pollFOO(0, "max [dB]")
+    max.ampdb.poll(0, "max [dB]")
     val headroom  = -0.2.dbamp
     val gain      = max.reciprocal * headroom
     val buf       = mkIn() // BufferAll(in)
@@ -64,7 +64,7 @@ object NormalizeTest extends App {
   lazy val gBuf = Graph {
     val in        = AudioFileIn(file = fIn3, numChannels = 1)
     val max       = RunningMax(in.abs).last
-    max.ampdb.pollFOO(0, "max [dB]")
+    max.ampdb.poll(0, "max [dB]")
     val headroom  = -0.2.dbamp
     val gain      = max.reciprocal * headroom
     val buf       = BufferDisk(in)
@@ -77,7 +77,7 @@ object NormalizeTest extends App {
 
     val in        = mkIn()
     val max       = RunningMax(in.abs).last
-    max.ampdb.pollFOO(0, "max [dB]")
+    max.ampdb.poll(0, "max [dB]")
     val headroom  = -0.2.dbamp
     val gain      = max.reciprocal * headroom
     val buf       = mkIn() // BufferAll(in)

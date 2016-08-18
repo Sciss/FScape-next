@@ -23,9 +23,11 @@ import scala.language.implicitConversions
 
 object StreamIn {
   def singleD(peer: OutD): StreamIn = new SingleD(peer)
+  def singleI(peer: OutI): StreamIn = new SingleI(peer)
   def singleL(peer: OutL): StreamIn = new SingleL(peer)
 
   def multiD(peer: OutD, numSinks: Int): StreamIn = new MultiD(peer, numSinks)
+  def multiI(peer: OutI, numSinks: Int): StreamIn = new MultiI(peer, numSinks)
   def multiL(peer: OutL, numSinks: Int): StreamIn = new MultiL(peer, numSinks)
 
   object unused extends StreamIn {
@@ -93,6 +95,64 @@ object StreamIn {
         }
         bufD.release()
         bufL
+      }
+    }
+  }
+
+  private final class SingleI(peer: OutI) extends StreamIn {
+    private[this] var exhausted = false
+
+    def isInt   : Boolean = true
+    def isLong  : Boolean = false
+    def isDouble: Boolean = false
+
+    def toAny(implicit b: Builder): Outlet[BufLike] = toInt.as[BufLike]
+
+    def toInt(implicit b: Builder): OutI = {
+      require(!exhausted)
+      exhausted = true
+      peer
+    }
+
+    def toLong(implicit builder: Builder): OutL = {
+      require(!exhausted)
+      exhausted = true
+      val ctrl = builder.control
+      builder.map(peer) { bufI =>
+        val bufL = ctrl.borrowBufL()
+        val sz = bufI.size
+        bufL.size = sz
+        val a = bufI.buf
+        val b = bufL.buf
+        var i = 0
+        while (i < sz) {
+          val x = a(i)
+          b(i)  = x.toLong
+          i += 1
+        }
+        bufI.release()
+        bufL
+      }
+    }
+
+    def toDouble(implicit builder: Builder): OutD = {
+      require(!exhausted)
+      exhausted = true
+      val ctrl = builder.control
+      builder.map(peer) { bufI =>
+        val bufD = ctrl.borrowBufD()
+        val sz = bufI.size
+        bufD.size = sz
+        val a = bufI.buf
+        val b = bufD.buf
+        var i = 0
+        while (i < sz) {
+          val x = a(i)
+          b(i) = x.toDouble
+          i += 1
+        }
+        bufI.release()
+        bufD
       }
     }
   }
@@ -178,6 +238,29 @@ object StreamIn {
     def toLong  (implicit b: Builder): OutL = singleD(alloc()).toLong  // just reuse this functionality
   }
 
+  private final class MultiI(peer: OutI, numSinks: Int) extends StreamIn {
+    private[this] var remain = numSinks
+    private[this] var broad: Vec[OutI] = _ // create lazily because we need stream.Builder
+
+    def isInt   : Boolean = true
+    def isLong  : Boolean = false
+    def isDouble: Boolean = false
+
+    private def alloc()(implicit b: Builder): OutI = {
+      require(remain > 0)
+      if (broad == null) broad = BroadcastBuf(peer, numSinks)
+      remain -= 1
+      val head +: tail = broad
+      broad = tail
+      head
+    }
+
+    def toAny   (implicit b: Builder): Outlet[BufLike] = toLong.as[BufLike]
+    def toDouble(implicit b: Builder): OutD = singleI(alloc()).toDouble   // just reuse this functionality
+    def toInt   (implicit b: Builder): OutI = alloc()
+    def toLong  (implicit b: Builder): OutL = singleI(alloc()).toLong     // just reuse this functionality
+  }
+
   private final class MultiL(peer: OutL, numSinks: Int) extends StreamIn {
     private[this] var remain = numSinks
     private[this] var broad: Vec[OutL] = _ // create lazily because we need stream.Builder
@@ -213,9 +296,10 @@ trait StreamIn {
 }
 
 object StreamOut {
-  implicit def fromDouble   (peer:     OutD ):     StreamOut  = new StreamOutD(peer) // Double(peer)
+  implicit def fromDouble   (peer:     OutD ):     StreamOut  = new StreamOutD(peer)
   implicit def fromDoubleVec(peer: Vec[OutD]): Vec[StreamOut] = peer.map(new StreamOutD(_))
-  implicit def fromLong     (peer:     OutL ):     StreamOut  = new StreamOutL(peer) // Double(peer)
+  implicit def fromInt      (peer:     OutI ):     StreamOut  = new StreamOutI(peer)
+  implicit def fromLong     (peer:     OutL ):     StreamOut  = new StreamOutL(peer)
 
   private final class StreamOutD(peer: OutD) extends StreamOut {
     override def toString = s"StreamOut($peer)"
@@ -228,6 +312,20 @@ object StreamOut {
         StreamIn.unused
       case 1 => StreamIn.singleD(peer)
       case n => StreamIn.multiD (peer, numChildren)
+    }
+  }
+
+  private final class StreamOutI(peer: OutI) extends StreamOut {
+    override def toString = s"StreamOut($peer)"
+
+    def toIn(numChildren: Int)(implicit b: stream.Builder): StreamIn = (numChildren: @switch) match {
+      case 0 =>
+        implicit val dsl = b.dsl
+        import GraphDSL.Implicits._
+        peer ~> Sink.ignore
+        StreamIn.unused
+      case 1 => StreamIn.singleI(peer)
+      case n => StreamIn.multiI (peer, numChildren)
     }
   }
 

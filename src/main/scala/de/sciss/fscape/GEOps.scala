@@ -13,7 +13,7 @@
 
 package de.sciss.fscape
 
-import de.sciss.fscape.graph.{BinaryOp, ChannelProxy, ComplexBinaryOp, ComplexUnaryOp, Concat, Constant, Drop, Elastic, ImpulseFOO, Poll, Take, TakeRight, UnaryOp, UnzipWindow}
+import de.sciss.fscape.graph.{BinaryOp, ChannelProxy, ComplexBinaryOp, ComplexUnaryOp, Concat, Constant, Drop, Elastic, Impulse, Metro, Poll, Take, TakeRight, UnaryOp, UnzipWindow}
 import de.sciss.optional.Optional
 
 final class GEOps1(val `this`: GE) extends AnyVal { me =>
@@ -121,22 +121,22 @@ final class GEOps2(val `this`: GE) extends AnyVal { me =>
 //
 //  def flatten               : GE = Flatten(g)
 
-  def poll: Poll = pollFOO()
+  def poll: Poll = poll()
 
   /** Polls the output values of this graph element, and prints the result to the console.
     * This is a convenient method for wrapping this graph element in a `Poll` UGen.
     *
     * @param   trig     a signal to trigger the printing. If this is a constant, it is
-    *                   interpreted as a normalized frequency and an `Impulse` generator with
-    *                   this normalized frequency is used.
+    *                   interpreted as a period and a `Metro` generator with
+    *                   this period is used.
     * @param   label    a string to print along with the values, in order to identify
     *                   different polls. Using the special label `"#auto"` (default) will generated
     *                   automatic useful labels using information from the polled graph element
     * @see  [[de.sciss.fscape.graph.Poll]]
     */
-  def pollFOO(trig: GE = 5000, label: Optional[String] = None): Poll = {
+  def poll(trig: GE = 5000, label: Optional[String] = None): Poll = {
     val trig1 = trig match {
-      case c: Constant  => ImpulseFOO(c)
+      case c: Constant  => Metro(c)
       case other        => other
     }
     Poll(in = g, trig = trig1, label = label.getOrElse {

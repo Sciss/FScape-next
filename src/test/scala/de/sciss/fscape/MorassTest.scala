@@ -211,7 +211,7 @@ object MorassTest extends App {
     val one       = in sig_!= Double.NaN
     val count     = RunningSum(one)
     val numFrames = count.last
-    numFrames.pollFOO(0, label)
+    numFrames.poll(0, label)
   }
 
   def run(inA: File, inB: File): Unit = {

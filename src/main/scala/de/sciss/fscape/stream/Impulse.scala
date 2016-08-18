@@ -19,12 +19,12 @@ import akka.stream.{Attributes, FanInShape2}
 import de.sciss.fscape.stream.impl.{GenChunkImpl, GenIn2DImpl, StageImpl, StageLogicImpl}
 import de.sciss.numbers
 
-object ImpulseFOO {
-  def apply(period: OutD, phase: OutD)(implicit b: Builder): OutD = {
+object Impulse {
+  def apply(freqN: OutD, phase: OutD)(implicit b: Builder): OutD = {
     val stage0  = new Stage
     val stage   = b.add(stage0)
-    b.connect(period, stage.in0)
-    b.connect(phase , stage.in1)
+    b.connect(freqN, stage.in0)
+    b.connect(phase, stage.in1)
     stage.out
   }
 
@@ -34,9 +34,9 @@ object ImpulseFOO {
 
   private final class Stage(implicit ctrl: Control) extends StageImpl[Shape](name) {
     val shape = new FanInShape2(
-      in0 = InD (s"$name.period"),
-      in1 = InD (s"$name.phase" ),
-      out = OutD(s"$name.out"   )
+      in0 = InD (s"$name.freqN"),
+      in1 = InD (s"$name.phase"),
+      out = OutD(s"$name.out"  )
     )
 
     def createLogic(attr: Attributes): GraphStageLogic = new Logic(shape)

@@ -15,7 +15,7 @@ object SlidingTest extends App {
     import graph._
     val sig     = WhiteNoise()
     val sliding = Sliding(sig, size = 4, step = 16)
-    sliding.take(2000).pollFOO(500, "foo")
+    sliding.take(2000).poll(500, "foo")
   }
 
   // showStreamLog = true

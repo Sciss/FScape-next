@@ -9,8 +9,8 @@ object OrthoTest extends App {
     val vs = (v1 ++ v2).map(x => x: GE).reduce(_ ++ _)  // XXX TODO --- ugly
     val us = GramSchmidtMatrix(vs, columns = 2, rows = 2, normalize = 0)
     val es = GramSchmidtMatrix(vs, columns = 2, rows = 2, normalize = 1)
-    RepeatWindow(us).pollFOO(2, "us") // expected: (3, 1), (-0.4, 1.2)
-    RepeatWindow(es).pollFOO(2, "es") // expected: (0.949, 0.316), (-0.316, 0.949)
+    RepeatWindow(us).poll(2, "us") // expected: (3, 1), (-0.4, 1.2)
+    RepeatWindow(es).poll(2, "es") // expected: (0.949, 0.316), (-0.316, 0.949)
   }
 
   stream.Control().run(g)

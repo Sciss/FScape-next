@@ -108,3 +108,9 @@ trait GenIn2DImpl[In0 >: Null <: BufLike, In1 >: Null <: BufLike]
     with Out1DoubleImpl[FanInShape2[In0, In1, BufD]] {
   _: GraphStageLogic =>
 }
+
+trait GenIn2IImpl[In0 >: Null <: BufLike, In1 >: Null <: BufLike]
+  extends GenIn2Impl[In0, In1, BufI]
+    with Out1IntImpl[FanInShape2[In0, In1, BufI]] {
+  _: GraphStageLogic =>
+}

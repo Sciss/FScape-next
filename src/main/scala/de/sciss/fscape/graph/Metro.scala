@@ -1,5 +1,5 @@
 /*
- *  Impulse.scala
+ *  Metro.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2016 Hanns Holger Rutz. All rights reserved.
@@ -18,22 +18,27 @@ import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-/** Impulse (repeated dirac) generator.
+/** Metronome (repeated dirac) generator.
   * For a single impulse that is never repeated,
-  * use zero.
+  * use a period of zero. Unlike `Impulse` which
+  * uses a frequency and generates fractional phases
+  * prone to floating point noise, this is UGen is
+  * useful for exact sample frame spacing. Unlike `Impulse`,
+  * the phase cannot be modulated.
   *
-  * @param freqN  normalized frequency (reciprocal of frame period)
-  * @param phase  phase offset in cycles (0 to 1).
+  * @param period number of frames between impulses. Zero is short-hand
+  *               for `Long.MaxValue`
+  * @param phase  phase offset in frames. Initialization time only!
   */
-final case class Impulse(freqN: GE, phase: GE = 0.0) extends UGenSource.SingleOut {
+final case class Metro(period: GE, phase: GE = 0L) extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
-    unwrap(Vector(freqN.expand, phase.expand))
+    unwrap(Vector(period.expand, phase.expand))
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
     UGen.SingleOut(this, args)
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
-    val Vec(freqN, phase) = args
-    stream.Impulse(freqN = freqN.toDouble, phase = phase.toDouble)
+    val Vec(period, phase) = args
+    stream.Metro(period = period.toLong, phase = phase.toLong)
   }
 }

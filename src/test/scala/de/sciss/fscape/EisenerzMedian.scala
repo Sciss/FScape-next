@@ -78,7 +78,7 @@ object EisenerzMedian {
       def normalize(in: GE, headroom: GE = 1): GE = {
         val max       = RunningMax(in.abs).last
         val gain      = max.reciprocal * headroom
-        gain.ampdb.roundTo(0.01).pollFOO(0, "gain [dB]")
+        gain.ampdb.roundTo(0.01).poll(0, "gain [dB]")
         // Plot1D(in, width * height)
         // in.poll(1.0/32, label = "test")
         val buf       = BufferDisk(in)
@@ -123,7 +123,7 @@ object EisenerzMedian {
 //      // XXX TODO --- use median instead of mean
 //      val mean      = Sliding(meanR.drop(medianLen - 1), size = 1, step = medianLen)
 
-      val medianTrig = ImpulseFOO(frameSize.toLong * medianLen)
+      val medianTrig = Metro(frameSize.toLong * medianLen)
       val minR      = RunningWindowMin(lumSlide, size = frameSize, trig = medianTrig)
       val maxR      = RunningWindowMax(lumSlide, size = frameSize, trig = medianTrig)
       val sumR      = RunningWindowSum(lumSlide, size = frameSize, trig = medianTrig)
@@ -149,7 +149,7 @@ object EisenerzMedian {
 //      lumT    .poll(1.0/frameSize, "lumT    ")
 //      min     .poll(1.0/frameSize, "min     ")
 //      max     .poll(1.0/frameSize, "max     ")
-      maskBlur.pollFOO(frameSize, "maskBlur")
+      maskBlur.poll(frameSize, "maskBlur")
 
       val sel     = maskBlur * dly
 //      val expose  = RunningWindowMax(sel, size = frameSize)
