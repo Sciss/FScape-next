@@ -40,6 +40,7 @@ package object stream {
   type OutI                     = Outlet[BufI]
   type OutD                     = Outlet[BufD]
   type OutL                     = Outlet[BufL]
+  type OutA                     = Outlet[BufLike]
 
   @inline
   def  OutI(name: String): OutI = Outlet[BufI](name)

@@ -44,10 +44,10 @@ object FourierTest extends App {
 
     val mag       = ChannelProxy(UnzipWindow(fourier), 0)
     val max       = RunningMax(mag).last
-    max.ampdb.poll(0, "max [dB]")
+    max.ampdb.pollFOO(0, "max [dB]")
     val gain      = max.reciprocal
 
-    gain.poll()
+    gain.poll
   }
 
   lazy val g = Graph {
@@ -103,7 +103,7 @@ object FourierTest extends App {
     val abs       = ComplexUnaryOp(ComplexUnaryOp.Abs, in = in)
     val mag       = ChannelProxy(UnzipWindow(abs), 0)
     val max       = RunningMax(mag).last
-    max.ampdb.poll(0, "max [dB]")
+    max.ampdb.pollFOO(0, "max [dB]")
     val headroom  = -0.2.dbamp
     val gain      = max.reciprocal * headroom
     val buf       = BufferDisk(in)

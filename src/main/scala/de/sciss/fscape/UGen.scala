@@ -194,7 +194,7 @@ package graph {
   }
 
   object Constant {
-    def unapply(c: Constant): Option[Double] = Some(c.doubleValue)
+    // def unapply(c: Constant): Option[Double] = Some(c.doubleValue)
   }
   /** A scalar constant used as an input to a UGen. */
   sealed trait Constant extends UGenIn with StreamIn {
@@ -214,6 +214,10 @@ package graph {
   final case class ConstantI(value: Int) extends Constant {
     def toAny(implicit b: stream.Builder): Outlet[BufLike] = toInt.as[BufLike]
 
+    def isInt   : Boolean = true
+    def isLong  : Boolean = false
+    def isDouble: Boolean = false
+
     def doubleValue: Double = value.toDouble
     def intValue   : Int    = value
     def longValue  : Long   = value.toLong
@@ -227,6 +231,10 @@ package graph {
   }
   final case class ConstantD(value: Double) extends Constant {
     def toAny(implicit b: stream.Builder): Outlet[BufLike] = toDouble.as[BufLike]
+
+    def isInt   : Boolean = false
+    def isLong  : Boolean = false
+    def isDouble: Boolean = true
 
     def doubleValue: Double = value
     def intValue   : Int    = {
@@ -251,6 +259,10 @@ package graph {
   }
   final case class ConstantL(value: Long) extends Constant {
     def toAny(implicit b: stream.Builder): Outlet[BufLike] = toLong.as[BufLike]
+
+    def isInt   : Boolean = false
+    def isLong  : Boolean = true
+    def isDouble: Boolean = false
 
     def doubleValue: Double = value.toDouble
     def intValue   : Int    = {

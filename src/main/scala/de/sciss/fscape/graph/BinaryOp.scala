@@ -76,7 +76,7 @@ object BinaryOp {
     def name: String = plainName.capitalize
 
     def make(a: GE, b: GE): GE = (a, b) match {
-      case (Constant(av), Constant(bv)) => ConstantD(apply(av, bv))
+      case (av: Constant, bv: Constant) => ConstantD(apply(av.doubleValue, bv.doubleValue)) // XXX TODO --- possibly preserve number type
       case _ => new BinaryOp(op, a, b)
     }
 
@@ -106,15 +106,16 @@ object BinaryOp {
     final val id = 2
     override val name = "*"
 
-    override def make(a: GE, b: GE): GE = (a, b) match {
-      case (Constant(0), _)  => a
-      case (_, Constant(0))  => b
-      case (Constant(1), _)  => b
-      case (_, Constant(1))  => a
-      case (Constant(-1), _) => UnaryOp.Neg.make(b) // -b
-      case (_, Constant(-1)) => UnaryOp.Neg.make(a) // -a
-      case _                 => super.make(a, b)
-    }
+    override def make(a: GE, b: GE): GE = ??? // FOO
+//      (a, b) match {
+//      case (Constant(0), _)  => a
+//      case (_, Constant(0))  => b
+//      case (Constant(1), _)  => b
+//      case (_, Constant(1))  => a
+//      case (Constant(-1), _) => UnaryOp.Neg.make(b) // -b
+//      case (_, Constant(-1)) => UnaryOp.Neg.make(a) // -a
+//      case _                 => super.make(a, b)
+//    }
 
     def apply(a: Double, b: Double) = rd.*(a, b)
   }

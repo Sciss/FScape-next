@@ -19,7 +19,7 @@ object OffsetOverlapAddTest extends App {
     val stepSize      = 100
     val overlap       = 2
     val winSize       = stepSize * overlap
-    val impulse       = Impulse(1.0/winSize).take(3000)   // 'distribute diracs'
+    val impulse       = ImpulseFOO(winSize).take(3000)   // 'distribute diracs'
     val offset        = WhiteNoise(4).floor // XXX TODO --- a `.toInt` would be useful
     val minOffset     = -4
     val sig           = OffsetOverlapAdd(in = impulse, size = winSize, step = stepSize,

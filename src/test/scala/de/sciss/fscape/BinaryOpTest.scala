@@ -22,7 +22,7 @@ object BinaryOpTest extends App {
     def normalize(in: GE, headroom: GE = 1): GE = {
       val max       = RunningMax(in.abs).last
       val gain      = max.reciprocal * headroom
-      gain.ampdb.roundTo(0.01).poll(0, "gain [dB]")
+      gain.ampdb.roundTo(0.01).pollFOO(0, "gain [dB]")
       // Plot1D(in, width * height)
       // in.poll(1.0/32, label = "test")
       val buf       = BufferDisk(in)

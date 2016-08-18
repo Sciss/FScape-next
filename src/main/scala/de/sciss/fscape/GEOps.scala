@@ -13,7 +13,7 @@
 
 package de.sciss.fscape
 
-import de.sciss.fscape.graph.{BinaryOp, ChannelProxy, ComplexBinaryOp, ComplexUnaryOp, Concat, Constant, Drop, Elastic, Impulse, Poll, Take, TakeRight, UnaryOp, UnzipWindow}
+import de.sciss.fscape.graph.{BinaryOp, ChannelProxy, ComplexBinaryOp, ComplexUnaryOp, Concat, Constant, Drop, Elastic, ImpulseFOO, Poll, Take, TakeRight, UnaryOp, UnzipWindow}
 import de.sciss.optional.Optional
 
 final class GEOps1(val `this`: GE) extends AnyVal { me =>
@@ -121,7 +121,7 @@ final class GEOps2(val `this`: GE) extends AnyVal { me =>
 //
 //  def flatten               : GE = Flatten(g)
 
-  def poll: Poll = poll()
+  def poll: Poll = pollFOO()
 
   /** Polls the output values of this graph element, and prints the result to the console.
     * This is a convenient method for wrapping this graph element in a `Poll` UGen.
@@ -134,10 +134,10 @@ final class GEOps2(val `this`: GE) extends AnyVal { me =>
     *                   automatic useful labels using information from the polled graph element
     * @see  [[de.sciss.fscape.graph.Poll]]
     */
-  def poll(trig: GE = 2e-4, label: Optional[String] = None): Poll = {
+  def pollFOO(trig: GE = 5000, label: Optional[String] = None): Poll = {
     val trig1 = trig match {
-      case Constant(freqN)  => Impulse(freqN)
-      case other            => other
+      case c: Constant  => ImpulseFOO(c)
+      case other        => other
     }
     Poll(in = g, trig = trig1, label = label.getOrElse {
       val str = g.toString

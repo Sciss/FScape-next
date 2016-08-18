@@ -5,7 +5,7 @@ object GateTest extends App {
     import graph._
     val sz   = 1024
     val gen  = SinOsc (1.0/600)
-    val tr   = Impulse(1.0/ 64)
+    val tr   = ImpulseFOO(64)
     val sh   = Gate(gen, tr)
     Plot1D(sh, size = sz, label = "S+H")
   }

@@ -33,10 +33,18 @@ object StreamIn {
     def toDouble(implicit b: Builder): OutD = throw new UnsupportedOperationException("StreamIn.unused.toDouble")
     def toInt   (implicit b: Builder): OutI = throw new UnsupportedOperationException("StreamIn.unused.toInt"   )
     def toLong  (implicit b: Builder): OutL = throw new UnsupportedOperationException("StreamIn.unused.toLong"  )
+
+    def isInt   : Boolean = false
+    def isLong  : Boolean = false
+    def isDouble: Boolean = true    // arbitrary
   }
 
   private final class SingleD(peer: OutD) extends StreamIn {
     private[this] var exhausted = false
+
+    def isInt   : Boolean = false
+    def isLong  : Boolean = false
+    def isDouble: Boolean = true
 
     def toAny(implicit b: Builder): Outlet[BufLike] = toDouble.as[BufLike]  // retarded Akka API. Why is Outlet not covariant?
 
@@ -91,6 +99,10 @@ object StreamIn {
 
   private final class SingleL(peer: OutL) extends StreamIn {
     private[this] var exhausted = false
+
+    def isInt   : Boolean = false
+    def isLong  : Boolean = true
+    def isDouble: Boolean = false
 
     def toAny(implicit b: Builder): Outlet[BufLike] = toLong.as[BufLike]
 
@@ -147,6 +159,10 @@ object StreamIn {
     private[this] var remain = numSinks
     private[this] var broad: Vec[OutD] = _ // create lazily because we need stream.Builder
 
+    def isInt   : Boolean = false
+    def isLong  : Boolean = false
+    def isDouble: Boolean = true
+
     private def alloc()(implicit b: Builder): OutD = {
       require(remain > 0)
       if (broad == null) broad = BroadcastBuf(peer, numSinks)
@@ -165,6 +181,10 @@ object StreamIn {
   private final class MultiL(peer: OutL, numSinks: Int) extends StreamIn {
     private[this] var remain = numSinks
     private[this] var broad: Vec[OutL] = _ // create lazily because we need stream.Builder
+
+    def isInt   : Boolean = false
+    def isLong  : Boolean = true
+    def isDouble: Boolean = false
 
     private def alloc()(implicit b: Builder): OutL = {
       require(remain > 0)
@@ -186,6 +206,10 @@ trait StreamIn {
   def toInt   (implicit b: Builder): OutI
   def toLong  (implicit b: Builder): OutL
   def toAny   (implicit b: Builder): Outlet[BufLike]
+
+  def isInt   : Boolean
+  def isLong  : Boolean
+  def isDouble: Boolean
 }
 
 object StreamOut {

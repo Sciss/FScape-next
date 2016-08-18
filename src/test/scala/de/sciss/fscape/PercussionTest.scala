@@ -47,7 +47,7 @@ object PercussionTest extends App {
 
   def normalize(in: GE): GE = {
     val max       = RunningMax(in.abs).last
-    max.ampdb.poll(0, "max [dB]")
+    max.ampdb.pollFOO(0, "max [dB]")
     val headroom  = -0.2.dbamp
     val gain      = max.reciprocal * headroom
     val buf       = BufferDisk(in)

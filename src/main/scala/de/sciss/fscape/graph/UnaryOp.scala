@@ -72,8 +72,8 @@ object UnaryOp {
     def name: String = plainName.capitalize
 
     final def make(a: GE): GE = a match {
-      case Constant(value) => ConstantD(apply(value))
-      case _               => new UnaryOp(op, a)
+      case v: Constant  => ConstantD(apply(v.doubleValue))  // XXX TODO --- possibly preserve number type
+      case _            => new UnaryOp(op, a)
     }
 
     private def plainName: String = {
