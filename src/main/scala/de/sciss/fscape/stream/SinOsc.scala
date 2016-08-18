@@ -41,7 +41,7 @@ object SinOsc {
     def createLogic(attr: Attributes): GraphStageLogic = new Logic(shape)
   }
 
-  // XXX TODO -- abstract over data type (BufD vs BufI)?
+  // XXX TODO -- detect constant freq input and use multiplication instead of frame-by-frame addition for phase
   private final class Logic(shape: Shape)(implicit ctrl: Control)
     extends StageLogicImpl(name, shape)
       with GenChunkImpl[BufD, BufD, Shape]

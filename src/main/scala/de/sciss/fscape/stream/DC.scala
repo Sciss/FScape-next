@@ -18,6 +18,7 @@ import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FlowShape}
 import de.sciss.fscape.stream.impl.{GenChunkImpl, GenIn1DImpl, StageImpl, StageLogicImpl}
 
+// XXX TODO --- support OutA
 object DC {
   def apply(in: OutD)(implicit b: Builder): OutD = {
     val stage0  = new Stage

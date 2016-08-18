@@ -16,11 +16,11 @@ package stream
 
 import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FanInShape2}
-import de.sciss.fscape.stream.impl.{GenChunkImpl, GenIn2DImpl, StageImpl, StageLogicImpl}
+import de.sciss.fscape.stream.impl.{GenChunkImpl, GenIn2IImpl, StageImpl, StageLogicImpl}
 import de.sciss.numbers
 
 object Impulse {
-  def apply(freqN: OutD, phase: OutD)(implicit b: Builder): OutD = {
+  def apply(freqN: OutD, phase: OutD)(implicit b: Builder): OutI = {
     val stage0  = new Stage
     val stage   = b.add(stage0)
     b.connect(freqN, stage.in0)
@@ -30,23 +30,23 @@ object Impulse {
 
   private final val name = "Impulse"
 
-  private type Shape = FanInShape2[BufD, BufD, BufD]
+  private type Shape = FanInShape2[BufD, BufD, BufI]
 
   private final class Stage(implicit ctrl: Control) extends StageImpl[Shape](name) {
     val shape = new FanInShape2(
       in0 = InD (s"$name.freqN"),
       in1 = InD (s"$name.phase"),
-      out = OutD(s"$name.out"  )
+      out = OutI(s"$name.out"  )
     )
 
     def createLogic(attr: Attributes): GraphStageLogic = new Logic(shape)
   }
 
-  // XXX TODO -- abstract over data type (BufD vs BufI)?
+  // XXX TODO -- detect constant freq input and use multiplication instead of frame-by-frame addition for phase
   private final class Logic(shape: Shape)(implicit ctrl: Control)
     extends StageLogicImpl(name, shape)
-      with GenChunkImpl[BufD, BufD, Shape]
-      with GenIn2DImpl[BufD, BufD] {
+      with GenChunkImpl[BufD, BufI, Shape]
+      with GenIn2IImpl[BufD, BufD] {
 
     private[this] var incr    : Double = _
     private[this] var phaseOff: Double = _
@@ -90,7 +90,7 @@ object Impulse {
         val phaseVNew = (phaseV    + incrV    )   .wrap(0.0, 1.0)
         val x         = (phaseVNew + phaseOffV)   .wrap(0.0, 1.0)
         val t         = x < y
-        out(outOffI)  = if (t) 1.0 else 0.0
+        out(outOffI)  = if (t) 1 else 0
         phaseV        = phaseVNew
         y             = x
         inOffI       += 1
