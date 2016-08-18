@@ -24,6 +24,8 @@ trait BufLike {
   var size: Int
 
   def allocCount(): Int
+
+  def at(idx: Int): Any
 }
 
 object BufD {
@@ -44,6 +46,8 @@ final class BufD private(val buf: Array[Double], var size: Int, borrowed: Boolea
   def assertAllocated(): Unit = require(!borrowed || _allocCount.get() > 0)
 
   def allocCount(): Int = _allocCount.get()
+
+  def at(idx: Int): Any = buf(idx)
 
   def acquire(): Unit = if (borrowed) {
     /* val oldCount = */ _allocCount.getAndIncrement()
@@ -77,6 +81,8 @@ final class BufI private(val buf: Array[Int], var size: Int, borrowed: Boolean) 
 
   def allocCount(): Int = _allocCount.get()
 
+  def at(idx: Int): Any = buf(idx)
+
   def acquire(): Unit = if (borrowed)
     _allocCount.getAndIncrement()
 
@@ -106,6 +112,8 @@ final class BufL private(val buf: Array[Long], var size: Int, borrowed: Boolean)
   def assertAllocated(): Unit = require(!borrowed || _allocCount.get() > 0)
 
   def allocCount(): Int = _allocCount.get()
+
+  def at(idx: Int): Any = buf(idx)
 
   def acquire(): Unit = if (borrowed)
     _allocCount.getAndIncrement()

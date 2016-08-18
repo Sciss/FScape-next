@@ -14,6 +14,7 @@
 package de.sciss.fscape
 package stream
 
+import akka.stream.Outlet
 import akka.stream.scaladsl.{GraphDSL, Sink}
 
 import scala.annotation.switch
@@ -28,6 +29,7 @@ object StreamIn {
   def multiL(peer: OutL, numSinks: Int): StreamIn = new MultiL(peer, numSinks)
 
   object unused extends StreamIn {
+    def toAny   (implicit b: Builder): Outlet[BufLike] = throw new UnsupportedOperationException("StreamIn.unused.toAny")
     def toDouble(implicit b: Builder): OutD = throw new UnsupportedOperationException("StreamIn.unused.toDouble")
     def toInt   (implicit b: Builder): OutI = throw new UnsupportedOperationException("StreamIn.unused.toInt"   )
     def toLong  (implicit b: Builder): OutL = throw new UnsupportedOperationException("StreamIn.unused.toLong"  )
@@ -35,6 +37,8 @@ object StreamIn {
 
   private final class SingleD(peer: OutD) extends StreamIn {
     private[this] var exhausted = false
+
+    def toAny(implicit b: Builder): Outlet[BufLike] = toDouble.as[BufLike]  // retarded Akka API. Why is Outlet not covariant?
 
     def toDouble(implicit b: Builder): OutD = {
       require(!exhausted)
@@ -87,6 +91,8 @@ object StreamIn {
 
   private final class SingleL(peer: OutL) extends StreamIn {
     private[this] var exhausted = false
+
+    def toAny(implicit b: Builder): Outlet[BufLike] = toLong.as[BufLike]
 
     def toLong(implicit b: Builder): OutL = {
       require(!exhausted)
@@ -150,6 +156,7 @@ object StreamIn {
       head
     }
 
+    def toAny   (implicit b: Builder): Outlet[BufLike] = toDouble.as[BufLike]
     def toDouble(implicit b: Builder): OutD = alloc()
     def toInt   (implicit b: Builder): OutI = singleD(alloc()).toInt   // just reuse this functionality
     def toLong  (implicit b: Builder): OutL = singleD(alloc()).toLong  // just reuse this functionality
@@ -168,6 +175,7 @@ object StreamIn {
       head
     }
 
+    def toAny   (implicit b: Builder): Outlet[BufLike] = toLong.as[BufLike]
     def toDouble(implicit b: Builder): OutD = singleL(alloc()).toDouble  // just reuse this functionality
     def toInt   (implicit b: Builder): OutI = singleL(alloc()).toInt     // just reuse this functionality
     def toLong  (implicit b: Builder): OutL = alloc()
@@ -177,6 +185,7 @@ trait StreamIn {
   def toDouble(implicit b: Builder): OutD
   def toInt   (implicit b: Builder): OutI
   def toLong  (implicit b: Builder): OutL
+  def toAny   (implicit b: Builder): Outlet[BufLike]
 }
 
 object StreamOut {

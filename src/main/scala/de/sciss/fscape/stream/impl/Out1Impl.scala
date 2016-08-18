@@ -1,5 +1,5 @@
 /*
- *  Out1DoubleImpl.scala
+ *  Out1Impl.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2016 Hanns Holger Rutz. All rights reserved.
@@ -22,4 +22,10 @@ trait Out1DoubleImpl[S <: Shape] extends InOutImpl[S] {
   _: GraphStageLogic =>
 
   protected final def allocOutBuf0(): BufD = ctrl.borrowBufD()
+}
+
+trait Out1LongImpl[S <: Shape] extends InOutImpl[S] {
+  _: GraphStageLogic =>
+
+  protected final def allocOutBuf0(): BufL = ctrl.borrowBufL()
 }

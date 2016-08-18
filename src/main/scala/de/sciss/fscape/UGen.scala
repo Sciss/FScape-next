@@ -164,8 +164,8 @@ sealed trait UGenIn extends UGenInLike {
 
 package graph {
 
-  import akka.stream.scaladsl
-  import de.sciss.fscape.stream.{BufD, BufI, BufL, OutD, OutI, OutL, StreamIn}
+  import akka.stream.{Outlet, scaladsl}
+  import de.sciss.fscape.stream.{BufD, BufI, BufL, BufLike, OutD, OutI, OutL, StreamIn}
 
   object UGenInGroup {
     private final val emptyVal = Apply(Vector.empty)
@@ -212,6 +212,8 @@ package graph {
     final val Cm1 = new ConstantI(-1)
   }
   final case class ConstantI(value: Int) extends Constant {
+    def toAny(implicit b: stream.Builder): Outlet[BufLike] = toInt.as[BufLike]
+
     def doubleValue: Double = value.toDouble
     def intValue   : Int    = value
     def longValue  : Long   = value.toLong
@@ -224,6 +226,8 @@ package graph {
     final val Cm1 = new ConstantD(-1)
   }
   final case class ConstantD(value: Double) extends Constant {
+    def toAny(implicit b: stream.Builder): Outlet[BufLike] = toDouble.as[BufLike]
+
     def doubleValue: Double = value
     def intValue   : Int    = {
       if (value.isNaN) throw new ArithmeticException("NaN cannot be translated to Int")
@@ -246,6 +250,8 @@ package graph {
     final val Cm1 = new ConstantI(-1)
   }
   final case class ConstantL(value: Long) extends Constant {
+    def toAny(implicit b: stream.Builder): Outlet[BufLike] = toLong.as[BufLike]
+
     def doubleValue: Double = value.toDouble
     def intValue   : Int    = {
       val res = value.toInt

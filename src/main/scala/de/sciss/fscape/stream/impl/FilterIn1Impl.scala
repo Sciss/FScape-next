@@ -78,3 +78,8 @@ trait FilterIn1DImpl[In >: Null <: BufLike] extends FilterIn1Impl[In, BufD] with
 
   _: GraphStageLogic =>
 }
+
+trait FilterIn1LImpl[In >: Null <: BufLike] extends FilterIn1Impl[In, BufL] with Out1LongImpl[FlowShape[In, BufL]] {
+
+  _: GraphStageLogic =>
+}
