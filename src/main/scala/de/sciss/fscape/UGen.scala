@@ -194,7 +194,7 @@ package graph {
   }
 
   object Constant {
-    // def unapply(c: Constant): Option[Double] = Some(c.doubleValue)
+    def unapply(c: Constant): Option[Double] = Some(c.doubleValue)
   }
   /** A scalar constant used as an input to a UGen. */
   sealed trait Constant extends UGenIn with StreamIn {

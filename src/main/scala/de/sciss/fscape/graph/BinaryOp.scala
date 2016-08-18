@@ -106,16 +106,16 @@ object BinaryOp {
     final val id = 2
     override val name = "*"
 
-    override def make(a: GE, b: GE): GE = ??? // FOO
-//      (a, b) match {
-//      case (Constant(0), _)  => a
-//      case (_, Constant(0))  => b
-//      case (Constant(1), _)  => b
-//      case (_, Constant(1))  => a
-//      case (Constant(-1), _) => UnaryOp.Neg.make(b) // -b
-//      case (_, Constant(-1)) => UnaryOp.Neg.make(a) // -a
-//      case _                 => super.make(a, b)
-//    }
+    override def make(a: GE, b: GE): GE =
+      (a, b) match {
+      case (Constant(0), _)  => a
+      case (_, Constant(0))  => b
+      case (Constant(1), _)  => b
+      case (_, Constant(1))  => a
+      case (Constant(-1), _) => UnaryOp.Neg.make(b) // -b
+      case (_, Constant(-1)) => UnaryOp.Neg.make(a) // -a
+      case _                 => super.make(a, b)
+    }
 
     def apply(a: Double, b: Double) = rd.*(a, b)
   }
@@ -345,7 +345,8 @@ object BinaryOp {
   // case object ExpRRand       extends Op( 48 )
 
 }
-final case class BinaryOp(op: BinaryOp.Op, a: GE, b: GE) extends UGenSource.SingleOut {
+final case class
+BinaryOp(op: BinaryOp.Op, a: GE, b: GE) extends UGenSource.SingleOut {
 
   protected def makeUGens(implicit builder: UGenGraph.Builder): UGenInLike =
     unwrap(Vector(a.expand, b.expand))
