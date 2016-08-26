@@ -18,6 +18,14 @@ import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FanInShape2}
 import de.sciss.fscape.stream.impl.{FilterIn2DImpl, RunningValueImpl, StageImpl, StageLogicImpl}
 
+/*
+
+  TODO --- check out this: http://arxiv.org/abs/cs/0610046
+
+  (I haven't read it, but obviously if the window is sorted,
+  we can drop, insert or query an element in O(log N)).
+
+ */
 object RunningMax {
   def apply(in: OutD, trig: OutI)(implicit b: Builder): OutD = {
     val stage0  = new Stage

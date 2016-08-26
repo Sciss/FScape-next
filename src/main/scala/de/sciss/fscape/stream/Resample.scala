@@ -341,24 +341,45 @@ object Resample {
         ((isClosed(sh.in5) && _inAuxValid) || isAvailable(sh.in5))
     }
 
+    /*
+
+      The idea to minimise floating point error
+      is to calculate the input phase using a running
+      counter of output frames for which the resampling
+      factor has remained constant, like so:
+
+      var inPhase0      = 0.0
+      var inPhaseCount  = 0L
+      def inPhase = inPhase0 + inPhaseCount * smpIncr
+
+      When `factor` changes, we flush first:
+
+      inPhase0      = inPhase
+      inPhaseCount  = 0L
+
+     */
+    private[this] var inPhase0      = 0.0
+    private[this] var inPhaseCount  = 0L
+    private[this] var outPhase      = 0L
+
+    @inline
+    private[this] def inPhase: Double = inPhase0 + inPhaseCount * smpIncr
+
     private def processChunk(): Boolean = {
       var stateChange = false
 
-      var cond: Boolean = ???
-      val inAuxOffI = inAuxOff
-      val auxStop   = inAuxOffI + inAuxRemain
-
-      var _smpIncr  = smpIncr
-      var _fltIncr  = fltIncr
-      var _gain     = gain
-
       // updates all but `minFactor`
       def readAux1(): Boolean = {
-        var newTable = false
+        var newTable  = false
+        val inAuxOffI = inAuxOff
 
         if (bufFactor != null && inAuxOffI < bufFactor.size) {
           val newFactor = max(0.0, bufFactor.buf(inAuxOffI))
           if (factor != newFactor) {
+            if (inPhaseCount > 0) {
+              inPhase0      = inPhase
+              inPhaseCount  = 0L
+            }
             factor  = newFactor
             smpIncr = 1.0 / factor
             if (newFactor <= 1.0) {
@@ -368,9 +389,6 @@ object Resample {
               fltIncr = fltSmpPerCrossing.toDouble
               gain    = fltGain * smpIncr
             }
-            _smpIncr = smpIncr
-            _fltIncr = fltIncr
-            _gain    = gain
           }
         }
 
@@ -401,10 +419,6 @@ object Resample {
         newTable
       }
 
-      var _fltBuf   = fltBuf
-      var _fltBufD  = fltBufD
-      var _fltLenH  = fltLenH
-
       def updateTable(): Unit = {
         fltLenH = ((fltSmpPerCrossing * zeroCrossings) / rollOff + 0.5).toInt
         fltBuf  = new Array[Double](fltLenH)
@@ -412,14 +426,10 @@ object Resample {
         fltGain = createAntiAliasFilter(
           fltBuf, fltBufD, halfWinSize = fltLenH, samplesPerCrossing = fltSmpPerCrossing, rollOff = rollOff,
           kaiserBeta = kaiserBeta)
-
-        _fltBuf   = fltBuf
-        _fltBufD  = fltBufD
-        _fltLenH  = fltLenH
       }
       
       if (init) {
-        minFactor = max(0.0, bufMinFactor.buf(inAuxOffI))
+        minFactor = max(0.0, bufMinFactor.buf(0))
         readAux1()
         if (minFactor == 0.0) minFactor = factor
         val minFltIncr  = fltSmpPerCrossing * min(1.0, minFactor)
@@ -429,71 +439,115 @@ object Resample {
         init = false
       }
 
-      val _winLen = winLen
+      val _winLen     = winLen
+      val _maxFltLenH = _winLen >> 1
+      val out         = bufOut0.buf
+      val _winBuf     = winBuf
 
       /*
 
-        The idea to minimise floating point error
-        is to calculate the input phase using a running
-        counter of output frames for which the resampling
-        factor has remained constant, like so:
+         winLenH = 6; winLen = 13
+         phase = 0.0
+         minSrc = ((phase - winLenH).toLong + winLen) % winLen = (-6 + 13 = 7) % 13 = 7
 
-        var inPhase0      = 0.0
-        var inPhaseCount  = 0L
-        def inPhase = inPhase0 + inPhaseCount * smpIncr
+         [ ][ ][ ][ ][ ][ ][ ][ ][ ][ ][ ][ ][ ]
+                               M
+          W  W  W  W  W  W  W
 
-        When `factor` changes, we flush first:
-
-        inPhase0      = inPhase
-        inPhaseCount  = 0L
+         framesWritten
+         fwI = framesWritten % winLen
+         readOff (= phase.toLong - winLenH)
 
        */
 
+      val in = bufIn.buf
+
+      var cond = true
       while (cond) {
+        cond = false
+        val winReadOff0 = ((inPhase.toLong - _maxFltLenH + _winLen) % _winLen).toInt
+        val winReadOff1 = (winReadOff0     + _maxFltLenH          ) % _winLen
+        var winWriteOff = (outPhase % _winLen).toInt
+        val writeToWinLen =
+          min(inMainRemain, (if (winReadOff0 >= winWriteOff) winReadOff0 else winReadOff0 + _winLen) - winWriteOff)
 
-
-        val newTable = readAux1()
-        if (newTable) updateTable()
-
-        {
-          val out       = bufOut0.buf
-          val _winBuf   = winBuf
-          val srcLen    = ??? : Int
-          val phase     = ??? : Double
-
-          val q         = phase % 1.0
-          var value     = 0.0
-          var srcOffI   = phase.toInt
-          var fltOff    = q * _fltIncr
-          var fltOffI   = fltOff.toInt
-          while ((fltOffI < _fltLenH) && (srcOffI >= 0)) {
-            val r    = fltOff % 1.0  // 0...1 for interpol.
-            value   += _winBuf(srcOffI) * (_fltBuf(fltOffI) + _fltBufD(fltOffI) * r)
-            srcOffI -= 1
-            fltOff  += _fltIncr
-            fltOffI  = fltOff.toInt
+        if (writeToWinLen > 0) {
+          val chunk1  = min(writeToWinLen, _winLen - winWriteOff)
+          if (chunk1 > 0) {
+            Util.copy(in, inMainOff, _winBuf, winWriteOff, chunk1)
           }
-
-          srcOffI = phase.toInt + 1
-          fltOff  = (1.0 - q) * _fltIncr
-          fltOffI = fltOff.toInt
-          while ((fltOffI < _fltLenH) && (srcOffI < srcLen)) {
-            val r    = fltOff % 1.0  // 0...1 for interpol.
-            value   += _winBuf(srcOffI) * (_fltBuf(fltOffI) + _fltBufD(fltOffI) * r)
-            srcOffI += 1
-            fltOff  += _fltIncr
-            fltOffI  = fltOff.toInt
+          val chunk2  = writeToWinLen - chunk1
+          if (chunk2 > 0) {
+            Util.copy(in, inMainOff + chunk1, _winBuf, winWriteOff + chunk1, chunk2)
           }
+          inMainOff    += writeToWinLen
+          inMainRemain -= writeToWinLen
+          winWriteOff   = (winWriteOff + writeToWinLen) % _winLen
+          outPhase += writeToWinLen
 
-          out(outOff) = value * _gain
-          outOff    += 1
-          outRemain -= 1
-
-//          i += 1
-//          phase = srcOff + i * smpIncr
+          cond          = true
+          stateChange   = true
         }
 
-        cond = ???
+        var readFromWinLen =
+          min(outRemain, (if (winWriteOff >= winReadOff1) winWriteOff else winWriteOff + _winLen) - winReadOff1)
+
+        if (readFromWinLen > 0) {
+          while (readFromWinLen > 0) {
+            if (inAuxRemain > 0) {
+              val newTable = readAux1()
+              inAuxOff    += 1
+              inAuxRemain -= 1
+              if (newTable) updateTable()
+            }
+
+            val _inPhase  = inPhase
+            var _fltIncr  = fltIncr
+            val _fltBuf   = fltBuf
+            val _fltBufD  = fltBufD
+            val _fltLenH  = fltLenH
+
+            val q         = _inPhase % 1.0
+            var value     = 0.0
+            // left-hand side of window
+            var srcOffI   = (_inPhase.toLong % _winLen).toInt
+            var fltOff    = q * _fltIncr
+            var fltOffI   = fltOff.toInt
+            var srcRem    = _maxFltLenH
+            while ((fltOffI < _fltLenH) && (srcRem > 0)) {
+              val r    = fltOff % 1.0  // 0...1 for interpol.
+              value   += _winBuf(srcOffI) * (_fltBuf(fltOffI) + _fltBufD(fltOffI) * r)
+              srcOffI -= 1
+              if (srcOffI < 0) srcOffI += _winLen
+              srcRem  -= 1
+              fltOff  += _fltIncr
+              fltOffI  = fltOff.toInt
+            }
+
+            // right-hand side of window
+            srcOffI = ((_inPhase.toLong + 1) % _winLen).toInt
+            fltOff  = (1.0 - q) * _fltIncr
+            fltOffI = fltOff.toInt
+            srcRem  = _maxFltLenH - 1
+            while ((fltOffI < _fltLenH) && (srcRem > 0)) {
+              val r    = fltOff % 1.0  // 0...1 for interpol.
+              value   += _winBuf(srcOffI) * (_fltBuf(fltOffI) + _fltBufD(fltOffI) * r)
+              srcOffI += 1
+              if (srcOffI == _winLen) srcOffI = 0
+              srcRem  -= 1
+              fltOff  += _fltIncr
+              fltOffI  = fltOff.toInt
+            }
+
+            out(outOff) = value * gain
+            outOff         += 1
+            outRemain      -= 1
+            inPhaseCount   += 1
+            readFromWinLen -= 1
+          }
+          cond        = true
+          stateChange = true
+        }
       }
 
       stateChange
