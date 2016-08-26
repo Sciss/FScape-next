@@ -21,6 +21,8 @@ import de.sciss.fscape.stream.impl.{StageImpl, StageLogicImpl}
 import scala.annotation.tailrec
 
 object Resample {
+  import math.{Pi, abs, ceil, max, min, round, sin}
+  
   def apply(in: OutD, factor: OutD, minFactor: OutD, rollOff: OutD, kaiserBeta: OutD, zeroCrossings: OutI)
            (implicit b: Builder): OutD = {
     val stage0  = new Stage
@@ -96,7 +98,7 @@ object Resample {
     private[this] var fltBuf  : Array[Double] = _
     private[this] var fltBufD : Array[Double] = _
     private[this] var winLen  : Int           = _
-    private[this] var winBuf  : Array[Double] = _
+    private[this] var winBuf  : Array[Double] = _   // circular
 
     override def preStart(): Unit = {
       val sh = shape
@@ -175,25 +177,25 @@ object Resample {
       if (isAvailable(sh.in2)) {
         bufMinFactor = grab(sh.in2)
         tryPull(sh.in2)
-        res = if (res == 0) bufMinFactor.size else math.min(res, bufMinFactor.size)
+        res = if (res == 0) bufMinFactor.size else min(res, bufMinFactor.size)
       }
 
       if (isAvailable(sh.in3)) {
         bufRollOff = grab(sh.in3)
         tryPull(sh.in3)
-        res = if (res == 0) bufRollOff.size else math.min(res, bufRollOff.size)
+        res = if (res == 0) bufRollOff.size else min(res, bufRollOff.size)
       }
 
       if (isAvailable(sh.in4)) {
         bufKaiserBeta = grab(sh.in4)
         tryPull(sh.in4)
-        res = if (res == 0) bufKaiserBeta.size else math.min(res, bufKaiserBeta.size)
+        res = if (res == 0) bufKaiserBeta.size else min(res, bufKaiserBeta.size)
       }
 
       if (isAvailable(sh.in5)) {
         bufZeroCrossings = grab(sh.in5)
         tryPull(sh.in5)
-        res = if (res == 0) bufZeroCrossings.size else math.min(res, bufZeroCrossings.size)
+        res = if (res == 0) bufZeroCrossings.size else min(res, bufZeroCrossings.size)
       }
 
       _inAuxValid = true
@@ -340,8 +342,11 @@ object Resample {
     }
 
     private def processChunk(): Boolean = {
+      var stateChange = false
+
       var cond: Boolean = ???
       val inAuxOffI = inAuxOff
+      val auxStop   = inAuxOffI + inAuxRemain
 
       var _smpIncr  = smpIncr
       var _fltIncr  = fltIncr
@@ -352,7 +357,7 @@ object Resample {
         var newTable = false
 
         if (bufFactor != null && inAuxOffI < bufFactor.size) {
-          val newFactor = math.max(0.0, bufFactor.buf(inAuxOffI))
+          val newFactor = max(0.0, bufFactor.buf(inAuxOffI))
           if (factor != newFactor) {
             factor  = newFactor
             smpIncr = 1.0 / factor
@@ -370,7 +375,7 @@ object Resample {
         }
 
         if (bufRollOff != null && inAuxOffI < bufRollOff.size) {
-          val newRollOff = math.max(0.0, math.min(1.0, bufRollOff.buf(inAuxOffI)))
+          val newRollOff = max(0.0, min(1.0, bufRollOff.buf(inAuxOffI)))
           if (rollOff != newRollOff) {
             rollOff   = newRollOff
             newTable  = true
@@ -378,7 +383,7 @@ object Resample {
         }
 
         if (bufKaiserBeta != null && inAuxOffI < bufKaiserBeta.size) {
-          val newKaiserBeta = math.max(0.0, bufKaiserBeta.buf(inAuxOffI))
+          val newKaiserBeta = max(0.0, bufKaiserBeta.buf(inAuxOffI))
           if (kaiserBeta != newKaiserBeta) {
             kaiserBeta  = newKaiserBeta
             newTable    = true
@@ -386,7 +391,7 @@ object Resample {
         }
 
         if (bufZeroCrossings != null && inAuxOffI < bufZeroCrossings.size) {
-          val newZeroCrossings = math.max(1, bufZeroCrossings.buf(inAuxOffI))
+          val newZeroCrossings = max(1, bufZeroCrossings.buf(inAuxOffI))
           if (zeroCrossings != newZeroCrossings) {
             zeroCrossings = newZeroCrossings
             newTable      = true
@@ -396,42 +401,109 @@ object Resample {
         newTable
       }
 
+      var _fltBuf   = fltBuf
+      var _fltBufD  = fltBufD
+      var _fltLenH  = fltLenH
+
+      def updateTable(): Unit = {
+        fltLenH = ((fltSmpPerCrossing * zeroCrossings) / rollOff + 0.5).toInt
+        fltBuf  = new Array[Double](fltLenH)
+        fltBufD = new Array[Double](fltLenH - 1)
+        fltGain = createAntiAliasFilter(
+          fltBuf, fltBufD, halfWinSize = fltLenH, samplesPerCrossing = fltSmpPerCrossing, rollOff = rollOff,
+          kaiserBeta = kaiserBeta)
+
+        _fltBuf   = fltBuf
+        _fltBufD  = fltBufD
+        _fltLenH  = fltLenH
+      }
+      
       if (init) {
-        minFactor = math.max(0.0, bufMinFactor.buf(inAuxOffI))
+        minFactor = max(0.0, bufMinFactor.buf(inAuxOffI))
         readAux1()
         if (minFactor == 0.0) minFactor = factor
-        val minFltIncr  = fltSmpPerCrossing * math.min(1.0, minFactor)
-        winLen          = math.min(0x7FFFFFFF, math.round(math.ceil(fltLenH / minFltIncr))).toInt
+        val minFltIncr  = fltSmpPerCrossing * min(1.0, minFactor)
+        val winLenH     = min(0x3FFFFFFF, round(ceil(fltLenH / minFltIncr))).toInt
+        winLen          = (winLenH << 1) + 1
         winBuf          = new Array[Double](winLen)
         init = false
       }
 
       val _winLen = winLen
 
+      /*
+
+        The idea to minimise floating point error
+        is to calculate the input phase using a running
+        counter of output frames for which the resampling
+        factor has remained constant, like so:
+
+        var inPhase0      = 0.0
+        var inPhaseCount  = 0L
+        def inPhase = inPhase0 + inPhaseCount * smpIncr
+
+        When `factor` changes, we flush first:
+
+        inPhase0      = inPhase
+        inPhaseCount  = 0L
+
+       */
+
       while (cond) {
+
+
         val newTable = readAux1()
         if (newTable) updateTable()
+
+        {
+          val out       = bufOut0.buf
+          val _winBuf   = winBuf
+          val srcLen    = ??? : Int
+          val phase     = ??? : Double
+
+          val q         = phase % 1.0
+          var value     = 0.0
+          var srcOffI   = phase.toInt
+          var fltOff    = q * _fltIncr
+          var fltOffI   = fltOff.toInt
+          while ((fltOffI < _fltLenH) && (srcOffI >= 0)) {
+            val r    = fltOff % 1.0  // 0...1 for interpol.
+            value   += _winBuf(srcOffI) * (_fltBuf(fltOffI) + _fltBufD(fltOffI) * r)
+            srcOffI -= 1
+            fltOff  += _fltIncr
+            fltOffI  = fltOff.toInt
+          }
+
+          srcOffI = phase.toInt + 1
+          fltOff  = (1.0 - q) * _fltIncr
+          fltOffI = fltOff.toInt
+          while ((fltOffI < _fltLenH) && (srcOffI < srcLen)) {
+            val r    = fltOff % 1.0  // 0...1 for interpol.
+            value   += _winBuf(srcOffI) * (_fltBuf(fltOffI) + _fltBufD(fltOffI) * r)
+            srcOffI += 1
+            fltOff  += _fltIncr
+            fltOffI  = fltOff.toInt
+          }
+
+          out(outOff) = value * _gain
+          outOff    += 1
+          outRemain -= 1
+
+//          i += 1
+//          phase = srcOff + i * smpIncr
+        }
 
         cond = ???
       }
 
-      ???
-    }
-
-    private def updateTable(): Unit = {
-      fltLenH = ((fltSmpPerCrossing * zeroCrossings) / rollOff + 0.5).toInt
-      fltBuf  = new Array[Double](fltLenH)
-      fltBufD = new Array[Double](fltLenH - 1)
-      fltGain = createAntiAliasFilter(
-        fltBuf, fltBufD, halfWinSize = fltLenH, samplesPerCrossing = fltSmpPerCrossing, rollOff = rollOff,
-        kaiserBeta = kaiserBeta)
+      stateChange
     }
 
     // XXX TODO --- same as in ScissDSP but with double precision; should update ScissDSP
     private def createAntiAliasFilter(impResp: Array[Double], impRespD: Array[Double],
                                       halfWinSize: Int, rollOff: Double,
                                       kaiserBeta: Double, samplesPerCrossing: Int): Double = {
-      createLPF(impResp, 0.5 * rollOff, halfWinSize, kaiserBeta, samplesPerCrossing)
+      createLowPassFilter(impResp, 0.5 * rollOff, halfWinSize, kaiserBeta, samplesPerCrossing)
 
       if (impRespD != null) {
         var i = 0
@@ -449,12 +521,12 @@ object Resample {
       }
       dcGain = 2 * dcGain + impResp(0)
 
-      1.0 / math.abs(dcGain)
+      1.0 / abs(dcGain)
     }
 
     // XXX TODO --- same as in ScissDSP but with double precision; should update ScissDSP
-    private def createLPF(impResp: Array[Double], freq: Double, halfWinSize: Int, kaiserBeta: Double,
-                  samplesPerCrossing: Int): Unit = {
+    private def createLowPassFilter(impResp: Array[Double], freq: Double, halfWinSize: Int, kaiserBeta: Double,
+                                    samplesPerCrossing: Int): Unit = {
       val dNum		    = samplesPerCrossing.toDouble
       val smpRate		  = freq * 2.0
 
@@ -462,8 +534,8 @@ object Resample {
       impResp(0) = smpRate.toFloat
       var i = 1
       while (i < halfWinSize) {
-        val d = math.Pi * i / dNum
-        impResp(i) = (math.sin(smpRate * d) / d).toFloat
+        val d = Pi * i / dNum
+        impResp(i) = (sin(smpRate * d) / d).toFloat
         i += 1
       }
 

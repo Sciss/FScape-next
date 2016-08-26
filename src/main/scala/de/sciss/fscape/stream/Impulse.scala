@@ -43,6 +43,7 @@ object Impulse {
   }
 
   // XXX TODO -- detect constant freq input and use multiplication instead of frame-by-frame addition for phase
+  // (cf. Resample)
   private final class Logic(shape: Shape)(implicit ctrl: Control)
     extends StageLogicImpl(name, shape)
       with GenChunkImpl[BufD, BufI, Shape]
