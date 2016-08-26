@@ -79,7 +79,7 @@ object GenWindow {
   case object Kaiser extends Shape {
     final val id = 2
 
-    private[this] def calcBesselZero(x: Double): Double = {
+    private def calcBesselZero(x: Double): Double = {
       var d2  = 1.0
       var sum = 1.0
       var n   = 1
@@ -104,6 +104,20 @@ object GenWindow {
       while (i < stop) {
         val d  = i * norm - 1
         buf(j) = calcBesselZero(param * math.sqrt(1.0 - d * d)) * iBeta
+        i += 1
+        j += 1
+      }
+    }
+
+    def mul(winSize: Int, winOff: Int, buf: Array[Double], bufOff: Int, len: Int, param: Double): Unit = {
+      val norm  = 2.0 / winSize
+      val iBeta = 1.0 / calcBesselZero(param)
+      var i     = winOff
+      val stop  = i + len
+      var j     = bufOff
+      while (i < stop) {
+        val d  = i * norm - 1
+        buf(j) *= calcBesselZero(param * math.sqrt(1.0 - d * d)) * iBeta
         i += 1
         j += 1
       }

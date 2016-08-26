@@ -57,6 +57,7 @@ object Resample {
   private final class Logic(shape: Shape)(implicit ctrl: Control)
     extends StageLogicImpl(name, shape) {
 
+    private[this] var init          = true
     private[this] var factor        = -1.0
     private[this] var minFactor     = -1.0
     private[this] var rollOff       = -1.0
@@ -69,13 +70,33 @@ object Resample {
     private[this] var bufRollOff      : BufD = _
     private[this] var bufKaiserBeta   : BufD = _
     private[this] var bufZeroCrossings: BufI = _
-    private[this] var bufOut          : BufD = _
+    private[this] var bufOut0         : BufD = _
 
     private[this] var _inMainValid  = false
     private[this] var _inAuxValid   = false
     private[this] var _canReadMain  = false
     private[this] var _canReadAux   = false
     private[this] var _canWrite     = false
+
+    private[this] var inMainRemain  = 0
+    private[this] var inMainOff     = 0
+    private[this] var inAuxRemain   = 0
+    private[this] var inAuxOff      = 0
+
+    private[this] var outSent       = true
+    private[this] var outRemain     = 0
+    private[this] var outOff        = 0
+
+    private[this] var fltIncr: Double = _
+    private[this] var smpIncr: Double = _
+    private[this] var gain   : Double = _
+
+    private[this] var fltLenH : Int           = _
+    private[this] var fltGain : Double        = _
+    private[this] var fltBuf  : Array[Double] = _
+    private[this] var fltBufD : Array[Double] = _
+    private[this] var winLen  : Int           = _
+    private[this] var winBuf  : Array[Double] = _
 
     override def preStart(): Unit = {
       val sh = shape
@@ -88,6 +109,9 @@ object Resample {
     }
 
     override def postStop(): Unit = {
+      winBuf  = null
+      fltBuf  = null
+      fltBufD = null
       freeMainInputBuffers()
       freeAuxInputBuffers()
       freeOutputBuffers()
@@ -123,9 +147,9 @@ object Resample {
     }
 
     private def freeOutputBuffers(): Unit =
-      if (bufOut != null) {
-        bufOut.release()
-        bufOut = null
+      if (bufOut0 != null) {
+        bufOut0.release()
+        bufOut0 = null
       }
 
     private def readMainIns(): Int = {
@@ -241,20 +265,69 @@ object Resample {
       }
     })
 
+    @inline
+    private[this] def shouldReadMain = inMainRemain == 0 && _canReadMain
+
+    @inline
+    private[this] def shouldReadAux  = inAuxRemain  == 0 && _canReadAux
+
+    private def allocOutputBuffers() = {
+      bufOut0 = ctrl.borrowBufD()
+      bufOut0.size
+    }
+
     @tailrec
     private def process(): Unit = {
       logStream(s"process() $this")
       var stateChange = false
 
-      ???
+      if (shouldReadMain) {
+        inMainRemain  = readMainIns()
+        inMainOff     = 0
+        stateChange   = true
+      }
+      if (shouldReadAux) {
+        inAuxRemain   = readAuxIns()
+        inAuxOff      = 0
+        stateChange   = true
+      }
 
-//      if (flushOut && outSent) {
-//        logStream(s"completeStage() $this")
-//        completeStage()
-//      }
-//      else
-      if (stateChange) process()
+      if (outSent) {
+        outRemain     = allocOutputBuffers()
+        outOff        = 0
+        outSent       = false
+        stateChange   = true
+      }
+
+      if (_inMainValid && _inAuxValid && processChunk()) stateChange = true
+
+      val flushOut = shouldComplete()
+      if (!outSent && (outRemain == 0 || flushOut) && _canWrite) {
+        writeOuts(outOff)
+        outSent     = true
+        stateChange = true
+      }
+
+      if (flushOut && outSent) {
+        logStream(s"completeStage() $this")
+        completeStage()
+      }
+      else if (stateChange) process()
     }
+
+    private def writeOuts(outOff: Int): Unit = {
+      if (outOff > 0) {
+        bufOut0.size = outOff
+        push(shape.out, bufOut0)
+      } else {
+        bufOut0.release()
+      }
+      bufOut0   = null
+      _canWrite = false
+    }
+
+    @inline
+    private[this] def shouldComplete(): Boolean = inMainRemain == 0 && isClosed(shape.in0)
 
     private def updateCanReadAux(): Unit = {
       val sh = shape
@@ -266,30 +339,138 @@ object Resample {
         ((isClosed(sh.in5) && _inAuxValid) || isAvailable(sh.in5))
     }
 
-    //      val inOffI = inOff
-//
-//      if (bufIn3 != null && inOffI < bufIn3.size) {
-//        val newRollOff = math.max(0.0, math.min(1.0, bufIn3.buf(inOffI)))
-//        if (rollOff != newRollOff) {
-//          rollOff   = newRollOff
-//          newTable  = true
-//        }
-//      }
-//
-//      if (bufIn4 != null && inOffI < bufIn4.size) {
-//        val newKaiserBeta = math.max(0.0, bufIn4.buf(inOffI))
-//        if (kaiserBeta != newKaiserBeta) {
-//          kaiserBeta  = newKaiserBeta
-//          newTable    = true
-//        }
-//      }
-//
-//      if (bufIn5 != null && inOffI < bufIn5.size) {
-//        val newZeroCrossings = math.max(1, bufIn5.buf(inOffI))
-//        if (zeroCrossings != newZeroCrossings) {
-//          zeroCrossings = newZeroCrossings
-//          newTable      = true
-//        }
-//      }
+    private def processChunk(): Boolean = {
+      var cond: Boolean = ???
+      val inAuxOffI = inAuxOff
+
+      var _smpIncr  = smpIncr
+      var _fltIncr  = fltIncr
+      var _gain     = gain
+
+      // updates all but `minFactor`
+      def readAux1(): Boolean = {
+        var newTable = false
+
+        if (bufFactor != null && inAuxOffI < bufFactor.size) {
+          val newFactor = math.max(0.0, bufFactor.buf(inAuxOffI))
+          if (factor != newFactor) {
+            factor  = newFactor
+            smpIncr = 1.0 / factor
+            if (newFactor <= 1.0) {
+              fltIncr = fltSmpPerCrossing * factor
+              gain    = fltGain
+            } else {
+              fltIncr = fltSmpPerCrossing.toDouble
+              gain    = fltGain * smpIncr
+            }
+            _smpIncr = smpIncr
+            _fltIncr = fltIncr
+            _gain    = gain
+          }
+        }
+
+        if (bufRollOff != null && inAuxOffI < bufRollOff.size) {
+          val newRollOff = math.max(0.0, math.min(1.0, bufRollOff.buf(inAuxOffI)))
+          if (rollOff != newRollOff) {
+            rollOff   = newRollOff
+            newTable  = true
+          }
+        }
+
+        if (bufKaiserBeta != null && inAuxOffI < bufKaiserBeta.size) {
+          val newKaiserBeta = math.max(0.0, bufKaiserBeta.buf(inAuxOffI))
+          if (kaiserBeta != newKaiserBeta) {
+            kaiserBeta  = newKaiserBeta
+            newTable    = true
+          }
+        }
+
+        if (bufZeroCrossings != null && inAuxOffI < bufZeroCrossings.size) {
+          val newZeroCrossings = math.max(1, bufZeroCrossings.buf(inAuxOffI))
+          if (zeroCrossings != newZeroCrossings) {
+            zeroCrossings = newZeroCrossings
+            newTable      = true
+          }
+        }
+
+        newTable
+      }
+
+      if (init) {
+        minFactor = math.max(0.0, bufMinFactor.buf(inAuxOffI))
+        readAux1()
+        if (minFactor == 0.0) minFactor = factor
+        val minFltIncr  = fltSmpPerCrossing * math.min(1.0, minFactor)
+        winLen          = math.min(0x7FFFFFFF, math.round(math.ceil(fltLenH / minFltIncr))).toInt
+        winBuf          = new Array[Double](winLen)
+        init = false
+      }
+
+      val _winLen = winLen
+
+      while (cond) {
+        val newTable = readAux1()
+        if (newTable) updateTable()
+
+        cond = ???
+      }
+
+      ???
+    }
+
+    private def updateTable(): Unit = {
+      fltLenH = ((fltSmpPerCrossing * zeroCrossings) / rollOff + 0.5).toInt
+      fltBuf  = new Array[Double](fltLenH)
+      fltBufD = new Array[Double](fltLenH - 1)
+      fltGain = createAntiAliasFilter(
+        fltBuf, fltBufD, halfWinSize = fltLenH, samplesPerCrossing = fltSmpPerCrossing, rollOff = rollOff,
+        kaiserBeta = kaiserBeta)
+    }
+
+    // XXX TODO --- same as in ScissDSP but with double precision; should update ScissDSP
+    private def createAntiAliasFilter(impResp: Array[Double], impRespD: Array[Double],
+                                      halfWinSize: Int, rollOff: Double,
+                                      kaiserBeta: Double, samplesPerCrossing: Int): Double = {
+      createLPF(impResp, 0.5 * rollOff, halfWinSize, kaiserBeta, samplesPerCrossing)
+
+      if (impRespD != null) {
+        var i = 0
+        while (i < halfWinSize - 1) {
+          impRespD(i) = impResp(i + 1) - impResp(i)
+          i += 1
+        }
+        impRespD(i) = -impResp(i)
+      }
+      var dcGain = 0.0
+      var j = samplesPerCrossing
+      while (j < halfWinSize) {
+        dcGain += impResp(j)
+        j += samplesPerCrossing
+      }
+      dcGain = 2 * dcGain + impResp(0)
+
+      1.0 / math.abs(dcGain)
+    }
+
+    // XXX TODO --- same as in ScissDSP but with double precision; should update ScissDSP
+    private def createLPF(impResp: Array[Double], freq: Double, halfWinSize: Int, kaiserBeta: Double,
+                  samplesPerCrossing: Int): Unit = {
+      val dNum		    = samplesPerCrossing.toDouble
+      val smpRate		  = freq * 2.0
+
+      // ideal lpf = infinite sinc-function; create truncated version
+      impResp(0) = smpRate.toFloat
+      var i = 1
+      while (i < halfWinSize) {
+        val d = math.Pi * i / dNum
+        impResp(i) = (math.sin(smpRate * d) / d).toFloat
+        i += 1
+      }
+
+      // apply Kaiser window
+      import graph.GenWindow.Kaiser
+      Kaiser.mul(winSize = halfWinSize, winOff = halfWinSize, buf = impResp, bufOff = 0, len = halfWinSize,
+        param = kaiserBeta)
+    }
   }
 }
