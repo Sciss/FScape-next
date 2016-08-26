@@ -476,8 +476,14 @@ object Resample {
       val in      = bufIn.buf
       val isFlush = shouldComplete()
 
+      println("processChunk()")
+
       var cond = true
       while (cond) {
+//        if (outPhase > 8880) {
+//          println("DEBUG")
+//        }
+
         cond = false
         val winReadOff0 = ((inPhase.toLong - _maxFltLenH + _winLen    ) % _winLen).toInt
         val winReadOff1 = (winReadOff0     + _maxFltLenH + _maxFltLenH) % _winLen
@@ -487,6 +493,7 @@ object Resample {
           min(inRem0, (if (winReadOff0 >= winWriteOff) winReadOff0 else winReadOff0 + _winLen) - winWriteOff)
 
         if (writeToWinLen > 0) {
+          println(s"writeToWinLen = $writeToWinLen; winWriteOff = $winWriteOff; _winLen = ${_winLen}")
           val chunk1 = min(writeToWinLen, _winLen - winWriteOff)
           if (chunk1 > 0) {
             if (isFlush) {
@@ -500,6 +507,7 @@ object Resample {
           }
           val chunk2  = writeToWinLen - chunk1
           if (chunk2 > 0) {
+            assert(winWriteOff + chunk1 == _winLen)
             if (isFlush) {
               Util.clear(_winBuf, 0, chunk2)
               flushRemain  -= chunk1
@@ -520,6 +528,7 @@ object Resample {
           min(outRemain, (if (winWriteOff >= winReadOff1) winWriteOff else winWriteOff + _winLen) - winReadOff1)
 
         if (readFromWinLen > 0) {
+          println(s"readFromWinLen = $readFromWinLen; srcOffI = ${(inPhase.toLong % _winLen).toInt}; _winLen = ${_winLen}")
           while (readFromWinLen > 0) {
             if (inAuxRemain > 0) {
               val newTable = readAux1()
@@ -529,7 +538,8 @@ object Resample {
             }
 
             val _inPhase  = inPhase
-            var _fltIncr  = fltIncr
+            val _inPhaseL = inPhase.toLong
+            val _fltIncr  = fltIncr
             val _fltBuf   = fltBuf
             val _fltBufD  = fltBufD
             val _fltLenH  = fltLenH
@@ -537,7 +547,7 @@ object Resample {
             val q         = _inPhase % 1.0
             var value     = 0.0
             // left-hand side of window
-            var srcOffI   = (_inPhase.toLong % _winLen).toInt
+            var srcOffI   = (_inPhaseL % _winLen).toInt
             var fltOff    = q * _fltIncr
             var fltOffI   = fltOff.toInt
             var srcRem    = _maxFltLenH
@@ -552,7 +562,7 @@ object Resample {
             }
 
             // right-hand side of window
-            srcOffI = ((_inPhase.toLong + 1) % _winLen).toInt
+            srcOffI = ((_inPhaseL + 1) % _winLen).toInt
             fltOff  = (1.0 - q) * _fltIncr
             fltOffI = fltOff.toInt
             srcRem  = _maxFltLenH - 1
