@@ -89,16 +89,106 @@ object Resample {
     private[this] var outRemain     = 0
     private[this] var outOff        = 0
 
-    private[this] var fltIncr: Double = _
-    private[this] var smpIncr: Double = _
-    private[this] var gain   : Double = _
+    private[this] var fltIncr     : Double        = _
+    private[this] var smpIncr     : Double        = _
+    private[this] var gain        : Double        = _
+    private[this] var flushRemain : Int           = _
 
-    private[this] var fltLenH : Int           = _
-    private[this] var fltGain : Double        = _
-    private[this] var fltBuf  : Array[Double] = _
-    private[this] var fltBufD : Array[Double] = _
-    private[this] var winLen  : Int           = _
-    private[this] var winBuf  : Array[Double] = _   // circular
+    private[this] var fltLenH     : Int           = _
+    private[this] var fltGain     : Double        = _
+    private[this] var fltBuf      : Array[Double] = _
+    private[this] var fltBufD     : Array[Double] = _
+    private[this] var winLen      : Int           = _
+    private[this] var winBuf      : Array[Double] = _   // circular
+
+    /*
+
+      The idea to minimise floating point error
+      is to calculate the input phase using a running
+      counter of output frames for which the resampling
+      factor has remained constant, like so:
+
+      var inPhase0      = 0.0
+      var inPhaseCount  = 0L
+      def inPhase = inPhase0 + inPhaseCount * smpIncr
+
+      When `factor` changes, we flush first:
+
+      inPhase0      = inPhase
+      inPhaseCount  = 0L
+
+     */
+    private[this] var inPhase0      = 0.0
+    private[this] var inPhaseCount  = 0L
+    private[this] var outPhase      = 0L
+
+    // ---- handlers / constructor ----
+
+    private class AuxInHandler[A](in: Inlet[A])
+      extends InHandler {
+
+      def onPush(): Unit = {
+        logStream(s"onPush($in)")
+        testRead()
+      }
+
+      private[this] def testRead(): Unit = {
+        updateCanReadAux()
+        if (_canReadAux) process()
+      }
+
+      override def onUpstreamFinish(): Unit = {
+        logStream(s"onUpstreamFinish($in)")
+        if (_inAuxValid || isAvailable(in)) {
+          testRead()
+        } else {
+          println(s"Invalid aux $in")
+          completeStage()
+        }
+      }
+
+      setHandler(in, this)
+    }
+
+    new AuxInHandler(shape.in1)
+    new AuxInHandler(shape.in2)
+    new AuxInHandler(shape.in3)
+    new AuxInHandler(shape.in4)
+    new AuxInHandler(shape.in5)
+
+    setHandler(shape.in0, new InHandler {
+      def onPush(): Unit = {
+        logStream(s"onPush(${shape.in0})")
+        _canReadMain = true
+        process()
+      }
+
+      override def onUpstreamFinish(): Unit = {
+        logStream(s"onUpstreamFinish(${shape.in0})")
+        if (_inMainValid) process() // may lead to `flushOut`
+        else {
+          if (!isAvailable(shape.in0)) {
+            println(s"Invalid process ${shape.in0}")
+            completeStage()
+          }
+        }
+      }
+    })
+
+    setHandler(shape.out, new OutHandler {
+      def onPull(): Unit = {
+        logStream(s"onPull(${shape.out})")
+        _canWrite = true
+        process()
+      }
+
+      override def onDownstreamFinish(): Unit = {
+        logStream(s"onDownstreamFinish(${shape.out})")
+        super.onDownstreamFinish()
+      }
+    })
+
+    // ---- start/stop ----
 
     override def preStart(): Unit = {
       val sh = shape
@@ -203,75 +293,16 @@ object Resample {
       res
     }
 
-    private class AuxInHandler[A](in: Inlet[A])
-      extends InHandler {
-
-      def onPush(): Unit = {
-        logStream(s"onPush($in)")
-        testRead()
-      }
-
-      private[this] def testRead(): Unit = {
-        updateCanReadAux()
-        if (_canReadAux) process()
-      }
-
-      override def onUpstreamFinish(): Unit = {
-        logStream(s"onUpstreamFinish($in)")
-        if (_inAuxValid || isAvailable(in)) {
-          testRead()
-        } else {
-          println(s"Invalid aux $in")
-          completeStage()
-        }
-      }
-
-      setHandler(in, this)
-    }
-
-    new AuxInHandler(shape.in1)
-    new AuxInHandler(shape.in2)
-    new AuxInHandler(shape.in3)
-    new AuxInHandler(shape.in4)
-    new AuxInHandler(shape.in5)
-
-    setHandler(shape.in0, new InHandler {
-      def onPush(): Unit = {
-        logStream(s"onPush(${shape.in0})")
-        _canReadMain = true
-        process()
-      }
-
-      override def onUpstreamFinish(): Unit = {
-        logStream(s"onUpstreamFinish(${shape.in0})")
-        if (_inMainValid) process() // may lead to `flushOut`
-        else {
-          if (!isAvailable(shape.in0)) {
-            println(s"Invalid process ${shape.in0}")
-            completeStage()
-          }
-        }
-      }
-    })
-
-    setHandler(shape.out, new OutHandler {
-      def onPull(): Unit = {
-        logStream(s"onPull(${shape.out})")
-        _canWrite = true
-        process()
-      }
-
-      override def onDownstreamFinish(): Unit = {
-        logStream(s"onDownstreamFinish(${shape.out})")
-        super.onDownstreamFinish()
-      }
-    })
+    // ---- process ----
 
     @inline
     private[this] def shouldReadMain = inMainRemain == 0 && _canReadMain
 
     @inline
     private[this] def shouldReadAux  = inAuxRemain  == 0 && _canReadAux
+
+    @inline
+    private[this] def shouldComplete(): Boolean = inMainRemain == 0 && isClosed(shape.in0)
 
     private def allocOutputBuffers() = {
       bufOut0 = ctrl.borrowBufD()
@@ -328,9 +359,6 @@ object Resample {
       _canWrite = false
     }
 
-    @inline
-    private[this] def shouldComplete(): Boolean = inMainRemain == 0 && isClosed(shape.in0)
-
     private def updateCanReadAux(): Unit = {
       val sh = shape
       _canReadAux =
@@ -340,27 +368,6 @@ object Resample {
         ((isClosed(sh.in4) && _inAuxValid) || isAvailable(sh.in4)) &&
         ((isClosed(sh.in5) && _inAuxValid) || isAvailable(sh.in5))
     }
-
-    /*
-
-      The idea to minimise floating point error
-      is to calculate the input phase using a running
-      counter of output frames for which the resampling
-      factor has remained constant, like so:
-
-      var inPhase0      = 0.0
-      var inPhaseCount  = 0L
-      def inPhase = inPhase0 + inPhaseCount * smpIncr
-
-      When `factor` changes, we flush first:
-
-      inPhase0      = inPhase
-      inPhaseCount  = 0L
-
-     */
-    private[this] var inPhase0      = 0.0
-    private[this] var inPhaseCount  = 0L
-    private[this] var outPhase      = 0L
 
     @inline
     private[this] def inPhase: Double = inPhase0 + inPhaseCount * smpIncr
@@ -433,9 +440,10 @@ object Resample {
         readAux1()
         if (minFactor == 0.0) minFactor = factor
         val minFltIncr  = fltSmpPerCrossing * min(1.0, minFactor)
-        val winLenH     = min(0x3FFFFFFF, round(ceil(fltLenH / minFltIncr))).toInt
-        winLen          = (winLenH << 1) + 1
+        val maxFltLenH  = min(0x3FFFFFFF, round(ceil(fltLenH / minFltIncr))).toInt
+        winLen          = (maxFltLenH << 1) + 1
         winBuf          = new Array[Double](winLen)
+        flushRemain     = maxFltLenH
         init = false
       }
 
@@ -445,7 +453,7 @@ object Resample {
       val _winBuf     = winBuf
 
       /*
-
+          Ex.:
          winLenH = 6; winLen = 13
          phase = 0.0
          minSrc = ((phase - winLenH).toLong + winLen) % winLen = (-6 + 13 = 7) % 13 = 7
@@ -460,7 +468,8 @@ object Resample {
 
        */
 
-      val in = bufIn.buf
+      val in      = bufIn.buf
+      val isFlush = shouldComplete()
 
       var cond = true
       while (cond) {
@@ -468,22 +477,35 @@ object Resample {
         val winReadOff0 = ((inPhase.toLong - _maxFltLenH + _winLen) % _winLen).toInt
         val winReadOff1 = (winReadOff0     + _maxFltLenH          ) % _winLen
         var winWriteOff = (outPhase % _winLen).toInt
+        val inRem0      = if (isFlush) flushRemain else inMainRemain
         val writeToWinLen =
-          min(inMainRemain, (if (winReadOff0 >= winWriteOff) winReadOff0 else winReadOff0 + _winLen) - winWriteOff)
+          min(inRem0, (if (winReadOff0 >= winWriteOff) winReadOff0 else winReadOff0 + _winLen) - winWriteOff)
 
         if (writeToWinLen > 0) {
-          val chunk1  = min(writeToWinLen, _winLen - winWriteOff)
+          val chunk1 = min(writeToWinLen, _winLen - winWriteOff)
           if (chunk1 > 0) {
-            Util.copy(in, inMainOff, _winBuf, winWriteOff, chunk1)
+            if (isFlush) {
+              Util.clear(_winBuf, winWriteOff, chunk1)
+              flushRemain  -= chunk1
+            } else {
+              Util.copy(in, inMainOff, _winBuf, winWriteOff, chunk1)
+              inMainOff    += chunk1
+              inMainRemain -= chunk1
+            }
           }
           val chunk2  = writeToWinLen - chunk1
           if (chunk2 > 0) {
-            Util.copy(in, inMainOff + chunk1, _winBuf, winWriteOff + chunk1, chunk2)
+            if (isFlush) {
+              Util.clear(_winBuf, 0, chunk2)
+              flushRemain  -= chunk1
+            } else {
+              Util.copy(in, inMainOff, _winBuf, 0, chunk2)
+              inMainOff    += chunk2
+              inMainRemain -= chunk2
+            }
           }
-          inMainOff    += writeToWinLen
-          inMainRemain -= writeToWinLen
+          outPhase     += writeToWinLen
           winWriteOff   = (winWriteOff + writeToWinLen) % _winLen
-          outPhase += writeToWinLen
 
           cond          = true
           stateChange   = true
@@ -552,6 +574,8 @@ object Resample {
 
       stateChange
     }
+
+    // ---- aux dsp ----
 
     // XXX TODO --- same as in ScissDSP but with double precision; should update ScissDSP
     private def createAntiAliasFilter(impResp: Array[Double], impRespD: Array[Double],
