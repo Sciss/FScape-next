@@ -95,9 +95,9 @@ object Resample {
     private[this] var flushRemain : Int           = _
 
     private[this] var fltLenH     : Int           = _
-    private[this] var fltGain     : Double        = _
     private[this] var fltBuf      : Array[Double] = _
     private[this] var fltBufD     : Array[Double] = _
+    private[this] var fltGain     : Double        = _
     private[this] var winLen      : Int           = _
     private[this] var winBuf      : Array[Double] = _   // circular
 
@@ -267,25 +267,25 @@ object Resample {
       if (isAvailable(sh.in2)) {
         bufMinFactor = grab(sh.in2)
         tryPull(sh.in2)
-        res = if (res == 0) bufMinFactor.size else min(res, bufMinFactor.size)
+        res = max(res, bufMinFactor.size)
       }
 
       if (isAvailable(sh.in3)) {
         bufRollOff = grab(sh.in3)
         tryPull(sh.in3)
-        res = if (res == 0) bufRollOff.size else min(res, bufRollOff.size)
+        res = max(res, bufRollOff.size)
       }
 
       if (isAvailable(sh.in4)) {
         bufKaiserBeta = grab(sh.in4)
         tryPull(sh.in4)
-        res = if (res == 0) bufKaiserBeta.size else min(res, bufKaiserBeta.size)
+        res = max(res, bufKaiserBeta.size)
       }
 
       if (isAvailable(sh.in5)) {
         bufZeroCrossings = grab(sh.in5)
         tryPull(sh.in5)
-        res = if (res == 0) bufZeroCrossings.size else min(res, bufZeroCrossings.size)
+        res = max(res, bufZeroCrossings.size)
       }
 
       _inAuxValid = true
@@ -372,6 +372,10 @@ object Resample {
     @inline
     private[this] def inPhase: Double = inPhase0 + inPhaseCount * smpIncr
 
+    // XXX TODO --- works fine for a sine, but white-noise input overshoots
+    private def updateGain(): Unit =
+      gain = fltGain * min(1.0, factor)
+
     private def processChunk(): Boolean = {
       var stateChange = false
 
@@ -388,14 +392,9 @@ object Resample {
               inPhaseCount  = 0L
             }
             factor  = newFactor
-            smpIncr = 1.0 / factor
-            if (newFactor <= 1.0) {
-              fltIncr = fltSmpPerCrossing * factor
-              gain    = fltGain
-            } else {
-              fltIncr = fltSmpPerCrossing.toDouble
-              gain    = fltGain * smpIncr
-            }
+            smpIncr = 1.0 / newFactor
+            fltIncr = fltSmpPerCrossing * min(1.0, newFactor)
+            updateGain()
           }
         }
 
@@ -426,18 +425,24 @@ object Resample {
         newTable
       }
 
+      // XXX TODO --- since fltLenH changes, in fact we should also re-calculate the winLen
+      // and create a new winBuf...
       def updateTable(): Unit = {
         fltLenH = ((fltSmpPerCrossing * zeroCrossings) / rollOff + 0.5).toInt
         fltBuf  = new Array[Double](fltLenH)
-        fltBufD = new Array[Double](fltLenH - 1)
+        fltBufD = new Array[Double](fltLenH)
         fltGain = createAntiAliasFilter(
           fltBuf, fltBufD, halfWinSize = fltLenH, samplesPerCrossing = fltSmpPerCrossing, rollOff = rollOff,
           kaiserBeta = kaiserBeta)
+        updateGain()
+//        gain    = fltGain * min(1.0, smpIncr)
+//        println(s"gain = $gain; fltGain = $fltGain; smpIncr = $smpIncr")
       }
       
       if (init) {
         minFactor = max(0.0, bufMinFactor.buf(0))
         readAux1()
+        updateTable()
         if (minFactor == 0.0) minFactor = factor
         val minFltIncr  = fltSmpPerCrossing * min(1.0, minFactor)
         val maxFltLenH  = min(0x3FFFFFFF, round(ceil(fltLenH / minFltIncr))).toInt
@@ -474,8 +479,8 @@ object Resample {
       var cond = true
       while (cond) {
         cond = false
-        val winReadOff0 = ((inPhase.toLong - _maxFltLenH + _winLen) % _winLen).toInt
-        val winReadOff1 = (winReadOff0     + _maxFltLenH          ) % _winLen
+        val winReadOff0 = ((inPhase.toLong - _maxFltLenH + _winLen    ) % _winLen).toInt
+        val winReadOff1 = (winReadOff0     + _maxFltLenH + _maxFltLenH) % _winLen
         var winWriteOff = (outPhase % _winLen).toInt
         val inRem0      = if (isFlush) flushRemain else inMainRemain
         val writeToWinLen =
@@ -619,7 +624,7 @@ object Resample {
 
       // apply Kaiser window
       import graph.GenWindow.Kaiser
-      Kaiser.mul(winSize = halfWinSize, winOff = halfWinSize, buf = impResp, bufOff = 0, len = halfWinSize,
+      Kaiser.mul(winSize = halfWinSize * 2, winOff = halfWinSize, buf = impResp, bufOff = 0, len = halfWinSize,
         param = kaiserBeta)
     }
   }
