@@ -81,6 +81,14 @@ object ResampleWindow {
     private[this] var winF  : File              = _
     private[this] var winRaf: RandomAccessFile  = _
 
+    private[this] var _availableInFrames  = 0
+    private[this] var _availableOutFrames = 0
+
+    private[this] var stateInToVal  = true
+    private[this] var stateValToOut = false
+    private[this] var valOff        = 0
+
+
     // ---- infra ----
 
     protected def in0             : InD  = shape.in0
@@ -95,9 +103,6 @@ object ResampleWindow {
 
     protected def inMainValid: Boolean = _inMainValid
     protected def canReadMain: Boolean = _canReadMain
-
-    protected def availableInFrames : Int = ???
-    protected def availableOutFrames: Int = ???
 
     // ---- handlers / constructor ----
 
@@ -139,6 +144,7 @@ object ResampleWindow {
 
     override def postStop(): Unit = {
       super.postStop()
+      valueArr = null
       freeWinBuffer()
     }
 
@@ -177,7 +183,10 @@ object ResampleWindow {
       if (isAvailable(shape.in1)) {
         bufSize = grab(shape.in1)
         tryPull(shape.in1)
-        if (size == 0) size = math.max(1, bufSize.buf(0))
+        if (size == 0) {
+          size = math.max(1, bufSize.buf(0))
+          valueArr = new Array[Double](size)
+        }
       }
 
       _inMainValid = true
@@ -187,16 +196,57 @@ object ResampleWindow {
 
     // ---- process ----
 
-    private[this] var writeToValOff     = 0
-    private[this] var writeToValRemain  = 0
-    private[this] var readFromValOff    = 0
-    private[this] var readFromValRemain = 0
+//    @inline
+//    private[this] def stateResample = !(stateInToVal || stateValToOut)
 
-    protected def processChunk(): Boolean = {
-      ???
-      resample()
-      ???
-    }
+    protected def processChunk(): Boolean =
+      if (stateInToVal) {
+        val isFlush = shouldComplete()
+        (inMainRemain > 0 || isFlush) && {
+          val valOff0 = valOff
+          val sz      = size
+          val valRem  = sz - valOff0
+          val chunk   = math.min(inMainRemain, valRem)
+          Util.copy(bufIn.buf, inMainOff, valueArr, valOff0, chunk)
+          inMainOff     += chunk
+          inMainRemain  -= chunk
+          val valOff1    = valOff0 + chunk
+          if (isFlush) Util.clear(valueArr, valOff1, valRem - chunk)
+          if (isFlush || valOff1 == sz) {
+            // ready for resample
+            stateInToVal = false
+            _availableInFrames = 1
+            valOff = 0
+          } else {
+            valOff = valOff1
+          }
+          true
+        }
+
+      } else if (stateValToOut) {
+        (outRemain > 0) && {
+          val valOff0 = valOff
+          val sz      = size
+          val valRem  = sz - valOff0
+          val chunk   = math.min(outRemain, valRem)
+          Util.copy(valueArr, valOff0, bufOut0.buf, outOff, chunk)
+          outOff     += chunk
+          outRemain  -= chunk
+          val valOff1    = valOff0 + chunk
+          if (valOff1 == sz) {
+            // ready for next read
+            stateValToOut = false
+            stateInToVal  = true
+            valOff = 0
+          } else {
+            valOff = valOff1
+          }
+          true
+        }
+
+      } else {
+        resample()
+      }
 
     protected def allocWinBuf(len: Int): Unit = {
       freeWinBuffer()
@@ -213,12 +263,31 @@ object ResampleWindow {
       }
     }
 
+    protected def availableInFrames : Int = _availableInFrames
+    protected def availableOutFrames: Int = _availableOutFrames
+
     protected def clearWinBuf(off: Int, len: Int): Unit = {
-      ??? // Util.clear(winBuf, off, len)
+      val b     = winBuf
+      val sz    = size
+      val off1  = off * sz
+      b.position(off1)
+      var i = 0
+      while (i < sz) {
+        b.put(0.0)
+        i += 1
+      }
     }
 
     protected def copyInToWinBuf(winOff: Int, len: Int): Unit = {
-      ??? // Util.copy(bufIn.buf, inOff, winBuf, winOff, len)
+      assert(len == 1 && _availableInFrames == 1)
+      val b     = winBuf
+      val off1  = winOff * size
+
+      b.position(off1)
+      b.put(valueArr)
+
+      _availableInFrames  = 0
+      _availableOutFrames = 1
     }
 
     protected def clearValue(): Unit = Util.clear(valueArr, 0, valueArr.length)
@@ -237,7 +306,9 @@ object ResampleWindow {
     }
 
     protected def copyValueToOut(): Unit = {
-      ??? // bufOut0.buf(outOff) = value * gain
+      assert(_availableOutFrames == 1)
+      Util.mul(valueArr, 0, size, gain)
+      _availableOutFrames = 0
     }
   }
 }
