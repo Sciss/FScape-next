@@ -201,7 +201,17 @@ object ResampleWindow {
 //    @inline
 //    private[this] def stateResample = !(stateInToVal || stateValToOut)
 
-    protected def processChunk(): Boolean =
+    def STATE(): String = if (stateInToVal) "in -> value" else if (stateValToOut) "value -> out" else "resample"
+
+    protected def processChunk(): Boolean = {
+      val before = STATE()
+      val res = processChunkX()
+      val after = STATE()
+      println(s"BEFORE: $before; AFTER: $after; res = $res")
+      res
+    }
+
+    protected def processChunkX(): Boolean =
       if (stateInToVal) {
         val isFlush = shouldComplete()
         (inMainRemain > 0 || isFlush) && {
