@@ -156,6 +156,9 @@ object ResampleWindow {
     protected def inMainValid: Boolean = _inMainValid
     protected def canReadMain: Boolean = _canReadMain
 
+    protected def availableInFrames : Int = ???
+    protected def availableOutFrames: Int = ???
+
     // ---- process ----
 
     protected def allocWinBuf(len: Int): Unit = {
@@ -177,7 +180,7 @@ object ResampleWindow {
       ??? // Util.clear(winBuf, off, len)
     }
 
-    protected def copyInToWinBuf(inOff: Int, winOff: Int, len: Int): Unit = {
+    protected def copyInToWinBuf(winOff: Int, len: Int): Unit = {
       ??? // Util.copy(bufIn.buf, inOff, winBuf, winOff, len)
     }
 
@@ -196,7 +199,7 @@ object ResampleWindow {
       }
     }
 
-    protected def copyValueToOut(outOff: Int, gain: Double): Unit = {
+    protected def copyValueToOut(gain: Double): Unit = {
       ??? // bufOut0.buf(outOff) = value * gain
     }
   }

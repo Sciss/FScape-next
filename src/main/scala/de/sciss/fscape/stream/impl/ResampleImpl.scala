@@ -38,8 +38,10 @@ trait ResampleImpl[S <: Shape] extends InOutImpl[S] {
   protected def inMainValid: Boolean
   protected def readMainIns(): Int
 
-  protected def allocOutputBuffers(): Int
+  protected def availableInFrames : Int
+  protected def availableOutFrames: Int
 
+  protected def allocOutputBuffers(): Int
 
   protected def PAD: Int
 
@@ -47,21 +49,19 @@ trait ResampleImpl[S <: Shape] extends InOutImpl[S] {
 
   protected def clearWinBuf(off: Int, len: Int): Unit
 
-  protected def copyInToWinBuf(inOff: Int, winOff: Int, len: Int): Unit
+  protected def copyInToWinBuf(winOff: Int, len: Int): Unit
 
   protected def clearValue(): Unit
 
   protected def addToValue(winOff: Int, weight: Double): Unit
 
-  protected def copyValueToOut(outOff: Int, gain: Double): Unit
+  protected def copyValueToOut(gain: Double): Unit
 
   protected def freeMainInputBuffers(): Unit
 
   // ---- impl ----
 
   protected final var bufOut0 : BufD = _
-
-  //  private[this] var bufOut0 : BufD = _
 
   private[this] var init          = true
   private[this] var factor        = -1.0
@@ -70,28 +70,19 @@ trait ResampleImpl[S <: Shape] extends InOutImpl[S] {
   private[this] var kaiserBeta    = -1.0
   private[this] var zeroCrossings = -1
 
-//  private[this] var bufIn           : BufD = _
   private[this] var bufFactor       : BufD = _
   private[this] var bufMinFactor    : BufD = _
   private[this] var bufRollOff      : BufD = _
   private[this] var bufKaiserBeta   : BufD = _
   private[this] var bufZeroCrossings: BufI = _
-//  private[this] var bufOut0         : BufD = _
 
-//  private[this] var _inMainValid  = false
-//  private[this] var _inAuxValid   = false
-//  private[this] var _canReadMain  = false
-//  private[this] var _canReadAux   = false
-//  private[this] var _canWrite     = false
+  protected final var inMainRemain  = 0
+  protected final var inMainOff     = 0
+  private[this] var inAuxRemain     = 0
+  private[this] var inAuxOff        = 0
 
-  private[this] var inMainRemain  = 0
-  private[this] var inMainOff     = 0
-  private[this] var inAuxRemain   = 0
-  private[this] var inAuxOff      = 0
-
-//  private[this] var outSent       = true
-  private[this] var outRemain     = 0
-  private[this] var outOff        = 0
+  protected final var outRemain     = 0
+  protected final var outOff        = 0
 
   private[this] var outSent       = true
 
@@ -105,8 +96,6 @@ trait ResampleImpl[S <: Shape] extends InOutImpl[S] {
   private[this] var fltBufD     : Array[Double] = _
   private[this] var fltGain     : Double        = _
   private[this] var winLen      : Int           = _
-
-  //  private[this] var winBuf      : Array[Double] = _   // circular
 
   private[this] var _inAuxValid   = false
   private[this] var _canReadAux   = false
@@ -472,7 +461,7 @@ trait ResampleImpl[S <: Shape] extends InOutImpl[S] {
     while (cond) {
       cond = false
       val winReadStop   = inPhase.toLong + _maxFltLenH
-      val inRem0        = if (isFlush) flushRemain else inMainRemain
+      val inRem0        = if (isFlush) flushRemain else availableInFrames
       val writeToWinLen = min(inRem0, winReadStop + PAD - outPhase).toInt
 
       if (writeToWinLen > 0) {
@@ -482,13 +471,9 @@ trait ResampleImpl[S <: Shape] extends InOutImpl[S] {
         if (chunk1 > 0) {
           if (isFlush) {
             clearWinBuf(winWriteOff, chunk1)
-            // Util.clear(_winBuf, winWriteOff, chunk1)
-            flushRemain  -= chunk1
+            flushRemain -= chunk1
           } else {
-            copyInToWinBuf(inMainOff, winWriteOff, chunk1)
-            // Util.copy(in, inMainOff, _winBuf, winWriteOff, chunk1)
-            inMainOff    += chunk1
-            inMainRemain -= chunk1
+            copyInToWinBuf(winWriteOff, chunk1)
           }
         }
         val chunk2  = writeToWinLen - chunk1
@@ -496,13 +481,9 @@ trait ResampleImpl[S <: Shape] extends InOutImpl[S] {
           assert(winWriteOff + chunk1 == _winLen)
           if (isFlush) {
             clearWinBuf(0, chunk2)
-            // Util.clear(_winBuf, 0, chunk2)
-            flushRemain  -= chunk1
+            flushRemain -= chunk1
           } else {
-            copyInToWinBuf(inMainOff, 0, chunk2)
-            // Util.copy(in, inMainOff, _winBuf, 0, chunk2)
-            inMainOff    += chunk2
-            inMainRemain -= chunk2
+            copyInToWinBuf(0, chunk2)
           }
         }
         outPhase     += writeToWinLen
@@ -512,10 +493,10 @@ trait ResampleImpl[S <: Shape] extends InOutImpl[S] {
         stateChange   = true
       }
 
-      var readFromWinLen = min(outRemain, outPhase - winReadStop)
+      var readFromWinLen = min(availableOutFrames, outPhase - winReadStop)
 
       if (readFromWinLen > 0) {
-        //          println(s"readFromWinLen = $readFromWinLen; srcOffI = ${(inPhase.toLong % _winLen).toInt}; _winLen = ${_winLen}")
+        // println(s"readFromWinLen = $readFromWinLen; srcOffI = ${(inPhase.toLong % _winLen).toInt}; _winLen = ${_winLen}")
         while (readFromWinLen > 0) {
           if (inAuxRemain > 0) {
             val newTable = readOneAux()
@@ -533,7 +514,6 @@ trait ResampleImpl[S <: Shape] extends InOutImpl[S] {
 
           val q         = _inPhase % 1.0
           clearValue()
-          // var value     = 0.0
 
           // left-hand side of window
           var srcOffI   = (_inPhaseL % _winLen).toInt
@@ -544,7 +524,6 @@ trait ResampleImpl[S <: Shape] extends InOutImpl[S] {
             val r    = fltOff % 1.0  // 0...1 for interpol.
             val w    = _fltBuf(fltOffI) + _fltBufD(fltOffI) * r
             addToValue(srcOffI, w)
-            // value   += _winBuf(srcOffI) * w
             srcOffI -= 1
             if (srcOffI < 0) srcOffI += _winLen
             srcRem  -= 1
@@ -561,7 +540,6 @@ trait ResampleImpl[S <: Shape] extends InOutImpl[S] {
             val r    = fltOff % 1.0  // 0...1 for interpol.
             val w    = _fltBuf(fltOffI) + _fltBufD(fltOffI) * r
             addToValue(srcOffI, w)
-            // value   += _winBuf(srcOffI) * w
             srcOffI += 1
             if (srcOffI == _winLen) srcOffI = 0
             srcRem  -= 1
@@ -569,10 +547,7 @@ trait ResampleImpl[S <: Shape] extends InOutImpl[S] {
             fltOffI  = fltOff.toInt
           }
 
-          copyValueToOut(outOff, gain)
-          // out(outOff) = value * gain
-          outOff         += 1
-          outRemain      -= 1
+          copyValueToOut(gain)
           inPhaseCount   += 1
           readFromWinLen -= 1
         }

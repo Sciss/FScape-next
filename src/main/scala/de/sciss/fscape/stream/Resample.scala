@@ -133,6 +133,9 @@ object Resample {
     protected def inMainValid: Boolean = _inMainValid
     protected def canReadMain: Boolean = _canReadMain
 
+    protected def availableInFrames : Int = inMainRemain
+    protected def availableOutFrames: Int = outRemain
+
     // ---- process ----
 
     protected def allocWinBuf(len: Int): Unit =
@@ -141,8 +144,11 @@ object Resample {
     protected def clearWinBuf(off: Int, len: Int): Unit =
       Util.clear(winBuf, off, len)
 
-    protected def copyInToWinBuf(inOff: Int, winOff: Int, len: Int): Unit =
-      Util.copy(bufIn.buf, inOff, winBuf, winOff, len)
+    protected def copyInToWinBuf(winOff: Int, len: Int): Unit = {
+      Util.copy(bufIn.buf, inMainOff, winBuf, winOff, len)
+      inMainOff    += len
+      inMainRemain -= len
+    }
 
     private[this] var value = 0.0
 
@@ -152,7 +158,10 @@ object Resample {
     protected def addToValue(winOff: Int, weight: Double): Unit =
       value += winBuf(winOff) * weight
 
-    protected def copyValueToOut(outOff: Int, gain: Double): Unit =
+    protected def copyValueToOut(gain: Double): Unit = {
       bufOut0.buf(outOff) = value * gain
+      outOff         += 1
+      outRemain      -= 1
+    }
   }
 }
