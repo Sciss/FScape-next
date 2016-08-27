@@ -19,7 +19,7 @@ import java.nio.DoubleBuffer
 import java.nio.channels.FileChannel
 
 import akka.stream.stage.{GraphStageLogic, InHandler}
-import akka.stream.{Attributes, FanInShape7}
+import akka.stream.{Attributes, FanInShape7, Inlet}
 import de.sciss.file._
 import de.sciss.fscape.stream.impl.{Out1DoubleImpl, Out1LogicImpl, ResampleImpl, StageImpl, StageLogicImpl}
 
@@ -65,39 +65,70 @@ object ResampleWindow {
 
     protected val PAD = 1
 
-    private[this] var bufIn : BufD = _
+    private[this] var bufIn   : BufD = _
+    private[this] var bufSize : BufI = _
 
     private[this] var _inMainValid  = false
     private[this] var _canReadMain  = false
 
     // size of a window, not the resample buffer
-    private[this] var size: Int = _
+    private[this] var size: Int = 0
+
+    // this serves as the collecting and emitting window
     private[this] var valueArr: Array[Double] = _
 
     private[this] var winBuf: DoubleBuffer      = _
     private[this] var winF  : File              = _
     private[this] var winRaf: RandomAccessFile  = _
 
+    // ---- infra ----
+
+    protected def in0             : InD  = shape.in0
+    private[this] val in1         : InI  = shape.in1
+
+    protected def inFactor        : InD  = shape.in2
+    protected def inMinFactor     : InD  = shape.in3
+    protected def inRollOff       : InD  = shape.in4
+    protected def inKaiserBeta    : InD  = shape.in5
+    protected def inZeroCrossings : InI  = shape.in6
+    protected def out0            : OutD = shape.out
+
+    protected def inMainValid: Boolean = _inMainValid
+    protected def canReadMain: Boolean = _canReadMain
+
+    protected def availableInFrames : Int = ???
+    protected def availableOutFrames: Int = ???
+
     // ---- handlers / constructor ----
 
-    setHandler(shape.in0, new InHandler {
+    private def updateCanReadMain(): Unit =
+      _canReadMain = isAvailable(in0) &&
+        ((isClosed(in1) && _inMainValid) || isAvailable(in1))
+
+    private final class MainInHandler(in: Inlet[_], isProcess: Boolean) extends InHandler {
       def onPush(): Unit = {
-        logStream(s"onPush(${shape.in0})")
-        _canReadMain = true
-        process()
+        logStream(s"onPush($in)")
+        updateCanReadMain()
+        if (_canReadMain) process()
       }
 
       override def onUpstreamFinish(): Unit = {
-        logStream(s"onUpstreamFinish(${shape.in0})")
-        if (_inMainValid) process() // may lead to `flushOut`
+        logStream(s"onUpstreamFinish($in)")
+        updateCanReadMain()
+        if (_inMainValid && (isProcess || _canReadMain)) process() // may lead to `flushOut`
         else {
-          if (!isAvailable(shape.in0)) {
-            println(s"Invalid process ${shape.in0}")
+          if (!isAvailable(in)) {
+            println(s"Invalid process $in")
             completeStage()
           }
         }
       }
-    })
+
+      setHandler(in, this)
+    }
+
+    new MainInHandler(in0, isProcess = true )
+    new MainInHandler(in1, isProcess = false)
 
     // ---- start/stop ----
 
@@ -121,11 +152,16 @@ object ResampleWindow {
       winBuf = null
     }
 
-    protected def freeMainInputBuffers(): Unit =
+    protected def freeMainInputBuffers(): Unit = {
       if (bufIn != null) {
         bufIn.release()
         bufIn = null
       }
+      if (bufSize != null) {
+        bufSize.release()
+        bufSize = null
+      }
+    }
 
     def freeOutputBuffers(): Unit =
       if (bufOut0 != null) {
@@ -137,29 +173,30 @@ object ResampleWindow {
       freeMainInputBuffers()
       bufIn = grab(shape.in0)
       tryPull(shape.in0)
+
+      if (isAvailable(shape.in1)) {
+        bufSize = grab(shape.in1)
+        tryPull(shape.in1)
+        if (size == 0) size = math.max(1, bufSize.buf(0))
+      }
+
       _inMainValid = true
       _canReadMain = false
       bufIn.size
     }
 
-    // ---- infra ----
-
-    protected def in0             : InD  = shape.in0
-
-    protected def inFactor        : InD  = shape.in2
-    protected def inMinFactor     : InD  = shape.in3
-    protected def inRollOff       : InD  = shape.in4
-    protected def inKaiserBeta    : InD  = shape.in5
-    protected def inZeroCrossings : InI  = shape.in6
-    protected def out0            : OutD = shape.out
-
-    protected def inMainValid: Boolean = _inMainValid
-    protected def canReadMain: Boolean = _canReadMain
-
-    protected def availableInFrames : Int = ???
-    protected def availableOutFrames: Int = ???
-
     // ---- process ----
+
+    private[this] var writeToValOff     = 0
+    private[this] var writeToValRemain  = 0
+    private[this] var readFromValOff    = 0
+    private[this] var readFromValRemain = 0
+
+    protected def processChunk(): Boolean = {
+      ???
+      resample()
+      ???
+    }
 
     protected def allocWinBuf(len: Int): Unit = {
       freeWinBuffer()

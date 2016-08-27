@@ -138,6 +138,8 @@ object Resample {
 
     // ---- process ----
 
+    protected def processChunk(): Boolean = resample()
+
     protected def allocWinBuf(len: Int): Unit =
       winBuf = new Array[Double](len)
 

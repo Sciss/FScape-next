@@ -45,6 +45,8 @@ trait ResampleImpl[S <: Shape] extends InOutImpl[S] {
 
   protected def PAD: Int
 
+  protected def processChunk(): Boolean
+
   protected def allocWinBuf(len: Int): Unit
 
   protected def clearWinBuf(off: Int, len: Int): Unit
@@ -325,7 +327,7 @@ trait ResampleImpl[S <: Shape] extends InOutImpl[S] {
 
   private[this] val fltSmpPerCrossing = 4096
 
-  protected final def processChunk(): Boolean = {
+  protected final def resample(): Boolean = {
     var stateChange = false
 
     // updates all but `minFactor`

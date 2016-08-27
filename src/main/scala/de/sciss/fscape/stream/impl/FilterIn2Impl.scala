@@ -49,10 +49,9 @@ trait FilterIn2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, Out >: Null 
     bufIn0.size
   }
 
-  final def updateCanRead(): Unit = {
+  final def updateCanRead(): Unit =
     _canRead = isAvailable(in0) &&
       ((isClosed(in1) && _inValid) || isAvailable(in1))
-  }
 
   new ProcessInHandlerImpl (in0 , this)
   new AuxInHandlerImpl     (in1 , this)
