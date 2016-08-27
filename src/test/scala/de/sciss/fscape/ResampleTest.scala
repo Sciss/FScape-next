@@ -7,7 +7,7 @@ import de.sciss.synth.io.AudioFileSpec
 import scala.swing.Swing
 
 object ResampleTest extends App {
-  lazy val g = Graph {
+  lazy val g1 = Graph {
     import graph._
     val sr    = 44100.0
     val in0   = SinOsc(441/sr).take(sr.toLong * 10)
@@ -22,7 +22,7 @@ object ResampleTest extends App {
     AudioFileOut(file = fOut, spec = AudioFileSpec(sampleRate = sr, numChannels = 1), in = sig)
   }
 
-  lazy val g1 = Graph {
+  lazy val g = Graph {
     import graph._
     val sr    = 44100.0
     val in0   = SinOsc(441/sr).take(sr.toLong * 10)
