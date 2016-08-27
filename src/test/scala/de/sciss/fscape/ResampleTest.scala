@@ -29,7 +29,7 @@ object ResampleTest extends App {
 //    val in0   = WhiteNoise()
     val in    = in0.take(sr.toLong * 10)
     val factor = SinOsc(1.0/32).linexp(-1.0, 1.0, 0.5, 2.0)
-    val sig   = Resample(in = in, factor = factor)
+    val sig   = Resample(in = in, factor = factor, minFactor = 0.5)
     val fOut  = userHome / "Documents" / "temp" / "resample_mod.aif"
     AudioFileOut(file = fOut, spec = AudioFileSpec(sampleRate = sr, numChannels = 1), in = sig)
   }
