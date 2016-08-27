@@ -59,7 +59,7 @@ object Timer {
       while (inOffI < stop0) {
         h1 = b0(inOffI) > 0
         if (h1 && !h0) {
-          println(s"RESET FROM $c0")
+          // println(s"RESET FROM $c0")
           c0 = 0L
         }
         out(outOffI) = c0
