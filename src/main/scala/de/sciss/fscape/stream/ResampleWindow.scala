@@ -199,7 +199,7 @@ object ResampleWindow {
       }
     }
 
-    protected def copyValueToOut(gain: Double): Unit = {
+    protected def copyValueToOut(): Unit = {
       ??? // bufOut0.buf(outOff) = value * gain
     }
   }

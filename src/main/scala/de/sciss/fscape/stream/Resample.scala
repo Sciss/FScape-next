@@ -158,10 +158,10 @@ object Resample {
     protected def addToValue(winOff: Int, weight: Double): Unit =
       value += winBuf(winOff) * weight
 
-    protected def copyValueToOut(gain: Double): Unit = {
+    protected def copyValueToOut(): Unit = {
       bufOut0.buf(outOff) = value * gain
-      outOff         += 1
-      outRemain      -= 1
+      outOff    += 1
+      outRemain -= 1
     }
   }
 }

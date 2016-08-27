@@ -55,7 +55,7 @@ trait ResampleImpl[S <: Shape] extends InOutImpl[S] {
 
   protected def addToValue(winOff: Int, weight: Double): Unit
 
-  protected def copyValueToOut(gain: Double): Unit
+  protected def copyValueToOut(): Unit
 
   protected def freeMainInputBuffers(): Unit
 
@@ -88,7 +88,7 @@ trait ResampleImpl[S <: Shape] extends InOutImpl[S] {
 
   private[this] var fltIncr     : Double        = _
   private[this] var smpIncr     : Double        = _
-  private[this] var gain        : Double        = _
+  protected final var gain      : Double        = _
   private[this] var flushRemain : Int           = _
 
   private[this] var fltLenH     : Int           = _
@@ -176,9 +176,6 @@ trait ResampleImpl[S <: Shape] extends InOutImpl[S] {
   @inline
   private[this] def shouldReadAux: Boolean = inAuxRemain  == 0 && _canReadAux
 
-//  @inline
-//  private[this] def inAuxValid   : Boolean = _inAuxValid
-
   private def updateCanReadAux(): Unit =
     _canReadAux =
       ((isClosed(inFactor       ) && _inAuxValid) || isAvailable(inFactor       )) &&
@@ -248,28 +245,6 @@ trait ResampleImpl[S <: Shape] extends InOutImpl[S] {
       bufZeroCrossings = null
     }
   }
-
-//  private def allocOutputBuffers() = {
-//    bufOut0 = ctrl.borrowBufD()
-//    bufOut0.size
-//  }
-//
-//  private def freeOutputBuffers(): Unit =
-//    if (bufOut0 != null) {
-//      bufOut0.release()
-//      bufOut0 = null
-//    }
-//
-//  private def writeOuts(outOff: Int): Unit = {
-//    if (outOff > 0) {
-//      bufOut0.size = outOff
-//      push(shape.out, bufOut0)
-//    } else {
-//      bufOut0.release()
-//    }
-//    bufOut0   = null
-//    _canWrite = false
-//  }
 
   final def canRead: Boolean = canReadMain && _canReadAux
   final def inValid: Boolean = inMainValid && _inAuxValid
@@ -419,7 +394,6 @@ trait ResampleImpl[S <: Shape] extends InOutImpl[S] {
       val minFltIncr  = fltSmpPerCrossing * min(1.0, minFactor)
       val maxFltLenH  = min((0x7FFFFFFF - PAD) >> 1, round(ceil(fltLenH / minFltIncr))).toInt
       winLen          = (maxFltLenH << 1) + PAD
-//      winBuf          = new Array[Double](winLen)
       allocWinBuf(winLen)
       flushRemain     = maxFltLenH
       init = false
@@ -427,8 +401,6 @@ trait ResampleImpl[S <: Shape] extends InOutImpl[S] {
 
     val _winLen     = winLen
     val _maxFltLenH = (_winLen - PAD) >> 1
-//    val out         = bufOut0.buf
-//    val _winBuf     = winBuf
 
     /*
       winLen = fltLen + X; X > 0
@@ -454,7 +426,6 @@ trait ResampleImpl[S <: Shape] extends InOutImpl[S] {
 
      */
 
-//    val in      = bufIn.buf
     val isFlush = shouldComplete()
 
     var cond = true
@@ -547,7 +518,7 @@ trait ResampleImpl[S <: Shape] extends InOutImpl[S] {
             fltOffI  = fltOff.toInt
           }
 
-          copyValueToOut(gain)
+          copyValueToOut()
           inPhaseCount   += 1
           readFromWinLen -= 1
         }
