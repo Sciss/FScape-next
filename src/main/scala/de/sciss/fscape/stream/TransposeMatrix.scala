@@ -94,6 +94,7 @@ object TransposeMatrix {
       b.add(sizeM)
       var i = 1 // Note that first and last elements won't move
       while (i < sizeM) {
+        if (i % 10000 == 0) println(s"--- $i" )
         val cycleBegin = i
         var t          = a(i)
         do {

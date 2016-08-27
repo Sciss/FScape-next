@@ -103,6 +103,7 @@ trait ImageFileOutImpl[S <: Shape] extends InHandler {
   /** Resets `framesWritten`. */
   protected final def openImage(f: File): Unit = {
     closeImage()
+    f.delete()
     val out = new FileImageOutputStream(f)
     writer.setOutput(out)
     framesWritten = 0

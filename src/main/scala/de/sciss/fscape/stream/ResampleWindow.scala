@@ -74,8 +74,10 @@ object ResampleWindow {
     // size of a window, not the resample buffer
     private[this] var size: Int = 0
 
-    // this serves as the collecting and emitting window
-    private[this] var valueArr: Array[Double] = _
+    // this serves as the collecting window
+    private[this] var inArr: Array[Double] = _
+    // this serves as the emitting window
+    private[this] var outArr: Array[Double] = _
 
     private[this] var winBuf: DoubleBuffer      = _
     private[this] var winF  : File              = _
@@ -111,6 +113,12 @@ object ResampleWindow {
     protected def inMainValid: Boolean = _inMainValid
     protected def canReadMain: Boolean = _canReadMain
 
+//    private[this] val DEBUG = false
+//
+//    @inline
+//    private[this] def debugLog(what: => String): Unit =
+//      if (DEBUG) println(what)
+
     // ---- handlers / constructor ----
 
     private def updateCanReadMain(): Unit =
@@ -131,7 +139,7 @@ object ResampleWindow {
           if (isProcess || _canReadMain) process() // may lead to `flushOut`
         } else {
           if (!isAvailable(in)) {
-            println(s"Invalid process $in")
+            // debugLog(s"Invalid process $in")
             completeStage()
           }
         }
@@ -153,7 +161,8 @@ object ResampleWindow {
 
     override def postStop(): Unit = {
       super.postStop()
-      valueArr = null
+      inArr  = null
+      outArr = null
       freeWinBuffer()
     }
 
@@ -193,8 +202,9 @@ object ResampleWindow {
         bufSize = grab(in1)
         tryPull(in1)
         if (size == 0) {
-          size = math.max(1, bufSize.buf(0))
-          valueArr = new Array[Double](size)
+          size    = math.max(1, bufSize.buf(0))
+          inArr   = new Array[Double](size)
+          outArr  = new Array[Double](size)
         }
       }
 
@@ -205,36 +215,36 @@ object ResampleWindow {
 
     // ---- process ----
 
-    private def STATE(): String =
-      if      (lockInToVal ) "in -> value"
-      else if (lockValToOut) "value -> out"
-      else if (lockValToWin) "resample"
-      else                   "<free>"
+//    private def STATE(): String =
+//      if      (lockInToVal ) "in -> value"
+//      else if (lockValToOut) "value -> out"
+//      else if (lockValToWin) "resample"
+//      else                   "<free>"
+//
+//    protected def processChunk(): Boolean = {
+//      val before  = STATE()
+//      val res     = processChunkX()
+//      val after   = STATE()
+//      // debugLog(s"BEFORE: $before; AFTER: $after; res = $res")
+//      res
+//    }
 
     protected def processChunk(): Boolean = {
-      val before  = STATE()
-      val res     = processChunkX()
-      val after   = STATE()
-      println(s"BEFORE: $before; AFTER: $after; res = $res")
-      res
-    }
-
-    protected def processChunkX(): Boolean = {
-      if (lockInToVal || !(lockValToWin || lockValToOut)) {
+      if (lockInToVal || !lockValToWin) {
         val isFlush = shouldComplete()
         (inMainRemain > 0 || isFlush) && {
-          println("---> read")
+          // debugLog("---> read")
           val sz      = size
           val valOff0 = valOff
           val valRem  = sz - valOff0
           val chunk   = math.min(inMainRemain, valRem)
-          Util.copy(bufIn.buf, inMainOff, valueArr, valOff0, chunk)
+          Util.copy(bufIn.buf, inMainOff, inArr, valOff0, chunk)
           inMainOff     += chunk
           inMainRemain  -= chunk
           val valOff1    = valOff0 + chunk
-          if (isFlush) Util.clear(valueArr, valOff1, valRem - chunk)
+          if (isFlush) Util.clear(inArr, valOff1, valRem - chunk)
           if (isFlush || valOff1 == sz) {
-            println("---> read DONE")
+            // debugLog("---> read DONE")
             // ready for resample
             lockInToVal         = false
             lockValToWin        = true
@@ -250,17 +260,17 @@ object ResampleWindow {
 
       } else if (lockValToOut) {
         (outRemain > 0) && {
-          println("---> write")
+          // debugLog("---> write")
           val valOff0 = valOff
           val sz      = size
           val valRem  = sz - valOff0
           val chunk   = math.min(outRemain, valRem)
-          Util.copy(valueArr, valOff0, bufOut0.buf, outOff, chunk)
+          Util.copy(outArr, valOff0, bufOut0.buf, outOff, chunk)
           outOff     += chunk
           outRemain  -= chunk
           val valOff1    = valOff0 + chunk
           if (valOff1 == sz) {
-            println("---> write DONE")
+            // debugLog("---> write DONE")
             // ready for next read
             lockValToOut  = false
             valOff        = 0
@@ -293,13 +303,13 @@ object ResampleWindow {
 
     protected def availableInFrames : Int = {
       val res = if (lockValToWin) 1 else 0
-      println(s"<--- availableInFrames  $res")
+      // debugLog(s"<--- availableInFrames  $res")
       res
     }
 
     protected def availableOutFrames: Int = {
-      val res = if (lockInToVal || lockValToWin || lockValToOut) 0 else 1
-      println(s"<--- availableOutFrames $res")
+      val res = if (/* lockInToVal || lockValToWin || */ lockValToOut) 0 else 1
+      // debugLog(s"<--- availableOutFrames $res")
       res
     }
 
@@ -316,20 +326,20 @@ object ResampleWindow {
     }
 
     protected def copyInToWinBuf(winOff: Int, len: Int): Unit = {
-      println("---> copyInToWinBuf")
-      assert(len == 1 && !lockInToVal && lockValToWin && !lockValToOut)
+      // debugLog("---> copyInToWinBuf")
+      assert(len == 1 && !lockInToVal && lockValToWin /* && !lockValToOut */)
       val b     = winBuf
       val off1  = winOff * size
 
       b.position(off1)
-      b.put(valueArr)
+      b.put(inArr)
 
       lockValToWin = false
     }
 
     protected def clearValue(): Unit = {
-      println("---> clearValue")
-      Util.clear(valueArr, 0, valueArr.length)
+      // debugLog("---> clearValue")
+      Util.clear(outArr, 0, outArr.length)
     }
 
     protected def addToValue(winOff: Int, weight: Double): Unit = {
@@ -337,7 +347,7 @@ object ResampleWindow {
       val off1 = winOff * sz
       val b    = winBuf
       b.position(off1)
-      val arr  = valueArr
+      val arr  = outArr
       var i = 0
       while (i < sz) {
         arr(i) += b.get() * weight
@@ -346,9 +356,9 @@ object ResampleWindow {
     }
 
     protected def copyValueToOut(): Unit = {
-      println("---> copyValueToOut")
-      assert(!lockInToVal && !lockValToWin && !lockValToOut)
-      Util.mul(valueArr, 0, size, gain)
+      // debugLog("---> copyValueToOut")
+      assert(/* !lockInToVal && !lockValToWin && */ !lockValToOut)
+      Util.mul(outArr, 0, size, gain)
       lockValToOut = true
     }
   }
