@@ -334,7 +334,7 @@ object Resample {
 
       if (_inMainValid && _inAuxValid && processChunk()) stateChange = true
 
-      val flushOut = shouldComplete()
+      val flushOut = shouldComplete() && flushRemain == 0
       if (!outSent && (outRemain == 0 || flushOut) && _canWrite) {
         writeOuts(outOff)
         outSent     = true
@@ -375,6 +375,9 @@ object Resample {
     // XXX TODO --- works fine for a sine, but white-noise input overshoots
     private def updateGain(): Unit =
       gain = fltGain * min(1.0, factor)
+
+    // rather arbitrary, but > 1 increases speed; for matrix resample, we'd want very small to save memory
+    private[this] val PAD = 32
 
     private def processChunk(): Boolean = {
       var stateChange = false
@@ -435,66 +438,64 @@ object Resample {
           fltBuf, fltBufD, halfWinSize = fltLenH, samplesPerCrossing = fltSmpPerCrossing, rollOff = rollOff,
           kaiserBeta = kaiserBeta)
         updateGain()
-//        gain    = fltGain * min(1.0, smpIncr)
-//        println(s"gain = $gain; fltGain = $fltGain; smpIncr = $smpIncr")
       }
-      
+
       if (init) {
         minFactor = max(0.0, bufMinFactor.buf(0))
         readAux1()
         updateTable()
         if (minFactor == 0.0) minFactor = factor
         val minFltIncr  = fltSmpPerCrossing * min(1.0, minFactor)
-        val maxFltLenH  = min(0x3FFFFFFF, round(ceil(fltLenH / minFltIncr))).toInt
-        winLen          = (maxFltLenH << 1) + 1
+        val maxFltLenH  = min((0x7FFFFFFF - PAD) >> 1, round(ceil(fltLenH / minFltIncr))).toInt
+        winLen          = (maxFltLenH << 1) + PAD
         winBuf          = new Array[Double](winLen)
         flushRemain     = maxFltLenH
         init = false
       }
 
       val _winLen     = winLen
-      val _maxFltLenH = _winLen >> 1
+      val _maxFltLenH = (_winLen - PAD) >> 1
       val out         = bufOut0.buf
       val _winBuf     = winBuf
 
       /*
-          Ex.:
-         winLenH = 6; winLen = 13
-         phase = 0.0
-         minSrc = ((phase - winLenH).toLong + winLen) % winLen = (-6 + 13 = 7) % 13 = 7
+        winLen = fltLen + X; X > 0
 
-         [ ][ ][ ][ ][ ][ ][ ][ ][ ][ ][ ][ ][ ]
-                               M
-          W  W  W  W  W  W  W
+        at any one point, writeToWinLen
+        is inPhaseL + fltLenH - outPhase + X
 
-         framesWritten
-         fwI = framesWritten % winLen
-         readOff (= phase.toLong - winLenH)
+        readFromWinLen
+        is outPhase - (inPhaseL + fltLenH)
+
+        ex start:
+        factor = 0.5
+        fltLenH = 35; fltLen = 70; X = 1; winLen = 71
+        inPhaseL = 0
+        outPhase = 0
+
+        -> writeToWinLen  = 36 -> outPhase = 36
+        -> readFromWinLen =  1 -> inPhaseL =  2
+        -> writeToWinLen  =  2 -> outPhase = 38
+        -> readFromWinLen =  1 -> inPhaseL =  4
+        -> eventually: no write
+        -> readFromWinLen =  0 -> exit loop
 
        */
 
       val in      = bufIn.buf
       val isFlush = shouldComplete()
 
-      println("processChunk()")
-
       var cond = true
       while (cond) {
-//        if (outPhase > 8880) {
-//          println("DEBUG")
-//        }
-
         cond = false
-        val winReadOff0 = ((inPhase.toLong - _maxFltLenH + _winLen    ) % _winLen).toInt
-        val winReadOff1 = (winReadOff0     + _maxFltLenH + _maxFltLenH) % _winLen
-        var winWriteOff = (outPhase % _winLen).toInt
-        val inRem0      = if (isFlush) flushRemain else inMainRemain
-        val writeToWinLen =
-          min(inRem0, (if (winReadOff0 >= winWriteOff) winReadOff0 else winReadOff0 + _winLen) - winWriteOff)
+        val winReadStop   = inPhase.toLong + _maxFltLenH
+        val inRem0        = if (isFlush) flushRemain else inMainRemain
+        val writeToWinLen = min(inRem0, winReadStop + PAD - outPhase).toInt
 
         if (writeToWinLen > 0) {
-          println(s"writeToWinLen = $writeToWinLen; winWriteOff = $winWriteOff; _winLen = ${_winLen}")
-          val chunk1 = min(writeToWinLen, _winLen - winWriteOff)
+          var winWriteOff = (outPhase % _winLen).toInt
+//          println(s"writeToWinLen = $writeToWinLen; winWriteOff = $winWriteOff; _winLen = ${_winLen}")
+          val chunk1      = min(writeToWinLen, _winLen - winWriteOff)
           if (chunk1 > 0) {
             if (isFlush) {
               Util.clear(_winBuf, winWriteOff, chunk1)
@@ -524,11 +525,10 @@ object Resample {
           stateChange   = true
         }
 
-        var readFromWinLen =
-          min(outRemain, (if (winWriteOff >= winReadOff1) winWriteOff else winWriteOff + _winLen) - winReadOff1)
+        var readFromWinLen = min(outRemain, outPhase - winReadStop)
 
         if (readFromWinLen > 0) {
-          println(s"readFromWinLen = $readFromWinLen; srcOffI = ${(inPhase.toLong % _winLen).toInt}; _winLen = ${_winLen}")
+//          println(s"readFromWinLen = $readFromWinLen; srcOffI = ${(inPhase.toLong % _winLen).toInt}; _winLen = ${_winLen}")
           while (readFromWinLen > 0) {
             if (inAuxRemain > 0) {
               val newTable = readAux1()

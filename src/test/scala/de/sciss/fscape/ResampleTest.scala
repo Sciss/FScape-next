@@ -12,7 +12,7 @@ object ResampleTest extends App {
     val sr    = 44100.0
     val in0   = SinOsc(441/sr).take(sr.toLong * 10)
 //    val in0   = WhiteNoise()
-    val in    = in0.take(sr.toLong * 0.1)
+    val in    = in0.take(sr.toLong * 1.0)
     val factor = 0.5
 //    val factor = 1.0
 //        val factor = 2.0
@@ -36,7 +36,7 @@ object ResampleTest extends App {
 
   val config = stream.Control.Config()
   config.useAsync   = false
-  config.blockSize  = 100 // XXX test
+  config.blockSize  = 100 // test
   implicit val ctrl = stream.Control(config)
   ctrl.run(g)
 
