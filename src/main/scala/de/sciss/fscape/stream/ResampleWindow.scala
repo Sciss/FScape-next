@@ -81,13 +81,20 @@ object ResampleWindow {
     private[this] var winF  : File              = _
     private[this] var winRaf: RandomAccessFile  = _
 
-    private[this] var _availableInFrames  = 0
-    private[this] var _availableOutFrames = 0
-
+    // true when we have begun copying data from the
+    // input buffer to the value array.
     private[this] var lockInToVal   = true
+
+    // true when the value array has been filled with
+    // input data. will be cleared in `copyInToWinBuf`
+    // after we copied the value array into the resampling
+    // algorithm's window buffer.
+    private[this] var lockValToWin = false
+
+    // true when we have begun copying data from the
+    // value array to the output buffer.
     private[this] var lockValToOut  = false
     private[this] var valOff        = 0
-
 
     // ---- infra ----
 
@@ -198,13 +205,10 @@ object ResampleWindow {
 
     // ---- process ----
 
-//    @inline
-//    private[this] def stateResample = !(stateInToVal || stateValToOut)
-
-    def STATE(): String =
+    private def STATE(): String =
       if      (lockInToVal ) "in -> value"
       else if (lockValToOut) "value -> out"
-      else if (lockResample) "resample"
+      else if (lockValToWin) "resample"
       else                   "<free>"
 
     protected def processChunk(): Boolean = {
@@ -215,10 +219,8 @@ object ResampleWindow {
       res
     }
 
-    private[this] var lockResample = false
-
     protected def processChunkX(): Boolean = {
-      if (lockInToVal || !(lockResample || lockValToOut)) {
+      if (lockInToVal || !(lockValToWin || lockValToOut)) {
         val isFlush = shouldComplete()
         (inMainRemain > 0 || isFlush) && {
           println("---> read")
@@ -235,8 +237,7 @@ object ResampleWindow {
             println("---> read DONE")
             // ready for resample
             lockInToVal         = false
-            lockResample        = true
-            _availableInFrames  = 1
+            lockValToWin        = true
             valOff              = 0
             resample()
 
@@ -269,7 +270,7 @@ object ResampleWindow {
           true
         }
 
-      } else if (lockResample || !(lockInToVal || lockValToOut)) {
+      } else if (lockValToWin || !(lockInToVal || lockValToOut)) {
         resample()
 
       } else false
@@ -291,14 +292,13 @@ object ResampleWindow {
     }
 
     protected def availableInFrames : Int = {
-      println(s"<--- availableInFrames  ${_availableInFrames}")
-      _availableInFrames
+      val res = if (lockValToWin) 1 else 0
+      println(s"<--- availableInFrames  $res")
+      res
     }
 
     protected def availableOutFrames: Int = {
-//      val res = if (lockValToOut && valOff == 0) 1 else 0
-//      val res = _availableOutFrames
-      val res = if (valOff == 0) 1 else 0
+      val res = if (lockInToVal || lockValToWin || lockValToOut) 0 else 1
       println(s"<--- availableOutFrames $res")
       res
     }
@@ -317,16 +317,14 @@ object ResampleWindow {
 
     protected def copyInToWinBuf(winOff: Int, len: Int): Unit = {
       println("---> copyInToWinBuf")
-      assert(len == 1 && _availableInFrames == 1)
+      assert(len == 1 && !lockInToVal && lockValToWin && !lockValToOut)
       val b     = winBuf
       val off1  = winOff * size
 
       b.position(off1)
       b.put(valueArr)
 
-      _availableInFrames  = 0
-      lockResample        = false
-      _availableOutFrames = 1
+      lockValToWin = false
     }
 
     protected def clearValue(): Unit = {
@@ -349,11 +347,9 @@ object ResampleWindow {
 
     protected def copyValueToOut(): Unit = {
       println("---> copyValueToOut")
-      assert(_availableOutFrames == 1)
+      assert(!lockInToVal && !lockValToWin && !lockValToOut)
       Util.mul(valueArr, 0, size, gain)
-      _availableOutFrames = 0
-      lockResample        = false
-      lockValToOut        = true
+      lockValToOut = true
     }
   }
 }
