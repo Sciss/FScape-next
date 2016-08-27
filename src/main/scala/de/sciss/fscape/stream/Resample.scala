@@ -68,19 +68,19 @@ object Resample {
 
     // ---- handlers / constructor ----
 
-    setHandler(shape.in0, new InHandler {
+    setHandler(in0, new InHandler {
       def onPush(): Unit = {
-        logStream(s"onPush(${shape.in0})")
+        logStream(s"onPush($in0)")
         _canReadMain = true
         process()
       }
 
       override def onUpstreamFinish(): Unit = {
-        logStream(s"onUpstreamFinish(${shape.in0})")
+        logStream(s"onUpstreamFinish($in0)")
         if (_inMainValid) process() // may lead to `flushOut`
         else {
-          if (!isAvailable(shape.in0)) {
-            println(s"Invalid process ${shape.in0}")
+          if (!isAvailable(in0)) {
+            println(s"Invalid process $in0")
             completeStage()
           }
         }
@@ -91,7 +91,7 @@ object Resample {
 
     override def preStart(): Unit = {
       super.preStart()
-      pull(shape.in0)
+      pull(in0)
     }
 
     override def postStop(): Unit = {
@@ -113,8 +113,8 @@ object Resample {
 
     protected def readMainIns(): Int = {
       freeMainInputBuffers()
-      bufIn = grab(shape.in0)
-      tryPull(shape.in0)
+      bufIn = grab(in0)
+      tryPull(in0)
       _inMainValid = true
       _canReadMain = false
       bufIn.size

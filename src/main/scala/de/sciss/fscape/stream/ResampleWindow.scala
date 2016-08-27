@@ -120,8 +120,9 @@ object ResampleWindow {
       override def onUpstreamFinish(): Unit = {
         logStream(s"onUpstreamFinish($in)")
         updateCanReadMain()
-        if (_inMainValid && (isProcess || _canReadMain)) process() // may lead to `flushOut`
-        else {
+        if (_inMainValid) {
+          if (isProcess || _canReadMain) process() // may lead to `flushOut`
+        } else {
           if (!isAvailable(in)) {
             println(s"Invalid process $in")
             completeStage()
@@ -139,7 +140,8 @@ object ResampleWindow {
 
     override def preStart(): Unit = {
       super.preStart()
-      pull(shape.in0)
+      pull(in0)
+      pull(in1)
     }
 
     override def postStop(): Unit = {
@@ -177,12 +179,12 @@ object ResampleWindow {
 
     protected def readMainIns(): Int = {
       freeMainInputBuffers()
-      bufIn = grab(shape.in0)
-      tryPull(shape.in0)
+      bufIn = grab(in0)
+      tryPull(in0)
 
-      if (isAvailable(shape.in1)) {
-        bufSize = grab(shape.in1)
-        tryPull(shape.in1)
+      if (isAvailable(in1)) {
+        bufSize = grab(in1)
+        tryPull(in1)
         if (size == 0) {
           size = math.max(1, bufSize.buf(0))
           valueArr = new Array[Double](size)
