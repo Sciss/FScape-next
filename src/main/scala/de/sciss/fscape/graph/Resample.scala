@@ -60,7 +60,7 @@ final case class Resample(in: GE, factor: GE, minFactor: GE = 0,
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
     val Vec(in, factor, minFactor, rollOff, kaiserBeta, zeroCrossings) = args
-    stream.Resample(in = in.toDouble, factor = factor.toDouble, minFactor = minFactor.toDouble,
+    stream.ResampleNew(in = in.toDouble, factor = factor.toDouble, minFactor = minFactor.toDouble,
       rollOff = rollOff.toDouble, kaiserBeta = kaiserBeta.toDouble, zeroCrossings = zeroCrossings.toInt)
   }
 }

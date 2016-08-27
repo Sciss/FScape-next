@@ -21,7 +21,7 @@ import de.sciss.fscape.stream.impl.{StageImpl, StageLogicImpl}
 import scala.annotation.tailrec
 
 object Resample {
-  import math.{Pi, abs, ceil, max, min, round, sin}
+  import math.{ceil, max, min, round}
   
   def apply(in: OutD, factor: OutD, minFactor: OutD, rollOff: OutD, kaiserBeta: OutD, zeroCrossings: OutI)
            (implicit b: Builder): OutD = {
@@ -383,7 +383,7 @@ object Resample {
       var stateChange = false
 
       // updates all but `minFactor`
-      def readAux1(): Boolean = {
+      def readOneAux(): Boolean = {
         var newTable  = false
         val inAuxOffI = inAuxOff
 
@@ -434,7 +434,7 @@ object Resample {
         fltLenH = ((fltSmpPerCrossing * zeroCrossings) / rollOff + 0.5).toInt
         fltBuf  = new Array[Double](fltLenH)
         fltBufD = new Array[Double](fltLenH)
-        fltGain = createAntiAliasFilter(
+        fltGain = Filter.createAntiAliasFilter(
           fltBuf, fltBufD, halfWinSize = fltLenH, samplesPerCrossing = fltSmpPerCrossing, rollOff = rollOff,
           kaiserBeta = kaiserBeta)
         updateGain()
@@ -442,7 +442,7 @@ object Resample {
 
       if (init) {
         minFactor = max(0.0, bufMinFactor.buf(0))
-        readAux1()
+        readOneAux()
         updateTable()
         if (minFactor == 0.0) minFactor = factor
         val minFltIncr  = fltSmpPerCrossing * min(1.0, minFactor)
@@ -531,7 +531,7 @@ object Resample {
 //          println(s"readFromWinLen = $readFromWinLen; srcOffI = ${(inPhase.toLong % _winLen).toInt}; _winLen = ${_winLen}")
           while (readFromWinLen > 0) {
             if (inAuxRemain > 0) {
-              val newTable = readAux1()
+              val newTable = readOneAux()
               inAuxOff    += 1
               inAuxRemain -= 1
               if (newTable) updateTable()
@@ -588,54 +588,6 @@ object Resample {
       }
 
       stateChange
-    }
-
-    // ---- aux dsp ----
-
-    // XXX TODO --- same as in ScissDSP but with double precision; should update ScissDSP
-    private def createAntiAliasFilter(impResp: Array[Double], impRespD: Array[Double],
-                                      halfWinSize: Int, rollOff: Double,
-                                      kaiserBeta: Double, samplesPerCrossing: Int): Double = {
-      createLowPassFilter(impResp, 0.5 * rollOff, halfWinSize, kaiserBeta, samplesPerCrossing)
-
-      if (impRespD != null) {
-        var i = 0
-        while (i < halfWinSize - 1) {
-          impRespD(i) = impResp(i + 1) - impResp(i)
-          i += 1
-        }
-        impRespD(i) = -impResp(i)
-      }
-      var dcGain = 0.0
-      var j = samplesPerCrossing
-      while (j < halfWinSize) {
-        dcGain += impResp(j)
-        j += samplesPerCrossing
-      }
-      dcGain = 2 * dcGain + impResp(0)
-
-      1.0 / abs(dcGain)
-    }
-
-    // XXX TODO --- same as in ScissDSP but with double precision; should update ScissDSP
-    private def createLowPassFilter(impResp: Array[Double], freq: Double, halfWinSize: Int, kaiserBeta: Double,
-                                    samplesPerCrossing: Int): Unit = {
-      val dNum		    = samplesPerCrossing.toDouble
-      val smpRate		  = freq * 2.0
-
-      // ideal lpf = infinite sinc-function; create truncated version
-      impResp(0) = smpRate.toFloat
-      var i = 1
-      while (i < halfWinSize) {
-        val d = Pi * i / dNum
-        impResp(i) = (sin(smpRate * d) / d).toFloat
-        i += 1
-      }
-
-      // apply Kaiser window
-      import graph.GenWindow.Kaiser
-      Kaiser.mul(winSize = halfWinSize * 2, winOff = halfWinSize, buf = impResp, bufOff = 0, len = halfWinSize,
-        param = kaiserBeta)
     }
   }
 }
