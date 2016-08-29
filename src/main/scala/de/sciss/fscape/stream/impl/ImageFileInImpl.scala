@@ -23,6 +23,7 @@ import akka.stream.stage.OutHandler
 import de.sciss.file.File
 
 import scala.collection.immutable.{IndexedSeq => Vec}
+import scala.util.control.NonFatal
 
 /** Common building block for `ImageFileIn` and `ImageFileSeqIn` */
 trait ImageFileInImpl[S <: Shape] extends OutHandler {
@@ -50,7 +51,13 @@ trait ImageFileInImpl[S <: Shape] extends OutHandler {
   protected final def openImage(f: File): Unit = {
     closeImage()
 //    println(s"openImage($f)")
-    img         = ImageIO.read(f)
+    img         = try {
+      ImageIO.read(f)
+    } catch {
+      case NonFatal(ex) =>
+        Console.err.println(s"$this - for file $f")
+        throw ex
+    }
     numBands    = img.getSampleModel.getNumBands
     if (numBands != numChannels) {
       Console.err.println(s"Warning: ImageFileIn - $f - channel mismatch (file has $numBands, UGen has $numChannels)")

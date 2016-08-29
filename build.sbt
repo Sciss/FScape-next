@@ -16,7 +16,7 @@ lazy val fileUtilVersion    = "1.1.1"
 lazy val swingPlusVersion   = "0.2.1"
 lazy val optionalVersion    = "1.0.0"
 lazy val scalaChartVersion  = "0.5.0"
-lazy val akkaVersion        = "2.4.8"
+lazy val akkaVersion        = "2.4.9"
 
 libraryDependencies ++= Seq(
   "de.sciss"                  %% "scissdsp"             % dspVersion,
