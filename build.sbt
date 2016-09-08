@@ -11,7 +11,7 @@ lazy val commonSettings = Seq(
   scalaVersion       := "2.11.8",
   crossScalaVersions := Seq("2.11.8", "2.10.6"),
   licenses           := Seq("GPL v2+" -> url("http://www.gnu.org/licenses/gpl-2.0.txt")),
-  homepage           := Some(url(s"https://github.com/Sciss/${githubRepo}")),
+  homepage           := Some(url(s"https://github.com/Sciss/$githubRepo")),
   scalacOptions     ++= Seq("-deprecation", "-unchecked", "-feature", "-encoding", "utf8", "-Xfuture", "-Xlint")
 ) ++ publishSettings
 
