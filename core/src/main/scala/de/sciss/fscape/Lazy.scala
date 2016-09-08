@@ -72,7 +72,7 @@ object Lazy {
   * @see [[de.sciss.fscape.Lazy.Expander]]
   */
 trait Lazy extends Product {
-  /** This method is invoked by the `ModuleBuilder` instance when a `Graph`
+  /** This method is invoked by the `UGenGraph.Builder` instance when a `Graph`
     * is expanded.
     *
     * @param b    the ugen graph builder to which expanded `UGen`s or control proxies

@@ -1,5 +1,5 @@
 /*
- *  Module.scala
+ *  UGenGraph.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2016 Hanns Holger Rutz. All rights reserved.
