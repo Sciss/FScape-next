@@ -10,13 +10,13 @@ homepage           := Some(url("https://github.com/Sciss/FScape-next"))
 scalacOptions     ++= Seq("-deprecation", "-unchecked", "-feature", "-encoding", "utf8", "-Xfuture", "-Xlint")
 
 lazy val dspVersion         = "1.2.2"
-lazy val numbersVersion     = "0.1.1"
+lazy val numbersVersion     = "0.1.3"
 lazy val audioFileVersion   = "1.4.5"
-lazy val fileUtilVersion    = "1.1.1"
+lazy val fileUtilVersion    = "1.1.2"
 lazy val swingPlusVersion   = "0.2.1"
 lazy val optionalVersion    = "1.0.0"
 lazy val scalaChartVersion  = "0.5.0"
-lazy val akkaVersion        = "2.4.9"
+lazy val akkaVersion        = "2.4.10"
 
 libraryDependencies ++= Seq(
   "de.sciss"                  %% "scissdsp"             % dspVersion,
