@@ -73,6 +73,11 @@ object BinaryOp {
 
     def apply(a: Double, b: Double): Double
 
+    /** The default converts to `Double`, but specific operators
+      * may better preserve semantics and precision for other types such as `Int` and `Long`.
+      */
+    def apply(a: Constant, b: Constant): Constant = ConstantD(apply(a.doubleValue, b.doubleValue))
+
     def name: String = plainName.capitalize
 
     def make(a: GE, b: GE): GE = (a, b) match {
@@ -88,11 +93,29 @@ object BinaryOp {
     }
   }
 
+  private def mkIntOrLong(n: Long): Constant =
+    if (n >= Int.MinValue && n <= Int.MaxValue)
+      ConstantI(n.toInt)
+    else
+      ConstantL(n)
+
   case object Plus extends Op {
     final val id = 0
     override val name = "+"
 
     def apply(a: Double, b: Double) = rd.+(a, b)
+
+    override def apply(a: Constant, b: Constant): Constant = (a, b) match {
+      case (ConstantD(_), _)  => super.apply(a, b)
+      case (_, ConstantD(_))  => super.apply(a, b)
+      case (ConstantL(an), _) => ConstantL(an + b.longValue)
+      case (_, ConstantL(bn)) => ConstantL(a.longValue + bn)
+      case _ =>
+        val an = a.longValue
+        val bn = b.longValue
+        val n  = an + bn
+        mkIntOrLong(n)
+    }
   }
 
   case object Minus extends Op {
@@ -100,6 +123,18 @@ object BinaryOp {
     override val name = "-"
 
     def apply(a: Double, b: Double) = rd.-(a, b)
+
+    override def apply(a: Constant, b: Constant): Constant = (a, b) match {
+      case (ConstantD(_), _)  => super.apply(a, b)
+      case (_, ConstantD(_))  => super.apply(a, b)
+      case (ConstantL(an), _) => ConstantL(an - b.longValue)
+      case (_, ConstantL(bn)) => ConstantL(a.longValue - bn)
+      case _ =>
+        val an = a.longValue
+        val bn = b.longValue
+        val n  = an - bn
+        mkIntOrLong(n)
+    }
   }
 
   case object Times extends Op {
@@ -118,6 +153,18 @@ object BinaryOp {
     }
 
     def apply(a: Double, b: Double) = rd.*(a, b)
+
+    override def apply(a: Constant, b: Constant): Constant = (a, b) match {
+      case (ConstantD(_), _)  => super.apply(a, b)
+      case (_, ConstantD(_))  => super.apply(a, b)
+      case (ConstantL(an), _) => ConstantL(an * b.longValue)  // XXX TODO --- check overflow
+      case (_, ConstantL(bn)) => ConstantL(a.longValue * bn)  // XXX TODO --- check overflow
+      case _ =>
+        val an = a.longValue
+        val bn = b.longValue
+        val n  = an * bn
+        mkIntOrLong(n)
+    }
   }
 
   // case object IDiv           extends Op(  3 )
@@ -126,6 +173,26 @@ object BinaryOp {
     override val name = "/"
 
     def apply(a: Double, b: Double) = rd./(a, b)
+
+    override def apply(a: Constant, b: Constant): Constant = (a, b) match {
+      case (ConstantD(_), _)  => super.apply(a, b)
+      case (_, ConstantD(_))  => super.apply(a, b)
+      case (_: ConstantL, _) | (_, _: ConstantL) =>
+        val an = a.longValue
+        val bn = b.longValue
+        if (an % bn == 0)
+          ConstantL(an / bn)
+        else
+          ConstantD(an.toDouble / bn.toDouble)
+
+      case _ =>
+        val ai = a.intValue
+        val bi = b.intValue
+        if (ai % bi == 0)
+          ConstantI(ai / bi)
+        else
+          ConstantD(ai.toDouble / bi.toDouble)
+    }
   }
 
   case object Mod extends Op {
@@ -133,6 +200,19 @@ object BinaryOp {
     override val name = "%"
 
     def apply(a: Double, b: Double): Double = rd.%(a, b)
+
+    override def apply(a: Constant, b: Constant): Constant = (a, b) match {
+      case (ConstantD(_), _)  => super.apply(a, b)
+      case (_, ConstantD(_))  => super.apply(a, b)
+      case (_: ConstantL, _) | (_, _: ConstantL) =>
+        val an = a.longValue
+        val bn = b.longValue
+        ConstantL(an % bn)
+      case _ =>
+        val ai = a.intValue
+        val bi = b.intValue
+        ConstantI(ai % bi)
+    }
   }
 
   case object Eq extends Op {
@@ -140,6 +220,7 @@ object BinaryOp {
     override val name = "sig_=="
 
     def apply(a: Double, b: Double): Double = if (a == b) 1 else 0
+    override def apply(a: Constant, b: Constant): Constant = if (a.value == b.value) 1 else 0
   }
 
   case object Neq extends Op {
@@ -147,6 +228,7 @@ object BinaryOp {
     override val name = "sig_!="
 
     def apply(a: Double, b: Double): Double = if (a != b) 1 else 0
+    override def apply(a: Constant, b: Constant): Constant = if (a.value != b.value) 1 else 0
   }
 
   case object Lt extends Op {
@@ -154,6 +236,21 @@ object BinaryOp {
     override val name = "<"
 
     def apply(a: Double, b: Double): Double = if (a < b) 1 else 0 // NOT rd.< !
+
+    override def apply(a: Constant, b: Constant): Constant = {
+      val res: Boolean = (a, b) match {
+        case (ConstantD(ad), ConstantD(bd)) => ad < bd
+        case (ConstantD(ad), ConstantL(bn)) => ad < bn
+        case (ConstantD(ad), ConstantI(bi)) => ad < bi
+        case (ConstantL(an), ConstantD(bd)) => an < bd
+        case (ConstantL(an), ConstantL(bn)) => an < bn
+        case (ConstantL(an), ConstantI(bi)) => an < bi
+        case (ConstantI(ai), ConstantD(bd)) => ai < bd
+        case (ConstantI(ai), ConstantL(bn)) => ai < bn
+        case (ConstantI(ai), ConstantI(bi)) => ai < bi
+      }
+      if (res) 1 else 0
+    }
   }
 
   case object Gt extends Op {
@@ -161,6 +258,21 @@ object BinaryOp {
     override val name = ">"
 
     def apply(a: Double, b: Double): Double = if (a > b) 1 else 0 // NOT rd.> !
+
+    override def apply(a: Constant, b: Constant): Constant = {
+      val res: Boolean = (a, b) match {
+        case (ConstantD(ad), ConstantD(bd)) => ad > bd
+        case (ConstantD(ad), ConstantL(bn)) => ad > bn
+        case (ConstantD(ad), ConstantI(bi)) => ad > bi
+        case (ConstantL(an), ConstantD(bd)) => an > bd
+        case (ConstantL(an), ConstantL(bn)) => an > bn
+        case (ConstantL(an), ConstantI(bi)) => an > bi
+        case (ConstantI(ai), ConstantD(bd)) => ai > bd
+        case (ConstantI(ai), ConstantL(bn)) => ai > bn
+        case (ConstantI(ai), ConstantI(bi)) => ai > bi
+      }
+      if (res) 1 else 0
+    }
   }
 
   case object Leq extends Op {
@@ -168,6 +280,21 @@ object BinaryOp {
     override val name = "<="
 
     def apply(a: Double, b: Double): Double = if (a <= b) 1 else 0 // NOT rd.<= !
+
+    override def apply(a: Constant, b: Constant): Constant = {
+      val res: Boolean = (a, b) match {
+        case (ConstantD(ad), ConstantD(bd)) => ad <= bd
+        case (ConstantD(ad), ConstantL(bn)) => ad <= bn
+        case (ConstantD(ad), ConstantI(bi)) => ad <= bi
+        case (ConstantL(an), ConstantD(bd)) => an <= bd
+        case (ConstantL(an), ConstantL(bn)) => an <= bn
+        case (ConstantL(an), ConstantI(bi)) => an <= bi
+        case (ConstantI(ai), ConstantD(bd)) => ai <= bd
+        case (ConstantI(ai), ConstantL(bn)) => ai <= bn
+        case (ConstantI(ai), ConstantI(bi)) => ai <= bi
+      }
+      if (res) 1 else 0
+    }
   }
 
   case object Geq extends Op {
@@ -175,16 +302,47 @@ object BinaryOp {
     override val name = ">="
 
     def apply(a: Double, b: Double): Double = if (a >= b) 1 else 0 // NOT rd.>= !
+
+    override def apply(a: Constant, b: Constant): Constant = {
+      val res: Boolean = (a, b) match {
+        case (ConstantD(ad), ConstantD(bd)) => ad >= bd
+        case (ConstantD(ad), ConstantL(bn)) => ad >= bn
+        case (ConstantD(ad), ConstantI(bi)) => ad >= bi
+        case (ConstantL(an), ConstantD(bd)) => an >= bd
+        case (ConstantL(an), ConstantL(bn)) => an >= bn
+        case (ConstantL(an), ConstantI(bi)) => an >= bi
+        case (ConstantI(ai), ConstantD(bd)) => ai >= bd
+        case (ConstantI(ai), ConstantL(bn)) => ai >= bn
+        case (ConstantI(ai), ConstantI(bi)) => ai >= bi
+      }
+      if (res) 1 else 0
+    }
   }
 
   case object Min extends Op {
     final val id = 12
     def apply(a: Double, b: Double): Double = rd.min(a, b)
+
+    override def apply(a: Constant, b: Constant): Constant = (a, b) match {
+      case (ConstantD(_), _)  => super.apply(a, b)
+      case (_, ConstantD(_))  => super.apply(a, b)
+      case (ConstantL(an), _) => math.min(an, b.longValue)
+      case (_, ConstantL(bn)) => math.min(a.longValue, bn)
+      case _                  => math.min(a.intValue, b.intValue)
+    }
   }
 
   case object Max extends Op {
     final val id = 13
     def apply(a: Double, b: Double): Double = rd.max(a, b)
+
+    override def apply(a: Constant, b: Constant): Constant = (a, b) match {
+      case (ConstantD(_), _)  => super.apply(a, b)
+      case (_, ConstantD(_))  => super.apply(a, b)
+      case (ConstantL(an), _) => math.max(an, b.longValue)
+      case (_, ConstantL(bn)) => math.max(a.longValue, bn)
+      case _                  => math.max(a.intValue, b.intValue)
+    }
   }
 
   //  case object BitAnd extends Op {
@@ -298,6 +456,8 @@ object BinaryOp {
   case object Absdif extends Op {
     final val id = 38
     def apply(a: Double, b: Double): Double = rd.absdif(a, b)
+
+    override def apply(a: Constant, b: Constant): Constant = UnaryOp.Abs(Minus(a, b))
   }
 
   case object Thresh extends Op {
@@ -315,6 +475,7 @@ object BinaryOp {
     def apply(a: Double, b: Double): Double = rd2.scaleneg(a, b)
   }
 
+  // XXX TODO --- refined apply
   case object Clip2 extends Op {
     final val id = 42
     def apply(a: Double, b: Double): Double = rd.clip2(a, b)
@@ -325,11 +486,13 @@ object BinaryOp {
     def apply(a: Double, b: Double): Double = rd.excess(a, b)
   }
 
+  // XXX TODO --- refined apply
   case object Fold2 extends Op {
     final val id = 44
     def apply(a: Double, b: Double): Double = rd.fold2(a, b)
   }
 
+  // XXX TODO --- refined apply
   case object Wrap2 extends Op {
     final val id = 45
     def apply(a: Double, b: Double): Double = rd.wrap2(a, b)

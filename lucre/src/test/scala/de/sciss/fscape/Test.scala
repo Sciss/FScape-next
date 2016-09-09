@@ -4,23 +4,26 @@ import de.sciss.file._
 import de.sciss.fscape.lucre.FScape
 import de.sciss.fscape.lucre.FScape.Rendering
 import de.sciss.fscape.stream.Cancelled
+import de.sciss.lucre.artifact.{Artifact, ArtifactLocation}
 import de.sciss.lucre.expr.IntObj
 import de.sciss.lucre.synth.InMemory
-import de.sciss.synth.io.{AudioFile, AudioFileSpec}
+import de.sciss.synth.io.AudioFile
 
 object Test extends App {
   implicit val cursor = InMemory()
   type S              = InMemory
 
 //  val tmp = File.createTemp()
-  val tmpF = userHome / "Documents" / "temp" / "test.aif"
-  require(tmpF.parent.isDirectory)
+  val tmpDir  = userHome / "Documents" / "temp"
+  require(tmpDir.isDirectory)
+  val tmpF    = tmpDir / "test.aif"
 
   val fH = cursor.step { implicit tx =>
     val f = FScape[S]
     val g = Graph {
-      import graph._
-      import lucre.graph.Ops._
+      import graph.{AudioFileOut => _, _}
+      import lucre.graph._
+      import Ops._
       val freq  = "freq".attr
       val dur   = "dur" .attr(10.0)
       val sr    = 44100.0
@@ -28,8 +31,11 @@ object Test extends App {
       val sig0  = SinOsc(freq / sr) * 0.5
       val sig   = sig0.take(durF)
       freq.poll(0, "started")
-      AudioFileOut(file = tmpF, spec = AudioFileSpec(numChannels = 1, sampleRate = sr), in = sig)
+      // AudioFileOut(file = tmpF, spec = AudioFileSpec(numChannels = 1, sampleRate = sr), in = sig)
+      AudioFileOut("file", in = sig, sampleRate = sr)
     }
+    val loc = ArtifactLocation.newConst[S](tmpDir)
+    f.attr.put("file", Artifact(loc, tmpF))
     f.attr.put("freq", IntObj.newConst(441))
     f.graph() = g
     tx.newHandle(f)

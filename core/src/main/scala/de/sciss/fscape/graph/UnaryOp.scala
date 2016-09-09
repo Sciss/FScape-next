@@ -69,10 +69,15 @@ object UnaryOp {
 
     def apply(a: Double): Double
 
+    /** The default converts to `Double`, but specific operators
+      * may better preserve semantics and precision for other types such as `Int` and `Long`.
+      */
+    def apply(a: Constant): Constant = ConstantD(apply(a.doubleValue))
+
     def name: String = plainName.capitalize
 
     final def make(a: GE): GE = a match {
-      case v: Constant  => ConstantD(apply(v.doubleValue))  // XXX TODO --- possibly preserve number type
+      case v: Constant  => apply(v)
       case _            => new UnaryOp(op, a)
     }
 
@@ -87,6 +92,12 @@ object UnaryOp {
   case object Neg extends Op {
     final val id = 0
     def apply(a: Double): Double = -a
+
+    override def apply(a: Constant): Constant = a match {
+      case ConstantD(d) => ConstantD(apply(d))
+      case ConstantI(i) => ConstantI(-i)
+      case ConstantL(n) => ConstantL(-n)
+    }
   }
 
   //  case object Not extends Op {
@@ -100,6 +111,12 @@ object UnaryOp {
   case object Abs extends Op {
     final val id = 5
     def apply(a: Double): Double = rd.abs(a)
+
+    override def apply(a: Constant): Constant = a match {
+      case ConstantD(d) => ConstantD(apply(d))
+      case ConstantI(i) => ConstantI(math.abs(i))
+      case ConstantL(n) => ConstantL(math.abs(n))
+    }
   }
 
   // case object ToFloat     extends Op(  6 )
@@ -122,16 +139,47 @@ object UnaryOp {
   case object Signum extends Op {
     final val id = 11
     def apply(a: Double): Double = math.signum(a)
+
+    override def apply(a: Constant): Constant = a match {
+      case ConstantD(d) => ConstantD(apply(d))
+      case ConstantI(i) => ConstantI(math.signum(i))
+      case ConstantL(n) => ConstantL(math.signum(n))
+    }
   }
+
+  private def mkIntOrLong(n: Long): Constant =
+    if (n >= Int.MinValue && n <= Int.MaxValue)
+      ConstantI(n.toInt)
+    else
+      ConstantL(n)
 
   case object Squared extends Op {
     final val id = 12
     def apply(a: Double): Double = rd.squared(a)
+
+    override def apply(a: Constant): Constant = a match {
+      case ConstantD(d) => ConstantD(apply(d))
+      case ConstantI(i) =>
+        val n = i.toLong * i.toLong
+        if (n >= Int.MinValue && n <= Int.MaxValue)
+          ConstantI(n.toInt)
+        else
+          ConstantL(n)
+      case ConstantL(n) => ConstantL(n * n)
+    }
   }
 
   case object Cubed extends Op {
     final val id = 13
     def apply(a: Double): Double = rd2.cubed(a)
+
+    override def apply(a: Constant): Constant = a match {
+      case ConstantD(d) => ConstantD(apply(d))
+      case ConstantI(i) =>
+        val n = i.toLong * i.toLong * i.toLong
+        mkIntOrLong(n)
+      case ConstantL(n) => ConstantL(n * n * n)
+    }
   }
 
   case object Sqrt extends Op {

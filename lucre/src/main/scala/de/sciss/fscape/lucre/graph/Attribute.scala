@@ -93,27 +93,26 @@ object Attribute {
 final case class Attribute(key: String, default: Option[Attribute.Default], fixed: Int)
   extends GE.Lazy {
 
-  protected def makeUGens(implicit b: Builder): UGenInLike = b match {
-    case ub: UGenGraphBuilder =>
-      // val defChans  = default.fold(-1)(_.size)
-      val res: UGenInLike = ub.requestAttribute(key).fold[UGenInLike] {
-        val d = default.getOrElse(sys.error(s"Missing Attribute $key"))
-        if (fixed < 0) d.expand else d.tabulate(fixed)
-      } { value =>
-        // XXX TODO --- should support double-vector, but we cannot
-        // pattern match against Vec[Double] because of erasure
-        val res0: UGenInLike = value match {
-          case d: Double  => ConstantD(d)
-          case i: Int     => ConstantI(i)
-          case n: Long    => ConstantL(n)
-          case b: Boolean => ConstantI(if (b) 1 else 0)
-          case other      => sys.error(s"Cannot use value $other as Attribute UGen $key")
-        }
-        val sz = res0.outputs.size
-        if (fixed < 0 || fixed == sz) res0 else
-          UGenInGroup(Vector.tabulate(fixed)(idx => res0.outputs(idx % sz)))
+  protected def makeUGens(implicit b: Builder): UGenInLike = {
+    val ub = UGenGraphBuilder.get(b)
+    // val defChans  = default.fold(-1)(_.size)
+    val res: UGenInLike = ub.requestAttribute(key).fold[UGenInLike] {
+      val d = default.getOrElse(sys.error(s"Missing Attribute $key"))
+      if (fixed < 0) d.expand else d.tabulate(fixed)
+    } { value =>
+      // XXX TODO --- should support double-vector, but we cannot
+      // pattern match against Vec[Double] because of erasure
+      val res0: UGenInLike = value match {
+        case d: Double  => ConstantD(d)
+        case i: Int     => ConstantI(i)
+        case n: Long    => ConstantL(n)
+        case b: Boolean => ConstantI(if (b) 1 else 0)
+        case other      => sys.error(s"Cannot use value $other as Attribute UGen $key")
       }
-      res
-    case _ => sys.error("Attribute UGen - out of context expansion")
+      val sz = res0.outputs.size
+      if (fixed < 0 || fixed == sz) res0 else
+        UGenInGroup(Vector.tabulate(fixed)(idx => res0.outputs(idx % sz)))
+    }
+    res
   }
 }
