@@ -37,24 +37,24 @@ object UGenGraph {
   }
 
   // ---- IndexedUGen ----
-  private final class IndexedUGenBuilder(val ugen: UGen /* , var index: Int */, var effective: Boolean) {
+  private[fscape] final class IndexedUGenBuilder(val ugen: UGen /* , var index: Int */, var effective: Boolean) {
     var children      = Array.fill(ugen.numOutputs)(List.empty[IndexedUGenBuilder]) // mutable.Buffer.empty[IndexedUGenBuilder]
     var inputIndices  = List.empty[UGenInIndex]
 
     override def toString = s"Idx($ugen, $effective) : richInputs = $inputIndices"
   }
 
-  private trait UGenInIndex {
+  private[fscape] trait UGenInIndex {
     def makeEffective(): Int
   }
 
-  private final class ConstantIndex(val peer: Constant) extends UGenInIndex {
+  private[fscape] final class ConstantIndex(val peer: Constant) extends UGenInIndex {
     def makeEffective() = 0
 
     override def toString = peer.toString
   }
 
-  private final class UGenProxyIndex(val iu: IndexedUGenBuilder, val outIdx: Int) extends UGenInIndex {
+  private[fscape] final class UGenProxyIndex(val iu: IndexedUGenBuilder, val outIdx: Int) extends UGenInIndex {
     def makeEffective(): Int = {
       if (!iu.effective) {
         iu.effective = true
@@ -67,7 +67,15 @@ object UGenGraph {
     override def toString = s"$iu[$outIdx]"
   }
 
-  private final class BuilderImpl(implicit ctrl: stream.Control) extends Builder {
+  private final class BuilderImpl(implicit protected val ctrl: stream.Control) extends BuilderLike
+
+  private[fscape] trait BuilderLike extends Builder {
+    // ---- abstract ----
+
+    implicit protected def ctrl: stream.Control
+
+    // ---- impl ----
+
     private[this] var ugens     = Vector.empty[UGen]
     // private[this] val ugenSet   = mutable.Set.empty[UGen]
     private[this] var sourceMap = Map.empty[AnyRef, Any]

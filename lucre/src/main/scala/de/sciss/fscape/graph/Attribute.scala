@@ -40,9 +40,13 @@ object Attribute {
     def numChannels: Int
     // def tabulate(n: Int): Vec[Float]
     def tabulate(n: Int)(implicit b: UGenGraph.Builder): UGenInLike
+
+    def expand: UGenInLike
   }
   final case class Scalar(const: Constant) extends Default {
     def numChannels = 1
+
+    def expand: UGenInLike = const
 
     def tabulate(n: Int)(implicit b: UGenGraph.Builder): UGenInLike = {
       val exp = const.expand
@@ -55,6 +59,8 @@ object Attribute {
 
   final case class Vector(values: Vec[Constant]) extends Default {
     def numChannels: Int = values.size
+
+    def expand: UGenInLike = UGenInGroup(values)
 
     def tabulate(n: Int)(implicit b: UGenGraph.Builder): UGenInLike = {
       val exp   = values.map(_.expand)
@@ -85,22 +91,27 @@ object Attribute {
 final case class Attribute(key: String, default: Option[Attribute.Default], fixed: Int)
   extends GE.Lazy {
 
-  protected def makeUGens(implicit b: Builder): UGenInLike = {
-    ???
-//    val b         = UGenGraphBuilder.get
-//    val defChans  = default.fold(-1)(_.size)
-//    val inValue   = b.requestInput(Input.Scalar(
-//      name                = key,
-//      requiredNumChannels = fixed,
-//      defaultNumChannels  = defChans))
-//    val numCh   = inValue.numChannels
-//    val ctlName = Attribute.controlName(key)
-//    val values  = default.fold(Vector.fill(numCh)(0f))(df => Vector.tabulate(numCh)(idx => df(idx % defChans)))
-//    val nameOpt = Some(ctlName)
-//    val ctl     = if (rate == audio)
-//      AudioControlProxy(values, nameOpt)
-//    else
-//      ControlProxy(rate, values, nameOpt)
-//    ctl.expand
+  protected def makeUGens(implicit b: Builder): UGenInLike = b match {
+    case ub: LucreUGenGraphBuilder =>
+      // val defChans  = default.fold(-1)(_.size)
+      val res: UGenInLike = ub.requestAttribute(key).fold[UGenInLike] {
+        val d = default.getOrElse(sys.error(s"Missing Attribute $key"))
+        if (fixed < 0) d.expand else d.tabulate(fixed)
+      } { value =>
+        // XXX TODO --- should support double-vector, but we cannot
+        // pattern match against Vec[Double] because of erasure
+        val res0: UGenInLike = value match {
+          case d: Double  => ConstantD(d)
+          case i: Int     => ConstantI(i)
+          case n: Long    => ConstantL(n)
+          case b: Boolean => ConstantI(if (b) 1 else 0)
+          case other      => sys.error(s"Cannot use value $other as Attribute UGen $key")
+        }
+        val sz = res0.outputs.size
+        if (fixed < 0 || fixed == sz) res0 else
+          UGenInGroup(Vector.tabulate(fixed)(idx => res0.outputs(idx % sz)))
+      }
+      res
+    case _ => sys.error("Attribute UGen - out of context expansion")
   }
 }
