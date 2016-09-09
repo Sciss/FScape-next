@@ -122,11 +122,21 @@ object Control {
 
   implicit def fromBuilder(implicit b: Builder): Control = b.control
 
-  private final class Impl(val config: Config) extends Control {
+  private final class Impl(val config: Config) extends AbstractImpl {
+    protected def expand(graph: Graph): UGenGraph = UGenGraph.build(graph)(this)
+  }
+
+  private[fscape] trait AbstractImpl extends Control {
+    // ---- abstract ----
+
+    protected def expand(graph: Graph): UGenGraph
+
+    // ---- impl ----
+
     override def toString = s"Control@${hashCode().toHexString}"
 
-    def blockSize     : Int = config.blockSize
-    def nodeBufferSize: Int = config.nodeBufferSize
+    final def blockSize     : Int = config.blockSize
+    final def nodeBufferSize: Int = config.nodeBufferSize
 
     private[this] val queueD  = new ConcurrentLinkedQueue[BufD]
     private[this] val queueI  = new ConcurrentLinkedQueue[BufI]
@@ -134,19 +144,19 @@ object Control {
     private[this] var leaves  = List.empty[Leaf]
     private[this] val sync    = new AnyRef
 
-    def debugDotGraph(): Unit = akka.stream.sciss.Util.debugDotGraph()(config.materializer)
+    final def debugDotGraph(): Unit = akka.stream.sciss.Util.debugDotGraph()(config.materializer)
 
-    def run(graph: Graph): UGenGraph = {
-      val ugens = graph.expand(this)
+    final def run(graph: Graph): UGenGraph = {
+      val ugens = expand(graph)
       ugens.runnable.run()(config.materializer)
       ugens
     }
 
     private[this] val metaRand = new Random(config.seed)
 
-    def mkRandom(): Random = sync.synchronized(new Random(metaRand.nextLong()))
+    final def mkRandom(): Random = sync.synchronized(new Random(metaRand.nextLong()))
 
-    def borrowBufD(): BufD = {
+    final def borrowBufD(): BufD = {
       val res0 = queueD.poll()
       val res  = if (res0 == null) BufD.alloc(blockSize) else {
         res0.acquire()
@@ -158,13 +168,13 @@ object Control {
       res
     }
 
-    def returnBufD(buf: BufD): Unit = {
+    final def returnBufD(buf: BufD): Unit = {
       require(buf.allocCount() == 0)
       // println(s"control: ${buf.hashCode.toHexString} - ${buf.buf.toVector.hashCode.toHexString}")
       queueD.offer(buf) // XXX TODO -- limit size?
     }
 
-    def borrowBufI(): BufI = {
+    final def borrowBufI(): BufI = {
       val res0 = queueI.poll()
       if (res0 == null) BufI.alloc(blockSize) else {
         res0.acquire()
@@ -173,12 +183,12 @@ object Control {
       }
     }
 
-    def returnBufI(buf: BufI): Unit = {
+    final def returnBufI(buf: BufI): Unit = {
       require(buf.allocCount() == 0)
       queueI.offer(buf) // XXX TODO -- limit size?
     }
 
-    def borrowBufL(): BufL = {
+    final def borrowBufL(): BufL = {
       val res0 = queueL.poll()
       if (res0 == null) BufL.alloc(blockSize) else {
         res0.acquire()
@@ -187,24 +197,24 @@ object Control {
       }
     }
 
-    def returnBufL(buf: BufL): Unit = {
+    final def returnBufL(buf: BufL): Unit = {
       require(buf.allocCount() == 0)
       queueL.offer(buf) // XXX TODO -- limit size?
     }
 
-    def addLeaf(l: Leaf): Unit = sync.synchronized(leaves ::= l)
+    final def addLeaf(l: Leaf): Unit = sync.synchronized(leaves ::= l)
 
-    def status: Future[Unit] = {
+    final def status: Future[Unit] = {
       import config.executionContext
       val seq = leaves.map(_.result)
       Future.fold[Any, Unit](seq)(())((_, _) => ())  // is there a simpler way to write this?
     }
 
-    def cancel(): Unit = leaves.foreach(_.cancel())
+    final def cancel(): Unit = leaves.foreach(_.cancel())
 
-    def stats = Stats(numBufD = queueD.size(), numBufI = queueI.size())
+    final def stats = Stats(numBufD = queueD.size(), numBufI = queueI.size())
 
-    def createTempFile(): File = File.createTemp()
+    final def createTempFile(): File = File.createTemp()
   }
 
   final case class Stats(numBufD: Int, numBufI: Int)

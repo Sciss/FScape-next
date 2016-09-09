@@ -19,7 +19,7 @@ import de.sciss.fscape.FScape.Rendering.State
 import de.sciss.lucre.event.Targets
 import de.sciss.lucre.event.impl.ObservableImpl
 import de.sciss.lucre.stm.impl.ObjSerializer
-import de.sciss.lucre.stm.{Copy, Elem, NoSys, Obj, Sys, TxnLike}
+import de.sciss.lucre.stm.{Copy, Disposable, Elem, NoSys, Obj, Sys, TxnLike}
 import de.sciss.lucre.{stm, event => evt}
 import de.sciss.serial.{DataInput, DataOutput, Serializer}
 
@@ -49,11 +49,24 @@ object FScapeImpl {
     new Read(in, access, targets)
   }
 
-  private final class RenderingImpl[S <: Sys[S]](ctl: stream.Control, graph: Graph)(implicit cursor: stm.Cursor[S])
+//  private final class ControlImpl[S <: Sys[S]](f: FScape[S], tx0: S#Tx, val config: stream.Control.Config)
+//    extends stream.Control.AbstractImpl {
+//
+//    protected def expand(graph: Graph): UGenGraph = LucreUGenGraphBuilder.build(f, graph)(tx0, this)
+//  }
+
+  private final class RenderingImpl[S <: Sys[S]](config: stream.Control.Config)(implicit cursor: stm.Cursor[S])
     extends Rendering[S] with ObservableImpl[S, Rendering.State] {
 
-    private[this] val _state    = Ref[Rendering.State](Rendering.Progress(0.0))
-    private[this] val _disposed = Ref(false)
+    private[this] val _state        = Ref[Rendering.State](Rendering.Progress(0.0))
+    private[this] val _disposed     = Ref(false)
+    implicit private[this] val ctl  = stream.Control(config)
+
+    def reactNow(fun: (S#Tx) => (State) => Unit)(implicit tx: S#Tx): Disposable[S#Tx] = {
+      val res = react(fun)
+      fun(tx)(state)
+      res
+    }
 
     private def completeWith(t: Try[Unit]): Unit = if (!_disposed.single.get)
       cursor.step { implicit tx =>
@@ -64,19 +77,26 @@ object FScapeImpl {
         }
       }
 
-    def start()(implicit tx: S#Tx): Unit =
-      tx.afterCommit {
-        try {
-          ctl.run(graph)
-          import ctl.config.executionContext
-          ctl.status.andThen {
-            case x => completeWith(x)
+    def start(f: FScape[S], graph: Graph)(implicit tx: S#Tx): Unit = {
+      try {
+        val ugens = LucreUGenGraphBuilder.build(f, graph)
+        tx.afterCommit {
+          try {
+            ugens.runnable.run()(config.materializer)
+            import ctl.config.executionContext
+            ctl.status.andThen {
+              case x => completeWith(x)
+            }
+          } catch {
+            case NonFatal(ex) =>
+              completeWith(Failure(ex))
           }
-        } catch {
-          case NonFatal(ex) =>
-            completeWith(Failure(ex))
         }
+      } catch {
+        case NonFatal(ex) =>
+          state = Rendering.Failure(ex)
       }
+    }
 
     def state(implicit tx: S#Tx): State = {
       import TxnLike.peer
@@ -158,10 +178,9 @@ object FScapeImpl {
     // --- rendering ---
 
     final def run(config: stream.Control.Config)(implicit tx: S#Tx, cursor: stm.Cursor[S]): Rendering[S] = {
-      val g   = graph().value
-      val ctl = stream.Control(config)
-      val r   = new RenderingImpl[S](ctl, g)
-      r.start()
+      val g = graph().value
+      val r = new RenderingImpl[S](config)
+      r.start(this, g)
       r
     }
   }

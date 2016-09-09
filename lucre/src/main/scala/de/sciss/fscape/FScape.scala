@@ -60,15 +60,23 @@ object FScape extends Obj.Type {
   // ----
 
   object Rendering {
-    sealed trait State
-    case object Success extends State
+    sealed trait State {
+      def isComplete: Boolean
+    }
+    case object Success extends State {
+      def isComplete = true
+    }
     /** Rendering either failed or was aborted.
       * In the case of abortion, the throwable is
       * of type `Cancelled`.
       */
-    final case class Failure (ex : Throwable) extends State
+    final case class Failure (ex : Throwable) extends State {
+      def isComplete = true
+    }
     final case class Progress(amount: Double) extends State {
       override def toString = s"$productPrefix($toInt%)"
+
+      def isComplete = false
 
       /** Returns an integer progress percentage between 0 and 100 */
       def toInt = (amount * 100).toInt
@@ -79,6 +87,9 @@ object FScape extends Obj.Type {
   }
   trait Rendering[S <: Sys[S]] extends Observable[S#Tx, Rendering.State] with Disposable[S#Tx] {
     def state(implicit tx: S#Tx): Rendering.State
+
+    /** Like `react` but invokes the function immediately with the current state. */
+    def reactNow(fun: S#Tx => Rendering.State => Unit)(implicit tx: S#Tx): Disposable[S#Tx]
 
     def cancel()(implicit tx: S#Tx): Unit
   }
