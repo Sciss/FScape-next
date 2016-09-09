@@ -14,10 +14,9 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.Attributes
-import akka.stream.stage.InHandler
+import akka.stream.stage.{GraphStageLogic, InHandler}
 import de.sciss.file._
-import de.sciss.fscape.stream.impl.{BlockingGraphStage, StageLogicImpl, UniformSinkShape}
+import de.sciss.fscape.stream.impl.{BlockingGraphStage, LeafStage, StageLogicImpl, UniformSinkShape}
 import de.sciss.synth.io
 import de.sciss.synth.io.AudioFileSpec
 
@@ -40,15 +39,16 @@ object AudioFileOut {
   private type Shape = UniformSinkShape[BufD]
 
   private final class Stage(f: File, spec: io.AudioFileSpec)(implicit protected val ctrl: Control)
-    extends BlockingGraphStage[Shape](s"$name(${f.name})") {
+    extends BlockingGraphStage[Shape](s"$name(${f.name})") with LeafStage {
 
     override val shape = UniformSinkShape[BufD](Vector.tabulate(spec.numChannels)(ch => InD(s"$name.in$ch")))
 
-    def createLogic(attr: Attributes) = new Logic(shape, f, spec)
+    protected def createLeaf(): GraphStageLogic with Leaf =
+      new Logic(shape, f, spec)
   }
 
   private final class Logic(shape: Shape, f: File, spec: io.AudioFileSpec)(implicit ctrl: Control)
-    extends StageLogicImpl(s"$name(${f.name})", shape) with InHandler { logic =>
+    extends StageLogicImpl(s"$name(${f.name})", shape) with InHandler with Leaf { logic =>
 
     private[this] var af      : io.AudioFile = _
     private[this] var buf     : io.Frames = _
@@ -57,21 +57,24 @@ object AudioFileOut {
     private[this] val numChannels   = spec.numChannels
     private[this] val bufIns        = new Array[BufD](spec.numChannels)
 
-    private /* [this] */ val result = Promise[Long]()
+    private /* [this] */ val resultP = Promise[Long]()
 
     shape.inlets.foreach(setHandler(_, this))
 
+    // ---- Leaf
+
+    private[this] val asyncCancel = getAsyncCallback[Unit] { _ =>
+      val ex = Cancelled()
+      if (resultP.tryFailure(ex)) failStage(ex)
+    }
+
+    def result: Future[Any] = resultP.future
+
+    def cancel(): Unit = asyncCancel.invoke(())
+
+    // ---- StageLogic
+
     override def preStart(): Unit = {
-      val asyncCancel = getAsyncCallback[Unit] { _ =>
-        val ex = Cancelled()
-        if (result.tryFailure(ex)) failStage(ex)
-      }
-      ctrl.addLeaf(new Leaf {
-        def result: Future[Any] = logic.result.future
-
-        def cancel(): Unit = asyncCancel.invoke(())
-      })
-
       logStream(s"$this - preStart()")
       af = io.AudioFile.openWrite(f, spec)
       shape.inlets.foreach(pull)
@@ -87,9 +90,9 @@ object AudioFileOut {
       }
       try {
         af.close()
-        result.trySuccess(af.numFrames)
+        resultP.trySuccess(af.numFrames)
       } catch {
-        case NonFatal(ex) => result.tryFailure(ex)
+        case NonFatal(ex) => resultP.tryFailure(ex)
       }
     }
 
@@ -130,7 +133,7 @@ object AudioFileOut {
         af.write(buf, 0, chunk)
       } catch {
         case NonFatal(ex) =>
-          result.failure(ex)
+          resultP.failure(ex)
           failStage(ex)
       } finally {
         ch = 0
@@ -148,7 +151,7 @@ object AudioFileOut {
     }
 
     override def onUpstreamFailure(ex: Throwable): Unit = {
-      result.failure(ex)
+      resultP.failure(ex)
       super.onUpstreamFailure(ex)
     }
   }

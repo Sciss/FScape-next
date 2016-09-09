@@ -33,7 +33,7 @@ import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal
 
 /** Common building block for `ImageFileOut` and `ImageFileSeqOut` */
-trait ImageFileOutImpl[S <: Shape] extends InHandler {
+trait ImageFileOutImpl[S <: Shape] extends InHandler with Leaf {
   logic: StageLogicImpl[S] =>
 
   // ---- abstract ----
@@ -54,7 +54,7 @@ trait ImageFileOutImpl[S <: Shape] extends InHandler {
   private[this] var imagesWritten = 0
   private[this] var pushed        = 0
 
-  private /* [this] */ val result = Promise[Long]()
+  private /* [this] */ val resultP = Promise[Long]()
 
   private[this] val (dataType, gain) = spec.sampleFormat match {
     case SampleFormat.Int8  => DataBuffer.TYPE_BYTE   ->   255.0
@@ -92,6 +92,19 @@ trait ImageFileOutImpl[S <: Shape] extends InHandler {
     it.next()
   }
 
+  // ---- Leaf
+
+  private[this] val asyncCancel = getAsyncCallback[Unit] { _ =>
+    val ex = Cancelled()
+    if (resultP.tryFailure(ex)) failStage(ex)
+  }
+
+  def result: Future[Any] = resultP.future
+
+  def cancel(): Unit = asyncCancel.invoke(())
+
+  // ---- StageLogic and handlers
+
   override def onPush(): Unit = {
     pushed += 1
     if (pushed == numChannels) {
@@ -111,18 +124,7 @@ trait ImageFileOutImpl[S <: Shape] extends InHandler {
 
 
   override def preStart(): Unit = {
-    val asyncCancel = getAsyncCallback[Unit] { _ =>
-      val ex = Cancelled()
-      if (result.tryFailure(ex)) failStage(ex)
-    }
-    ctrl.addLeaf(new Leaf {
-      def result: Future[Any] = logic.result.future
-
-      def cancel(): Unit = asyncCancel.invoke(())
-    })
-
     logStream(s"$this - preStart()")
-
     shape.inlets.foreach(pull(_))
   }
 
@@ -136,7 +138,7 @@ trait ImageFileOutImpl[S <: Shape] extends InHandler {
     }
     freeInputBuffers()
     writer.dispose()
-    result.trySuccess(numFrames.toLong * imagesWritten)
+    resultP.trySuccess(numFrames.toLong * imagesWritten)
   }
 
   protected final def closeImage(): Unit = if (writer.getOutput != null) {
@@ -145,7 +147,7 @@ trait ImageFileOutImpl[S <: Shape] extends InHandler {
       imagesWritten += 1
     } catch {
       case NonFatal(ex) =>
-        result.tryFailure(ex)
+        resultP.tryFailure(ex)
         throw ex
     } finally {
       writer.reset()
@@ -253,7 +255,7 @@ trait ImageFileOutImpl[S <: Shape] extends InHandler {
   }
 
   override def onUpstreamFailure(ex: Throwable): Unit = {
-    result.failure(ex)
+    resultP.failure(ex)
     super.onUpstreamFailure(ex)
   }
 }

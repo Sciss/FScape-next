@@ -82,9 +82,10 @@ object FScapeImpl {
         val ugens = LucreUGenGraphBuilder.build(f, graph)
         tx.afterCommit {
           try {
-            ugens.runnable.run()(config.materializer)
+            ctl.runExpanded(ugens)
             import ctl.config.executionContext
-            ctl.status.andThen {
+            val fut = ctl.status
+            fut.andThen {
               case x => completeWith(x)
             }
           } catch {

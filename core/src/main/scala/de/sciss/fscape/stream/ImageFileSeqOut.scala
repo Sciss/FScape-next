@@ -14,11 +14,10 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.Attributes
-import akka.stream.stage.InHandler
+import akka.stream.stage.{GraphStageLogic, InHandler}
 import de.sciss.file._
 import de.sciss.fscape.graph.ImageFile.Spec
-import de.sciss.fscape.stream.impl.{BlockingGraphStage, ImageFileOutImpl, In1UniformSinkShape, StageLogicImpl}
+import de.sciss.fscape.stream.impl.{BlockingGraphStage, ImageFileOutImpl, In1UniformSinkShape, LeafStage, StageLogicImpl}
 
 import scala.collection.immutable.{IndexedSeq => Vec, Seq => ISeq}
 
@@ -38,14 +37,15 @@ object ImageFileSeqOut {
   private type Shape = In1UniformSinkShape[BufI, BufD]
 
   private final class Stage(template: File, spec: Spec)(implicit protected val ctrl: Control)
-    extends BlockingGraphStage[Shape](s"$name(${template.name})") {
+    extends BlockingGraphStage[Shape](s"$name(${template.name})") with LeafStage {
 
     override val shape = In1UniformSinkShape[BufI, BufD](
       InI(s"$name.indices"),
       Vector.tabulate(spec.numChannels)(ch => InD(s"$name.in$ch"))
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, template, spec)
+    protected def createLeaf(): GraphStageLogic with Leaf =
+      new Logic(shape, template, spec)
   }
 
   private final class Logic(shape: Shape, template: File, val spec: Spec)(implicit ctrl: Control)

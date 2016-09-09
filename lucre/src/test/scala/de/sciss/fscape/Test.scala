@@ -21,10 +21,10 @@ object Test extends App {
       import graph._
       import Ops._
       val freq  = "freq".attr
-      val dur   = "dur" .attr(8.0)
+      val dur   = "dur" .attr(10.0)
       val sr    = 44100.0
       val durF  = dur * sr
-      val sig0  = SinOsc(sr / freq) * 0.5
+      val sig0  = SinOsc(freq / sr) * 0.5
       val sig   = sig0.take(durF)
       freq.poll(0, "started")
       AudioFileOut(file = tmpF, spec = AudioFileSpec(numChannels = 1, sampleRate = sr), in = sig)
@@ -41,10 +41,14 @@ object Test extends App {
       println(s"Rendering: $state")
       state match {
         case Rendering.Failure(Cancelled()) =>
-        case Rendering.Failure(ex) => ex.printStackTrace()
+          sys.exit()
+        case Rendering.Failure(ex) =>
+          ex.printStackTrace()
+          sys.exit(1)
         case Rendering.Success =>
           val spec = AudioFile.readSpec(tmpF)
           println(spec)
+          sys.exit()
         case _ =>
       }
     }

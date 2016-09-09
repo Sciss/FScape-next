@@ -148,8 +148,15 @@ object Control {
 
     final def run(graph: Graph): UGenGraph = {
       val ugens = expand(graph)
-      ugens.runnable.run()(config.materializer)
+      runExpanded(ugens)
       ugens
+    }
+
+    final def runExpanded(ugens: UGenGraph): Unit = {
+      val r = ugens.runnable
+//      leaves.begin()
+//      r.addAttributes(Attributes(leaves))
+      r.run()(config.materializer)
     }
 
     private[this] val metaRand = new Random(config.seed)
@@ -202,15 +209,19 @@ object Control {
       queueL.offer(buf) // XXX TODO -- limit size?
     }
 
-    final def addLeaf(l: Leaf): Unit = sync.synchronized(leaves ::= l)
+    final def addLeaf(l: Leaf): Unit = leaves ::= l
 
     final def status: Future[Unit] = {
       import config.executionContext
-      val seq = leaves.map(_.result)
-      Future.fold[Any, Unit](seq)(())((_, _) => ())  // is there a simpler way to write this?
+      val ls = leaves // .result()
+      val fs = ls.map(_.result)
+      Future.fold[Any, Unit](fs)(())((_, _) => ())  // is there a simpler way to write this?
     }
 
-    final def cancel(): Unit = leaves.foreach(_.cancel())
+    final def cancel(): Unit = {
+      val ls = leaves // .result()
+      ls.foreach(_.cancel())
+    }
 
     final def stats = Stats(numBufD = queueD.size(), numBufI = queueI.size())
 
@@ -280,7 +291,11 @@ trait Control {
 
   def debugDotGraph(): Unit
 
+  /** Expands with default builder and then runs the graph. */
   def run(graph: Graph): UGenGraph
+
+  /** Runs an already expanded graph. */
+  def runExpanded(ugens: UGenGraph): Unit
 
   def mkRandom(): Random
 }
