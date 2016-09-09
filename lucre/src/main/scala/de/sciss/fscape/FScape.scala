@@ -14,8 +14,9 @@
 package de.sciss.fscape
 
 import de.sciss.fscape.impl.{FScapeImpl => Impl}
-import de.sciss.lucre.event.Publisher
-import de.sciss.lucre.stm.{Obj, Sys}
+import de.sciss.lucre.event.{Observable, Publisher}
+import de.sciss.lucre.stm
+import de.sciss.lucre.stm.{Disposable, Obj, Sys}
 import de.sciss.model
 import de.sciss.serial.{DataInput, Serializer}
 
@@ -55,6 +56,32 @@ object FScape extends Obj.Type {
 
   override def readIdentifiedObj[S <: Sys[S]](in: DataInput, access: S#Acc)(implicit tx: S#Tx): Obj[S] =
     Impl.readIdentifiedObj(in, access)
+
+  // ----
+
+  object Rendering {
+    sealed trait State
+    case object Success extends State
+    /** Rendering either failed or was aborted.
+      * In the case of abortion, the throwable is
+      * of type `Cancelled`.
+      */
+    final case class Failure (ex : Throwable) extends State
+    final case class Progress(amount: Double) extends State {
+      override def toString = s"$productPrefix($toInt%)"
+
+      /** Returns an integer progress percentage between 0 and 100 */
+      def toInt = (amount * 100).toInt
+    }
+
+    val  Cancelled = stream.Cancelled
+    type Cancelled = stream.Cancelled
+  }
+  trait Rendering[S <: Sys[S]] extends Observable[S#Tx, Rendering.State] with Disposable[S#Tx] {
+    def state(implicit tx: S#Tx): Rendering.State
+
+    def cancel()(implicit tx: S#Tx): Unit
+  }
 }
 
 /** The `FScape` trait is the basic entity representing a sound process. */
@@ -62,4 +89,6 @@ trait FScape[S <: Sys[S]] extends Obj[S] with Publisher[S, FScape.Update[S]] {
   /** The variable synth graph function of the process. */
   def graph: GraphObj.Var[S]
 
+  def run(config: stream.Control.Config = stream.Control.Config())
+         (implicit tx: S#Tx, cursor: stm.Cursor[S]): FScape.Rendering[S]
 }

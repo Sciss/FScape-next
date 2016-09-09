@@ -14,13 +14,19 @@
 package de.sciss.fscape
 package impl
 
+import de.sciss.fscape.FScape.Rendering
+import de.sciss.fscape.FScape.Rendering.State
 import de.sciss.lucre.event.Targets
+import de.sciss.lucre.event.impl.ObservableImpl
 import de.sciss.lucre.stm.impl.ObjSerializer
-import de.sciss.lucre.stm.{Copy, Elem, NoSys, Obj, Sys}
-import de.sciss.lucre.{event => evt}
+import de.sciss.lucre.stm.{Copy, Elem, NoSys, Obj, Sys, TxnLike}
+import de.sciss.lucre.{stm, event => evt}
 import de.sciss.serial.{DataInput, DataOutput, Serializer}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
+import scala.concurrent.stm.Ref
+import scala.util.control.NonFatal
+import scala.util.{Failure, Success, Try}
 
 object FScapeImpl {
   private final val SER_VERSION = 0x4673  // "Fs"
@@ -41,6 +47,54 @@ object FScapeImpl {
   def readIdentifiedObj[S <: Sys[S]](in: DataInput, access: S#Acc)(implicit tx: S#Tx): FScape[S] = {
     val targets = Targets.read(in, access)
     new Read(in, access, targets)
+  }
+
+  private final class RenderingImpl[S <: Sys[S]](ctl: stream.Control, graph: Graph)(implicit cursor: stm.Cursor[S])
+    extends Rendering[S] with ObservableImpl[S, Rendering.State] {
+
+    private[this] val _state    = Ref[Rendering.State](Rendering.Progress(0.0))
+    private[this] val _disposed = Ref(false)
+
+    private def completeWith(t: Try[Unit]): Unit = if (!_disposed.single.get)
+      cursor.step { implicit tx =>
+        import TxnLike.peer
+        if (!_disposed()) t match {
+          case Success(())          => state = Rendering.Success
+          case Failure(ex)          => state = Rendering.Failure(ex)
+        }
+      }
+
+    def start()(implicit tx: S#Tx): Unit =
+      tx.afterCommit {
+        try {
+          ctl.run(graph)
+          import ctl.config.executionContext
+          ctl.status.andThen {
+            case x => completeWith(x)
+          }
+        } catch {
+          case NonFatal(ex) =>
+            completeWith(Failure(ex))
+        }
+      }
+
+    def state(implicit tx: S#Tx): State = {
+      import TxnLike.peer
+      _state()
+    }
+
+    protected def state_=(value: Rendering.State)(implicit tx: S#Tx): Unit = {
+      import TxnLike.peer
+      val old = _state.swap(value)
+      if (old != value) fire(value)
+    }
+
+    def cancel()(implicit tx: S#Tx): Unit =
+      tx.afterCommit(ctl.cancel())
+
+    def dispose()(implicit tx: S#Tx): Unit = {
+      cancel()
+    }
   }
 
   private sealed trait Impl[S <: Sys[S]]
@@ -100,6 +154,16 @@ object FScapeImpl {
     }
 
     override def toString: String = s"FScape$id"
+
+    // --- rendering ---
+
+    final def run(config: stream.Control.Config)(implicit tx: S#Tx, cursor: stm.Cursor[S]): Rendering[S] = {
+      val g   = graph().value
+      val ctl = stream.Control(config)
+      val r   = new RenderingImpl[S](ctl, g)
+      r.start()
+      r
+    }
   }
 
   private final class New[S <: Sys[S]](implicit tx0: S#Tx) extends Impl[S] {

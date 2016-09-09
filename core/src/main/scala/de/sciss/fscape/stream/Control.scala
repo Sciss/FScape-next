@@ -266,7 +266,7 @@ trait Control {
 
   def stats: Control.Stats
 
-  def config: Control.Config
+  val config: Control.Config
 
   def debugDotGraph(): Unit
 
