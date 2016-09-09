@@ -11,7 +11,8 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape.graph
+package de.sciss.fscape
+package graph
 
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 import de.sciss.fscape.{GE, UGen, UGenGraph, UGenIn, UGenInLike, UGenSource, stream}

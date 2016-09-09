@@ -14,7 +14,6 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.Attributes
 import akka.stream.stage.GraphStageLogic
 import de.sciss.file._
 import de.sciss.fscape.graph.ImageFile.Spec

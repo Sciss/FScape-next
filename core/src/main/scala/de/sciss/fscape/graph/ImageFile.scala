@@ -11,7 +11,8 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape.graph
+package de.sciss.fscape
+package graph
 
 object ImageFile {
   object Type {

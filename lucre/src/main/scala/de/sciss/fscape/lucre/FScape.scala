@@ -12,8 +12,9 @@
  */
 
 package de.sciss.fscape
+package lucre
 
-import de.sciss.fscape.impl.{FScapeImpl => Impl}
+import de.sciss.fscape.lucre.impl.{FScapeImpl => Impl}
 import de.sciss.lucre.event.{Observable, Publisher}
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Disposable, Obj, Sys}

@@ -13,6 +13,7 @@
 
 package de.sciss.fscape
 
+import de.sciss.fscape.graph.impl.GESeq
 import de.sciss.fscape.graph.{ConstantD, ConstantI}
 
 import scala.language.implicitConversions
@@ -26,7 +27,7 @@ object GE {
 
   implicit def fromSeq(xs: scala.Seq[GE]): GE = xs match {
     case scala.Seq(x) => x
-    case _            => graph.impl.GESeq(xs.toIndexedSeq)
+    case _            => GESeq(xs.toIndexedSeq)
   }
 }
 trait GE extends Product {

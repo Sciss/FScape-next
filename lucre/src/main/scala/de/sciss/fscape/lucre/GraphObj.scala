@@ -12,15 +12,15 @@
  */
 
 package de.sciss.fscape
+package lucre
 
 import java.util
 
-import de.sciss.fscape
 import de.sciss.fscape.graph.{Constant, ConstantD, ConstantI, ConstantL}
 import de.sciss.lucre.event.{Dummy, Event, EventLike, Targets}
+import de.sciss.lucre.expr
 import de.sciss.lucre.expr.Expr
 import de.sciss.lucre.stm.{Copy, Elem, Obj, Sys}
-import de.sciss.lucre.expr
 import de.sciss.model.Change
 import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer}
 
@@ -29,8 +29,6 @@ import scala.util.control.NonFatal
 
 object GraphObj extends expr.impl.ExprTypeImpl[Graph, GraphObj] {
   final val typeID = 23
-
-  import fscape.{GraphObj => Repr}
 
   protected def mkConst[S <: Sys[S]](id: S#ID, value: A)(implicit tx: S#Tx): Const[S] =
     new _Const[S](id, value)
@@ -43,10 +41,10 @@ object GraphObj extends expr.impl.ExprTypeImpl[Graph, GraphObj] {
   }
 
   private final class _Const[S <: Sys[S]](val id: S#ID, val constValue: A)
-    extends ConstImpl[S] with Repr[S]
+    extends ConstImpl[S] with GraphObj[S]
 
   private final class _Var[S <: Sys[S]](val targets: Targets[S], val ref: S#Var[Ex[S]])
-    extends VarImpl[S] with Repr[S]
+    extends VarImpl[S] with GraphObj[S]
 
   /** A serializer for synth graphs. */
   object valueSerializer extends ImmutableSerializer[Graph] {

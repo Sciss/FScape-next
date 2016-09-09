@@ -1,7 +1,8 @@
 package de.sciss.fscape
 
 import de.sciss.file._
-import de.sciss.fscape.FScape.Rendering
+import de.sciss.fscape.lucre.FScape
+import de.sciss.fscape.lucre.FScape.Rendering
 import de.sciss.fscape.stream.Cancelled
 import de.sciss.lucre.expr.IntObj
 import de.sciss.lucre.synth.InMemory
@@ -19,7 +20,7 @@ object Test extends App {
     val f = FScape[S]
     val g = Graph {
       import graph._
-      import Ops._
+      import lucre.graph.Ops._
       val freq  = "freq".attr
       val dur   = "dur" .attr(10.0)
       val sr    = 44100.0

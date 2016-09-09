@@ -12,10 +12,11 @@
  */
 
 package de.sciss.fscape
+package lucre
 package impl
 
-import de.sciss.fscape.FScape.Rendering
-import de.sciss.fscape.FScape.Rendering.State
+import de.sciss.fscape.lucre.FScape.Rendering
+import de.sciss.fscape.lucre.FScape.Rendering.State
 import de.sciss.lucre.event.Targets
 import de.sciss.lucre.event.impl.ObservableImpl
 import de.sciss.lucre.stm.impl.ObjSerializer
@@ -52,7 +53,7 @@ object FScapeImpl {
 //  private final class ControlImpl[S <: Sys[S]](f: FScape[S], tx0: S#Tx, val config: stream.Control.Config)
 //    extends stream.Control.AbstractImpl {
 //
-//    protected def expand(graph: Graph): UGenGraph = LucreUGenGraphBuilder.build(f, graph)(tx0, this)
+//    protected def expand(graph: Graph): UGenGraph = UGenGraphBuilder.build(f, graph)(tx0, this)
 //  }
 
   private final class RenderingImpl[S <: Sys[S]](config: stream.Control.Config)(implicit cursor: stm.Cursor[S])
@@ -79,7 +80,7 @@ object FScapeImpl {
 
     def start(f: FScape[S], graph: Graph)(implicit tx: S#Tx): Unit = {
       try {
-        val ugens = LucreUGenGraphBuilder.build(f, graph)
+        val ugens = UGenGraphBuilder.build(f, graph)
         tx.afterCommit {
           try {
             ctl.runExpanded(ugens)

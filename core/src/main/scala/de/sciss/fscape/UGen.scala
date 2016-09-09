@@ -13,6 +13,7 @@
 
 package de.sciss.fscape
 
+import de.sciss.fscape.graph.{UGenInGroup, UGenOutProxy, UGenProxy}
 import de.sciss.fscape.graph.impl.{MultiOutImpl, SingleOutImpl, ZeroOutImpl}
 
 import scala.annotation.switch
@@ -83,7 +84,7 @@ object UGen {
   /** A SingleOutUGen is a UGen which has exactly one output, and
     * hence can directly function as input to another UGen without expansion.
     */
-  trait SingleOut extends graph.UGenProxy with UGen {
+  trait SingleOut extends UGenProxy with UGen {
     final def numOutputs = 1
     final def outputIndex = 0
     final def ugen: UGen = this
@@ -118,11 +119,11 @@ object UGen {
     }
   }
   /** A class for UGens with multiple outputs. */
-  trait MultiOut extends graph.UGenInGroup with UGen {
+  trait MultiOut extends UGenInGroup with UGen {
 
-    final def unwrap(i: Int): UGenInLike = graph.UGenOutProxy(this, i % numOutputs)
+    final def unwrap(i: Int): UGenInLike = UGenOutProxy(this, i % numOutputs)
 
-    def outputs: Vec[UGenIn] = Vector.tabulate(numOutputs)(ch => graph.UGenOutProxy(this, ch))
+    def outputs: Vec[UGenIn] = Vector.tabulate(numOutputs)(ch => UGenOutProxy(this, ch))
 
     def source: UGenSource.MultiOut
 

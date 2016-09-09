@@ -13,7 +13,10 @@
 
 package de.sciss.fscape
 
-import de.sciss.fscape.graph.{BinaryOp, ChannelProxy, ComplexBinaryOp, ComplexUnaryOp, Concat, Constant, Drop, Elastic, Impulse, Metro, Poll, Take, TakeRight, UnaryOp, UnzipWindow}
+import de.sciss.fscape.graph.BinaryOp._
+import de.sciss.fscape.graph.UnaryOp._
+import de.sciss.fscape.graph.{BinaryOp, ChannelProxy, ComplexBinaryOp, ComplexUnaryOp, Concat, Drop, Elastic, Metro, Poll, Take, TakeRight, UnaryOp, UnzipWindow}
+import de.sciss.fscape.graph.Constant
 import de.sciss.optional.Optional
 
 final class GEOps1(val `this`: GE) extends AnyVal { me =>
@@ -26,8 +29,6 @@ final class GEOps1(val `this`: GE) extends AnyVal { me =>
     * @return a monophonic element that represents the given channel of the receiver
     */
   def `\\`(index: Int)      : GE = ChannelProxy(g, index)
-
-  import UnaryOp._
 
   @inline private def unOp(op: UnaryOp.Op): GE = op.make(g)
 
@@ -151,8 +152,6 @@ final class GEOps2(val `this`: GE) extends AnyVal { me =>
     })
   }
 
-  import BinaryOp._
-
   // binary ops
   @inline private def binOp(op: BinaryOp.Op, b: GE): GE = op.make(g, b)
 
@@ -254,9 +253,9 @@ final class GEOps2(val `this`: GE) extends AnyVal { me =>
 final class GEComplexOps(val `this`: GE) extends AnyVal { me =>
   import me.{`this` => g}
 
-  import ComplexUnaryOp._
-
   @inline private def cUnOp(op: ComplexUnaryOp.Op): GE = op.make(g)
+
+  import ComplexUnaryOp._
 
   // unary ops
   def abs       : GE  = cUnOp(Abs        )
@@ -269,9 +268,9 @@ final class GEComplexOps(val `this`: GE) extends AnyVal { me =>
   def log10     : GE  = cUnOp(Log10      )
   def conj      : GE  = cUnOp(Conj       )
 
-  import ComplexBinaryOp._
-
   @inline private def cBinOp(op: ComplexBinaryOp.Op, b: GE): GE = op.make(g, b)
+
+  import ComplexBinaryOp._
 
   // binary ops
   def + (b: GE): GE  = cBinOp(Plus , b)

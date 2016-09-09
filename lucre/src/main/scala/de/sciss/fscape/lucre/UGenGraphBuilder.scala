@@ -1,5 +1,5 @@
 /*
- *  LucreUGenGraphBuilder.scala
+ *  UGenGraphBuilder.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2016 Hanns Holger Rutz. All rights reserved.
@@ -12,11 +12,12 @@
  */
 
 package de.sciss.fscape
+package lucre
 
 import de.sciss.lucre.expr.Expr
 import de.sciss.lucre.stm.Sys
 
-object LucreUGenGraphBuilder {
+object UGenGraphBuilder {
   def build[S <: Sys[S]](f: FScape[S], graph: Graph)(implicit tx: S#Tx, ctrl: stream.Control): UGenGraph = {
     val b = new BuilderImpl(f)
     graph.sources.foreach { source =>
@@ -26,7 +27,7 @@ object LucreUGenGraphBuilder {
   }
 
   private final class BuilderImpl[S <: Sys[S]](f: FScape[S])(implicit tx: S#Tx, protected val ctrl: stream.Control)
-    extends UGenGraph.BuilderLike with LucreUGenGraphBuilder {
+    extends UGenGraph.BuilderLike with UGenGraphBuilder {
 
     def requestAttribute(key: String): Option[Any] =
       f.attr.get(key) collect {
@@ -35,6 +36,6 @@ object LucreUGenGraphBuilder {
       }
   }
 }
-trait LucreUGenGraphBuilder extends UGenGraph.Builder {
+trait UGenGraphBuilder extends UGenGraph.Builder {
   def requestAttribute(key: String): Option[Any]
 }

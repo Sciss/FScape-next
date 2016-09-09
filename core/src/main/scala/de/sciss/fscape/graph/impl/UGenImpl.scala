@@ -11,9 +11,9 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape.graph.impl
-
-import de.sciss.fscape.{UGen, UGenIn, UGenSource}
+package de.sciss.fscape
+package graph
+package impl
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 

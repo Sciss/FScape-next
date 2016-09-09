@@ -11,10 +11,12 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape
-package graph
+package de.sciss.fscape.lucre.graph
 
 import de.sciss.fscape.UGenGraph.Builder
+import de.sciss.fscape.graph.{Constant, ConstantD, ConstantI, ConstantL, UGenInGroup}
+import de.sciss.fscape.lucre.UGenGraphBuilder
+import de.sciss.fscape.{GE, UGenGraph, UGenInLike}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.language.implicitConversions
@@ -92,7 +94,7 @@ final case class Attribute(key: String, default: Option[Attribute.Default], fixe
   extends GE.Lazy {
 
   protected def makeUGens(implicit b: Builder): UGenInLike = b match {
-    case ub: LucreUGenGraphBuilder =>
+    case ub: UGenGraphBuilder =>
       // val defChans  = default.fold(-1)(_.size)
       val res: UGenInLike = ub.requestAttribute(key).fold[UGenInLike] {
         val d = default.getOrElse(sys.error(s"Missing Attribute $key"))

@@ -11,8 +11,7 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape
-package graph
+package de.sciss.fscape.lucre.graph
 
 import scala.language.implicitConversions
 

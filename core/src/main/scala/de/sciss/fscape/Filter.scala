@@ -55,7 +55,7 @@ object Filter {
     }
 
     // apply Kaiser window
-    import graph.GenWindow.Kaiser
+    import de.sciss.fscape.graph.GenWindow.Kaiser
     Kaiser.mul(winSize = halfWinSize * 2, winOff = halfWinSize, buf = impResp, bufOff = 0, len = halfWinSize,
       param = kaiserBeta)
   }
