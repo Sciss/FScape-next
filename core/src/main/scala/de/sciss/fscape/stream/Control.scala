@@ -255,8 +255,8 @@ object Control {
     }
 
     // called during materialization, no sync needed
-    final private[stream] def addNode(n: Node): Unit = nodes += n
-
+    final private[stream] def addNode   (n: Node): Unit = nodes += n
+    // called during run, have to relay using actor
     final private[stream] def removeNode(n: Node): Unit = _actor ! RemoveNode(n)
 
     final def status: Future[Unit] = statusP.future

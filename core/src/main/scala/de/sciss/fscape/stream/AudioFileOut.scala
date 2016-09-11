@@ -14,41 +14,46 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.Attributes
-import akka.stream.stage.InHandler
+import akka.stream.stage.{InHandler, OutHandler}
+import akka.stream.{Attributes, UniformFanInShape}
 import de.sciss.file._
-import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeImpl, UniformSinkShape}
+import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeImpl}
 import de.sciss.synth.io
 import de.sciss.synth.io.AudioFileSpec
 
 import scala.collection.immutable.{Seq => ISeq}
-import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal
 
 object AudioFileOut {
-  def apply(file: File, spec: AudioFileSpec, in: ISeq[OutD])(implicit b: Builder): Unit = {
+  def apply(file: File, spec: AudioFileSpec, in: ISeq[OutD])(implicit b: Builder): OutL = {
     require (spec.numChannels == in.size, s"Channel mismatch (spec has ${spec.numChannels}, in has ${in.size})")
     val sink = new Stage(file, spec)
     val stage = b.add(sink)
-    (in zip stage.inlets).foreach { case (output, input) =>
+    (in zip stage.inSeq).foreach { case (output, input) =>
       b.connect(output, input)
     }
+    stage.out
   }
 
   private final val name = "AudioFileOut"
 
-  private type Shape = UniformSinkShape[BufD]
+//  private type Shape = UniformSinkShape[BufD]
+  private type Shape = UniformFanInShape[BufD, BufL]
 
   private final class Stage(f: File, spec: io.AudioFileSpec)(implicit protected val ctrl: Control)
     extends BlockingGraphStage[Shape](s"$name(${f.name})") {
 
-    override val shape = UniformSinkShape[BufD](Vector.tabulate(spec.numChannels)(ch => InD(s"$name.in$ch")))
+//    override val shape = UniformSinkShape[BufD](Vector.tabulate(spec.numChannels)(ch => InD(s"$name.in$ch")))
+    override val shape = UniformFanInShape[BufD, BufL](
+      OutL(s"$name.out"),
+      Vector.tabulate(spec.numChannels)(ch => InD(s"$name.in$ch")): _*
+    )
 
     def createLogic(attr: Attributes) = new Logic(shape, f, spec)
   }
 
   private final class Logic(shape: Shape, f: File, spec: io.AudioFileSpec)(implicit ctrl: Control)
-    extends NodeImpl(s"$name(${f.name})", shape) with InHandler { logic =>
+    extends NodeImpl(s"$name(${f.name})", shape) with InHandler with OutHandler { logic =>
 
     private[this] var af      : io.AudioFile = _
     private[this] var buf     : io.Frames = _
@@ -58,6 +63,7 @@ object AudioFileOut {
     private[this] val bufIns        = new Array[BufD](spec.numChannels)
 
     shape.inlets.foreach(setHandler(_, this))
+    setHandler(shape.out, this)
 
     // ---- Leaf
 
@@ -75,7 +81,7 @@ object AudioFileOut {
     override def preStart(): Unit = {
       logStream(s"$this - preStart()")
       af = io.AudioFile.openWrite(f, spec)
-      shape.inlets.foreach(pull)
+      shape.inlets.foreach(pull(_))
     }
 
     override protected def stopped(): Unit = {
@@ -94,15 +100,17 @@ object AudioFileOut {
       // }
     }
 
-    override def onPush(): Unit = {
+    def onPush(): Unit = {
       pushed += 1
-      if (pushed == numChannels) {
-        pushed = 0
-        process()
-      }
+      if (pushed == numChannels && isAvailable(shape.out)) process()
     }
 
+    def onPull(): Unit =
+      if (pushed == numChannels) process()
+
     private def process(): Unit = {
+      pushed = 0
+
       var ch = 0
       var chunk = 0
       while (ch < numChannels) {
@@ -115,6 +123,8 @@ object AudioFileOut {
       if (buf == null || buf(0).length < chunk) {
         buf = af.buffer(chunk)
       }
+
+      val pos1 = af.position + 1
 
       ch = 0
       while (ch < numChannels) {
@@ -141,11 +151,23 @@ object AudioFileOut {
         }
       }
 
+      val bufOut  = ctrl.borrowBufL()
+      val arrOut  = bufOut.buf
+      var j = 0
+      while (j < chunk) {
+        arrOut(j) = pos1 + j
+        j += 1
+      }
+      bufOut.size = chunk
+      push(shape.out, bufOut)
+
       ch = 0
       while (ch < numChannels) {
         pull(shape.in(ch))
         ch += 1
       }
+
+
     }
 
 //    override def onUpstreamFailure(ex: Throwable): Unit = {

@@ -74,7 +74,7 @@ object ResampleTest extends App {
   config.useAsync   = false
   config.blockSize  = 960 // 100 // test
   implicit val ctrl = stream.Control(config)
-  ctrl.run(g)
+  ctrl.run(g1)
 
   Swing.onEDT {
     SimpleGUI(ctrl)

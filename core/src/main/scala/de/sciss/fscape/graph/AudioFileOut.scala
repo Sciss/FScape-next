@@ -15,18 +15,28 @@ package de.sciss.fscape
 package graph
 
 import de.sciss.file.File
-import de.sciss.fscape.stream.StreamIn
+import de.sciss.fscape.stream.{StreamIn, StreamOut}
 import de.sciss.synth.io.AudioFileSpec
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-final case class AudioFileOut(file: File, spec: AudioFileSpec, in: GE) extends UGenSource.ZeroOut {
-  protected def makeUGens(implicit b: UGenGraph.Builder): Unit = unwrap(in.expand.outputs)
+/** A UGen that reads in an audio file. The output signal
+  * is the monotonously increasing number of frames written,
+  * which can be used to monitor progress or determine the
+  * end of the writing process. The UGen keeps running until
+  * the `in` signal ends.
+  *
+  * @param file   the file to write to
+  * @param spec   the spec for the audio file, including numbers of channels and sample-rate
+  * @param in     the signal to write.
+  */
+final case class AudioFileOut(file: File, spec: AudioFileSpec, in: GE) extends UGenSource.SingleOut {
+  protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = unwrap(in.expand.outputs)
 
-  protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit =
-    UGen.ZeroOut(this, inputs = args, rest = file, isIndividual = true)
+  protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
+    UGen.SingleOut(this, inputs = args, rest = file, isIndividual = true, hasSideEffect = true)
 
-  private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit = {
+  private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
     stream.AudioFileOut(file = file, spec = spec, in = args.map(_.toDouble))
   }
 }

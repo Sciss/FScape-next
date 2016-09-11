@@ -22,7 +22,6 @@ import de.sciss.synth.io.{AudioFileSpec, AudioFileType, SampleFormat}
 import de.sciss.synth.proc.AudioCue
 
 import scala.annotation.switch
-import scala.collection.immutable.{IndexedSeq => Vec}
 
 object AudioFileOut {
   /** Converts an audio file type to a unique id that can be parsed by the UGen. */
@@ -94,7 +93,7 @@ object AudioFileOut {
   *                     Must be resolvable at init time.
   */
 final case class AudioFileOut(key: String, in: GE, fileType: GE = 0, sampleFormat: GE = 2, sampleRate: GE = 44100.0)
-  extends Lazy.Expander[Unit] {
+  extends GE.Lazy {
 
   import UGenGraphBuilder.{canResolve, resolve}
 
@@ -105,7 +104,7 @@ final case class AudioFileOut(key: String, in: GE, fileType: GE = 0, sampleForma
   canResolve(sampleFormat).left.foreach(fail("sampleFormat", _))
   canResolve(sampleRate  ).left.foreach(fail("sampleRate"  , _))
 
-  protected def makeUGens(implicit b: UGenGraph.Builder): Unit = {
+  protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = {
     val ub = UGenGraphBuilder.get(b)
     val (f, numChannels, specOpt) = ub.requestAttribute(key).fold[(File, Int, Option[AudioFileSpec])] {
       sys.error(s"Missing Attribute $key")
