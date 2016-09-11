@@ -11,11 +11,12 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape.stream.impl
+package de.sciss.fscape
+package stream
+package impl
 
 import akka.stream.Inlet
 import akka.stream.stage.GraphStageLogic
-import de.sciss.fscape.stream.BufLike
 
 // XXX TODO --- we could easily split now between input and output trait
 // and would reduce the number of implementation traits necessary
@@ -23,7 +24,7 @@ trait In6Out3Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <:
 In3 >: Null <: BufLike, In4 >: Null <: BufLike, In5 >: Null <: BufLike, Out0 >: Null <: BufLike, 
 Out1 >: Null <: BufLike, Out2 >: Null <: BufLike]
   extends InOutImpl[In6Out3Shape[In0, In1, In2, In3, In4, In5, Out0, Out1, Out2]] {
-  _: GraphStageLogic =>
+  _: GraphStageLogic with Node =>
 
   // ---- impl ----
 
@@ -60,7 +61,7 @@ Out1 >: Null <: BufLike, Out2 >: Null <: BufLike]
   override def preStart(): Unit =
     shape.inlets.foreach(pull(_))
 
-  override def postStop(): Unit = {
+  override protected def stopped(): Unit = {
     freeInputBuffers()
     freeOutputBuffers()
   }

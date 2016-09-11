@@ -14,9 +14,9 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.stage.{GraphStageLogic, InHandler, OutHandler}
+import akka.stream.stage.{InHandler, OutHandler}
 import akka.stream.{Attributes, FanInShape6, Inlet}
-import de.sciss.fscape.stream.impl.{StageImpl, StageLogicImpl}
+import de.sciss.fscape.stream.impl.{StageImpl, NodeImpl}
 
 import scala.annotation.tailrec
 
@@ -51,13 +51,13 @@ object ResampleOLD {
       out = OutD(s"$name.out"          )
     )
 
-    def createLogic(attr: Attributes): GraphStageLogic = new Logic(shape)
+    def createLogic(attr: Attributes) = new Logic(shape)
   }
 
   private val fltSmpPerCrossing = 4096
 
   private final class Logic(shape: Shape)(implicit ctrl: Control)
-    extends StageLogicImpl(name, shape) {
+    extends NodeImpl(name, shape) {
 
     private[this] var init          = true
     private[this] var factor        = -1.0
@@ -200,7 +200,8 @@ object ResampleOLD {
       pull(sh.in5)
     }
 
-    override def postStop(): Unit = {
+    override protected def stopped(): Unit = {
+      super.stopped()
       winBuf  = null
       fltBuf  = null
       fltBufD = null

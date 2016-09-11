@@ -27,7 +27,7 @@ trait FilterIn10Impl[
     In8 >: Null <: BufLike, In9 >: Null <: BufLike,
     Out >: Null <: BufLike]
   extends Out1LogicImpl[Out, FanInShape10[In0, In1, In2, In3, In4, In5, In6, In7, In8, In9, Out]] {
-  _: GraphStageLogic =>
+  _: GraphStageLogic with Node =>
 
   // ---- impl ----
 
@@ -65,7 +65,7 @@ trait FilterIn10Impl[
   override def preStart(): Unit =
     shape.inlets.foreach(pull(_))
 
-  override def postStop(): Unit = {
+  override protected def stopped(): Unit = {
     freeInputBuffers()
     freeOutputBuffers()
   }
@@ -192,6 +192,6 @@ In4 >: Null <: BufLike, In5 >: Null <: BufLike, In6 >: Null <: BufLike, In7 >: N
 In8 >: Null <: BufLike, In9 >: Null <: BufLike]
   extends FilterIn10Impl[In0, In1, In2, In3, In4, In5, In6, In7, In8, In9, BufD]
     with Out1DoubleImpl[FanInShape10[In0, In1, In2, In3, In4, In5, In6, In7, In8, In9, BufD]] {
-  _: GraphStageLogic =>
+  _: GraphStageLogic with Node =>
 }
 

@@ -40,7 +40,7 @@ trait SinkImpl[S <: Shape]
   */
 trait Sink2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike]
   extends SinkImpl[SinkShape2[In0, In1]] {
-  _: GraphStageLogic =>
+  _: GraphStageLogic with Node =>
 
   // ---- impl ----
 
@@ -61,7 +61,7 @@ trait Sink2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike]
     pull(in1)
   }
 
-  override def postStop(): Unit = {
+  override protected def stopped(): Unit = {
     freeInputBuffers()
     freeOutputBuffers()
   }

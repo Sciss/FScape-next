@@ -14,9 +14,8 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FanInShape2}
-import de.sciss.fscape.stream.impl.{BinaryInDImpl, SameChunkImpl, StageImpl, StageLogicImpl}
+import de.sciss.fscape.stream.impl.{BinaryInDImpl, SameChunkImpl, StageImpl, NodeImpl}
 
 /** Binary operator assuming stream is complex signal (real and imaginary interleaved).
   * Outputs another complex stream even if the operator yields a purely real-valued result.
@@ -43,11 +42,11 @@ object ComplexBinaryOp {
       out = OutD(s"$name.out")
     )
 
-    def createLogic(attr: Attributes): GraphStageLogic = new Logic(op, shape)
+    def createLogic(attr: Attributes) = new Logic(op, shape)
   }
 
   private final class Logic(op: Op, shape: Shape)(implicit ctrl: Control)
-    extends StageLogicImpl(s"$name(${op.name})", shape)
+    extends NodeImpl(s"$name(${op.name})", shape)
       with SameChunkImpl[Shape]
       with BinaryInDImpl[BufD, BufD] {
 

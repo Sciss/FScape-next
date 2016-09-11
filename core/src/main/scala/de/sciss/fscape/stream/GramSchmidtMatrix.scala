@@ -14,9 +14,8 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FanInShape4}
-import de.sciss.fscape.stream.impl.{FilterIn4DImpl, FilterLogicImpl, StageImpl, StageLogicImpl, WindowedLogicImpl}
+import de.sciss.fscape.stream.impl.{FilterIn4DImpl, FilterLogicImpl, StageImpl, NodeImpl, WindowedLogicImpl}
 
 object GramSchmidtMatrix {
   def apply(in: OutD, rows: OutI, columns: OutI, normalize: OutI)(implicit b: Builder): OutD = {
@@ -42,11 +41,11 @@ object GramSchmidtMatrix {
       out = OutD(s"$name.out"      )
     )
 
-    def createLogic(attr: Attributes): GraphStageLogic = new Logic(shape)
+    def createLogic(attr: Attributes) = new Logic(shape)
   }
 
   private final class Logic(shape: Shape)(implicit ctrl: Control)
-    extends StageLogicImpl(name, shape)
+    extends NodeImpl(name, shape)
       with WindowedLogicImpl[Shape]
       with FilterLogicImpl[BufD, Shape]
       with FilterIn4DImpl[BufD, BufI, BufI, BufI] {
@@ -83,8 +82,8 @@ object GramSchmidtMatrix {
     protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit =
       Util.copy(winBuf, readFromWinOff, bufOut0.buf, outOff, chunk)
 
-    override def postStop(): Unit = {
-      super.postStop()
+    override protected def stopped(): Unit = {
+      super.stopped()
       winBuf = null
       dotBuf = null
     }

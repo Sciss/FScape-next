@@ -23,7 +23,7 @@ import akka.stream.{Outlet, SourceShape}
   */
 trait GenIn0Impl[Out >: Null <: BufLike]
   extends Out1LogicImpl[Out, SourceShape[Out]] {
-  _: GraphStageLogic =>
+  _: GraphStageLogic with Node =>
 
   // ---- impl ----
 
@@ -34,12 +34,12 @@ trait GenIn0Impl[Out >: Null <: BufLike]
   final def canRead: Boolean = true
   final def inValid: Boolean = true
 
-  override def postStop(): Unit = {
+  override protected def stopped(): Unit = {
     freeInputBuffers()
     freeOutputBuffers()
   }
 
-  protected final def readIns(): Int = ctrl.blockSize
+  protected final def readIns(): Int = control.blockSize
 
   protected final def freeInputBuffers(): Unit = ()
 
@@ -55,5 +55,5 @@ trait GenIn0Impl[Out >: Null <: BufLike]
 }
 
 trait GenIn0DImpl extends GenIn0Impl[BufD] with Out1DoubleImpl[SourceShape[BufD]] {
-  _: GraphStageLogic =>
+  _: GraphStageLogic with Node =>
 }

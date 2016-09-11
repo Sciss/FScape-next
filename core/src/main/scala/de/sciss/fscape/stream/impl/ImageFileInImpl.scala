@@ -27,7 +27,7 @@ import scala.util.control.NonFatal
 
 /** Common building block for `ImageFileIn` and `ImageFileSeqIn` */
 trait ImageFileInImpl[S <: Shape] extends OutHandler {
-  _: StageLogicImpl[S] =>
+  _: NodeImpl[S] =>
 
   // ---- abstract ----
 
@@ -84,7 +84,7 @@ trait ImageFileInImpl[S <: Shape] extends OutHandler {
     }
   }
 
-  override def postStop(): Unit = {
+  override protected def stopped(): Unit = {
     logStream(s"postStop() $this")
     freeInputBuffers()
     freeOutputBuffers()
@@ -112,7 +112,7 @@ trait ImageFileInImpl[S <: Shape] extends OutHandler {
     while (ch < numChannels) {
       val out = outlets(ch)
       if (!isClosed(out)) {
-        if (bufOuts(ch) == null) bufOuts(ch) = ctrl.borrowBufD()
+        if (bufOuts(ch) == null) bufOuts(ch) = control.borrowBufD()
         val bufOut  = bufOuts(ch)
         val b       = bufOut.buf
         if (ch < nb) {

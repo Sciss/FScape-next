@@ -15,8 +15,7 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.Attributes
-import akka.stream.stage.GraphStageLogic
-import de.sciss.fscape.stream.impl.{FilterLogicImpl, In6Out3Impl, In6Out3Shape, StageImpl, StageLogicImpl, WindowedLogicImpl}
+import de.sciss.fscape.stream.impl.{FilterLogicImpl, In6Out3Impl, In6Out3Shape, StageImpl, NodeImpl, WindowedLogicImpl}
 import de.sciss.numbers
 
 object PeakCentroid2D {
@@ -50,12 +49,12 @@ object PeakCentroid2D {
       out2 = OutD(s"$name.peak"      )
     )
 
-    def createLogic(attr: Attributes): GraphStageLogic = new Logic(shape)
+    def createLogic(attr: Attributes) = new Logic(shape)
   }
 
   // XXX TODO -- abstract over data type (BufD vs BufI)?
   private final class Logic(shape: Shape)(implicit ctrl: Control)
-    extends StageLogicImpl(name, shape)
+    extends NodeImpl(name, shape)
       with WindowedLogicImpl[Shape]
       with FilterLogicImpl[BufD, Shape]
       with In6Out3Impl[BufD, BufI, BufI, BufD, BufD, BufI, BufD, BufD, BufD] {

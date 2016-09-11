@@ -17,7 +17,7 @@ package stream
 import akka.stream.Attributes
 import akka.stream.stage.{GraphStageLogic, OutHandler}
 import de.sciss.file._
-import de.sciss.fscape.stream.impl.{BlockingGraphStage, StageLogicImpl, UniformSourceShape}
+import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeImpl, UniformSourceShape}
 import de.sciss.synth.io
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -40,11 +40,12 @@ object AudioFileIn {
 
     val shape = UniformSourceShape(Vector.tabulate(numChannels)(ch => OutD(s"$name.out$ch")))
 
-    def createLogic(attr: Attributes): GraphStageLogic = new Logic(shape, f, numChannels = numChannels)
+    def createLogic(attr: Attributes): NodeImpl[Shape] =
+      new Logic(shape, f, numChannels = numChannels)
   }
 
   private final class Logic(shape: Shape, f: File, numChannels: Int)(implicit ctrl: Control)
-    extends StageLogicImpl(s"$name(${f.name})", shape) with OutHandler {
+    extends NodeImpl(s"$name(${f.name})", shape) with OutHandler {
 
     private[this] var af        : io.AudioFile  = _
     private[this] var buf       : io.Frames     = _
@@ -64,14 +65,14 @@ object AudioFileIn {
       buf         = af.buffer(bufSize)
     }
 
-    override def postStop(): Unit = {
+    override protected def stopped(): Unit = {
       logStream(s"postStop() $this")
       buf = null
-      try {
+//      try {
         af.close()
-      } catch {
-        case NonFatal(ex) =>  // XXX TODO -- what with this?
-      }
+//      } catch {
+//        case NonFatal(ex) =>  // XXX TODO -- what with this?
+//      }
     }
 
     override def onDownstreamFinish(): Unit =

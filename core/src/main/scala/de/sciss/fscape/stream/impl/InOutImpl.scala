@@ -11,11 +11,12 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape.stream.impl
+package de.sciss.fscape
+package stream
+package impl
 
-import akka.stream.{Inlet, Outlet, Shape}
 import akka.stream.stage.{GraphStageLogic, InHandler, OutHandler}
-import de.sciss.fscape.stream.Control
+import akka.stream.{Inlet, Outlet, Shape}
 
 trait InOutImpl[S <: Shape] {
   _: GraphStageLogic =>
@@ -24,7 +25,7 @@ trait InOutImpl[S <: Shape] {
 
   protected def shape: S
 
-  implicit protected def ctrl: Control
+  implicit protected def control: Control
 
   def process(): Unit
 

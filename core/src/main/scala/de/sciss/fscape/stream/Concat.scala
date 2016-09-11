@@ -14,9 +14,9 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.stage.{GraphStageLogic, InHandler}
+import akka.stream.stage.InHandler
 import akka.stream.{Attributes, FanInShape2}
-import de.sciss.fscape.stream.impl.{SameChunkImpl, InOutImpl, Out1DoubleImpl, Out1LogicImpl, ProcessOutHandlerImpl, StageImpl, StageLogicImpl}
+import de.sciss.fscape.stream.impl.{InOutImpl, Out1DoubleImpl, Out1LogicImpl, ProcessOutHandlerImpl, SameChunkImpl, StageImpl, NodeImpl}
 
 /** Binary operator assuming stream is complex signal (real and imaginary interleaved).
   * Outputs another complex stream even if the operator yields a purely real-valued result.
@@ -41,12 +41,12 @@ object Concat {
       out = OutD(s"$name.out")
     )
 
-    def createLogic(attr: Attributes): GraphStageLogic = new Logic(shape)
+    def createLogic(attr: Attributes) = new Logic(shape)
   }
 
   // XXX TODO --- abstract across BufI / BufD?
   private final class Logic(shape: Shape)(implicit ctrl: Control)
-    extends StageLogicImpl(name, shape)
+    extends NodeImpl(name, shape)
       with InOutImpl[Shape]
       with SameChunkImpl[Shape]
       with Out1LogicImpl[BufD, Shape]
@@ -72,7 +72,8 @@ object Concat {
       pull(in1)
     }
 
-    override def postStop(): Unit = {
+    override protected def stopped(): Unit = {
+      super.stopped()
       freeInputBuffers()
       freeOutputBuffers()
     }

@@ -14,9 +14,9 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.stage.{GraphStageLogic, InHandler, OutHandler}
+import akka.stream.stage.{InHandler, OutHandler}
 import akka.stream.{Attributes, FlowShape}
-import de.sciss.fscape.stream.impl.{StageImpl, StageLogicImpl}
+import de.sciss.fscape.stream.impl.{StageImpl, NodeImpl}
 
 object Length {
   def apply(in: OutD)(implicit b: Builder): OutL = {
@@ -36,11 +36,11 @@ object Length {
       out = OutL(s"$name.out")
     )
 
-    def createLogic(attr: Attributes): GraphStageLogic = new Logic(shape)
+    def createLogic(attr: Attributes) = new Logic(shape)
   }
 
   private final class Logic(shape: Shape)(implicit ctrl: Control)
-    extends StageLogicImpl(name, shape) with InHandler with OutHandler {
+    extends NodeImpl(name, shape) with InHandler with OutHandler {
 
     setHandler(shape.in , this)
     setHandler(shape.out, this)

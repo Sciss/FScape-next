@@ -18,10 +18,9 @@ import java.io.RandomAccessFile
 import java.nio.DoubleBuffer
 import java.nio.channels.FileChannel
 
-import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FanInShape3}
 import de.sciss.file.File
-import de.sciss.fscape.stream.impl.{ChunkImpl, FilterIn3DImpl, FilterLogicImpl, StageImpl, StageLogicImpl}
+import de.sciss.fscape.stream.impl.{ChunkImpl, FilterIn3DImpl, FilterLogicImpl, StageImpl, NodeImpl}
 
 import scala.collection.mutable
 
@@ -74,11 +73,11 @@ object Sliding {
       out = OutD(s"$name.out" )
     )
 
-    def createLogic(attr: Attributes): GraphStageLogic = new Logic(shape)
+    def createLogic(attr: Attributes) = new Logic(shape)
   }
 
   private final class Logic(shape: Shape)(implicit ctrl: Control)
-    extends StageLogicImpl(name, shape)
+    extends NodeImpl(name, shape)
       with ChunkImpl[Shape]
       with FilterLogicImpl[BufD, Shape]
       with FilterIn3DImpl[BufD, BufI, BufI] {
@@ -105,8 +104,8 @@ object Sliding {
 
     protected def shouldComplete(): Boolean = inputsEnded && windows.isEmpty
 
-    override def postStop(): Unit = {
-      super.postStop()
+    override protected def stopped(): Unit = {
+      super.stopped()
       windows.foreach(_.dispose())
       windows.clear()
     }

@@ -14,9 +14,9 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.stage.{GraphStageLogic, InHandler, OutHandler}
+import akka.stream.stage.{InHandler, OutHandler}
 import akka.stream.{Attributes, FlowShape}
-import de.sciss.fscape.stream.impl.{BlockingGraphStage, StageLogicImpl}
+import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeImpl}
 
 import scala.util.control.NonFatal
 
@@ -43,11 +43,11 @@ object BufferDisk {
       out = OutD(s"$name.out")
     )
 
-    def createLogic(attr: Attributes): GraphStageLogic = new Logic(shape)
+    def createLogic(attr: Attributes) = new Logic(shape)
   }
 
   private final class Logic(shape: FlowShape[BufD, BufD])(implicit ctrl: Control)
-    extends StageLogicImpl(name, shape) with InHandler with OutHandler {
+    extends NodeImpl(name, shape) with InHandler with OutHandler {
 
     private[this] var af: FileBuffer  = _
     private[this] val bufSize       = ctrl.blockSize
@@ -63,14 +63,11 @@ object BufferDisk {
       pull(shape.in)
     }
 
-    override def postStop(): Unit = {
+    override protected def stopped(): Unit = {
+      super.stopped()
       buf = null
-      try {
-        af.dispose()
-        af = null
-      } catch {
-        case NonFatal(ex) =>  // XXX TODO -- what with this?
-      }
+      af.dispose()
+      af = null
     }
 
     def onPush(): Unit = {

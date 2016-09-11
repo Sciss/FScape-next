@@ -14,10 +14,9 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FanInShape2}
 import de.sciss.fscape.graph.ConstantL
-import de.sciss.fscape.stream.impl.{ChunkImpl, FilterIn2DImpl, StageImpl, StageLogicImpl}
+import de.sciss.fscape.stream.impl.{ChunkImpl, FilterIn2DImpl, StageImpl, NodeImpl}
 
 object Take {
   def head(in: OutD)(implicit b: Builder): OutD = {
@@ -44,11 +43,11 @@ object Take {
       out = OutD(s"$name.out")
     )
 
-    def createLogic(attr: Attributes): GraphStageLogic = new Logic(shape)
+    def createLogic(attr: Attributes) = new Logic(shape)
   }
 
   private final class Logic(shape: Shape)(implicit ctrl: Control)
-    extends StageLogicImpl(name, shape)
+    extends NodeImpl(name, shape)
       with ChunkImpl[Shape]
       with FilterIn2DImpl[BufD, BufL] {
 

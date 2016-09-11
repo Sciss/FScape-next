@@ -15,8 +15,8 @@ package de.sciss.fscape
 package stream
 package impl
 
-import akka.stream.{Attributes, Shape}
 import akka.stream.stage.GraphStage
+import akka.stream.{Attributes, Shape}
 
 abstract class StageImpl[S <: Shape](final protected val name: String)
   extends GraphStage[S] {
@@ -24,4 +24,8 @@ abstract class StageImpl[S <: Shape](final protected val name: String)
   override def toString = s"$name@${hashCode.toHexString}"
 
   override def initialAttributes = Attributes.name(toString)
+
+  /** We ensure that we use the more specific implementation class,
+    * because it registers with the control. */
+  override def createLogic(attr: Attributes): NodeImpl[S]
 }

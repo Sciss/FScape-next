@@ -14,9 +14,8 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FanInShape2}
-import de.sciss.fscape.stream.impl.{FilterIn2DImpl, RunningValueImpl, StageImpl, StageLogicImpl}
+import de.sciss.fscape.stream.impl.{FilterIn2DImpl, RunningValueImpl, StageImpl, NodeImpl}
 
 object RunningMin {
   def apply(in: OutD, trig: OutI)(implicit b: Builder): OutD = {
@@ -38,11 +37,11 @@ object RunningMin {
       out = OutD(s"$name.out" )
     )
 
-    def createLogic(attr: Attributes): GraphStageLogic = new Logic(shape)
+    def createLogic(attr: Attributes) = new Logic(shape)
   }
 
   private final class Logic(shape: Shape)(implicit ctrl: Control)
-    extends StageLogicImpl(name, shape)
+    extends NodeImpl(name, shape)
       with RunningValueImpl[Shape]
       with FilterIn2DImpl[BufD, BufI] {
 

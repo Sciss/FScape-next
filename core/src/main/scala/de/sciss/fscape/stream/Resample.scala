@@ -14,9 +14,9 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.stage.{GraphStageLogic, InHandler}
+import akka.stream.stage.InHandler
 import akka.stream.{Attributes, FanInShape6}
-import de.sciss.fscape.stream.impl.{Out1DoubleImpl, Out1LogicImpl, ResampleImpl, StageImpl, StageLogicImpl}
+import de.sciss.fscape.stream.impl.{Out1DoubleImpl, Out1LogicImpl, ResampleImpl, StageImpl, NodeImpl}
 
 object Resample {
   def apply(in: OutD, factor: OutD, minFactor: OutD, rollOff: OutD, kaiserBeta: OutD, zeroCrossings: OutI)
@@ -47,11 +47,11 @@ object Resample {
       out = OutD(s"$name.out"          )
     )
 
-    def createLogic(attr: Attributes): GraphStageLogic = new Logic(shape)
+    def createLogic(attr: Attributes) = new Logic(shape)
   }
 
   private final class Logic(shape: Shape)(implicit ctrl: Control)
-    extends StageLogicImpl(name, shape)
+    extends NodeImpl(name, shape)
     with ResampleImpl[Shape]
     with Out1LogicImpl[BufD, Shape]
     with Out1DoubleImpl[Shape] {
@@ -94,8 +94,8 @@ object Resample {
       pull(in0)
     }
 
-    override def postStop(): Unit = {
-      super.postStop()
+    override protected def stopped(): Unit = {
+      super.stopped()
       winBuf  = null
     }
 

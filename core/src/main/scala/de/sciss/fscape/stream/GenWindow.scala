@@ -14,9 +14,8 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FanInShape3}
-import de.sciss.fscape.stream.impl.{GenIn3DImpl, StageImpl, StageLogicImpl, WindowedLogicImpl}
+import de.sciss.fscape.stream.impl.{GenIn3DImpl, StageImpl, NodeImpl, WindowedLogicImpl}
 
 object GenWindow {
   import graph.GenWindow.{Hann, Shape => WinShape}
@@ -43,12 +42,12 @@ object GenWindow {
       out = OutD(s"$name.out"  )
     )
 
-    def createLogic(attr: Attributes): GraphStageLogic = new Logic(shape)
+    def createLogic(attr: Attributes) = new Logic(shape)
   }
 
   // XXX TODO -- abstract over data type (BufD vs BufI)?
   private final class Logic(shape: Shape)(implicit ctrl: Control)
-    extends StageLogicImpl(name, shape)
+    extends NodeImpl(name, shape)
       with WindowedLogicImpl[Shape]
       with GenIn3DImpl[BufI, BufI, BufD] {
 

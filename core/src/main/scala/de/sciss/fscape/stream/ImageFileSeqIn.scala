@@ -14,10 +14,10 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.stage.{GraphStageLogic, InHandler}
+import akka.stream.stage.InHandler
 import akka.stream.{Attributes, UniformFanOutShape}
 import de.sciss.file._
-import de.sciss.fscape.stream.impl.{BlockingGraphStage, ImageFileInImpl, StageLogicImpl}
+import de.sciss.fscape.stream.impl.{BlockingGraphStage, ImageFileInImpl, NodeImpl}
 
 import scala.annotation.tailrec
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -47,11 +47,11 @@ object ImageFileSeqIn {
       outlets = Vector.tabulate(numChannels)(ch => OutD(s"$name.out$ch")): _*
     )
 
-    def createLogic(attr: Attributes): GraphStageLogic = new Logic(shape, template, numChannels = numChannels)
+    def createLogic(attr: Attributes) = new Logic(shape, template, numChannels = numChannels)
   }
 
   private final class Logic(shape: Shape, template: File, protected val numChannels: Int)(implicit ctrl: Control)
-    extends StageLogicImpl(s"$name(${template.name})", shape)
+    extends NodeImpl(s"$name(${template.name})", shape)
     with ImageFileInImpl[Shape]
     with InHandler {
 

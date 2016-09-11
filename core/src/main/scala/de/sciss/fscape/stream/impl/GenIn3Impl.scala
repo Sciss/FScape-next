@@ -24,7 +24,7 @@ import akka.stream.{FanInShape3, Inlet, Outlet}
   */
 trait GenIn3Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: BufLike, Out >: Null <: BufLike]
   extends Out1LogicImpl[Out, FanInShape3[In0, In1, In2, Out]] {
-  _: GraphStageLogic =>
+  _: GraphStageLogic with Node =>
 
   // ---- impl ----
 
@@ -52,7 +52,7 @@ trait GenIn3Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: 
     pull(sh.in2)
   }
 
-  override def postStop(): Unit = {
+  override protected def stopped(): Unit = {
     freeInputBuffers()
     freeOutputBuffers()
   }
@@ -75,7 +75,7 @@ trait GenIn3Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: 
 
     _inValid = true
     updateCanRead()
-    ctrl.blockSize
+    control.blockSize
   }
 
   protected final def freeInputBuffers(): Unit = {
@@ -119,5 +119,5 @@ trait GenIn3Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: 
 trait GenIn3DImpl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: BufLike]
   extends GenIn3Impl[In0, In1, In2, BufD]
     with Out1DoubleImpl[FanInShape3[In0, In1, In2, BufD]] {
-  _: GraphStageLogic =>
+  _: GraphStageLogic with Node =>
 }

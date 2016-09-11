@@ -14,9 +14,8 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FanInShape3}
-import de.sciss.fscape.stream.impl.{GenIn3DImpl, StageImpl, StageLogicImpl}
+import de.sciss.fscape.stream.impl.{GenIn3DImpl, StageImpl, NodeImpl}
 
 import scala.annotation.tailrec
 
@@ -42,13 +41,13 @@ object Line {
       out = OutD(s"$name.out"  )
     )
 
-    def createLogic(attr: Attributes): GraphStageLogic = new Logic(shape)
+    def createLogic(attr: Attributes) = new Logic(shape)
   }
 
   // XXX TODO --- we could allow `start` and `end` to change over time,
   // although probably that will not be needed ever
   private final class Logic(shape: Shape)(implicit ctrl: Control)
-    extends StageLogicImpl(name, shape)
+    extends NodeImpl(name, shape)
       with GenIn3DImpl[BufD, BufD, BufL] {
 
     private[this] var init = true

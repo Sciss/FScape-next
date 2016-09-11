@@ -22,7 +22,7 @@ import akka.stream.{FanInShape4, Inlet, Outlet}
 trait FilterIn4Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: BufLike,
                     In3 >: Null <: BufLike, Out >: Null <: BufLike]
   extends Out1LogicImpl[Out, FanInShape4[In0, In1, In2, In3, Out]] {
-  _: GraphStageLogic =>
+  _: GraphStageLogic with Node =>
 
   // ---- impl ----
 
@@ -53,7 +53,7 @@ trait FilterIn4Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null 
     pull(sh.in3)
   }
 
-  override def postStop(): Unit = {
+  override protected def stopped(): Unit = {
     freeInputBuffers()
     freeOutputBuffers()
   }
@@ -129,5 +129,5 @@ trait FilterIn4DImpl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null
 In3 >: Null <: BufLike]
   extends FilterIn4Impl[In0, In1, In2, In3, BufD]
     with Out1DoubleImpl[FanInShape4[In0, In1, In2, In3, BufD]] {
-  _: GraphStageLogic =>
+  _: GraphStageLogic with Node =>
 }

@@ -18,10 +18,17 @@ package impl
 import akka.stream.Shape
 import akka.stream.stage.GraphStageLogic
 
-abstract class StageLogicImpl[S <: Shape](protected final val name: String,
-                                          protected final val shape: S)
-                                         (implicit final protected val ctrl: Control)
-  extends GraphStageLogic(shape) {
+abstract class NodeImpl[+S <: Shape](protected final val name: String,
+                                     protected final val shape: S)
+                                    (implicit final protected val control: Control)
+  extends GraphStageLogic(shape) with Node {
 
   override def toString = s"$name-L@${hashCode.toHexString}"
+
+  final def failAsync(ex: Exception): Unit = {
+    val async = getAsyncCallback { _: Unit =>
+      failStage(ex)
+    }
+    async.invoke(())
+  }
 }

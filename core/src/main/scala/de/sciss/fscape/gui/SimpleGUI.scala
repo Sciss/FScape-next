@@ -42,7 +42,9 @@ object SimpleGUI {
       pack().centerOnScreen()
       open()
 
-      override def closeOperation(): Unit = if (finished) sys.exit()
+      override def closeOperation(): Unit = {
+        if (finished) sys.exit()
+      }
     }
   }
 }

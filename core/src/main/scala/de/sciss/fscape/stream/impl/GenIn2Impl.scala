@@ -24,7 +24,7 @@ import akka.stream.stage.GraphStageLogic
   */
 trait GenIn2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, Out >: Null <: BufLike]
   extends Out1LogicImpl[Out, FanInShape2[In0, In1, Out]] {
-  _: GraphStageLogic =>
+  _: GraphStageLogic with Node =>
 
   // ---- impl ----
 
@@ -48,7 +48,7 @@ trait GenIn2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, Out >: Null <: 
     pull(sh.in1)
   }
 
-  override def postStop(): Unit = {
+  override protected def stopped(): Unit = {
     freeInputBuffers()
     freeOutputBuffers()
   }
@@ -68,7 +68,7 @@ trait GenIn2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, Out >: Null <: 
 
     _inValid = true
     updateCanRead()
-    ctrl.blockSize
+    control.blockSize
   }
 
   protected final def freeInputBuffers(): Unit = {
@@ -106,11 +106,11 @@ trait GenIn2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, Out >: Null <: 
 trait GenIn2DImpl[In0 >: Null <: BufLike, In1 >: Null <: BufLike]
   extends GenIn2Impl[In0, In1, BufD]
     with Out1DoubleImpl[FanInShape2[In0, In1, BufD]] {
-  _: GraphStageLogic =>
+  _: GraphStageLogic with Node =>
 }
 
 trait GenIn2IImpl[In0 >: Null <: BufLike, In1 >: Null <: BufLike]
   extends GenIn2Impl[In0, In1, BufI]
     with Out1IntImpl[FanInShape2[In0, In1, BufI]] {
-  _: GraphStageLogic =>
+  _: GraphStageLogic with Node =>
 }

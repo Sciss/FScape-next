@@ -22,7 +22,7 @@ import scala.annotation.tailrec
 import scala.math._
 
 trait ResampleImpl[S <: Shape] extends InOutImpl[S] {
-  _: GraphStageLogic =>
+  _: GraphStageLogic with Node =>
 
   // ---- abstract ----
 
@@ -161,7 +161,7 @@ trait ResampleImpl[S <: Shape] extends InOutImpl[S] {
     pull(inZeroCrossings)
   }
 
-  override def postStop(): Unit = {
+  override protected def stopped(): Unit = {
     fltBuf  = null
     fltBufD = null
     freeInputBuffers()
@@ -176,7 +176,7 @@ trait ResampleImpl[S <: Shape] extends InOutImpl[S] {
   // ----
 
   @inline
-  private[this] def shouldReadAux: Boolean = inAuxRemain  == 0 && _canReadAux
+  private[this] def shouldReadAux: Boolean = inAuxRemain == 0 && _canReadAux
 
   private def updateCanReadAux(): Unit =
     _canReadAux =

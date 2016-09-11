@@ -14,9 +14,8 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FanInShape10}
-import de.sciss.fscape.stream.impl.{FilterIn10DImpl, FilterLogicImpl, StageImpl, StageLogicImpl, WindowedLogicImpl}
+import de.sciss.fscape.stream.impl.{FilterIn10DImpl, FilterLogicImpl, StageImpl, NodeImpl, WindowedLogicImpl}
 
 object FoldCepstrum {
   def apply(in: OutD, size: OutI,
@@ -56,12 +55,12 @@ object FoldCepstrum {
       out  = OutD(s"$name.out" )
     )
 
-    def createLogic(attr: Attributes): GraphStageLogic = new Logic(shape)
+    def createLogic(attr: Attributes) = new Logic(shape)
   }
 
   // XXX TODO -- abstract over data type (BufD vs BufI)?
   private final class Logic(shape: Shape)(implicit ctrl: Control)
-    extends StageLogicImpl(name, shape)
+    extends NodeImpl(name, shape)
       with WindowedLogicImpl[Shape]
       with FilterLogicImpl[BufD, Shape]
       with FilterIn10DImpl[BufD, BufI, BufD, BufD, BufD, BufD, BufD, BufD, BufD, BufD] {

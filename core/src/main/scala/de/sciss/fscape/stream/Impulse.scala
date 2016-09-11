@@ -14,9 +14,8 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FanInShape2}
-import de.sciss.fscape.stream.impl.{GenChunkImpl, GenIn2IImpl, StageImpl, StageLogicImpl}
+import de.sciss.fscape.stream.impl.{GenChunkImpl, GenIn2IImpl, StageImpl, NodeImpl}
 import de.sciss.numbers
 
 object Impulse {
@@ -39,13 +38,13 @@ object Impulse {
       out = OutI(s"$name.out"  )
     )
 
-    def createLogic(attr: Attributes): GraphStageLogic = new Logic(shape)
+    def createLogic(attr: Attributes) = new Logic(shape)
   }
 
   // XXX TODO -- detect constant freq input and use multiplication instead of frame-by-frame addition for phase
   // (cf. Resample)
   private final class Logic(shape: Shape)(implicit ctrl: Control)
-    extends StageLogicImpl(name, shape)
+    extends NodeImpl(name, shape)
       with GenChunkImpl[BufD, BufI, Shape]
       with GenIn2IImpl[BufD, BufD] {
 

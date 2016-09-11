@@ -16,13 +16,14 @@ package stream
 
 import java.util.concurrent.ConcurrentLinkedQueue
 
-import akka.actor.ActorSystem
+import akka.actor.{Actor, ActorRef, ActorSystem, Props}
 import akka.stream.{ActorMaterializer, Materializer}
 import de.sciss.file.File
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.collection.mutable
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.language.implicitConversions
-import scala.util.Random
+import scala.util.{Random, Success}
 
 object Control {
   trait ConfigLike {
@@ -46,6 +47,8 @@ object Control {
     /** Random number generator seed. */
     def seed: Long
 
+    def actorSystem: ActorSystem
+
     def materializer: Materializer
 
     def executionContext: ExecutionContext
@@ -56,7 +59,8 @@ object Control {
   }
 
   final case class Config(blockSize: Int, nodeBufferSize: Int,
-                          useAsync: Boolean, seed: Long, materializer0: Materializer,
+                          useAsync: Boolean, seed: Long, actorSystem: ActorSystem,
+                          materializer0: Materializer,
                           executionContext0: ExecutionContext)
     extends ConfigLike {
 
@@ -89,8 +93,20 @@ object Control {
 
     def seed_=(value: Long): Unit = _seed = Some(value)
 
+    private[this] var _actor: ActorSystem = _
+    private[this] lazy val defaultActor: ActorSystem = ActorSystem("fscape")
+
+    def actorSystem: ActorSystem = {
+      if (_actor == null) _actor = defaultActor
+      _actor
+    }
+
+    def actorSystem_=(value: ActorSystem): Unit = {
+      _actor = value
+    }
+
     private[this] var _mat: Materializer = _
-    private[this] lazy val defaultMat: Materializer = ActorMaterializer()(ActorSystem())
+    private[this] lazy val defaultMat: Materializer = ActorMaterializer()(actorSystem)
 
     def materializer: Materializer = {
       if (_mat == null) _mat = defaultMat
@@ -113,6 +129,7 @@ object Control {
       nodeBufferSize    = nodeBufferSize,
       useAsync          = useAsync,
       seed              = seed,
+      actorSystem       = actorSystem,
       materializer0     = materializer,
       executionContext0 = executionContext
     )
@@ -138,11 +155,13 @@ object Control {
     final def blockSize     : Int = config.blockSize
     final def nodeBufferSize: Int = config.nodeBufferSize
 
-    private[this] val queueD  = new ConcurrentLinkedQueue[BufD]
-    private[this] val queueI  = new ConcurrentLinkedQueue[BufI]
-    private[this] val queueL  = new ConcurrentLinkedQueue[BufL]
-    private[this] var leaves  = List.empty[Leaf]
-    private[this] val sync    = new AnyRef
+    private[this] val queueD    = new ConcurrentLinkedQueue[BufD]
+    private[this] val queueI    = new ConcurrentLinkedQueue[BufI]
+    private[this] val queueL    = new ConcurrentLinkedQueue[BufL]
+    private[this] val nodes     = mutable.Set.empty[Node]
+    private[this] val sync      = new AnyRef
+    private[this] val statusP   = Promise[Unit]()
+    private[this] var _actor    = null : ActorRef
 
     final def debugDotGraph(): Unit = akka.stream.sciss.Util.debugDotGraph()(config.materializer)
 
@@ -152,10 +171,36 @@ object Control {
       ugens
     }
 
+    private final class ActorImpl extends Actor {
+      def receive = {
+        case RemoveNode(n) =>
+          if (nodes.remove(n)) {
+            // XXX TODO --- check for error other than `Cancelled` --- how?
+            if (nodes.isEmpty) {
+              statusP.tryComplete(Success(()))
+              context.stop(self)
+            }
+          } else {
+            Console.err.println(s"Warning: node $n was not registered with Control")
+          }
+
+        case Cancel =>
+          val ex = Cancelled()
+          statusP.tryFailure(ex)
+          nodes.foreach { n =>
+            n.failAsync(ex)
+          }
+      }
+    }
+
+    private def mkActor(): Unit = sync.synchronized {
+      require(_actor == null)
+      _actor = config.actorSystem.actorOf(Props(new ActorImpl))
+    }
+
     final def runExpanded(ugens: UGenGraph): Unit = {
       val r = ugens.runnable
-//      leaves.begin()
-//      r.addAttributes(Attributes(leaves))
+      mkActor()
       r.run()(config.materializer)
     }
 
@@ -209,24 +254,28 @@ object Control {
       queueL.offer(buf) // XXX TODO -- limit size?
     }
 
-    final def addLeaf(l: Leaf): Unit = leaves ::= l
+    // called during materialization, no sync needed
+    final private[stream] def addNode(n: Node): Unit = nodes += n
 
-    final def status: Future[Unit] = {
-      import config.executionContext
-      val ls = leaves // .result()
-      val fs = ls.map(_.result)
-      Future.fold[Any, Unit](fs)(())((_, _) => ())  // is there a simpler way to write this?
-    }
+    final private[stream] def removeNode(n: Node): Unit = _actor ! RemoveNode(n)
 
-    final def cancel(): Unit = {
-      val ls = leaves // .result()
-      ls.foreach(_.cancel())
+    final def status: Future[Unit] = statusP.future
+
+    final def cancel(): Unit = sync.synchronized {
+      if (_actor != null) _actor ! Cancel
     }
 
     final def stats = Stats(numBufD = queueD.size(), numBufI = queueI.size())
 
     final def createTempFile(): File = File.createTemp()
   }
+
+  // ---- actor messages
+
+  private final case class RemoveNode(node: Node)
+  private case object Cancel
+
+  //
 
   final case class Stats(numBufD: Int, numBufI: Int)
 }
@@ -267,8 +316,11 @@ trait Control {
     */
   def returnBufL(buf: BufL): Unit
 
-  /** Adds a leaf node that can be cancelled. Must be called during materialization. */
-  def addLeaf(l: Leaf): Unit
+  /** Adds a node of a stage logic. Must be called during materialization. */
+  private[stream] def addNode(n: Node): Unit
+
+  /** Removes a finished node of a stage logic. */
+  private[stream] def removeNode(n: Node): Unit
 
   /** Creates a temporary file. The caller is responsible to deleting the file
     * after it is not needed any longer. (The file will still be marked `deleteOnExit`)

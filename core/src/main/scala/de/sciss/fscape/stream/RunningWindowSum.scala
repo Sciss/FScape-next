@@ -14,9 +14,8 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FanInShape3}
-import de.sciss.fscape.stream.impl.{FilterIn3DImpl, RunningWindowValueImpl, StageImpl, StageLogicImpl}
+import de.sciss.fscape.stream.impl.{FilterIn3DImpl, RunningWindowValueImpl, StageImpl, NodeImpl}
 
 object RunningWindowSum {
   def apply(in: OutD, size: OutI, trig: OutI)(implicit b: Builder): OutD = {
@@ -40,11 +39,11 @@ object RunningWindowSum {
       out = OutD(s"$name.out" )
     )
 
-    def createLogic(attr: Attributes): GraphStageLogic = new Logic(shape)
+    def createLogic(attr: Attributes) = new Logic(shape)
   }
 
   private final class Logic(shape: Shape)(implicit ctrl: Control)
-    extends StageLogicImpl(name, shape)
+    extends NodeImpl(name, shape)
       with RunningWindowValueImpl[Shape]
       with FilterIn3DImpl[BufD, BufI, BufI] {
 

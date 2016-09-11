@@ -14,9 +14,8 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FanInShape2}
-import de.sciss.fscape.stream.impl.{FilterIn2DImpl, StageImpl, StageLogicImpl}
+import de.sciss.fscape.stream.impl.{FilterIn2DImpl, StageImpl, NodeImpl}
 
 import scala.annotation.tailrec
 
@@ -40,11 +39,11 @@ object Elastic {
       out = OutD(s"$name.out")
     )
 
-    def createLogic(attr: Attributes): GraphStageLogic = new Logic(shape)
+    def createLogic(attr: Attributes) = new Logic(shape)
   }
 
   private final class Logic(shape: Shape)(implicit ctrl: Control)
-    extends StageLogicImpl(name, shape)
+    extends NodeImpl(name, shape)
       with FilterIn2DImpl[BufD, BufI] {
 
     private[this] var init  = true
@@ -67,8 +66,8 @@ object Elastic {
     @inline
     private def shouldWrite = canWrite && (canPopBuf  || bufIn0 != null)
 
-    override def postStop(): Unit = {
-      super.postStop()
+    override protected def stopped(): Unit = {
+      super.stopped()
       while (bufRead < bufWritten) {
         val idx = bufRead % num
         buffers(bufRead % num).release()

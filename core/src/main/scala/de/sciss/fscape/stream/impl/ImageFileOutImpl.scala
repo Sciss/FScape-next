@@ -29,12 +29,10 @@ import de.sciss.fscape.graph.ImageFile
 import de.sciss.fscape.graph.ImageFile.{SampleFormat, Type}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
-import scala.concurrent.{Future, Promise}
-import scala.util.control.NonFatal
 
 /** Common building block for `ImageFileOut` and `ImageFileSeqOut` */
-trait ImageFileOutImpl[S <: Shape] extends InHandler with Leaf {
-  logic: StageLogicImpl[S] =>
+trait ImageFileOutImpl[S <: Shape] extends InHandler {
+  logic: NodeImpl[S] =>
 
   // ---- abstract ----
 
@@ -54,7 +52,7 @@ trait ImageFileOutImpl[S <: Shape] extends InHandler with Leaf {
   private[this] var imagesWritten = 0
   private[this] var pushed        = 0
 
-  private /* [this] */ val resultP = Promise[Long]()
+//  private /* [this] */ val resultP = Promise[Long]()
 
   private[this] val (dataType, gain) = spec.sampleFormat match {
     case SampleFormat.Int8  => DataBuffer.TYPE_BYTE   ->   255.0
@@ -94,14 +92,14 @@ trait ImageFileOutImpl[S <: Shape] extends InHandler with Leaf {
 
   // ---- Leaf
 
-  private[this] val asyncCancel = getAsyncCallback[Unit] { _ =>
-    val ex = Cancelled()
-    if (resultP.tryFailure(ex)) failStage(ex)
-  }
-
-  def result: Future[Any] = resultP.future
-
-  def cancel(): Unit = asyncCancel.invoke(())
+//  private[this] val asyncCancel = getAsyncCallback[Unit] { _ =>
+//    val ex = Cancelled()
+//    if (resultP.tryFailure(ex)) failStage(ex)
+//  }
+//
+//  def result: Future[Any] = resultP.future
+//
+//  def cancel(): Unit = asyncCancel.invoke(())
 
   // ---- StageLogic and handlers
 
@@ -128,7 +126,7 @@ trait ImageFileOutImpl[S <: Shape] extends InHandler with Leaf {
     shape.inlets.foreach(pull(_))
   }
 
-  override def postStop(): Unit = {
+  override protected def stopped(): Unit = {
     logStream(s"$this - postStop()")
     closeImage()
     pixBuf = null
@@ -138,17 +136,17 @@ trait ImageFileOutImpl[S <: Shape] extends InHandler with Leaf {
     }
     freeInputBuffers()
     writer.dispose()
-    resultP.trySuccess(numFrames.toLong * imagesWritten)
+//    resultP.trySuccess(numFrames.toLong * imagesWritten)
   }
 
   protected final def closeImage(): Unit = if (writer.getOutput != null) {
     try {
       writer.write(null /* meta */ , new IIOImage(img, null /* thumb */ , null /* meta */), imgParam)
       imagesWritten += 1
-    } catch {
-      case NonFatal(ex) =>
-        resultP.tryFailure(ex)
-        throw ex
+//    } catch {
+//      case NonFatal(ex) =>
+//        resultP.tryFailure(ex)
+//        throw ex
     } finally {
       writer.reset()
     }
@@ -254,8 +252,8 @@ trait ImageFileOutImpl[S <: Shape] extends InHandler with Leaf {
     }
   }
 
-  override def onUpstreamFailure(ex: Throwable): Unit = {
-    resultP.failure(ex)
-    super.onUpstreamFailure(ex)
-  }
+//  override def onUpstreamFailure(ex: Throwable): Unit = {
+//    resultP.failure(ex)
+//    super.onUpstreamFailure(ex)
+//  }
 }

@@ -23,7 +23,7 @@ import akka.stream.stage.GraphStageLogic
   */
 trait FilterIn2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, Out >: Null <: BufLike]
   extends In2Impl[In0, In1, Out] {
-  _: GraphStageLogic =>
+  _: GraphStageLogic with Node =>
 
   // ---- impl ----
 
@@ -61,5 +61,5 @@ trait FilterIn2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, Out >: Null 
 trait FilterIn2DImpl[In0 >: Null <: BufLike, In1 >: Null <: BufLike]
   extends FilterIn2Impl[In0, In1, BufD] with Out1DoubleImpl[FanInShape2[In0, In1, BufD]] {
 
-  _: GraphStageLogic =>
+  _: GraphStageLogic with Node =>
 }

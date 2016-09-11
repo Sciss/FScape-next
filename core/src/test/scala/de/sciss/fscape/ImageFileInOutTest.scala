@@ -6,8 +6,8 @@ import de.sciss.fscape.gui.SimpleGUI
 import scala.swing.Swing
 
 object ImageFileInOutTest extends App {
-  val width   = 1024
-  val height  = 768
+  val width   = 1640 // 1024
+  val height  = 1232 // 768
   val fIn     = userHome / "Documents" / "temp" / "test.jpg"
   val fOut    = userHome / "Documents" / "temp" / "test-out.jpg"
 

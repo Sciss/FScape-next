@@ -24,7 +24,7 @@ import akka.stream.stage.GraphStageLogic
   */
 trait GenIn1Impl[In >: Null <: BufLike, Out >: Null <: BufLike]
   extends Out1LogicImpl[Out, FlowShape[In, Out]] {
-  _: GraphStageLogic =>
+  _: GraphStageLogic with Node =>
 
   // ---- impl ----
 
@@ -43,7 +43,7 @@ trait GenIn1Impl[In >: Null <: BufLike, Out >: Null <: BufLike]
   override def preStart(): Unit =
     pull(shape.in)
 
-  override def postStop(): Unit = {
+  override protected def stopped(): Unit = {
     freeInputBuffers()
     freeOutputBuffers()
   }
@@ -58,7 +58,7 @@ trait GenIn1Impl[In >: Null <: BufLike, Out >: Null <: BufLike]
 
     _inValid = true
     updateCanRead()
-    ctrl.blockSize
+    control.blockSize
   }
 
   protected final def freeInputBuffers(): Unit =
@@ -88,5 +88,5 @@ trait GenIn1Impl[In >: Null <: BufLike, Out >: Null <: BufLike]
 
 trait GenIn1DImpl[In >: Null <: BufLike]
   extends GenIn1Impl[In, BufD] with Out1DoubleImpl[FlowShape[In, BufD]] {
-  _: GraphStageLogic =>
+  _: GraphStageLogic with Node =>
 }

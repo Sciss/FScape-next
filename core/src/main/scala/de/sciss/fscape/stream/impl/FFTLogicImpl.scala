@@ -14,7 +14,6 @@
 package de.sciss.fscape.stream
 package impl
 
-import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FanInShape3}
 import de.sciss.fscape.Util
 import edu.emory.mathcs.jtransforms.fft.DoubleFFT_1D
@@ -44,7 +43,7 @@ abstract class FFTStageImpl(name: String)
 /** Base class for 1-dimensional FFT transforms. */
 abstract class FFTLogicImpl(name: String, shape: FanInShape3[BufD, BufI, BufI, BufD])
                            (implicit ctrl: Control)
-  extends StageLogicImpl(name, shape)
+  extends NodeImpl(name, shape)
     with WindowedLogicImpl[FanInShape3[BufD, BufI, BufI, BufD]]
     with FilterLogicImpl[BufD, FanInShape3[BufD, BufI, BufI, BufD]]
     with FilterIn3DImpl[BufD, BufI, BufI] {
@@ -66,8 +65,8 @@ abstract class FFTLogicImpl(name: String, shape: FanInShape3[BufD, BufI, BufI, B
 
   private[this] final var _fftSize        = 0  // refreshed as `size + padding`
 
-  override def postStop(): Unit = {
-    super.postStop()
+  override protected def stopped(): Unit = {
+    super.stopped()
     fft = null
   }
 
@@ -104,8 +103,7 @@ abstract class FFTLogicImpl(name: String, shape: FanInShape3[BufD, BufI, BufI, B
 }
 
 final class Real1FFTStageImpl()(implicit ctrl: Control) extends FFTStageImpl("Real1FFT") {
-
-  def createLogic(attr: Attributes): GraphStageLogic = new Real1FFTLogicImpl(name, shape)
+  def createLogic(attr: Attributes) = new Real1FFTLogicImpl(name, shape)
 }
 
 final class Real1FFTLogicImpl(name: String, shape: FanInShape3[BufD, BufI, BufI, BufD])
@@ -122,7 +120,7 @@ final class Real1FFTLogicImpl(name: String, shape: FanInShape3[BufD, BufI, BufI,
 }
 
 final class Real1IFFTStageImpl()(implicit ctrl: Control) extends FFTStageImpl("Real1IFFT") {
-  def createLogic(attr: Attributes): GraphStageLogic = new Real1IFFTLogicImpl(name, shape)
+  def createLogic(attr: Attributes) = new Real1IFFTLogicImpl(name, shape)
 }
 
 final class Real1IFFTLogicImpl(name: String, shape: FanInShape3[BufD, BufI, BufI, BufD])(implicit ctrl: Control)
@@ -136,7 +134,7 @@ final class Real1IFFTLogicImpl(name: String, shape: FanInShape3[BufD, BufI, BufI
 }
 
 final class Real1FullFFTStageImpl()(implicit ctrl: Control) extends FFTStageImpl("Real1FullFFT") {
-  def createLogic(attr: Attributes): GraphStageLogic = new Real1FullFFTLogicImpl(name, shape)
+  def createLogic(attr: Attributes) = new Real1FullFFTLogicImpl(name, shape)
 }
 
 final class Real1FullFFTLogicImpl(name: String, shape: FanInShape3[BufD, BufI, BufI, BufD])(implicit ctrl: Control)
@@ -177,7 +175,7 @@ final class Real1FullFFTLogicImpl(name: String, shape: FanInShape3[BufD, BufI, B
 }
 
 final class Real1FullIFFTStageImpl()(implicit ctrl: Control) extends FFTStageImpl("Real1FullIFFT") {
-  def createLogic(attr: Attributes): GraphStageLogic = new Real1FullIFFTLogicImpl(name, shape)
+  def createLogic(attr: Attributes) = new Real1FullIFFTLogicImpl(name, shape)
 }
 
 final class Real1FullIFFTLogicImpl(name: String, shape: FanInShape3[BufD, BufI, BufI, BufD])(implicit ctrl: Control)
@@ -200,7 +198,7 @@ final class Real1FullIFFTLogicImpl(name: String, shape: FanInShape3[BufD, BufI, 
 }
 
 final class Complex1FFTStageImpl()(implicit ctrl: Control) extends FFTStageImpl("Complex1FFT") {
-  def createLogic(attr: Attributes): GraphStageLogic = new Complex1FFTLogicImpl(name, shape)
+  def createLogic(attr: Attributes) = new Complex1FFTLogicImpl(name, shape)
 }
 
 final class Complex1FFTLogicImpl(name: String, shape: FanInShape3[BufD, BufI, BufI, BufD])(implicit ctrl: Control)
@@ -216,7 +214,7 @@ final class Complex1FFTLogicImpl(name: String, shape: FanInShape3[BufD, BufI, Bu
 }
 
 final class Complex1IFFTStageImpl()(implicit ctrl: Control) extends FFTStageImpl("Complex1IFFT") {
-  def createLogic(attr: Attributes): GraphStageLogic = new Complex1IFFTLogicImpl(name, shape)
+  def createLogic(attr: Attributes) = new Complex1IFFTLogicImpl(name, shape)
 }
 
 final class Complex1IFFTLogicImpl(name: String, shape: FanInShape3[BufD, BufI, BufI, BufD])(implicit ctrl: Control)

@@ -14,9 +14,8 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FanInShape5}
-import de.sciss.fscape.stream.impl.{ChunkImpl, FilterIn5DImpl, FilterLogicImpl, StageImpl, StageLogicImpl}
+import de.sciss.fscape.stream.impl.{ChunkImpl, FilterIn5DImpl, FilterLogicImpl, StageImpl, NodeImpl}
 
 /** Overlapping window summation with offset (fuzziness) that can be modulated. */
 object OffsetOverlapAdd {
@@ -64,11 +63,11 @@ object OffsetOverlapAdd {
       out = OutD(s"$name.out"      )
     )
 
-    def createLogic(attr: Attributes): GraphStageLogic = new Logic(shape)
+    def createLogic(attr: Attributes) = new Logic(shape)
   }
 
   private final class Logic(shape: Shape)(implicit ctrl: Control)
-    extends StageLogicImpl(name, shape)
+    extends NodeImpl(name, shape)
       with ChunkImpl[Shape]
       with FilterLogicImpl[BufD, Shape]
       with FilterIn5DImpl[BufD, BufI, BufI, BufI, BufI] {

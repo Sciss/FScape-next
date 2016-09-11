@@ -15,8 +15,7 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, Inlet, Outlet}
-import akka.stream.stage.GraphStageLogic
-import de.sciss.fscape.stream.impl.{Sink2Impl, SinkShape2, StageImpl, StageLogicImpl}
+import de.sciss.fscape.stream.impl.{Sink2Impl, SinkShape2, StageImpl, NodeImpl}
 
 // XXX TODO --- we could use an `Outlet[String]`, that might be making perfect sense
 object Poll {
@@ -38,11 +37,11 @@ object Poll {
       in1 = InI(s"$name.trig")
     )
 
-    def createLogic(attr: Attributes): GraphStageLogic = new Logic(label = label, shape = shape)
+    def createLogic(attr: Attributes) = new Logic(label = label, shape = shape)
   }
 
   private final class Logic(label: String, shape: Shape)(implicit ctrl: Control)
-    extends StageLogicImpl(name, shape)
+    extends NodeImpl(name, shape)
       with Sink2Impl[BufLike, BufI] {
 
     override def toString = s"$name-L($label)"

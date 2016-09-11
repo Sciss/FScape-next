@@ -14,9 +14,9 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.stage.{GraphStageLogic, InHandler, OutHandler}
+import akka.stream.stage.{InHandler, OutHandler}
 import akka.stream.{Attributes, Inlet, Outlet}
-import de.sciss.fscape.stream.impl.{StageImpl, StageLogicImpl}
+import de.sciss.fscape.stream.impl.{StageImpl, NodeImpl}
 
 import scala.annotation.tailrec
 import scala.collection.breakOut
@@ -72,11 +72,11 @@ object ZipWindowN {
       out     = OutD("ZipWindow.out" )
     )
 
-    def createLogic(attr: Attributes): GraphStageLogic = new Logic(shape)
+    def createLogic(attr: Attributes) = new Logic(shape)
   }
 
   private final class Logic(shape: Shape)(implicit ctrl: Control)
-    extends StageLogicImpl("ZipWindow", shape) {
+    extends NodeImpl("ZipWindow", shape) {
 
     private[this] var bufOut: BufD = _
     private[this] var bufIn1: BufI = _
@@ -146,7 +146,8 @@ object ZipWindowN {
     override def preStart(): Unit =
       shape.inlets.foreach(pull(_))
 
-    override def postStop(): Unit = {
+    override protected def stopped(): Unit = {
+      super.stopped()
       freeInputBuffers()
       freeOutputBuffers()
     }

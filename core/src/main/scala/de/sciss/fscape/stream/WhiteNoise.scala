@@ -14,9 +14,8 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, SourceShape}
-import de.sciss.fscape.stream.impl.{GenChunkImpl, GenIn0DImpl, StageImpl, StageLogicImpl}
+import de.sciss.fscape.stream.impl.{GenChunkImpl, GenIn0DImpl, StageImpl, NodeImpl}
 
 import scala.util.Random
 
@@ -37,11 +36,11 @@ object WhiteNoise {
       out = OutD(s"$name.out")
     )
 
-    def createLogic(attr: Attributes): GraphStageLogic = new Logic(shape)
+    def createLogic(attr: Attributes) = new Logic(shape)
   }
 
   private final class Logic(shape: Shape)(implicit ctrl: Control)
-    extends StageLogicImpl(name, shape)
+    extends NodeImpl(name, shape)
       with GenChunkImpl[BufD, BufD, Shape]
       with GenIn0DImpl {
 

@@ -14,9 +14,8 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FanInShape3}
-import de.sciss.fscape.stream.impl.{FilterIn3DImpl, FilterLogicImpl, StageImpl, StageLogicImpl, WindowedLogicImpl}
+import de.sciss.fscape.stream.impl.{FilterIn3DImpl, FilterLogicImpl, StageImpl, NodeImpl, WindowedLogicImpl}
 
 object OnePoleWindow {
   def apply(in: OutD, size: OutI, coef: OutD)(implicit b: Builder): OutD = {
@@ -40,11 +39,11 @@ object OnePoleWindow {
       out = OutD(s"$name.out" )
     )
 
-    def createLogic(attr: Attributes): GraphStageLogic = new Logic(shape)
+    def createLogic(attr: Attributes) = new Logic(shape)
   }
 
   private final class Logic(shape: Shape)(implicit ctrl: Control)
-    extends StageLogicImpl(name, shape)
+    extends NodeImpl(name, shape)
       with FilterLogicImpl[BufD, Shape]
       with WindowedLogicImpl[Shape]
       with FilterIn3DImpl[BufD, BufI, BufD] {
@@ -53,8 +52,8 @@ object OnePoleWindow {
     private[this] var coef    = 0.0
     private[this] var winBuf  : Array[Double] = _
     
-    override def postStop(): Unit = {
-      super.postStop()
+    override protected def stopped(): Unit = {
+      super.stopped()
       winBuf = null
     }
 

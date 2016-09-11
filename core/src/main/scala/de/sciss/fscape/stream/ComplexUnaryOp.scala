@@ -14,9 +14,8 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FlowShape}
-import de.sciss.fscape.stream.impl.{FilterChunkImpl, FilterIn1DImpl, StageImpl, StageLogicImpl}
+import de.sciss.fscape.stream.impl.{FilterChunkImpl, FilterIn1DImpl, StageImpl, NodeImpl}
 
 /** Unary operator assuming stream is complex signal (real and imaginary interleaved).
   * Outputs another complex stream even if the operator yields a purely real-valued result
@@ -44,11 +43,11 @@ object ComplexUnaryOp {
       out = OutD(s"$name.out")
     )
 
-    def createLogic(attr: Attributes): GraphStageLogic = new Logic(op, shape)
+    def createLogic(attr: Attributes) = new Logic(op, shape)
   }
 
   private final class Logic(op: Op, shape: Shape)(implicit ctrl: Control)
-    extends StageLogicImpl(s"$name(${op.name})", shape)
+    extends NodeImpl(s"$name(${op.name})", shape)
       with FilterChunkImpl[BufD, BufD, Shape]
       with FilterIn1DImpl[BufD] {
 

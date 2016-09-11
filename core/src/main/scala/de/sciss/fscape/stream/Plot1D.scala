@@ -17,8 +17,7 @@ package stream
 import java.awt.Color
 
 import akka.stream.Attributes
-import akka.stream.stage.GraphStageLogic
-import de.sciss.fscape.stream.impl.{FilterLogicImpl, Sink2Impl, SinkShape2, StageImpl, StageLogicImpl}
+import de.sciss.fscape.stream.impl.{FilterLogicImpl, Sink2Impl, SinkShape2, StageImpl, NodeImpl}
 import org.jfree.chart.axis.NumberAxis
 import org.jfree.chart.plot.{PlotOrientation, XYPlot}
 import org.jfree.chart.{ChartFactory, ChartPanel}
@@ -45,11 +44,11 @@ object Plot1D {
       in1 = InI (s"$name.trig")
     )
 
-    def createLogic(attr: Attributes): GraphStageLogic = new Logic(label = label, shape = shape)
+    def createLogic(attr: Attributes) = new Logic(label = label, shape = shape)
   }
 
   private final class Logic(label: String, shape: Shape)(implicit ctrl: Control)
-    extends StageLogicImpl(name, shape)
+    extends NodeImpl(name, shape)
       with FilterLogicImpl[BufD, Shape]
       with Sink2Impl[BufD, BufI] {
 

@@ -23,7 +23,7 @@ import akka.stream.stage.GraphStageLogic
   */
 trait In2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, Out >: Null <: BufLike]
   extends Out1LogicImpl[Out, FanInShape2[In0, In1, Out]] {
-  _: GraphStageLogic =>
+  _: GraphStageLogic with Node =>
 
   // ---- impl ----
 
@@ -40,7 +40,7 @@ trait In2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, Out >: Null <: Buf
     pull(in1)
   }
 
-  override def postStop(): Unit = {
+  override protected def stopped(): Unit = {
     freeInputBuffers()
     freeOutputBuffers()
   }

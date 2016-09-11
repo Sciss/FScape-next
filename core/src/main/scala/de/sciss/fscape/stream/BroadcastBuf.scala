@@ -14,9 +14,9 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.stage.{GraphStageLogic, InHandler, OutHandler}
+import akka.stream.stage.{InHandler, OutHandler}
 import akka.stream.{Attributes, Inlet, Outlet, UniformFanOutShape}
-import de.sciss.fscape.stream.impl.{StageImpl, StageLogicImpl}
+import de.sciss.fscape.stream.impl.{StageImpl, NodeImpl}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
@@ -45,12 +45,12 @@ object BroadcastBuf {
       Vector.tabulate(numOutputs)(i => Outlet[B](s"$name.out$i")): _*
     )
 
-    def createLogic(inheritedAttributes: Attributes): GraphStageLogic =
+    def createLogic(attr: Attributes): NodeImpl[Shape] =
       new Logic(shape = shape, eagerCancel = eagerCancel)
   }
 
   private final class Logic[B <: BufLike](shape: Shape[B], eagerCancel: Boolean)(implicit ctrl: Control)
-    extends StageLogicImpl(name, shape) with InHandler { self =>
+    extends NodeImpl(name, shape) with InHandler { self =>
 
     private[this] val numOutputs    = shape.outArray.length
     private[this] var pendingCount  = numOutputs

@@ -18,10 +18,10 @@ import java.io.RandomAccessFile
 import java.nio.DoubleBuffer
 import java.nio.channels.FileChannel
 
-import akka.stream.stage.{GraphStageLogic, InHandler}
+import akka.stream.stage.InHandler
 import akka.stream.{Attributes, FanInShape7, Inlet}
 import de.sciss.file._
-import de.sciss.fscape.stream.impl.{Out1DoubleImpl, Out1LogicImpl, ResampleImpl, StageImpl, StageLogicImpl}
+import de.sciss.fscape.stream.impl.{Out1DoubleImpl, Out1LogicImpl, ResampleImpl, StageImpl, NodeImpl}
 
 object ResampleWindow {
   def apply(in: OutD, size: OutI, factor: OutD, minFactor: OutD, rollOff: OutD, kaiserBeta: OutD, zeroCrossings: OutI)
@@ -54,11 +54,11 @@ object ResampleWindow {
       out = OutD(s"$name.out"          )
     )
 
-    def createLogic(attr: Attributes): GraphStageLogic = new Logic(shape)
+    def createLogic(attr: Attributes) = new Logic(shape)
   }
 
   private final class Logic(shape: Shape)(implicit ctrl: Control)
-    extends StageLogicImpl(name, shape)
+    extends NodeImpl(name, shape)
       with ResampleImpl[Shape]
       with Out1LogicImpl[BufD, Shape]
       with Out1DoubleImpl[Shape] {
@@ -159,8 +159,8 @@ object ResampleWindow {
       pull(in1)
     }
 
-    override def postStop(): Unit = {
-      super.postStop()
+    override protected def stopped(): Unit = {
+      super.stopped()
       inArr  = null
       outArr = null
       freeWinBuffer()

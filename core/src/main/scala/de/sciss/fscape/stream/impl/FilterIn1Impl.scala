@@ -21,7 +21,7 @@ import akka.stream.stage.GraphStageLogic
 /** Building block for `FanInShape2` type graph stage logic. */
 trait FilterIn1Impl[In >: Null <: BufLike, Out >: Null <: BufLike]
   extends Out1LogicImpl[Out, FlowShape[In, Out]] {
-  _: GraphStageLogic =>
+  _: GraphStageLogic with Node =>
 
   // ---- impl ----
 
@@ -40,7 +40,7 @@ trait FilterIn1Impl[In >: Null <: BufLike, Out >: Null <: BufLike]
   override def preStart(): Unit =
     pull(in0)
 
-  override def postStop(): Unit = {
+  override protected def stopped(): Unit = {
     freeInputBuffers()
     freeOutputBuffers()
   }
@@ -76,10 +76,10 @@ trait FilterIn1Impl[In >: Null <: BufLike, Out >: Null <: BufLike]
 
 trait FilterIn1DImpl[In >: Null <: BufLike] extends FilterIn1Impl[In, BufD] with Out1DoubleImpl[FlowShape[In, BufD]] {
 
-  _: GraphStageLogic =>
+  _: GraphStageLogic with Node =>
 }
 
 trait FilterIn1LImpl[In >: Null <: BufLike] extends FilterIn1Impl[In, BufL] with Out1LongImpl[FlowShape[In, BufL]] {
 
-  _: GraphStageLogic =>
+  _: GraphStageLogic with Node =>
 }
