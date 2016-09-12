@@ -112,7 +112,8 @@ object FourierTest extends App {
     val gain      = max.reciprocal * headroom
     val buf       = BufferDisk(in)
 //    buf.poll(Metro(44100), "buf")
-    val sig       = buf hypotx DC(gain) // buf * gain
+    val sig       = buf * gain
+//    val sig       = buf hypotx DC(gain)
     sig.poll(Metro(44100), "sig")
     sig
   }
