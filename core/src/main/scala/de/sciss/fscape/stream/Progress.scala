@@ -1,5 +1,5 @@
 /*
- *  Poll.scala
+ *  Progress.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2016 Hanns Holger Rutz. All rights reserved.
@@ -14,26 +14,24 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.{Attributes, Inlet, Outlet}
+import akka.stream.Attributes
 import de.sciss.fscape.stream.impl.{NodeImpl, PollImpl, SinkShape2, StageImpl}
 
-// XXX TODO --- we could use an `Outlet[String]`, that might be making perfect sense
-object Poll {
-  def apply(in: Outlet[BufLike], trig: OutI, label: String)(implicit b: Builder): Unit = {
-    // println(s"Poll($in, $trig, $label)")
+object Progress {
+  def apply(in: OutD, trig: OutI, label: String)(implicit b: Builder): Unit = {
     val stage0  = new Stage(label = label)
     val stage   = b.add(stage0)
     b.connect(in  , stage.in0)
     b.connect(trig, stage.in1)
   }
 
-  private final val name = "Poll"
+  private final val name = "Progress"
 
-  private type Shape = SinkShape2[BufLike, BufI]
+  private type Shape = SinkShape2[BufD, BufI]
 
   private final class Stage(label: String)(implicit ctrl: Control) extends StageImpl[Shape](name) {
     val shape = SinkShape2(
-      in0 = Inlet[BufLike](s"$name.in"),
+      in0 = InD(s"$name.in"),
       in1 = InI(s"$name.trig")
     )
 
@@ -42,15 +40,15 @@ object Poll {
 
   private final class Logic(label: String, shape: Shape)(implicit ctrl: Control)
     extends NodeImpl(name, shape)
-      with PollImpl[BufLike] {
+      with PollImpl[BufD] {
+
+    private[this] val key = ctrl.mkProgress(label)
 
     override def toString = s"$name-L($label)"
 
-
-    protected def trigger(buf: BufLike, off: Int): Unit = {
-      val x0 = buf.at(off)
-      // XXX TODO --- make console selectable
-      println(s"$label: $x0")
+    protected def trigger(buf: BufD, off: Int): Unit = {
+      val frac = buf.buf(off)
+      ctrl.setProgress(key, frac)
     }
   }
 }

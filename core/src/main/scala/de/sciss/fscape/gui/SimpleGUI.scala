@@ -1,13 +1,14 @@
 package de.sciss.fscape.gui
 
 import de.sciss.fscape.stream.{Cancelled, Control}
+import de.sciss.numbers
 
 import scala.concurrent.ExecutionContext
-import scala.swing.{Button, FlowPanel, Frame, Label, Swing}
+import scala.swing.{BorderPanel, Button, FlowPanel, Frame, Label, ProgressBar, Swing}
 import scala.util.{Failure, Success}
 
 object SimpleGUI {
-  def apply(ctrl: Control): Frame = {
+  def apply(ctrl: Control): SimpleGUI = {
     val txtCancelled = "Cancelled."
     val lbCancelled = new Label(txtCancelled)
     lbCancelled.preferredSize = lbCancelled.preferredSize
@@ -20,6 +21,8 @@ object SimpleGUI {
       println(ctrl.stats)
       ctrl.debugDotGraph()
     }
+    val ggProg    = new ProgressBar
+    ggProg.max    = 250
 
     import ExecutionContext.Implicits.global
     ctrl.status.onComplete { tr =>
@@ -36,10 +39,13 @@ object SimpleGUI {
       }
     }
 
-    new Frame {
+    val f = new Frame {
       title = "Control"
 
-      contents = new FlowPanel(ggCancel, ggDump, lbCancelled)
+      contents = new BorderPanel {
+        add(new FlowPanel(ggCancel, ggDump, lbCancelled), BorderPanel.Position.Center)
+        add(ggProg, BorderPanel.Position.South)
+      }
       pack().centerOnScreen()
       open()
 
@@ -47,5 +53,22 @@ object SimpleGUI {
         if (finished) sys.exit()
       }
     }
+
+    new Impl(f, ggProg)
   }
+
+  private final class Impl(val frame: Frame, ggProg: ProgressBar) extends SimpleGUI {
+    private[this] var _prog = 0.0
+
+    def progress: Double = _prog
+    def progress_=(value: Double): Unit = if (_prog != value) {
+      _prog = value
+      import numbers.Implicits._
+      ggProg.value = value.linlin(0, 1, 0, 250).toInt
+    }
+  }
+}
+trait SimpleGUI {
+  def frame: Frame
+  var progress: Double
 }

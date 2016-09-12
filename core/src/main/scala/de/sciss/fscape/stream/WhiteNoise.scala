@@ -44,12 +44,7 @@ object WhiteNoise {
       with GenChunkImpl[BufD, BufD, Shape]
       with GenIn0DImpl {
 
-    private[this] var rnd: Random = _
-
-    override def preStart(): Unit = {
-      super.preStart()
-      rnd = ctrl.mkRandom()
-    }
+    private[this] val rnd: Random = ctrl.mkRandom()
 
     protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Unit = {
       val buf   = bufOut0.buf

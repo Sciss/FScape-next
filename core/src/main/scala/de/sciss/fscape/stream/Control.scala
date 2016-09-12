@@ -17,10 +17,8 @@ package stream
 import java.util.concurrent.ConcurrentLinkedQueue
 
 import akka.actor.{Actor, ActorRef, ActorSystem, Props}
-import akka.stream.stage.GraphStageLogic
-import akka.stream.{ActorMaterializer, Materializer, Shape}
+import akka.stream.{ActorMaterializer, Materializer}
 import de.sciss.file.File
-import de.sciss.fscape.stream.impl.NodeImpl
 
 import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future, Promise}
@@ -54,7 +52,10 @@ object Control {
     def materializer: Materializer
 
     def executionContext: ExecutionContext
+
+    def progressReporter: ProgressReporter
   }
+
   object Config {
     def apply() = new ConfigBuilder
     implicit def build(b: ConfigBuilder): Config = b.build
@@ -63,7 +64,9 @@ object Control {
   final case class Config(blockSize: Int, nodeBufferSize: Int,
                           useAsync: Boolean, seed: Long, actorSystem: ActorSystem,
                           materializer0: Materializer,
-                          executionContext0: ExecutionContext)
+                          executionContext0: ExecutionContext,
+                          progressReporter: ProgressReporter
+                         )
     extends ConfigLike {
 
     implicit def materializer    : Materializer     = materializer0
@@ -126,6 +129,8 @@ object Control {
     def executionContext_=(value: ExecutionContext): Unit =
       _exec = value
 
+    var progressReporter: ProgressReporter = NoReport
+
     def build = Config(
       blockSize         = blockSize,
       nodeBufferSize    = nodeBufferSize,
@@ -133,13 +138,26 @@ object Control {
       seed              = seed,
       actorSystem       = actorSystem,
       materializer0     = materializer,
-      executionContext0 = executionContext
+      executionContext0 = executionContext,
+      progressReporter  = progressReporter
     )
   }
 
   def apply(config: Config = Config()): Control = new Impl(config)
 
   implicit def fromBuilder(implicit b: Builder): Control = b.control
+
+//  final case class ProgressPart(label: String, frac: Double)
+
+  final case class ProgressReport(total: Double, partLabel: String, part: Double)
+
+  type ProgressReporter = ProgressReport => Unit
+
+  final val NoReport: ProgressReporter = { _ => () }
+
+  final case class Stats(numBufD: Int, numBufI: Int, numBufL: Int, numNodes: Int)
+
+  // ------------------------
 
   private final class Impl(val config: Config) extends AbstractImpl {
     protected def expand(graph: Graph): UGenGraph = UGenGraph.build(graph)(this)
@@ -157,13 +175,17 @@ object Control {
     final def blockSize     : Int = config.blockSize
     final def nodeBufferSize: Int = config.nodeBufferSize
 
-    private[this] val queueD    = new ConcurrentLinkedQueue[BufD]
-    private[this] val queueI    = new ConcurrentLinkedQueue[BufI]
-    private[this] val queueL    = new ConcurrentLinkedQueue[BufL]
-    private[this] val nodes     = mutable.Set.empty[Node]
-    private[this] val sync      = new AnyRef
-    private[this] val statusP   = Promise[Unit]()
-    private[this] var _actor    = null : ActorRef
+    private[this] val queueD      = new ConcurrentLinkedQueue[BufD]
+    private[this] val queueI      = new ConcurrentLinkedQueue[BufI]
+    private[this] val queueL      = new ConcurrentLinkedQueue[BufL]
+    private[this] val nodes       = mutable.Set.empty[Node]
+    private[this] val sync        = new AnyRef
+    private[this] val statusP     = Promise[Unit]()
+    private[this] var _actor      = null : ActorRef
+    private[this] val metaRand    = new Random(config.seed)
+    private[this] var _progLabels = Array.empty[String]
+    private[this] var _progParts  = Array.empty[Double]
+    private[this] val _progHasRep = config.progressReporter ne NoReport
 
     final def debugDotGraph(): Unit = akka.stream.sciss.Util.debugDotGraph()(config.materializer)
 
@@ -175,6 +197,24 @@ object Control {
 
     private final class ActorImpl extends Actor {
       def receive = {
+        case SetProgress(key, frac) =>
+          val pf    = _progParts
+          val clip  = if (frac < 0.0) 0.0 else if (frac > 1.0) 1.0 else frac
+          if (pf(key) != clip) {
+            pf(key)     = clip
+            if (_progHasRep) {
+              var i     = 0
+              var total = 0.0
+              while (i < pf.length) {
+                total += pf(i)
+                i += 1
+              }
+              if (total > 1.0) total = 1.0
+              val report = ProgressReport(total = total, partLabel = _progLabels(key), part = clip)
+              config.progressReporter(report)
+            }
+          }
+
         case RemoveNode(n) =>
           if (nodes.remove(n)) {
             // XXX TODO --- check for error other than `Cancelled` --- how?
@@ -197,7 +237,7 @@ object Control {
 
     private def mkActor(): Unit = sync.synchronized {
       require(_actor == null)
-      _actor = config.actorSystem.actorOf(Props(new ActorImpl))
+      _actor          = config.actorSystem.actorOf(Props(new ActorImpl))
     }
 
     final def runExpanded(ugens: UGenGraph): Unit = {
@@ -206,9 +246,19 @@ object Control {
       r.run()(config.materializer)
     }
 
-    private[this] val metaRand = new Random(config.seed)
+    final def mkRandom(): Random = /* sync.synchronized */ {
+      new Random(metaRand.nextLong())
+    }
 
-    final def mkRandom(): Random = sync.synchronized(new Random(metaRand.nextLong()))
+    final def mkProgress(label: String): Int = /* sync.synchronized */ {
+      val res = _progLabels.length
+      _progLabels :+= label
+      _progParts  :+= 0.0
+      res
+    }
+
+    final def setProgress(key: Int, frac: Double): Unit =
+      if (!frac.isNaN) _actor ! SetProgress(key = key, frac = frac)
 
     final def borrowBufD(): BufD = {
       val res0 = queueD.poll()
@@ -269,11 +319,12 @@ object Control {
 
     // XXX TODO --- should be in the actor body
     final def stats = {
-      val res = Stats(numBufD = queueD.size(), numBufI = queueI.size(), numNodes = nodes.size)
+      val res = Stats(numBufD = queueD.size(), numBufI = queueI.size(), numBufL = queueL.size(),
+        numNodes = nodes.size)
       println("--- NODES: ---")
       nodes.foreach { n =>
         println(n)
-        val gs   = n.asInstanceOf[GraphStageLogic]
+//        val gs   = n.asInstanceOf[GraphStageLogic]
 //        val conn = akka.stream.sciss.Util.portToConn(gs)
 //        val ni   = n.asInstanceOf[NodeImpl[Shape]]
 //        val ins  = ni.shape.inlets
@@ -299,10 +350,7 @@ object Control {
 
   private final case class RemoveNode(node: Node)
   private case object Cancel
-
-  //
-
-  final case class Stats(numBufD: Int, numBufI: Int, numNodes: Int)
+  private final case class SetProgress(key: Int, frac: Double)
 }
 trait Control {
   /** Global buffer size. The guaranteed size of the double and integer arrays.
@@ -346,6 +394,12 @@ trait Control {
 
   /** Removes a finished node of a stage logic. */
   private[stream] def removeNode(n: Node): Unit
+
+  /** Registers a progress reporter. */
+  private[stream] def mkProgress(label: String): Int
+
+  /** Reports the progress for a particular instance. */
+  private[stream] def setProgress(key: Int, frac: Double): Unit
 
   /** Creates a temporary file. The caller is responsible to deleting the file
     * after it is not needed any longer. (The file will still be marked `deleteOnExit`)

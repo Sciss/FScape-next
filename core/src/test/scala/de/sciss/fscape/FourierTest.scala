@@ -2,13 +2,15 @@ package de.sciss.fscape
 
 import de.sciss.file._
 import de.sciss.fscape.gui.SimpleGUI
+import de.sciss.fscape.stream.Control
 import de.sciss.numbers
 import de.sciss.synth.io.{AudioFile, AudioFileSpec}
 
 import scala.swing.Swing
 
 object FourierTest extends App {
-  val fIn   = userHome / "Music" / "work" / "mentasm-e8646341.aif"
+//  val fIn   = userHome / "Music" / "work" / "mentasm-e8646341.aif"
+  val fIn   = userHome / "Documents" / "projects" / "Anemone"/ "minuten" / "rec" / "AnemoneRehearsal160527_15h24m.aif"
   val fOut  = userHome / "Music" / "work" / "_killme.aif"
   val fOut2 = userHome / "Music" / "work" / "_killme2.aif"
   val fOut3 = userHome / "Music" / "work" / "_killme3.aif"
@@ -66,11 +68,13 @@ object FourierTest extends App {
     val fftSize   = sz // inSpec.numFrames.toInt
     val fourier   = Fourier(in = complex, size = fftSize)
     val norm      = complexNormalize(fourier)
-    val unzip     = UnzipWindow(in = norm)
-    val re        = ChannelProxy(unzip, 0)
-    val im        = ChannelProxy(unzip, 1)
-    AudioFileOut(file = fOut2, spec = AudioFileSpec(numChannels = 1, sampleRate = sr), in = re)
-    AudioFileOut(file = fOut3, spec = AudioFileSpec(numChannels = 1, sampleRate = sr), in = im)
+//    val unzip     = UnzipWindow(in = norm)
+//    val re        = ChannelProxy(unzip, 0)
+//    val im        = ChannelProxy(unzip, 1)
+//    val p1        = AudioFileOut(file = fOut2, spec = AudioFileSpec(numChannels = 1, sampleRate = sr), in = re)
+//    val p2        = AudioFileOut(file = fOut3, spec = AudioFileSpec(numChannels = 1, sampleRate = sr), in = im)
+//    val progress  = p1 / sz // (p1 + p2) / (sz * 2)
+//    Progress(progress, Metro(sr))
   }
 
   lazy val gFwdBwd = Graph {
@@ -107,16 +111,22 @@ object FourierTest extends App {
     val headroom  = -0.2.dbamp
     val gain      = max.reciprocal * headroom
     val buf       = BufferDisk(in)
-    val sig       = buf * gain
+//    buf.poll(Metro(44100), "buf")
+    val sig       = buf hypotx DC(gain) // buf * gain
+    sig.poll(Metro(44100), "sig")
     sig
   }
 
-  implicit val ctrl = stream.Control()
-  ctrl.run(g)
+  val config = Control.Config()
+  var gui: SimpleGUI = _
+  config.progressReporter = rep => Swing.onEDT(gui.progress = rep.total)
+  implicit val ctrl = Control(config)
 
   Swing.onEDT {
-    SimpleGUI(ctrl)
+    gui = SimpleGUI(ctrl)
   }
+
+  ctrl.run(g)
 
   println("Running.")
 }
