@@ -53,7 +53,7 @@ object AudioFileOut {
   }
 
   private final class Logic(shape: Shape, f: File, spec: io.AudioFileSpec)(implicit ctrl: Control)
-    extends NodeImpl(s"$name(${f.name})", shape) with InHandler with OutHandler { logic =>
+    extends NodeImpl(s"$name(${f.name})", shape) with OutHandler { logic =>
 
     private[this] var af      : io.AudioFile = _
     private[this] var buf     : io.Frames = _
@@ -62,26 +62,36 @@ object AudioFileOut {
     private[this] val numChannels   = spec.numChannels
     private[this] val bufIns        = new Array[BufD](spec.numChannels)
 
-    shape.inlets.foreach(setHandler(_, this))
+    private[this] var shouldStop    = false
+
+    {
+      val ins = shape.inSeq
+      var ch = 0
+      while (ch < numChannels) {
+        val in = ins(ch)
+        setHandler(in, new InH(in /* , ch */))
+        ch += 1
+      }
+    }
     setHandler(shape.out, this)
 
-    // ---- Leaf
+    private final class InH(in: InD /* , ch: Int */) extends InHandler {
+      def onPush(): Unit = {
+        pushed += 1
+        if (pushed == numChannels && isAvailable(shape.out)) process()
+      }
 
-//    private[this] val asyncCancel = getAsyncCallback[Unit] { _ =>
-//      val ex = Cancelled()
-//      if (resultP.tryFailure(ex)) failStage(ex)
-//    }
-
-//    def result: Future[Any] = resultP.future
-
-//    def cancel(): Unit = asyncCancel.invoke(())
+      override def onUpstreamFinish(): Unit = {
+        if (isAvailable(in)) {
+          shouldStop = true
+        } else {
+          logStream(s"onUpstreamFinish($in)")
+          super.onUpstreamFinish()
+        }
+      }
+    }
 
     // ---- StageLogic
-
-    override def onUpstreamFinish(): Unit = {
-      logStream(s"onUpstreamFinish($this)")
-      super.onUpstreamFinish()
-    }
 
     override def preStart(): Unit = {
       logStream(s"$this - preStart()")
@@ -105,15 +115,11 @@ object AudioFileOut {
       // }
     }
 
-    def onPush(): Unit = {
-      pushed += 1
-      if (pushed == numChannels && isAvailable(shape.out)) process()
-    }
-
     def onPull(): Unit =
       if (pushed == numChannels) process()
 
     private def process(): Unit = {
+//      logStream(s"process() $this")
       logStream(s"process() $this")
       pushed = 0
 
@@ -167,13 +173,15 @@ object AudioFileOut {
       bufOut.size = chunk
       push(shape.out, bufOut)
 
-      ch = 0
-      while (ch < numChannels) {
-        pull(shape.in(ch))
-        ch += 1
+      if (shouldStop) {
+        completeStage()
+      } else {
+        ch = 0
+        while (ch < numChannels) {
+          pull(shape.in(ch))
+          ch += 1
+        }
       }
-
-
     }
 
 //    override def onUpstreamFailure(ex: Throwable): Unit = {
