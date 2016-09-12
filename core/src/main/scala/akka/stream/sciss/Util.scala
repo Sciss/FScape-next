@@ -20,4 +20,6 @@ object Util {
 
       case other => sys.error(s"Not an instance of ActorMaterializerImpl: $other")
     }
+
+//  def portToConn(in: GraphStageLogic): Array[Connection] = in.portToConn
 }

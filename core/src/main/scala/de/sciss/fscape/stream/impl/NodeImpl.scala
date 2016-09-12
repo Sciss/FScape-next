@@ -19,7 +19,7 @@ import akka.stream.Shape
 import akka.stream.stage.GraphStageLogic
 
 abstract class NodeImpl[+S <: Shape](protected final val name: String,
-                                     protected final val shape: S)
+                                     final val shape: S)
                                     (implicit final protected val control: Control)
   extends GraphStageLogic(shape) with Node {
 

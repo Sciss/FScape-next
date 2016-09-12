@@ -78,6 +78,11 @@ object AudioFileOut {
 
     // ---- StageLogic
 
+    override def onUpstreamFinish(): Unit = {
+      logStream(s"onUpstreamFinish($this)")
+      super.onUpstreamFinish()
+    }
+
     override def preStart(): Unit = {
       logStream(s"$this - preStart()")
       af = io.AudioFile.openWrite(f, spec)
@@ -109,6 +114,7 @@ object AudioFileOut {
       if (pushed == numChannels) process()
 
     private def process(): Unit = {
+      logStream(s"process() $this")
       pushed = 0
 
       var ch = 0

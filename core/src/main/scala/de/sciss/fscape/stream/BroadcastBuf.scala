@@ -59,9 +59,18 @@ object BroadcastBuf {
 
     setHandler(shape.in, this)
 
+    private var NUM = 0L
+
+    override def onUpstreamFinish(): Unit = {
+      println(s"BROADCAST $NUM")
+      super.onUpstreamFinish()
+    }
+
     def onPush(): Unit = {
       pendingCount  = sinksRunning
       val buf       = grab(shape.in)
+
+      NUM += buf.size
 
       // for N non-closed outputs,
       // we call `acquire` N times.

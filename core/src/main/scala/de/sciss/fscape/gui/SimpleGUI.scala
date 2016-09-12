@@ -17,6 +17,7 @@ object SimpleGUI {
 
     val ggCancel = Button("Cancel")(ctrl.cancel())
     val ggDump   = Button("Dump") {
+      println(ctrl.stats)
       ctrl.debugDotGraph()
     }
 

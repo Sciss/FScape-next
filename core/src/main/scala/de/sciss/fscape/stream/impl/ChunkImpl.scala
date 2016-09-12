@@ -112,9 +112,13 @@ trait SameChunkImpl[S <: Shape] extends ChunkImpl[S] {
 trait FilterChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape] extends SameChunkImpl[S] {
   _: GraphStageLogic =>
 
-  protected def in0 : Inlet [In0]
+  protected def in0: Inlet[In0]
 
-  protected final def shouldComplete(): Boolean = inRemain == 0 && isClosed(in0)
+  protected final def shouldComplete(): Boolean = inRemain == 0 && {
+    val res = isClosed(in0)
+    if (res) assert (!isAvailable(in0)) // HHH
+    res
+  }
 }
 
 trait GenChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape] extends SameChunkImpl[S] {

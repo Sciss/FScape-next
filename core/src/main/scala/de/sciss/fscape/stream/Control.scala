@@ -17,8 +17,10 @@ package stream
 import java.util.concurrent.ConcurrentLinkedQueue
 
 import akka.actor.{Actor, ActorRef, ActorSystem, Props}
-import akka.stream.{ActorMaterializer, Materializer}
+import akka.stream.stage.GraphStageLogic
+import akka.stream.{ActorMaterializer, Materializer, Shape}
 import de.sciss.file.File
+import de.sciss.fscape.stream.impl.NodeImpl
 
 import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future, Promise}
@@ -265,7 +267,30 @@ object Control {
       if (_actor != null) _actor ! Cancel
     }
 
-    final def stats = Stats(numBufD = queueD.size(), numBufI = queueI.size())
+    // XXX TODO --- should be in the actor body
+    final def stats = {
+      val res = Stats(numBufD = queueD.size(), numBufI = queueI.size(), numNodes = nodes.size)
+      println("--- NODES: ---")
+      nodes.foreach { n =>
+        println(n)
+        val gs   = n.asInstanceOf[GraphStageLogic]
+//        val conn = akka.stream.sciss.Util.portToConn(gs)
+//        val ni   = n.asInstanceOf[NodeImpl[Shape]]
+//        val ins  = ni.shape.inlets
+//        val numIns = ins.size
+//        val outs = ni.shape.outlets
+//        val numOuts = outs.size
+//        println("  ins:")
+//        (ins zip conn.take(numIns)).foreach { case (in, con) =>
+//          println(s"   $in - $con")
+//        }
+//        println("  outs:")
+//        (outs zip conn.takeRight(numOuts)).foreach { case (out, con) =>
+//            println(s"   $out - $con")
+//        }
+      }
+      res
+    }
 
     final def createTempFile(): File = File.createTemp()
   }
@@ -277,7 +302,7 @@ object Control {
 
   //
 
-  final case class Stats(numBufD: Int, numBufI: Int)
+  final case class Stats(numBufD: Int, numBufI: Int, numNodes: Int)
 }
 trait Control {
   /** Global buffer size. The guaranteed size of the double and integer arrays.

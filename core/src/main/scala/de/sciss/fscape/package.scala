@@ -38,7 +38,11 @@ package object fscape {
   @elidable(CONFIG) private[fscape] def logStream(what: => String): Unit =
     if (showStreamLog) {
       val w = what
-      if (w.contains("completeStage" /* onUpstreamFinish" */)) Console.out.println(s"${logHeader.format(new Date())}stream $w")
+      // if (w.contains("completeStage" /* onUpstreamFinish" */))
+      if (w.contains("completeStage() Take-L")) {
+        println("AQUI")
+      }
+      Console.out.println(s"${logHeader.format(new Date())}stream $w")
     }
 
   @elidable(CONFIG) private[fscape] def logGraph(what: => String): Unit =
