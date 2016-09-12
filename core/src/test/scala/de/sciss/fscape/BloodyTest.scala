@@ -11,9 +11,8 @@ object BloodyTest extends App {
   lazy val g = Graph {
     val sz = 17000
 
-    val gen       = SinOsc(freqN = 1.0/16 /* 4410/sr */, phase = 0 /* math.Pi/2 */)
-    val in        = gen.take(sz)
-    val max       = RunningMax(in).last
+    val in        = Line(0, 1, sz) // WhiteNoise() // SinOsc(freqN = 1.0/16 /* 4410/sr */, phase = 0 /* math.Pi/2 */)
+    val max       = in.last // RunningMax(in).last
     val buf       = BufferDisk(in)
     val sig       = buf * max
     Length(sig).poll(0, "len")
