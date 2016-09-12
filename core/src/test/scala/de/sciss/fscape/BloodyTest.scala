@@ -29,6 +29,7 @@ object BloodyTest extends App {
     gui = SimpleGUI(ctrl)
   }
 
+  showStreamLog = true
   ctrl.run(g)
 
   println("Running.")

@@ -18,8 +18,6 @@ import akka.stream.stage.{InHandler, OutHandler}
 import akka.stream.{Attributes, FlowShape}
 import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeImpl}
 
-import scala.util.control.NonFatal
-
 // XXX TODO --- we could use a "quasi-circular"
 // structure? this is, overwrite parts of the file
 // that were already read
@@ -109,7 +107,7 @@ object BufferDisk {
 
     // in closed
     override def onUpstreamFinish(): Unit = {
-      logStream(s"onUpstreamFinish(${shape.in}")
+      logStream(s"onUpstreamFinish(${shape.in})")
       if (isAvailable(shape.out)) onPull()
     }
   }
