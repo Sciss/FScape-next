@@ -18,6 +18,21 @@ package impl
 import akka.stream.stage.{InHandler, OutHandler}
 import akka.stream.{Inlet, Outlet, Shape}
 
+// XXX TODO --- most likely we don't need the
+// complicated `ProcessInHandlerImpl` can replace it
+// everywhere with `EquivalentInHandlerImpl`.
+// I.e. we assume the logic will always look for `shouldComplete`.
+
+/** A handler that when pushed, calls `updateCanRead`,
+  * and if this is `true`, calls `process.` If the
+  * inlet is closed, it will call `process` if the
+  * crucial inputs had been pushed before. In that
+  * case the logic is responsible for closing the stage.
+  * If no valid input had been seen, an `onUpstreamFinish`
+  * leads to stage completion.
+  *
+  * This function is used for a "hot" inlet.
+  */
 final class ProcessInHandlerImpl[A, S <: Shape](in: Inlet[A], logic: InOutImpl[S])
   extends InHandler {
   def onPush(): Unit = {
@@ -30,7 +45,7 @@ final class ProcessInHandlerImpl[A, S <: Shape](in: Inlet[A], logic: InOutImpl[S
     logStream(s"onUpstreamFinish($in)")
     if (logic.inValid) logic.process() // may lead to `flushOut`
     else {
-      if (!logic.isInAvailable(in)) {
+      if (!logic.isInAvailable(in)) {   // XXX TODO --- what is this for?
         println(s"Invalid process $in")
         logic.completeStage()
       }
@@ -40,6 +55,42 @@ final class ProcessInHandlerImpl[A, S <: Shape](in: Inlet[A], logic: InOutImpl[S
   logic.setInHandler(in, this)
 }
 
+/** A handler that when pushed, calls `updateCanRead`,
+  * and if this is `true`, calls `process.` If the
+  * inlet is closed, it will call `updateCanRead` and
+  * `process` The logic is responsible for closing the stage
+  * if this was the last one among the "hot" inlets.
+  *
+  * This function is used for one "hot" inlet among
+  * multiple "hot" peers.
+  */
+final class EquivalentInHandlerImpl[A, S <: Shape](in: Inlet[A], logic: InOutImpl[S])
+  extends InHandler {
+  def onPush(): Unit = {
+    logStream(s"onPush($in)")
+    logic.updateCanRead()
+    if (logic.canRead) logic.process()
+  }
+
+  override def onUpstreamFinish(): Unit = {
+    logStream(s"onUpstreamFinish($in)")
+    logic.updateCanRead()
+    logic.process()
+  }
+
+  logic.setInHandler(in, this)
+}
+
+/** A handler that when pushed, calls `updateCanRead`,
+  * and if this is `true`, calls `process.` If the
+  * inlet is closed, and the logic's input was valid
+  * or there was a not-yet-pulled content pending on
+  * this inlet, it will call `process`.
+  * If no valid input had been seen, an `onUpstreamFinish`
+  * leads to stage completion.
+  *
+  * This function is used for an "auxiliary" inlet.
+  */
 final class AuxInHandlerImpl[A, S <: Shape](in: Inlet[A], logic: InOutImpl[S])
   extends InHandler {
 

@@ -72,7 +72,7 @@ object BufferDisk {
       val bufIn = grab(shape.in)
       tryPull(shape.in)
       val chunk = bufIn.size
-      logStream(s"onPush(${shape.in}) $chunk")
+      logStream(s"onPush(${shape.in}) $chunk; read = $framesRead; written = $framesWritten")
 
       try {
         if (af.position != framesWritten) af.position = framesWritten
@@ -88,7 +88,7 @@ object BufferDisk {
 
     def onPull(): Unit = {
       val chunk = math.min(bufSize, framesWritten - framesRead).toInt
-      logStream(s"onPull(${shape.out}) $chunk")
+      logStream(s"onPull(${shape.out}) $chunk; read = $framesRead; written = $framesWritten")
       if (chunk == 0) {
         if (isClosed(shape.in)) {
           logStream(s"completeStage() $this")
@@ -107,7 +107,7 @@ object BufferDisk {
 
     // in closed
     override def onUpstreamFinish(): Unit = {
-      logStream(s"onUpstreamFinish(${shape.in})")
+      logStream(s"onUpstreamFinish(${shape.in}); read = $framesRead; written = $framesWritten")
       if (isAvailable(shape.out)) onPull()
     }
   }

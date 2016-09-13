@@ -73,9 +73,9 @@ trait BinaryInImpl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, Out >: Null <
 //    println(s"a0 = $a0, a1 = $a1, canRead = ${_canRead}")
   }
 
-  new ProcessInHandlerImpl (in0 , this)
-  new ProcessInHandlerImpl (in1 , this)
-  new ProcessOutHandlerImpl(out0, this)
+  new EquivalentInHandlerImpl(in0 , this)
+  new EquivalentInHandlerImpl(in1 , this)
+  new ProcessOutHandlerImpl  (out0, this)
 }
 
 trait BinaryInDImpl[In0 >: Null <: BufLike, In1 >: Null <: BufLike]
