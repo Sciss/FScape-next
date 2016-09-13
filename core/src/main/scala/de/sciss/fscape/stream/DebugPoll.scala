@@ -40,7 +40,7 @@ object DebugPoll {
 
   private final class Logic(label: String, shape: Shape)(implicit ctrl: Control)
     extends NodeImpl(name, shape)
-      with Sink1Impl[BufLike, BufI] {
+      with Sink1Impl[BufLike] {
 
     override def toString = s"$name-L($label)"
 

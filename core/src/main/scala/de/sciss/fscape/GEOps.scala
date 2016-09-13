@@ -102,8 +102,8 @@ final class GEOps1(val `this`: GE) extends AnyVal { me =>
   /** Drops the first `len` elements of this signal. */
   def drop     (len: GE): GE = Drop     (in = g, len = len)
 
-  /** Drops the last `len` elements of this (finite) signal. */
-  def dropRight(len: GE): GE = ???
+//  /** Drops the last `len` elements of this (finite) signal. */
+//  def dropRight(len: GE): GE = ...
 
   /** Outputs the first element of this signal, then terminates. */
   def head: GE = take     (1)
@@ -169,9 +169,9 @@ final class GEOps2(val `this`: GE) extends AnyVal { me =>
   def >=      (b: GE): GE = binOp(Geq     , b)
   def min     (b: GE): GE = binOp(Min     , b)
   def max     (b: GE): GE = binOp(Max     , b)
-//  def &       (b: GE): GE = binOp(BitAnd  , b)
-//  def |       (b: GE): GE = binOp(BitOr   , b)
-//  def ^       (b: GE): GE = binOp(BitXor  , b)
+  def &       (b: GE): GE = binOp(BitAnd  , b)
+  def |       (b: GE): GE = binOp(BitOr   , b)
+  def ^       (b: GE): GE = binOp(BitXor  , b)
   // def lcm(b: GE): GE = ...
   // def gcd(b: GE): GE = ...
 

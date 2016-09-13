@@ -15,9 +15,16 @@ package de.sciss.fscape
 package lucre
 
 import de.sciss.fscape.graph.{BinaryOp, Constant, ConstantD, ConstantI, ConstantL, UnaryOp}
+import de.sciss.fscape.lucre.UGenGraphBuilder.ActionRef
 import de.sciss.fscape.lucre.graph.Attribute
+import de.sciss.fscape.stream.Control
 import de.sciss.lucre.expr.Expr
+import de.sciss.lucre.stm
 import de.sciss.lucre.stm.Sys
+import de.sciss.synth.proc
+import de.sciss.synth.proc.{SoundProcesses, WorkspaceHandle}
+
+import scala.collection.immutable.{IndexedSeq => Vec}
 
 object UGenGraphBuilder {
   def get(b: UGenGraph.Builder): UGenGraphBuilder = b match {
@@ -25,10 +32,17 @@ object UGenGraphBuilder {
     case _ => sys.error("Out of context expansion")
   }
 
-  def build[S <: Sys[S]](f: FScape[S], graph: Graph)(implicit tx: S#Tx, ctrl: stream.Control): UGenGraph = {
+  def build[S <: Sys[S]](f: FScape[S], graph: Graph)(implicit tx: S#Tx, cursor: stm.Cursor[S],
+                                                     workspace: WorkspaceHandle[S],
+                                                     ctrl: Control): UGenGraph = {
     val b = new BuilderImpl(f)
-    graph.sources.foreach { source =>
-      source.force(b)
+    var g0 = graph
+    while (g0.nonEmpty) {
+      g0 = Graph {
+        g0.sources.foreach { source =>
+          source.force(b)
+        }
+      }
     }
     b.build
   }
@@ -37,8 +51,8 @@ object UGenGraphBuilder {
 
   def canResolve(in: GE): Either[String, Unit] = {
     in match {
-      case _: Constant            => Right(())
-      case _: Attribute           => Right(())
+      case _: Constant        => Right(())
+      case _: Attribute       => Right(())
       case UnaryOp (_, a   )  => canResolve(a)
       case BinaryOp(_, a, b)  =>
         for {
@@ -102,9 +116,16 @@ object UGenGraphBuilder {
     }
   }
 
+  /** An "untyped" action reference, i.e. without system type and transactions revealed */
+  trait ActionRef {
+    def execute(values: Vec[Double]): Unit
+  }
+
   // -----------------
 
-  private final class BuilderImpl[S <: Sys[S]](f: FScape[S])(implicit tx: S#Tx, protected val ctrl: stream.Control)
+  private final class BuilderImpl[S <: Sys[S]](f: FScape[S])(implicit tx: S#Tx, cursor: stm.Cursor[S],
+                                                             workspace: WorkspaceHandle[S],
+                                                             protected val ctrl: Control)
     extends UGenGraph.BuilderLike with UGenGraphBuilder {
 
     def requestAttribute(key: String): Option[Any] =
@@ -112,8 +133,27 @@ object UGenGraphBuilder {
         case x : Expr[S, _] => x.value
         case other => other
       }
+
+    def requestAction(key: String): Option[ActionRef] =
+      f.attr.$[proc.Action](key).map { a =>
+        new ActionRefImpl(tx.newHandle(f), tx.newHandle(a))
+      }
+  }
+
+  private final class ActionRefImpl[S <: Sys[S]](fH: stm.Source[S#Tx, FScape[S]], aH: stm.Source[S#Tx, proc.Action[S]])
+                                                (implicit cursor: stm.Cursor[S], workspace: WorkspaceHandle[S])
+    extends ActionRef {
+
+    def execute(values: Vec[Double]): Unit = SoundProcesses.atomic[S, Unit] { implicit tx =>
+      val f = fH()
+      val a = aH()
+      val u = proc.Action.Universe(self = a, workspace = workspace, invoker = Some(f), values = values)
+      a.execute(u)
+    }
   }
 }
 trait UGenGraphBuilder extends UGenGraph.Builder {
   def requestAttribute(key: String): Option[Any]
+
+  def requestAction(key: String): Option[ActionRef]
 }

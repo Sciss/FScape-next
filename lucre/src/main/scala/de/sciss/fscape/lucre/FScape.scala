@@ -15,11 +15,13 @@ package de.sciss.fscape
 package lucre
 
 import de.sciss.fscape.lucre.impl.{FScapeImpl => Impl}
+import de.sciss.fscape.stream.Control
 import de.sciss.lucre.event.{Observable, Publisher}
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Disposable, Obj, Sys}
-import de.sciss.model
+import de.sciss.{fscape, model}
 import de.sciss.serial.{DataInput, Serializer}
+import de.sciss.synth.proc.WorkspaceHandle
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
@@ -83,8 +85,8 @@ object FScape extends Obj.Type {
       def toInt = (amount * 100).toInt
     }
 
-    val  Cancelled = stream.Cancelled
-    type Cancelled = stream.Cancelled
+    val  Cancelled = fscape.stream.Cancelled
+    type Cancelled = fscape.stream.Cancelled
   }
   trait Rendering[S <: Sys[S]] extends Observable[S#Tx, Rendering.State] with Disposable[S#Tx] {
     def state(implicit tx: S#Tx): Rendering.State
@@ -101,6 +103,6 @@ trait FScape[S <: Sys[S]] extends Obj[S] with Publisher[S, FScape.Update[S]] {
   /** The variable synth graph function of the process. */
   def graph: GraphObj.Var[S]
 
-  def run(config: stream.Control.Config = stream.Control.Config())
-         (implicit tx: S#Tx, cursor: stm.Cursor[S]): FScape.Rendering[S]
+  def run(config: Control.Config = Control.Config())
+         (implicit tx: S#Tx, cursor: stm.Cursor[S], workspace: WorkspaceHandle[S]): FScape.Rendering[S]
 }

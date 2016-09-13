@@ -345,26 +345,50 @@ object BinaryOp {
     }
   }
 
-  //  case object BitAnd extends Op {
-  //    final val id = 14
-  //    override val name = "&"
-  //
-  //    def apply(a: Double, b: Double): Double = rd.&(a, b)
-  //  }
-  //
-  //  case object BitOr extends Op {
-  //    final val id = 15
-  //    override val name = "|"
-  //
-  //    def apply(a: Double, b: Double): Double = rd.|(a, b)
-  //  }
-  //
-  //  case object BitXor extends Op {
-  //    final val id = 16
-  //    override val name = "^"
-  //
-  //    def apply(a: Double, b: Double): Double = rd.^(a, b)
-  //  }
+  case object BitAnd extends Op {
+    final val id = 14
+    override val name = "&"
+
+    def apply(a: Double, b: Double): Double = a.toLong & b.toLong
+
+    override def apply(a: Constant, b: Constant): Constant = (a, b) match {
+      case (ConstantD(_), _)  => super.apply(a, b)
+      case (_, ConstantD(_))  => super.apply(a, b)
+      case (ConstantL(an), _) => an & b.longValue
+      case (_, ConstantL(bn)) => a.longValue & bn
+      case _                  => a.intValue & b.intValue
+    }
+  }
+
+  case object BitOr extends Op {
+    final val id = 15
+    override val name = "|"
+
+    def apply(a: Double, b: Double): Double = a.toLong | b.toLong
+
+    override def apply(a: Constant, b: Constant): Constant = (a, b) match {
+      case (ConstantD(_), _)  => super.apply(a, b)
+      case (_, ConstantD(_))  => super.apply(a, b)
+      case (ConstantL(an), _) => an | b.longValue
+      case (_, ConstantL(bn)) => a.longValue | bn
+      case _                  => a.intValue | b.intValue
+    }
+  }
+
+  case object BitXor extends Op {
+    final val id = 16
+    override val name = "^"
+
+    def apply(a: Double, b: Double): Double = a.toLong ^ b.toLong
+
+    override def apply(a: Constant, b: Constant): Constant = (a, b) match {
+      case (ConstantD(_), _)  => super.apply(a, b)
+      case (_, ConstantD(_))  => super.apply(a, b)
+      case (ConstantL(an), _) => an ^ b.longValue
+      case (_, ConstantL(bn)) => a.longValue ^ bn
+      case _                  => a.intValue ^ b.intValue
+    }
+  }
 
   // case object Lcm            extends Op( 17 )
   // case object Gcd            extends Op( 18 )

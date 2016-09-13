@@ -30,8 +30,13 @@ object UGenGraph {
 
   def build(graph: Graph)(implicit ctrl: stream.Control): UGenGraph = {
     val b = new BuilderImpl
-    graph.sources.foreach { source =>
-      source.force(b)
+    var g0 = graph
+    while (g0.nonEmpty) {
+      g0 = Graph {
+        g0.sources.foreach { source =>
+          source.force(b)
+        }
+      }
     }
     b.build
   }
@@ -89,6 +94,8 @@ object UGenGraph {
     // - converts to StreamIn objects that automatically insert stream broadcasters
     //   and dummy sinks
     private def buildStream(ugens: Vec[IndexedUGenBuilder]): RunnableGraph[NotUsed] = {
+      // empty graphs are not supported by Akka
+      if (ugens.isEmpty) throw new IllegalStateException("Graph is empty")
       val _graph = GraphDSL.create() { implicit dsl =>
         implicit val sb = stream.Builder()
 

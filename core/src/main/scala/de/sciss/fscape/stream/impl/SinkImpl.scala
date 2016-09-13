@@ -38,7 +38,7 @@ trait SinkImpl[S <: Shape]
 /** Building block for sinks with `SinkShape` type graph stage logic.
   * A sink keeps consuming input until left inlet is closed.
   */
-trait Sink1Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike]
+trait Sink1Impl[In0 >: Null <: BufLike]
   extends SinkImpl[SinkShape[In0]] {
   _: GraphStageLogic with Node =>
 
