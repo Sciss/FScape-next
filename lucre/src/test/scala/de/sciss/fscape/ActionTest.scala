@@ -19,7 +19,8 @@ object ActionTest extends App {
     def apply[T <: Sys[T]](universe: Universe[T])(implicit tx: T#Tx): Unit = {
       tx.afterCommit(println("Bang!"))
       assert(tx.system == cursor)
-      r.cancel()(tx.asInstanceOf[S#Tx])
+      val stx = tx.asInstanceOf[S#Tx]
+      r.cancel()(stx)
     }
   }
 
@@ -29,7 +30,7 @@ object ActionTest extends App {
       import graph.{AudioFileOut => _, _}
       import lucre.graph._
       val sig   = WhiteNoise()
-      val tr    = sig >= 0 & sig < 0.001
+      val tr    = sig >= 0 & sig < 0.0001
       Action(trig = tr, key = "action")
     }
     proc.Action.registerPredef("bang", body)
@@ -43,7 +44,7 @@ object ActionTest extends App {
 
   cursor.step { implicit tx =>
     val f = fH()
-    val r = f.run()
+    r = f.run()
     r.reactNow { implicit tx => state =>
       println(s"Rendering: $state")
       state match {
