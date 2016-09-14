@@ -114,9 +114,11 @@ trait FilterChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape
 
   protected def in0: Inlet[In0]
 
-  protected final def shouldComplete(): Boolean = inRemain == 0 && {
+  protected final def shouldComplete(): Boolean =
+    inRemain == 0 && {
     val res = isClosed(in0)
-    if (res) assert (!isAvailable(in0)) // HHH
+    // XXX TODO --- the following assertion does not always hold. What do we do? This is probably all over the place
+    // if (res) assert (!isAvailable(in0))
     res
   }
 }

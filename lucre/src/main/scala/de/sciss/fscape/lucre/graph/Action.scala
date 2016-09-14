@@ -27,7 +27,7 @@ object Action {
       unwrap(Vector(action.trig.expand))
 
     protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit =
-      UGen.ZeroOut(this, args, rest = ref, isIndividual = true)
+      UGen.ZeroOut(this, args, rest = ref)
 
     private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit = {
       val Vec(trig) = args

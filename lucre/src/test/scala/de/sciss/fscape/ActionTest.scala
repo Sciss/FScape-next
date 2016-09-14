@@ -29,8 +29,8 @@ object ActionTest extends App {
     val g = Graph {
       import graph.{AudioFileOut => _, _}
       import lucre.graph._
-      val sig   = WhiteNoise()
-      val tr    = sig >= 0 & sig < 0.0001
+      val sig   = Line(0, 1, len = 100000000) // WhiteNoise()
+      val tr    = sig > 0.9 // sig >= 0 & sig < 0.0001
       Action(trig = tr, key = "action")
     }
     proc.Action.registerPredef("bang", body)

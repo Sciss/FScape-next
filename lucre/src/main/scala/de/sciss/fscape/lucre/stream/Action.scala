@@ -63,7 +63,7 @@ object Action {
       while (inOffI < stop0) {
         if (inOffI < stop0) h1 = b0(inOffI) > 0
         if (h1 && !h0) {
-          ref.execute(Vector.empty)
+          ref.execute(())
         }
         inOffI  += 1
         h0       = h1

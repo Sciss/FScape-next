@@ -24,8 +24,6 @@ import de.sciss.lucre.stm.Sys
 import de.sciss.synth.proc
 import de.sciss.synth.proc.{SoundProcesses, WorkspaceHandle}
 
-import scala.collection.immutable.{IndexedSeq => Vec}
-
 object UGenGraphBuilder {
   def get(b: UGenGraph.Builder): UGenGraphBuilder = b match {
     case ub: UGenGraphBuilder => ub
@@ -118,7 +116,7 @@ object UGenGraphBuilder {
 
   /** An "untyped" action reference, i.e. without system type and transactions revealed */
   trait ActionRef {
-    def execute(values: Vec[Double]): Unit
+    def execute(value: Any): Unit
   }
 
   // -----------------
@@ -144,10 +142,10 @@ object UGenGraphBuilder {
                                                 (implicit cursor: stm.Cursor[S], workspace: WorkspaceHandle[S])
     extends ActionRef {
 
-    def execute(values: Vec[Double]): Unit = SoundProcesses.atomic[S, Unit] { implicit tx =>
+    def execute(value: Any): Unit = SoundProcesses.atomic[S, Unit] { implicit tx =>
       val f = fH()
       val a = aH()
-      val u = proc.Action.Universe(self = a, workspace = workspace, invoker = Some(f), values = values)
+      val u = proc.Action.Universe(self = a, workspace = workspace, invoker = Some(f), value = value)
       a.execute(u)
     }
   }
