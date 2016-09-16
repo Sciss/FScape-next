@@ -19,7 +19,7 @@ object OnCompleteTest extends App {
       }
   }
 
-  val fH = cursor.step { implicit tx =>
+  cursor.step { implicit tx =>
     val f = FScape[S]
     val g = Graph {
       import graph.{AudioFileOut => _, _}
