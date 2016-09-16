@@ -119,6 +119,9 @@ object FScape extends Obj.Type {
         "de.sciss.fscape.lucre.graph._",
         "de.sciss.fscape.lucre.graph.Ops._"
       ))
+      proc.Code.registerImports(proc.Code.Action.id, Vec(
+        "de.sciss.fscape.lucre.FScape"
+      ))
     }
 
     // override because we need register imports

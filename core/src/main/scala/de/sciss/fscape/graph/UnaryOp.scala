@@ -78,7 +78,7 @@ object UnaryOp {
 
     final def make(a: GE): GE = a match {
       case v: Constant  => apply(v)
-      case _            => new UnaryOp(op, a)
+      case _            => UnaryOp(op.id, a)
     }
 
     private def plainName: String = {
@@ -332,7 +332,7 @@ object UnaryOp {
   //    def apply(a: Double): Double = rd2.scurve(a)
   //  }
 }
-final case class UnaryOp(op: UnaryOp.Op, in: GE) extends UGenSource.SingleOut {
+final case class UnaryOp(op: Int, in: GE) extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
     unwrap(Vector(in.expand))
 
@@ -341,6 +341,7 @@ final case class UnaryOp(op: UnaryOp.Op, in: GE) extends UGenSource.SingleOut {
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
     val Vec(in) = args
-    stream.UnaryOp(op = op, in = in.toDouble)
+    val op0 = UnaryOp.Op(op)
+    stream.UnaryOp(op = op0, in = in.toDouble)
   }
 }

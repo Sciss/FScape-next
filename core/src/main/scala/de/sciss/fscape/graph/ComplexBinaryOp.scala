@@ -49,7 +49,7 @@ object ComplexBinaryOp {
 
     def id: Int
 
-    final def make(a: GE, b: GE): GE = new ComplexBinaryOp(op, a = a, b = b)
+    final def make(a: GE, b: GE): GE = new ComplexBinaryOp(op.id, a = a, b = b)
 
 //    /** Transfers values from an input buffer
 //      * to an output buffer,
@@ -165,7 +165,7 @@ object ComplexBinaryOp {
     }
   }
 }
-final case class ComplexBinaryOp(op: ComplexBinaryOp.Op, a: GE, b: GE) extends UGenSource.SingleOut {
+final case class ComplexBinaryOp(op: Int, a: GE, b: GE) extends UGenSource.SingleOut {
 
   protected def makeUGens(implicit builder: UGenGraph.Builder): UGenInLike =
     unwrap(Vector(a.expand, b.expand))
@@ -175,6 +175,7 @@ final case class ComplexBinaryOp(op: ComplexBinaryOp.Op, a: GE, b: GE) extends U
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit builder: stream.Builder): StreamOut = {
     val Vec(a, b) = args
-    stream.ComplexBinaryOp(op = op, a = a.toDouble, b = b.toDouble)
+    val op0 = ComplexBinaryOp.Op(op)
+    stream.ComplexBinaryOp(op = op0, a = a.toDouble, b = b.toDouble)
   }
 }

@@ -82,7 +82,7 @@ object BinaryOp {
 
     def make(a: GE, b: GE): GE = (a, b) match {
       case (av: Constant, bv: Constant) => ConstantD(apply(av.doubleValue, bv.doubleValue)) // XXX TODO --- possibly preserve number type
-      case _ => new BinaryOp(op, a, b)
+      case _ => BinaryOp(op.id, a, b)
     }
 
     private def plainName: String = {
@@ -533,7 +533,7 @@ object BinaryOp {
 
 }
 final case class
-BinaryOp(op: BinaryOp.Op, a: GE, b: GE) extends UGenSource.SingleOut {
+BinaryOp(op: Int, a: GE, b: GE) extends UGenSource.SingleOut {
 
   protected def makeUGens(implicit builder: UGenGraph.Builder): UGenInLike =
     unwrap(Vector(a.expand, b.expand))
@@ -543,6 +543,7 @@ BinaryOp(op: BinaryOp.Op, a: GE, b: GE) extends UGenSource.SingleOut {
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
     val Vec(in1, in2) = args
-    stream.BinaryOp(op = op, in1 = in1.toDouble, in2 = in2.toDouble)
+    val op0 = BinaryOp.Op(op)
+    stream.BinaryOp(op = op0, in1 = in1.toDouble, in2 = in2.toDouble)
   }
 }

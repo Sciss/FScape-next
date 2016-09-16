@@ -104,13 +104,15 @@ object UGenGraphBuilder {
 
       case UnaryOp(op, a)  =>
         val af = resolve(a, builder)
-        af.right.map(op.apply)
+        val op0 = UnaryOp.Op(op)
+        af.right.map(op0.apply)
 
       case BinaryOp(op, a, b) =>
+        val op0 = BinaryOp.Op(op)
         for {
           af <- resolve(a, builder).right
           bf <- resolve(b, builder).right
-        } yield op.apply(af, bf)
+        } yield op0.apply(af, bf)
     }
   }
 

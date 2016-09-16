@@ -73,7 +73,7 @@ object ComplexUnaryOp {
 
     def id: Int
 
-    final def make(a: GE): GE = new ComplexUnaryOp(op, a)
+    final def make(a: GE): GE = new ComplexUnaryOp(op.id, a)
 
     /** Transfers values from an input buffer
       * to an output buffer,
@@ -275,7 +275,7 @@ object ComplexUnaryOp {
     }
   }
 }
-final case class ComplexUnaryOp(op: ComplexUnaryOp.Op, in: GE) extends UGenSource.SingleOut {
+final case class ComplexUnaryOp(op: Int, in: GE) extends UGenSource.SingleOut {
 
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
     unwrap(Vector(in.expand))
@@ -285,6 +285,7 @@ final case class ComplexUnaryOp(op: ComplexUnaryOp.Op, in: GE) extends UGenSourc
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
     val Vec(in) = args
-    stream.ComplexUnaryOp(op = op, in = in.toDouble)
+    val op0 = ComplexUnaryOp.Op(op)
+    stream.ComplexUnaryOp(op = op0, in = in.toDouble)
   }
 }

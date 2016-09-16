@@ -104,7 +104,7 @@ object FourierTest extends App {
   }
 
   def complexNormalize(in: GE): GE = {
-    val abs       = ComplexUnaryOp(ComplexUnaryOp.Abs, in = in)
+    val abs       = in.complex.abs // ComplexUnaryOp(ComplexUnaryOp.Abs.id, in = in)
     val mag       = ChannelProxy(UnzipWindow(abs), 0)
     val max       = RunningMax(mag).last
     max.ampdb.poll(0, "max [dB]")

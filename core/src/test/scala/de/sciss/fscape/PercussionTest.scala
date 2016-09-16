@@ -23,7 +23,7 @@ object PercussionTest extends App {
     val fft         = Real1FullFFT    (in = inW, size = fftSize)
 
     // 'percussion'
-    val logC        = ComplexUnaryOp  (in = fft , op = ComplexUnaryOp.Log).max(-80)
+    val logC        = fft.complex.log /* ComplexUnaryOp  (in = fft , op = ComplexUnaryOp.Log.id) */.max(-80)
     val cep         = Complex1IFFT    (in = logC, size = fftSize) / fftSize
     val coefs       = Vector(CepCoef.One, CepCoef.Two)
     val cepOut      = coefs.map { coef =>
@@ -33,7 +33,7 @@ object PercussionTest extends App {
         ccr = ccr, cci = cci, car = car, cai = cai)
     }
     val freq        = Complex1FFT   (in = cepOut, size = fftSize) * fftSize
-    val fftOut      = ComplexUnaryOp(in = freq, op = ComplexUnaryOp.Exp)
+    val fftOut      = freq.complex.exp // ComplexUnaryOp(in = freq, op = ComplexUnaryOp.Exp.id)
 
     // 'synthesis'
     val outW        = Real1FullIFFT (in = fftOut, size = fftSize)
