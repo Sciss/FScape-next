@@ -80,13 +80,16 @@ object FScape extends Obj.Type {
     final case class Failure (ex : Throwable) extends State {
       def isComplete = true
     }
-    final case class Progress(amount: Double) extends State {
-      override def toString = s"$productPrefix($toInt%)"
-
+//    final case class Progress(amount: Double) extends State {
+//      override def toString = s"$productPrefix($toInt%)"
+//
+//      def isComplete = false
+//
+//      /** Returns an integer progress percentage between 0 and 100 */
+//      def toInt = (amount * 100).toInt
+//    }
+    case object Running extends State {
       def isComplete = false
-
-      /** Returns an integer progress percentage between 0 and 100 */
-      def toInt = (amount * 100).toInt
     }
 
     val  Cancelled = fscape.stream.Cancelled
@@ -106,6 +109,7 @@ object FScape extends Obj.Type {
   object Code extends proc.Code.Type {
     final val id    = 4
     final val name  = "FScape Graph"
+    type Repr = Code
 
     private[this] lazy val _init: Unit = {
       proc.Code.addType(this)
@@ -120,7 +124,7 @@ object FScape extends Obj.Type {
     // override because we need register imports
     override def init(): Unit = _init
 
-    def mkCode(source: String): proc.Code = Code(source)
+    def mkCode(source: String): Repr = Code(source)
   }
   final case class Code(source: String) extends proc.Code {
     type In     = Unit

@@ -69,7 +69,7 @@ object FScapeImpl {
   private final class RenderingImpl[S <: Sys[S]](config: Control.Config)(implicit cursor: stm.Cursor[S])
     extends Rendering[S] with ObservableImpl[S, Rendering.State] {
 
-    private[this] val _state        = Ref[Rendering.State](Rendering.Progress(0.0))
+    private[this] val _state        = Ref[Rendering.State](Rendering.Running)
     private[this] val _disposed     = Ref(false)
     implicit private[this] val ctl  = Control(config)
 
@@ -190,7 +190,7 @@ object FScapeImpl {
     // --- rendering ---
 
     final def run(config: Control.Config)(implicit tx: S#Tx, cursor: stm.Cursor[S],
-                                                 workspace: WorkspaceHandle[S]): Rendering[S] = {
+                                          workspace: WorkspaceHandle[S]): Rendering[S] = {
       val g = graph().value
       val r = new RenderingImpl[S](config)
       r.start(this, g)
