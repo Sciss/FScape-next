@@ -28,7 +28,7 @@ import scala.annotation.switch
 import scala.util.control.NonFatal
 
 object GraphObj extends expr.impl.ExprTypeImpl[Graph, GraphObj] {
-  final val typeID = 23
+  final val typeID = 100
 
   protected def mkConst[S <: Sys[S]](id: S#ID, value: A)(implicit tx: S#Tx): Const[S] =
     new _Const[S](id, value)

@@ -25,6 +25,7 @@ import de.sciss.lucre.stm.{Copy, Disposable, Elem, NoSys, Obj, Sys, TxnLike}
 import de.sciss.lucre.{stm, event => evt}
 import de.sciss.serial.{DataInput, DataOutput, Serializer}
 import de.sciss.synth.proc.WorkspaceHandle
+import de.sciss.synth.proc.impl.CodeImpl
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm.Ref
@@ -52,11 +53,18 @@ object FScapeImpl {
     new Read(in, access, targets)
   }
 
-//  private final class ControlImpl[S <: Sys[S]](f: FScape[S], tx0: S#Tx, val config: stream.Control.Config)
-//    extends stream.Control.AbstractImpl {
-//
-//    protected def expand(graph: Graph): UGenGraph = UGenGraphBuilder.build(f, graph)(tx0, this)
-//  }
+  // ---- Code ----
+
+  implicit object CodeWrapper extends CodeImpl.Wrapper[Unit, Graph, FScape.Code] {
+    def id      = FScape.Code.id
+    def binding = None
+
+    def wrap(in: Unit)(fun: => Any): Graph = Graph(fun)
+
+    def blockTag = "Unit"
+  }
+
+  // ----
 
   private final class RenderingImpl[S <: Sys[S]](config: Control.Config)(implicit cursor: stm.Cursor[S])
     extends Rendering[S] with ObservableImpl[S, Rendering.State] {

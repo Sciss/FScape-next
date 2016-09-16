@@ -19,11 +19,14 @@ import de.sciss.fscape.stream.Control
 import de.sciss.lucre.event.{Observable, Publisher}
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Disposable, Obj, Sys}
-import de.sciss.{fscape, model}
 import de.sciss.serial.{DataInput, Serializer}
+import de.sciss.synth.proc
 import de.sciss.synth.proc.WorkspaceHandle
+import de.sciss.synth.proc.impl.CodeImpl
+import de.sciss.{fscape, model}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
+import scala.concurrent.Future
 
 object FScape extends Obj.Type {
   final val typeID = 0x1000B
@@ -34,8 +37,9 @@ object FScape extends Obj.Type {
     * You can use this call to register all FScape components.
     */
   override def init(): Unit = {
-    super.init()
+    super   .init()
     GraphObj.init()
+    Code    .init()
   }
 
   def apply[S <: Sys[S]](implicit tx: S#Tx): FScape[S] = Impl[S]
@@ -95,6 +99,47 @@ object FScape extends Obj.Type {
     def reactNow(fun: S#Tx => Rendering.State => Unit)(implicit tx: S#Tx): Disposable[S#Tx]
 
     def cancel()(implicit tx: S#Tx): Unit
+  }
+
+  // ---- Code ----
+
+  object Code extends proc.Code.Type {
+    final val id    = 4
+    final val name  = "FScape Graph"
+
+    private[this] lazy val _init: Unit = {
+      proc.Code.addType(this)
+      proc.Code.registerImports(id, Vec(
+        "de.sciss.numbers.Implicits._",
+        "de.sciss.fscape.graph.{AudioFileIn => _, AudioFileOut => _, _}",
+        "de.sciss.fscape.lucre.graph._",
+        "de.sciss.fscape.lucre.graph.Ops._"
+      ))
+    }
+
+    // override because we need register imports
+    override def init(): Unit = _init
+
+    def mkCode(source: String): proc.Code = Code(source)
+  }
+  final case class Code(source: String) extends proc.Code {
+    type In     = Unit
+    type Out    = fscape.Graph
+    def id      = Code.id
+
+    def compileBody()(implicit compiler: proc.Code.Compiler): Future[Unit] = {
+      import Impl.CodeWrapper
+      CodeImpl.compileBody[In, Out, Code](this)
+    }
+
+    def execute(in: In)(implicit compiler: proc.Code.Compiler): Out = {
+      import Impl.CodeWrapper
+      CodeImpl.execute[In, Out, Code](this, in)
+    }
+
+    def contextName = Code.name
+
+    def updateSource(newText: String) = copy(source = newText)
   }
 }
 
