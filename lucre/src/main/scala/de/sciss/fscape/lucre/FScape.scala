@@ -115,6 +115,7 @@ object FScape extends Obj.Type {
       proc.Code.addType(this)
       proc.Code.registerImports(id, Vec(
         "de.sciss.numbers.Implicits._",
+        "de.sciss.fscape.GE",
         "de.sciss.fscape.graph.{AudioFileIn => _, AudioFileOut => _, _}",
         "de.sciss.fscape.lucre.graph._",
         "de.sciss.fscape.lucre.graph.Ops._"

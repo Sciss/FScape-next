@@ -532,8 +532,17 @@ object BinaryOp {
   // case object ExpRRand       extends Op( 48 )
 
 }
-final case class
-BinaryOp(op: Int, a: GE, b: GE) extends UGenSource.SingleOut {
+
+/** A binary operator UGen, for example two sum or multiply two signals.
+  * The left or `a` input is "hot", i.e. it keeps the UGen running,
+  * while the right or `b` input may close early, and the last value will
+  * be remembered.
+  *
+  * @param op   the identifier of the operator (e.g. `BinaryOp.Times.id`)
+  * @param a    the left operand which determines how long the UGen computes
+  * @param b    the right operand.
+  */
+final case class BinaryOp(op: Int, a: GE, b: GE) extends UGenSource.SingleOut {
 
   protected def makeUGens(implicit builder: UGenGraph.Builder): UGenInLike =
     unwrap(Vector(a.expand, b.expand))
