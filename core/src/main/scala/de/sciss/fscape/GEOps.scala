@@ -213,6 +213,12 @@ final class GEOps2(val `this`: GE) extends AnyVal { me =>
   def wrap2   (b: GE): GE = binOp(Wrap2   , b)
 //  def firstarg(b: GE): GE = binOp(Firstarg, b)
 
+  /** Truncates or extends the first operand to
+    * match the length of `b`. This uses
+    * the `SecondArg` operator with operands reversed.
+    */
+  def matchLen(b: GE): GE = SecondArg.make(b, g)
+
   // def rrand(b: GE): GE    = ...
   // def exprrand(b: GE): GE = ...
 

@@ -63,6 +63,7 @@ object BinaryOp {
       case Fold2    .id => Fold2
       case Wrap2    .id => Wrap2
       //      case Firstarg .id => Firstarg
+      case SecondArg.id => SecondArg
     }
   }
 
@@ -81,7 +82,7 @@ object BinaryOp {
     def name: String = plainName.capitalize
 
     def make(a: GE, b: GE): GE = (a, b) match {
-      case (av: Constant, bv: Constant) => ConstantD(apply(av.doubleValue, bv.doubleValue)) // XXX TODO --- possibly preserve number type
+      case (av: Constant, bv: Constant) => apply(av, bv)
       case _ => BinaryOp(op.id, a, b)
     }
 
@@ -531,6 +532,12 @@ object BinaryOp {
   // case object Rrand          extends Op( 47 )
   // case object ExpRRand       extends Op( 48 )
 
+  case object SecondArg extends Op {
+    final val id = 100
+    def apply(a: Double, b: Double): Double = b
+
+    override def apply(a: Constant, b: Constant): Constant = b
+  }
 }
 
 /** A binary operator UGen, for example two sum or multiply two signals.
