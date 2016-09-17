@@ -15,7 +15,7 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape2}
-import de.sciss.fscape.stream.impl.{FilterIn2DImpl, NodeImpl, SameChunkImpl, StageImpl}
+import de.sciss.fscape.stream.impl.{FilterChunkImpl, FilterIn2DImpl, NodeImpl, StageImpl}
 
 object BinaryOp {
   import graph.BinaryOp.Op
@@ -44,21 +44,21 @@ object BinaryOp {
 
   private final class Logic(op: Op, shape: Shape)(implicit ctrl: Control)
     extends NodeImpl(s"$name(${op.name})", shape)
-      with SameChunkImpl[Shape]
+      with FilterChunkImpl /* SameChunkImpl[Shape] */ [BufD, BufD, Shape]
       with FilterIn2DImpl /* BinaryInDImpl */[BufD, BufD] {
 
     private[this] var aVal: Double = _
     private[this] var bVal: Double = _
 
-    protected def shouldComplete(): Boolean = inRemain == 0 && isClosed(in0) && isClosed(in1)
+//    protected def shouldComplete(): Boolean = inRemain == 0 && isClosed(in0) && isClosed(in1)
 
     protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Unit = {
       var inOffI  = inOff
       var outOffI = outOff
       val inStop  = inOffI + chunk
-      val a       = if (bufIn0 == null) null else bufIn0.buf
+      val a       = /* if (bufIn0 == null) null else */ bufIn0.buf
       val b       = if (bufIn1 == null) null else bufIn1.buf
-      val aStop   = if (a == null) 0 else bufIn0.size
+      val aStop   = /* if (a == null) 0 else */ bufIn0.size
       val bStop   = if (b == null) 0 else bufIn1.size
       val out     = bufOut0.buf
       var av      = aVal
