@@ -114,6 +114,7 @@ object FScape extends Obj.Type {
     private[this] lazy val _init: Unit = {
       proc.Code.addType(this)
       proc.Code.registerImports(id, Vec(
+        "Predef.{any2stringadd => _, _}", // cf. http://stackoverflow.com/questions/7634015/
         "de.sciss.numbers.Implicits._",
         "de.sciss.fscape.GE",
         "de.sciss.fscape.graph.{AudioFileIn => _, AudioFileOut => _, _}",

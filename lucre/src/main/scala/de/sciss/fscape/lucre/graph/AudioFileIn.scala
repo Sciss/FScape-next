@@ -61,6 +61,6 @@ final case class AudioFileIn(key: String) extends GE.Lazy {
     in
   }
 
-  def numFrames : GE = AudioFileIn.SampleRate (key)
+  def numFrames : GE = AudioFileIn.NumFrames (key)
   def sampleRate: GE = AudioFileIn.SampleRate(key)
 }
