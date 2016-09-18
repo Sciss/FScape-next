@@ -71,7 +71,7 @@ object FScapeImpl {
 
     private[this] val _state        = Ref[Rendering.State](Rendering.Running)
     private[this] val _disposed     = Ref(false)
-    implicit private[this] val ctl  = Control(config)
+    implicit val control: Control   = Control(config)
 
     def reactNow(fun: (S#Tx) => (State) => Unit)(implicit tx: S#Tx): Disposable[S#Tx] = {
       val res = react(fun)
@@ -93,9 +93,9 @@ object FScapeImpl {
         val ugens = UGenGraphBuilder.build(f, graph)
         tx.afterCommit {
           try {
-            ctl.runExpanded(ugens)
-            import ctl.config.executionContext
-            val fut = ctl.status
+            control.runExpanded(ugens)
+            import control.config.executionContext
+            val fut = control.status
             fut.andThen {
               case x => completeWith(x)
             }
@@ -122,7 +122,7 @@ object FScapeImpl {
     }
 
     def cancel()(implicit tx: S#Tx): Unit =
-      tx.afterCommit(ctl.cancel())
+      tx.afterCommit(control.cancel())
 
     def dispose()(implicit tx: S#Tx): Unit = {
       cancel()

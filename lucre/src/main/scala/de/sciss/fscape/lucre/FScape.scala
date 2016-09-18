@@ -98,6 +98,8 @@ object FScape extends Obj.Type {
   trait Rendering[S <: Sys[S]] extends Observable[S#Tx, Rendering.State] with Disposable[S#Tx] {
     def state(implicit tx: S#Tx): Rendering.State
 
+    def control: Control
+
     /** Like `react` but invokes the function immediately with the current state. */
     def reactNow(fun: S#Tx => Rendering.State => Unit)(implicit tx: S#Tx): Disposable[S#Tx]
 
