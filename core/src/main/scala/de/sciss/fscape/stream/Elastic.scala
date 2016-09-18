@@ -132,7 +132,7 @@ object Elastic {
         stateChange = true
       }
 
-      if (isClosed(in0) && !canPopBuf && bufIn0 == null) {
+      if (isClosed(in0) && !isAvailable(in0) && !canPopBuf && bufIn0 == null) {
         logStream(s"completeStage() $this")
         completeStage()
       }

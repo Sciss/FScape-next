@@ -32,5 +32,6 @@ trait FilterLogicImpl[In0 >: Null <: BufLike, S <: Shape]
 
   // ---- impl ----
 
-  protected final def inputsEnded: Boolean = inRemain == 0 && isClosed(in0)
+  protected final def inputsEnded: Boolean =
+    inRemain == 0 && isClosed(in0) && !isAvailable(in0)
 }

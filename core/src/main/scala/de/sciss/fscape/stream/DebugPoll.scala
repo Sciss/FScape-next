@@ -48,7 +48,7 @@ object DebugPoll {
 
     def process(): Unit = {
       if (!canRead) {
-        if (isClosed(shape.in)) {
+        if (isClosed(shape.in) && !isAvailable(shape.in)) {
           logStream(s"completeStage() $this")
           completeStage()
         }

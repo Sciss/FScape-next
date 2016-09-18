@@ -15,13 +15,12 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.Attributes
-import akka.stream.stage.{GraphStageLogic, OutHandler}
+import akka.stream.stage.OutHandler
 import de.sciss.file._
 import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeImpl, UniformSourceShape}
 import de.sciss.synth.io
 
 import scala.collection.immutable.{IndexedSeq => Vec}
-import scala.util.control.NonFatal
 
 object AudioFileIn {
   def apply(file: File, numChannels: Int)(implicit b: Builder): Vec[OutD] = {
@@ -76,7 +75,7 @@ object AudioFileIn {
     }
 
     override def onDownstreamFinish(): Unit =
-      if (shape.outlets.forall(isClosed(_))) {
+      if (shape.outlets.forall(out => isClosed(out))) {
         logStream(s"completeStage() $this")
         completeStage()
       }

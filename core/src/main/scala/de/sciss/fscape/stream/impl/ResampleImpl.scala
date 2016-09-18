@@ -104,7 +104,7 @@ trait ResampleImpl[S <: Shape] extends InOutImpl[S] {
 
   // ---- handlers / constructor ----
 
-  protected final def shouldComplete(): Boolean = inMainRemain == 0 && isClosed(in0)
+  protected final def shouldComplete(): Boolean = inMainRemain == 0 && isClosed(in0) && !isAvailable(in0)
 
   private class AuxInHandler[A](in: Inlet[A])
     extends InHandler {

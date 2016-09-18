@@ -14,10 +14,9 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FanInShape2}
 import de.sciss.fscape.graph.ConstantL
-import de.sciss.fscape.stream.impl.{ChunkImpl, FilterIn2DImpl, StageImpl, NodeImpl}
+import de.sciss.fscape.stream.impl.{ChunkImpl, FilterIn2DImpl, NodeImpl, StageImpl}
 
 object Drop {
   def tail(in: OutD)(implicit b: Builder): OutD = {
@@ -77,6 +76,6 @@ object Drop {
       res
     }
 
-    protected def shouldComplete(): Boolean = inRemain == 0 && isClosed(in0)
+    protected def shouldComplete(): Boolean = inRemain == 0 && isClosed(in0) && !isAvailable(in0)
   }
 }

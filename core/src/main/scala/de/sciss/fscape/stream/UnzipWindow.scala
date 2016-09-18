@@ -231,7 +231,7 @@ object UnzipWindowN {
         }
       }
 
-      val flush = inRemain == 0 && isClosed(shape.in0)
+      val flush = inRemain == 0 && isClosed(shape.in0) && !isAvailable(shape.in0)
       var idx = 0
       while (idx < numOutputs) {
         val out = outputs(idx)

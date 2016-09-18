@@ -98,7 +98,7 @@ object ImageFileSeqOut {
 
     // ----
 
-    private def inputsEnded0: Boolean = inRemain0 == 0 && isClosed(in0)
+    private def inputsEnded0: Boolean = inRemain0 == 0 && isClosed(in0) && !isAvailable(in0)
 
     @inline
     private[this] def shouldRead0 = inRemain0 == 0 && _canRead0

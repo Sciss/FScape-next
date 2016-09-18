@@ -76,7 +76,7 @@ object TakeRight {
           }
           copyInputToBuffer()
         }
-        if (isClosed(in0)) {
+        if (isClosed(in0) && !isAvailable(in0)) {
           bufRemain   = math.min(bufWritten, len).toInt
           bufOff      = (math.max(0L, bufWritten - len) % len).toInt
           writeMode   = true

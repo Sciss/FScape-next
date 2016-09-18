@@ -303,7 +303,7 @@ object ResampleOLD {
     private[this] def shouldReadAux  = inAuxRemain  == 0 && _canReadAux
 
     @inline
-    private[this] def shouldComplete(): Boolean = inMainRemain == 0 && isClosed(shape.in0)
+    private[this] def shouldComplete(): Boolean = inMainRemain == 0 && isClosed(shape.in0) && !isAvailable(shape.in0)
 
     private def allocOutputBuffers() = {
       bufOut0 = ctrl.borrowBufD()

@@ -65,7 +65,8 @@ trait BinaryInImpl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, Out >: Null <
     // and both must be available or closed.
     // if inputs are not yet valid, both inlets must be available.
     _canRead = if (_inValid) {
-      (a0 || a1) && ((a0 || isClosed(in0)) && (a1 || isClosed(in1)))
+      (a0 || a1) && ((a0 || (isClosed(in0) && !isAvailable(in0))) &&
+                     (a1 || (isClosed(in1) && !isAvailable(in1))))
     } else {
       a0 && a1
     }

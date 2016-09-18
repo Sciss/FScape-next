@@ -219,7 +219,9 @@ object ZipWindowN {
         }
 
         val chunk0  = math.min(inWinRem, outRemain)
-        val chunk   = if (sizeRemain == 0 && isClosed(shape.size)) chunk0 else math.min(chunk0, sizeRemain)
+        val chunk   = if (sizeRemain == 0 && isClosed(shape.size) && !isAvailable(shape.size)) chunk0
+                      else math.min(chunk0, sizeRemain)
+
         if (chunk > 0) {
           Util.copy(in.buf.buf, in.off, bufOut.buf, outOff, chunk)
           in.off     += chunk
@@ -238,7 +240,7 @@ object ZipWindowN {
         }
       }
 
-      val flush = in.remain == 0 && isClosed(in.let)
+      val flush = in.remain == 0 && isClosed(in.let) && !isAvailable(in.let)
       if (!outSent && (outRemain == 0 || flush) && isAvailable(shape.out)) {
         if (outOff > 0) {
           bufOut.size = outOff

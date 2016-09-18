@@ -49,11 +49,7 @@ object DebugTake {
     //    protected def shouldComplete(): Boolean = (takeRemain == 0) || (inRemain == 0 && isClosed(in0))
 
     protected def shouldComplete(): Boolean =
-      (takeRemain == 0) || (inRemain == 0 && {
-        val res = isClosed(in0)
-        if (res) assert(!isAvailable(in0))  // HHH
-        res
-      })
+      (takeRemain == 0) || (inRemain == 0 && isClosed(in0) && !isAvailable(in0))
 
     protected def processChunk(): Boolean = {
       val len = math.min(inRemain, outRemain)

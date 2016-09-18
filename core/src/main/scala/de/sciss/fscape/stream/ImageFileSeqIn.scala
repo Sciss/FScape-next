@@ -77,7 +77,7 @@ object ImageFileSeqIn {
       pull(in0)
     }
 
-    private def inputsEnded: Boolean = inRemain == 0 && isClosed(in0)
+    private def inputsEnded: Boolean = inRemain == 0 && isClosed(in0) && !isAvailable(in0)
 
     @inline
     private[this] def shouldRead = inRemain == 0 && _canRead

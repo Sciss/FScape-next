@@ -43,9 +43,12 @@ final class ProcessInHandlerImpl[A, S <: Shape](in: Inlet[A], logic: InOutImpl[S
 
   override def onUpstreamFinish(): Unit = {
     logStream(s"onUpstreamFinish($in)")
-    if (logic.inValid) logic.process() // may lead to `flushOut`
+    if (logic.inValid) {
+      // logic.updateCanRead()
+      logic.process()
+    } // may lead to `flushOut`
     else {
-      if (!logic.isInAvailable(in)) {   // XXX TODO --- what is this for?
+      if (!logic.isInAvailable(in)) {
         println(s"Invalid process $in")
         logic.completeStage()
       }

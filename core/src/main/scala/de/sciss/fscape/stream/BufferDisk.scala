@@ -90,7 +90,7 @@ object BufferDisk {
       val chunk = math.min(bufSize, framesWritten - framesRead).toInt
       logStream(s"onPull(${shape.out}) $chunk; read = $framesRead; written = $framesWritten")
       if (chunk == 0) {
-        if (isClosed(shape.in)) {
+        if (isClosed(shape.in) && !isAvailable(shape.in)) {
           logStream(s"completeStage() $this")
           completeStage()
         }
