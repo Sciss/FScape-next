@@ -49,6 +49,13 @@ object Control {
 
     def actorSystem: ActorSystem
 
+    /** Whether to terminate the `actorSystem` when the rendering
+      * completes. When using the default `actorSystem`, this will
+      * be `true`, when setting a custom actor system, this will
+      * default to `false`.
+      */
+    def terminateActors: Boolean
+
     def materializer: Materializer
 
     def executionContext: ExecutionContext
@@ -65,7 +72,8 @@ object Control {
                           useAsync: Boolean, seed: Long, actorSystem: ActorSystem,
                           materializer0: Materializer,
                           executionContext0: ExecutionContext,
-                          progressReporter: ProgressReporter
+                          progressReporter: ProgressReporter,
+                          terminateActors: Boolean
                          )
     extends ConfigLike {
 
@@ -99,15 +107,24 @@ object Control {
     def seed_=(value: Long): Unit = _seed = Some(value)
 
     private[this] var _actor: ActorSystem = _
+    private[this] var _actorSet           = false
     private[this] lazy val defaultActor: ActorSystem = ActorSystem("fscape")
 
-    def actorSystem: ActorSystem = {
-      if (_actor == null) _actor = defaultActor
-      _actor
-    }
+    def actorSystem: ActorSystem = if (_actorSet) _actor else defaultActor
 
     def actorSystem_=(value: ActorSystem): Unit = {
-      _actor = value
+      _actor    = value
+      _actorSet = true
+    }
+
+    private[this] var _terminateActors: Boolean = _
+    private[this] var _terminateSet             = false
+
+    def terminateActors: Boolean = if (_terminateSet) _terminateActors else !_actorSet
+
+    def terminateActors_=(value: Boolean): Unit = {
+      _terminateActors  = value
+      _terminateSet     = true
     }
 
     private[this] var _mat: Materializer = _
@@ -137,6 +154,7 @@ object Control {
       useAsync          = useAsync,
       seed              = seed,
       actorSystem       = actorSystem,
+      terminateActors   = terminateActors,
       materializer0     = materializer,
       executionContext0 = executionContext,
       progressReporter  = progressReporter
@@ -221,6 +239,7 @@ object Control {
             if (nodes.isEmpty) {
               statusP.tryComplete(Success(()))
               context.stop(self)
+              if (config.terminateActors) config.actorSystem.terminate()
             }
           } else {
             Console.err.println(s"Warning: node $n was not registered with Control")

@@ -27,14 +27,14 @@ object PollTest extends App {
     showStreamLog = true
     implicit val ctrl = stream.Control(config)
     ctrl.run(g)
-    import config.executionContext
-    ctrl.status.foreach { _ =>
-      println("Terminating actor system...")
-      cb.actorSystem.terminate()
-      cb.actorSystem.whenTerminated.foreach { _ =>
-        println("...terminated")
-      }
-    }
+//    import config.executionContext
+//    ctrl.status.foreach { _ =>
+//      println("Terminating actor system...")
+//      cb.actorSystem.terminate()
+//      cb.actorSystem.whenTerminated.foreach { _ =>
+//        println("...terminated")
+//      }
+//    }
 
     Swing.onEDT {
       SimpleGUI(ctrl)
