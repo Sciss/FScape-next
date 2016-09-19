@@ -7,7 +7,7 @@ lazy val baseDescription = "An audio rendering library"
 lazy val commonSettings = Seq(
   organization       := "de.sciss",
   description        := baseDescription,
-  version            := "2.1.0-SNAPSHOT",
+  version            := "2.1.0",
   scalaVersion       := "2.11.8",
   crossScalaVersions := Seq("2.11.8" /* , "2.10.6" */),  // id**tic Akka team prefers to support Java 8 over Scala 2.10
   licenses           := Seq("GPL v2+" -> url("http://www.gnu.org/licenses/gpl-2.0.txt")),
@@ -32,7 +32,7 @@ lazy val akkaVersion           = "2.4.8" // "2.4.10"
 
 // ---- lucre dependencies ----
 
-lazy val soundProcessesVersion = "3.7.0-SNAPSHOT"
+lazy val soundProcessesVersion = "3.7.0"
 
 // ---- projects ----
 
