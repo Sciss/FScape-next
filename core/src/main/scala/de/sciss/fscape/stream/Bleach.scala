@@ -59,9 +59,9 @@ object Bleach {
     private[this] var winBuf: Array[Double] = _   // circular
     private[this] var winIdx      = 0
 
-    val START_FRAME = 0L
-    var STOP_FRAME  = START_FRAME + 16
-    var FRAMES_DONE = 0L
+//    val START_FRAME = 0L
+//    var STOP_FRAME  = START_FRAME + 16
+//    var FRAMES_DONE = 0L
 
     protected def processChunk(inOff: Int, outOff: Int, len: Int): Unit = {
       val b0        = bufIn0.buf
@@ -98,7 +98,7 @@ object Bleach {
         }
         if (inOffI < stop2) {
           _feedback = b2(inOffI)
-_feedback = 0.01
+//_feedback = 0.01
         }
         if (inOffI < stop3) {
           _fltClip = b3(inOffI)
@@ -107,29 +107,17 @@ _feedback = 0.01
         // grab last input sample
         val x0    = b0(inOffI)
 
-        if (FRAMES_DONE >= START_FRAME && FRAMES_DONE < STOP_FRAME) {
-          println(s"---- frame $FRAMES_DONE")
-          val TMP_BUF = Vector.tabulate(8)(i => _winBuf((_winIdx + i) % _fltLen).toFloat)
-          println(s"buf ${TMP_BUF.mkString(", ")}")
-          println(s"flt ${_kernel.take(8).mkString(", ")}")
-        }
-
-        // update kernel
-        var i     = 0
-        var j     = _winIdx
-        val errNeg = x0 - _y1
-        val weight = errNeg * _feedback
-        while (i < _fltLen) {
-          val f   = _kernel(i) + weight * _winBuf(j)
-          _kernel(i) = math.max(-_fltClip, math.min(_fltClip, f))
-          i      += 1
-          j       = (j + 1) % _fltLen
-        }
+//        if (FRAMES_DONE >= START_FRAME && FRAMES_DONE < STOP_FRAME) {
+//          println(s"---- frame $FRAMES_DONE")
+//          val TMP_BUF = Vector.tabulate(8)(i => _winBuf((_winIdx + i) % _fltLen).toFloat)
+//          println(s"buf ${TMP_BUF.mkString(", ")}")
+//          println(s"flt ${_kernel.take(8).mkString(", ")}")
+//        }
 
         // calculate output sample
-        i         = 0
-        j         = _winIdx
-        var y0    = 0.0
+        var i       = 0
+        var j       = _winIdx
+        var y0      = 0.0
         while (i < _fltLen) {
           y0     += _kernel(i) * _winBuf(j)
           i      += 1
@@ -137,13 +125,25 @@ _feedback = 0.01
         }
         out(outOffI) = y0
 
-        if (FRAMES_DONE >= START_FRAME && FRAMES_DONE < STOP_FRAME) {
-          println(s"in ${x0.toFloat}")
-          println(s"out ${y0.toFloat}")
-          println("w " + weight)
-          println(s"upd ${_kernel.take(8).mkString(", ")}")
+        // update kernel
+        i           = 0
+        j           = _winIdx
+        val errNeg  = x0 - y0
+        val weight  = errNeg * _feedback
+        while (i < _fltLen) {
+          val f   = _kernel(i) + weight * _winBuf(j)
+          _kernel(i) = math.max(-_fltClip, math.min(_fltClip, f))
+          i      += 1
+          j       = (j + 1) % _fltLen
         }
-        FRAMES_DONE += 1
+
+//        if (FRAMES_DONE >= START_FRAME && FRAMES_DONE < STOP_FRAME) {
+//          println(s"in ${x0.toFloat}")
+//          println(s"out ${y0.toFloat}")
+//          println("w " + weight)
+//          println(s"upd ${_kernel.take(8).mkString(", ")}")
+//        }
+//        FRAMES_DONE += 1
 
         // update window buffer (last element in the circular buffer)
         _winBuf(_winIdx) = x0

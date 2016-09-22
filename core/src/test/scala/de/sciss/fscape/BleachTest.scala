@@ -16,7 +16,7 @@ object BleachTest extends App {
     import specIn.sampleRate
     val numChannels = 1
     val fOut    = userHome / "Documents" / "temp" / "test.aif"
-    val fltLen  = 8 // 441
+    val fltLen  = 441
     val feedback= -50.0.dbamp // -60.0.dbamp
     val clip    =  18.0.dbamp
     val twoWays = false
