@@ -17,7 +17,7 @@ package stream
 import akka.stream.{Attributes, FanInShape5}
 import de.sciss.fscape.stream.impl.{FilterIn5DImpl, FilterLogicImpl, StageImpl, NodeImpl, WindowedLogicImpl}
 
-// XXX TODO --- what is this? I think a remainer from implementing an image processing 'smart blur'
+// XXX TODO --- what is this? I think a remainder from implementing an image processing 'smart blur'
 object ThresholdConvolution {
   // (in: GE, kernel: GE, len: GE, thresh: GE = 0.0, boundary: GE = 0)
   def apply(in: OutD, kernel: OutD, size: OutI, thresh: OutD, boundary: OutI)(implicit b: Builder): OutD = {
