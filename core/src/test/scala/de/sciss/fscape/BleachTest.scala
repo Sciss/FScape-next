@@ -12,20 +12,19 @@ object BleachTest extends App {
     import graph._
     val fIn     = userHome / "Music" / "TubewayArmy-DisconnectFromYouEdit.aif"
     val specIn  = AudioFile.readSpec(fIn)
-//    import specIn.{numChannels, sampleRate}
-    import specIn.sampleRate
-    val numChannels = 1
-    val fOut    = userHome / "Documents" / "temp" / "test.aif"
-    val fltLen  = 441
-    val feedback= -50.0.dbamp // -60.0.dbamp
-    val clip    =  18.0.dbamp
-    val twoWays = false
-    val inverse = true // false
+    import specIn.{numChannels, sampleRate}
+//    val numChannels = 1
+    val fOut      = userHome / "Documents" / "temp" / "test.aif"
+    val fltLen    = 441
+    val feedback  = -50.0.dbamp // -60.0.dbamp
+    val clip      =  18.0.dbamp
+    val twoWays   = false
+    val inverse   = false
 
-    val in0     = AudioFileIn(fIn, numChannels = specIn.numChannels)
-    val in      = ChannelProxy(in0, 0)
-    val sig0    = Bleach(in = in, filterLen = fltLen, feedback = feedback, filterClip = clip)
-    val sig     = if (inverse) sig0 else in - sig0
+    val in        = AudioFileIn(fIn, numChannels = specIn.numChannels)
+//    val in        = ChannelProxy(in0, 0)
+    val sig0      = Bleach(in = in, filterLen = fltLen, feedback = feedback, filterClip = clip)
+    val sig       = if (inverse) sig0 else in.elastic() - sig0
     require(!twoWays, "twoWays - not yet implemented")
 
     val out     = AudioFileOut(fOut, AudioFileSpec(numChannels = numChannels, sampleRate = sampleRate), in = sig)
@@ -37,9 +36,10 @@ object BleachTest extends App {
   var gui: SimpleGUI = _
   config.progressReporter = rep => Swing.onEDT(gui.progress = rep.total)
   implicit val ctrl = stream.Control(config)
-  ctrl.run(g)
 
   Swing.onEDT {
     gui = SimpleGUI(ctrl)
   }
+
+  ctrl.run(g)
 }
