@@ -2,14 +2,17 @@ lazy val baseName   = "FScape"
 lazy val baseNameL  = baseName.toLowerCase
 lazy val githubRepo = "FScape-next"
 
+lazy val projectVersion = "2.1.1-SNAPSHOT"
+lazy val mimaVersion    = "2.1.0"
+
 lazy val baseDescription = "An audio rendering library"
 
 lazy val commonSettings = Seq(
   organization       := "de.sciss",
   description        := baseDescription,
-  version            := "2.1.0",
+  version            := projectVersion,
   scalaVersion       := "2.11.8",
-  crossScalaVersions := Seq("2.11.8" /* , "2.10.6" */),  // id**tic Akka team prefers to support Java 8 over Scala 2.10
+  crossScalaVersions := Seq("2.11.8" /* , "2.10.6" */),  // Akka does not support Scala 2.10
   licenses           := Seq("GPL v2+" -> url("http://www.gnu.org/licenses/gpl-2.0.txt")),
   homepage           := Some(url(s"https://github.com/Sciss/$githubRepo")),
   scalacOptions     ++= Seq("-deprecation", "-unchecked", "-feature", "-encoding", "utf8", "-Xfuture", "-Xlint")
@@ -68,7 +71,8 @@ lazy val core = Project(id = s"$baseNameL-core", base = file("core"))
       "com.github.wookietreiber"  %% "scala-chart"          % scalaChartVersion,
       "com.typesafe.akka"         %% "akka-stream"          % akkaVersion,
       "com.typesafe.akka"         %% "akka-stream-testkit"  % akkaVersion
-    )
+    ),
+    mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-core" % mimaVersion)
   )
 
 lazy val lucre = Project(id = s"$baseNameL-lucre", base = file("lucre"))
@@ -78,7 +82,8 @@ lazy val lucre = Project(id = s"$baseNameL-lucre", base = file("lucre"))
     description := "Bridge from FScape to SoundProcesses",
     libraryDependencies ++= Seq(
       "de.sciss" %% "soundprocesses-core" % soundProcessesVersion
-    )
+    ),
+    mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-lucre" % mimaVersion)
   )
 
 // ---- publishing ----

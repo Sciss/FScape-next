@@ -21,11 +21,8 @@ import de.sciss.fscape.stream.impl.{Complex1FFTStageImpl, Complex1IFFTStageImpl,
   * Useful page: http://calculator.vhex.net/calculator/fast-fourier-transform-calculator-fft/1d-discrete-fourier-transform
   */
 object Real1FFT {
-  def apply(in: OutD, size: OutI, padding: OutI)(implicit b: Builder): OutD = {
-    // XXX TODO:
-    println("WARNING: Real1FFT --- returned packed format") // (Re(DC), Re(Ny), Re(1), Im(1) etc.
+  def apply(in: OutD, size: OutI, padding: OutI)(implicit b: Builder): OutD =
     new Real1FFTStageImpl().connect(in = in, size = size, padding = padding)
-  }
 }
 
 /** Real (positive spectrum) inverse Short Time Fourier Transform.

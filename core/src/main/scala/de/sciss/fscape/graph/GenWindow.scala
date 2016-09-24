@@ -190,6 +190,14 @@ object GenWindow {
 
   // XXX TODO --- we should add some standard SuperCollider curve shapes like Welch
 }
+
+/** A repeated window generator UGen. It repeats the
+  * same window again and again (unless parameters are modulated).
+  *
+  * @param size   the window size
+  * @param shape  the identifier of the window shape, such as `GenWindow.Hann`.
+  * @param param  parameter used by some window shapes, such as `GenWindow.Kaiser`
+  */
 final case class GenWindow(size: GE, shape: GE, param: GE = 0.0) extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
     unwrap(Vector(size.expand, shape.expand, param.expand))

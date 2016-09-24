@@ -52,16 +52,18 @@ abstract class FFTLogicImpl(name: String, shape: FanInShape3[BufD, BufI, BufI, B
 
   protected def performFFT(fft: DoubleFFT_1D, fftBuf: Array[Double]): Unit
 
-  protected def fftInSizeFactor : Int
-  protected def fftOutSizeFactor: Int
+  protected def inSize (nominal: Int): Int
+  protected def outSize(nominal: Int): Int
+
+  protected def isFullSpectrum: Boolean
 
   // ---- impl ----
 
   private[this] final var fft       : DoubleFFT_1D  = _
   private[this] final var fftBuf    : Array[Double] = _
 
-  private[this] final var size      : Int = _  // already multiplied by `fftInSizeFactor`
-  private[this] final var padding   : Int = _  // already multiplied by `fftInSizeFactor`
+  private[this] final var size      : Int = _
+  private[this] final var padding   : Int = _
 
   private[this] final var _fftSize        = 0  // refreshed as `size + padding`
 
@@ -73,20 +75,20 @@ abstract class FFTLogicImpl(name: String, shape: FanInShape3[BufD, BufI, BufI, B
   protected final def fftSize: Int = _fftSize
 
   protected final def startNextWindow(inOff: Int): Int = {
-    val inF = fftInSizeFactor
     if (bufIn1 != null && inOff < bufIn1.size) {
-      size = math.max(1, bufIn1.buf(inOff)) * inF
+      size = math.max(1, bufIn1.buf(inOff))
     }
     if (bufIn2 != null && inOff < bufIn2.size) {
-      padding = math.max(0, bufIn2.buf(inOff)) * inF
+      padding = math.max(0, bufIn2.buf(inOff))
     }
-    val n = (size + padding) / inF
+    val n = size + padding
     if (n != _fftSize) {
       _fftSize = n
       fft     = new DoubleFFT_1D (n)
-      fftBuf  = new Array[Double](n * math.max(inF, fftOutSizeFactor))
+      // for half-spectra we add the extra "redundant" complex entry needed for untangling DC and Nyquist
+      fftBuf  = new Array[Double](if (isFullSpectrum) 2 * n else n + 2)
     }
-    size
+    inSize(size)
   }
 
   protected final def copyInputToWindow(inOff: Int, writeToWinOff: Int, chunk: Int): Unit =
@@ -98,7 +100,7 @@ abstract class FFTLogicImpl(name: String, shape: FanInShape3[BufD, BufI, BufI, B
   protected final def processWindow(writeToWinOff: Int): Int = {
     Util.fill(fftBuf, writeToWinOff, fftBuf.length - writeToWinOff, 0.0)
     performFFT(fft, fftBuf)
-    _fftSize * fftOutSizeFactor
+    outSize(_fftSize)
   }
 }
 
@@ -110,12 +112,19 @@ final class Real1FFTLogicImpl(name: String, shape: FanInShape3[BufD, BufI, BufI,
                              (implicit ctrl: Control)
   extends FFTLogicImpl(name, shape) {
 
-  protected val fftInSizeFactor  = 1
-  protected val fftOutSizeFactor = 1
+  protected def isFullSpectrum = false
+
+  protected def inSize (nominal: Int): Int = nominal
+  protected def outSize(nominal: Int): Int = nominal + 2
 
   protected def performFFT(fft: DoubleFFT_1D, fftBuf: Array[Double]): Unit = {
     fft.realForward(fftBuf)
-    Util.mul(fftBuf, 0, fftBuf.length, 2.0 / fftSize) // scale correctly
+    val _fftSize = fftSize
+    Util.mul(fftBuf, 0, _fftSize, 2.0 / _fftSize) // scale correctly
+    // move Re(Nyquist) from Im(DC)
+    fftBuf(_fftSize)      = fftBuf(1)
+    fftBuf(1)             = 0.0
+    fftBuf(_fftSize + 1)  = 0.0
   }
 }
 
@@ -126,11 +135,16 @@ final class Real1IFFTStageImpl()(implicit ctrl: Control) extends FFTStageImpl("R
 final class Real1IFFTLogicImpl(name: String, shape: FanInShape3[BufD, BufI, BufI, BufD])(implicit ctrl: Control)
   extends FFTLogicImpl(name, shape) {
 
-  protected val fftInSizeFactor  = 1
-  protected val fftOutSizeFactor = 1
+  protected def isFullSpectrum = false
 
-  protected def performFFT(fft: DoubleFFT_1D, fftBuf: Array[Double]): Unit =
+  protected def inSize (nominal: Int): Int = nominal + 2
+  protected def outSize(nominal: Int): Int = nominal
+
+  protected def performFFT(fft: DoubleFFT_1D, fftBuf: Array[Double]): Unit = {
+    // move Re(Nyquist) to Im(DC)
+    fftBuf(1) = fftBuf(fftSize)
     fft.realInverse(fftBuf, false)
+  }
 }
 
 final class Real1FullFFTStageImpl()(implicit ctrl: Control) extends FFTStageImpl("Real1FullFFT") {
@@ -140,10 +154,10 @@ final class Real1FullFFTStageImpl()(implicit ctrl: Control) extends FFTStageImpl
 final class Real1FullFFTLogicImpl(name: String, shape: FanInShape3[BufD, BufI, BufI, BufD])(implicit ctrl: Control)
   extends FFTLogicImpl(name, shape) {
 
-  protected val fftInSizeFactor  = 1
-  protected val fftOutSizeFactor = 2
+  protected def isFullSpectrum = true
 
-//  private var DEBUG = true
+  protected def inSize (nominal: Int): Int = nominal
+  protected def outSize(nominal: Int): Int = nominal << 1
 
   protected def performFFT(fft: DoubleFFT_1D, fftBuf: Array[Double]): Unit = {
 //    if (DEBUG) {
@@ -181,8 +195,10 @@ final class Real1FullIFFTStageImpl()(implicit ctrl: Control) extends FFTStageImp
 final class Real1FullIFFTLogicImpl(name: String, shape: FanInShape3[BufD, BufI, BufI, BufD])(implicit ctrl: Control)
   extends FFTLogicImpl(name, shape) {
 
-  protected val fftInSizeFactor  = 2
-  protected val fftOutSizeFactor = 1
+  protected def isFullSpectrum = true
+
+  protected def inSize (nominal: Int): Int = nominal << 1
+  protected def outSize(nominal: Int): Int = nominal
 
   protected def performFFT(fft: DoubleFFT_1D, fftBuf: Array[Double]): Unit = {
     // fft.realInverseFull(fftBuf, false)
@@ -204,8 +220,10 @@ final class Complex1FFTStageImpl()(implicit ctrl: Control) extends FFTStageImpl(
 final class Complex1FFTLogicImpl(name: String, shape: FanInShape3[BufD, BufI, BufI, BufD])(implicit ctrl: Control)
   extends FFTLogicImpl(name, shape) {
 
-  protected val fftInSizeFactor  = 2
-  protected val fftOutSizeFactor = 2
+  protected def isFullSpectrum = true
+
+  protected def inSize (nominal: Int): Int = nominal << 1
+  protected def outSize(nominal: Int): Int = nominal << 1
 
   protected def performFFT(fft: DoubleFFT_1D, fftBuf: Array[Double]): Unit = {
     fft.complexForward(fftBuf)
@@ -220,8 +238,10 @@ final class Complex1IFFTStageImpl()(implicit ctrl: Control) extends FFTStageImpl
 final class Complex1IFFTLogicImpl(name: String, shape: FanInShape3[BufD, BufI, BufI, BufD])(implicit ctrl: Control)
   extends FFTLogicImpl(name, shape) {
 
-  protected val fftInSizeFactor  = 2
-  protected val fftOutSizeFactor = 2
+  protected def isFullSpectrum = true
+
+  protected def inSize (nominal: Int): Int = nominal << 1
+  protected def outSize(nominal: Int): Int = nominal << 1
 
   protected def performFFT(fft: DoubleFFT_1D, fftBuf: Array[Double]): Unit =
     fft.complexInverse(fftBuf, false)
