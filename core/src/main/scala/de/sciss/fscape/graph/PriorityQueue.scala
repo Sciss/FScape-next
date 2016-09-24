@@ -1,7 +1,7 @@
 package de.sciss.fscape
 package graph
 
-import de.sciss.fscape.stream.{StreamIn, StreamOut}
+import de.sciss.fscape.stream.{BufLike, Builder, OutA, OutI, StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
@@ -25,14 +25,12 @@ final case class PriorityQueue(keys: GE, values: GE, size: GE) extends UGenSourc
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
     val Vec(keys, values, size) = args
-//    if (values.isInt)
-//      stream.PriorityQueue(keys = keys.toAny, values = values.toInt   , size = size.toInt)
-//    else if (values.isDouble)
-//      stream.PriorityQueue(keys = keys.toAny, values = values.toDouble, size = size.toInt)
-//    else if (values.isLong)
-//      stream.PriorityQueue(keys = keys.toAny, values = values.toLong  , size = size.toInt)
-//    else throw new IllegalArgumentException(s"Unknown buffer type for $values")
-    val res = stream.PriorityQueue(keys = keys.toAny, values = values.toAny, size = size.toInt)
-    ???
+    mkStream[values.Elem](keys = keys.toAny, values = values, size = size.toInt)  // IntelliJ highlight bug
+  }
+
+  private def mkStream[V >: Null <: BufLike](keys: OutA, values: StreamIn { type Elem = V }, size: OutI)
+                                            (implicit b: Builder): StreamOut = {
+    val out = stream.PriorityQueue(keys = keys, values = values.toElem, size = size)
+    values.mkStreamOut(out)
   }
 }

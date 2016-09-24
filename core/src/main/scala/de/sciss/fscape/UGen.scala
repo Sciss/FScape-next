@@ -214,16 +214,7 @@ package graph {
     final val C1  = new ConstantI(1)
     final val Cm1 = new ConstantI(-1)
   }
-  final case class ConstantI(value: Int) extends Constant {
-    def toAny(implicit b: stream.Builder): Outlet[BufLike] = toInt.as[BufLike]
-
-    def isInt   : Boolean = true
-    def isLong  : Boolean = false
-    def isDouble: Boolean = false
-
-    type Elem = BufI
-    def toElem(implicit b: stream.Builder): OutI = toInt
-
+  final case class ConstantI(value: Int) extends Constant with StreamIn.IntLike {
     def doubleValue: Double = value.toDouble
     def intValue   : Int    = value
     def longValue  : Long   = value.toLong
@@ -235,16 +226,7 @@ package graph {
     final val C1  = new ConstantD(1)
     final val Cm1 = new ConstantD(-1)
   }
-  final case class ConstantD(value: Double) extends Constant {
-    def toAny(implicit b: stream.Builder): Outlet[BufLike] = toDouble.as[BufLike]
-
-    def isInt   : Boolean = false
-    def isLong  : Boolean = false
-    def isDouble: Boolean = true
-
-    type Elem = BufD
-    def toElem(implicit b: stream.Builder): OutD = toDouble
-
+  final case class ConstantD(value: Double) extends Constant with StreamIn.DoubleLike {
     def doubleValue: Double = value
     def intValue   : Int    = {
       if (value.isNaN) throw new ArithmeticException("NaN cannot be translated to Int")
@@ -266,16 +248,7 @@ package graph {
     final val C1  = new ConstantI(1)
     final val Cm1 = new ConstantI(-1)
   }
-  final case class ConstantL(value: Long) extends Constant {
-    def toAny(implicit b: stream.Builder): Outlet[BufLike] = toLong.as[BufLike]
-
-    def isInt   : Boolean = false
-    def isLong  : Boolean = true
-    def isDouble: Boolean = false
-
-    type Elem = BufL
-    def toElem(implicit b: stream.Builder): OutL = toLong
-
+  final case class ConstantL(value: Long) extends Constant with StreamIn.LongLike {
     def doubleValue: Double = value.toDouble
     def intValue   : Int    = {
       val res = value.toInt

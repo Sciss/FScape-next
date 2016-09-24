@@ -31,18 +31,25 @@ object StreamIn {
   def multiL(peer: OutL, numSinks: Int): StreamIn = new MultiL(peer, numSinks)
 
   object unused extends StreamIn {
-    def toAny   (implicit b: Builder): Outlet[BufLike] = throw new UnsupportedOperationException("StreamIn.unused.toAny")
-    def toDouble(implicit b: Builder): OutD = throw new UnsupportedOperationException("StreamIn.unused.toDouble")
-    def toInt   (implicit b: Builder): OutI = throw new UnsupportedOperationException("StreamIn.unused.toInt"   )
-    def toLong  (implicit b: Builder): OutL = throw new UnsupportedOperationException("StreamIn.unused.toLong"  )
-    def toElem  (implicit b: Builder): Outlet[Elem] = throw new UnsupportedOperationException("StreamIn.unused.toElem")
+    private def unsupported(method: String): Nothing =
+      throw new UnsupportedOperationException(s"StreamIn.unused.$method")
+
+    def toAny   (implicit b: Builder): Outlet[BufLike]  = unsupported("toAny")
+    def toDouble(implicit b: Builder): OutD             = unsupported("toDouble")
+    def toInt   (implicit b: Builder): OutI             = unsupported("toInt")
+    def toLong  (implicit b: Builder): OutL             = unsupported("toLong")
+    def toElem  (implicit b: Builder): Outlet[Elem]     = unsupported("toElem")
 
     def isInt   : Boolean = false
     def isLong  : Boolean = false
     def isDouble: Boolean = true    // arbitrary
+
+    // type Elem = Nothing
+
+    def mkStreamOut(out: Outlet[Elem]): StreamOut = unsupported("toStreamOut")
   }
 
-  private trait DoubleLike extends StreamIn {
+  trait DoubleLike extends StreamIn {
     final def isInt   : Boolean = false
     final def isLong  : Boolean = false
     final def isDouble: Boolean = true
@@ -52,6 +59,8 @@ object StreamIn {
     final type Elem = BufD
 
     final def toElem(implicit b: Builder): OutD = toDouble
+
+    final def mkStreamOut(out: OutD): StreamOut = out
   }
 
   private final class SingleD(peer: OutD) extends DoubleLike {
@@ -106,7 +115,7 @@ object StreamIn {
     }
   }
 
-  private trait IntLike extends StreamIn {
+  trait IntLike extends StreamIn {
     final def isInt   : Boolean = true
     final def isLong  : Boolean = false
     final def isDouble: Boolean = false
@@ -116,6 +125,8 @@ object StreamIn {
     final type Elem = BufI
 
     final def toElem(implicit b: Builder): OutI = toInt
+
+    final def mkStreamOut(out: OutI): StreamOut = out
   }
 
   private final class SingleI(peer: OutI) extends IntLike {
@@ -170,7 +181,7 @@ object StreamIn {
     }
   }
 
-  private trait LongLike extends StreamIn {
+  trait LongLike extends StreamIn {
     final def isInt   : Boolean = false
     final def isLong  : Boolean = true
     final def isDouble: Boolean = false
@@ -180,6 +191,8 @@ object StreamIn {
     final type Elem = BufL
 
     final def toElem(implicit b: Builder): OutL = toLong
+
+    final def mkStreamOut(out: OutL): StreamOut = out
   }
 
   private final class SingleL(peer: OutL) extends LongLike {
@@ -298,9 +311,11 @@ trait StreamIn {
   def isLong  : Boolean
   def isDouble: Boolean
 
-  type Elem <: BufLike
+  type Elem >: Null <: BufLike
 
   def toElem  (implicit b: Builder): Outlet[Elem]
+
+  def mkStreamOut(out: Outlet[Elem]): StreamOut
 }
 
 object StreamOut {
