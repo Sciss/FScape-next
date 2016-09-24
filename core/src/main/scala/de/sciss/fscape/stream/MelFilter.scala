@@ -87,15 +87,17 @@ object MelFilter {
       }
       if (bufIn2 != null && inOff < bufIn2.size) {
         val nyquist   = sampleRate/2
-        val _minFreq  = math.max(0, math.min(nyquist, bufIn2.buf(inOff)))
+        val ceil      = (magSize - 1).toDouble / magSize * nyquist
+        val _minFreq  = math.max(0, math.min(ceil, bufIn2.buf(inOff)))
         if (minFreq != _minFreq) {
           minFreq     = _minFreq
           updatedBins = true
         }
       }
       if (bufIn3 != null && inOff < bufIn3.size) {
-        val nyquist   = sampleRate/2
-        val _maxFreq  = math.max(minFreq, math.min(nyquist, bufIn3.buf(inOff)))
+        val nyquist   = sampleRate / 2
+        val ceil      = (magSize - 1).toDouble / magSize * nyquist
+        val _maxFreq  = math.max(minFreq, math.min(ceil, bufIn3.buf(inOff)))
         if (maxFreq != _maxFreq) {
           maxFreq     = _maxFreq
           updatedBins = true
@@ -155,6 +157,7 @@ object MelFilter {
       val _bands  = bands
       val _melBuf = melBuf
       val _binIdx = binIndices
+      val _magBuf = magBuf
       var k = 1
       while (k <= _bands) {
         val p = _binIdx(k - 1)
@@ -164,14 +167,14 @@ object MelFilter {
         val s0 = (i - p + 1) / (q - p + 1) // should this be floating point?
         var num = 0.0
         while (i <= q) {
-          num += s0 * bin(i)
+          num += s0 * _magBuf(i)
           i += 1
         }
 
         i = q + 1
         val s1 = 1 - ((i - q) / (r - q + 1)) // should this be floating point?
         while (i <= r) {
-          num += s1 * bin(i)
+          num += s1 * _magBuf(i)
           i += 1
         }
 

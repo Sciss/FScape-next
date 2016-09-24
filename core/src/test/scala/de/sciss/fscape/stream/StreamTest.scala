@@ -42,7 +42,8 @@ object StreamTest extends App {
     val in      = AudioFileIn(file = fIn, numChannels = 1).head
     val size    = b.add(Source.single(BufI(65536))).out
     val padding = b.add(Source.single(BufI(    0))).out
-    val fft     = Real1FFT(in, size = size, padding = padding)
+    val mode    = b.add(Source.single(BufI(    0))).out
+    val fft     = Real1FFT(in, size = size, padding = padding, mode = mode)
     AudioFileOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = fft :: Nil)
     ClosedShape
   }
