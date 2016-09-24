@@ -18,6 +18,9 @@ import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+/** A UGen that outputs the number of sample frames passed since last triggered.
+  * If no trigger is used, it simply outputs a linearly rising ramp.
+  */
 final case class Timer(trig: GE) extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
     unwrap(Vector(trig.expand))

@@ -26,18 +26,18 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * def mfcc(in: GE) = {
   *   val fsz  = 1024
   *   val lap  = Sliding(in, fsz, fsz/2) * GenWindow(fsz, GenWindow.Hann)
-  *   val fft  = Real1FFT(in, fsz, mode = 1)
-  *   val mag  = fft.complex.mag
+  *   val fft  = Real1FFT(lap, fsz, mode = 1)
+  *   val mag  = fft.complex.mag.max(-80)
   *   val mel  = MelFilter(mag, fsz/2, bands = 42)
-  *   DCT(mel.log, 42, 13)
+  *   DCT_II(mel.log, 42, 13, zero = 0)
   * }
   * }}}
   *
   * @param in         magnitudes of spectra, as output by `Real1FFT(..., mode = 1).complex.abs`
   * @param size       bands in input spectrum (assumed to be `fft-size / 2`).
   *                   lowest band corresponds to DC and highest to `(size - 1)/size * sampleRate/2`.
-  * @param minFreq    lower frequency to sample. Will be clipped between zero and Nyquist.
-  * @param maxFreq    upper frequency to sample. Will be clipped between `minFreq` and Nyquist.
+  * @param minFreq    lower frequency to sample. Will be clipped between zero (inclusive) and Nyquist (exclusive).
+  * @param maxFreq    upper frequency to sample. Will be clipped between `minFreq` (inclusive) and Nyquist (exclusive).
   * @param bands      number of filter bands output
   */
 final case class MelFilter(in: GE, size: GE, minFreq: GE = 55.0, maxFreq: GE = 18000.0, sampleRate: GE = 44100.0,
