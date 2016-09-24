@@ -12,6 +12,11 @@ object MFCCTest extends App {
   val fOut    = dir / "_killme.aif"
   val specIn  = AudioFile.readSpec(fIn)
 
+  val config = stream.Control.Config()
+  var gui: SimpleGUI = _
+  config.progressReporter = rep => Swing.onEDT(gui.progress = rep.total)
+  config.useAsync = false
+
   lazy val g0 = Graph {
     import graph._
     import specIn.{sampleRate, numChannels}
@@ -22,13 +27,21 @@ object MFCCTest extends App {
     val numMel    = 42
     val numCoef   = 13
 
-    val lap       = Sliding(in, fftSize, stepSize) * GenWindow(fftSize, GenWindow.Hann)
+    val lap       = Sliding (in , fftSize, stepSize) * GenWindow(fftSize, GenWindow.Hann)
     val fft       = Real1FFT(lap, fftSize, mode = 1)
     val mag       = fft.complex.mag
     val mel       = MelFilter(mag, fftSize/2, bands = numMel,
       minFreq = 55, maxFreq = sampleRate/2, sampleRate = sampleRate)
-    val mfcc      = DCT_II(mel.log, numMel, numCoef + 1, zero = 0)
-    val sig       = mfcc
+    val mfcc      = DCT_II(mel.log, numMel, numCoef, zero = 0)
+
+    // reconstruction of what strugatzki's 'segmentation' is doing (first step)
+    val covSize   = numCoef * 32
+    val mfccSlid  = Sliding(mfcc, numCoef, 1)
+    val mfccSlidT = mfccSlid.drop(covSize)
+    val el: Int   = (covSize / config.blockSize) + 1
+    val cov       = Pearson(mfccSlid.elastic(n = el), mfccSlidT, covSize)
+
+    val sig       = cov
     AudioFileOut(fOut, AudioFileSpec(numChannels = numChannels, sampleRate = sampleRate), in = sig)
   }
 
@@ -70,10 +83,6 @@ object MFCCTest extends App {
     // frames.last.poll(0, "num-frames")
   }
 
-  val config = stream.Control.Config()
-  var gui: SimpleGUI = _
-  config.progressReporter = rep => Swing.onEDT(gui.progress = rep.total)
-  config.useAsync = false
   val ctrl  = stream.Control(config)
 
   Swing.onEDT {
