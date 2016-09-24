@@ -19,6 +19,13 @@ import de.sciss.fscape.stream.impl.{FilterIn3Impl, NodeImpl, StageImpl}
 
 import scala.collection.mutable
 
+/*
+
+  TODO:
+   - introduce type parameter `B` for values
+   - introduce type class that gives access to allocBuf
+
+ */
 object PriorityQueue {
   def apply[A, K >: Null <: BufLike { type Elem = A }, V >: Null <: BufLike](keys: Outlet[K],
                                                                              values: Outlet[V], size: OutI)
@@ -66,8 +73,8 @@ object PriorityQueue {
 
     private[this] var writeMode = false
 
-    private[this] var queue : mutable.PriorityQueue[Any]  = _
-    private[this] var bufWin: Array[_]                    = _
+    private[this] var queue : mutable.PriorityQueue[A] = _
+    private[this] var bufWin: Array[A]                 = _
 
     protected def allocOutBuf0(): V = ???
 
@@ -86,7 +93,7 @@ object PriorityQueue {
           readIns()
           if (queue == null) {
             size  = math.max(1, bufIn2.buf(0))
-            queue = ??? // mutable.PriorityQueue.empty[A](bufIn0.ordering)
+            queue = mutable.PriorityQueue.empty[A](ord)
           }
           copyInputToBuffer()
         }
