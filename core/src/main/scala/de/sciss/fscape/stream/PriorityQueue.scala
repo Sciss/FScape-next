@@ -20,8 +20,10 @@ import de.sciss.fscape.stream.impl.{FilterIn3Impl, NodeImpl, StageImpl}
 import scala.collection.mutable
 
 object PriorityQueue {
-  def apply[V >: Null <: BufLike](keys: OutA, values: Outlet[V], size: OutI)(implicit b: Builder): Outlet[V] = {
-    val stage0  = new Stage[V]
+  def apply[A, K >: Null <: BufLike { type Elem = A }, V >: Null <: BufLike](keys: Outlet[K],
+                                                                             values: Outlet[V], size: OutI)
+                                    (implicit b: Builder, ord: Ordering[A]): Outlet[V] = {
+    val stage0  = new Stage[A, K, V]
     val stage   = b.add(stage0)
     b.connect(keys  , stage.in0)
     b.connect(values, stage.in1)
@@ -31,22 +33,26 @@ object PriorityQueue {
 
   private final val name = "PriorityQueue"
 
-  private type Shape[V >: Null <: BufLike] = FanInShape3[BufLike, V, BufI, V]
+  private type Shape[A, K >: Null <: BufLike { type Elem = A }, V >: Null <: BufLike] =
+    FanInShape3[K, V, BufI, V]
 
-  private final class Stage[V >: Null <: BufLike](implicit ctrl: Control) extends StageImpl[Shape[V]](name) {
+  private final class Stage[A, K >: Null <: BufLike { type Elem = A }, V >: Null <: BufLike](implicit ctrl: Control, ord: Ordering[A])
+    extends StageImpl[Shape[A, K, V]](name) {
+
     val shape = new FanInShape3(
-      in0 = InA      (s"$name.keys"),
+      in0 = Inlet[K] (s"$name.keys"),
       in1 = Inlet[V] (s"$name.values"),
       in2 = InI      (s"$name.size"  ),
       out = Outlet[V](s"$name.out"   )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape)
+    def createLogic(attr: Attributes) = new Logic[A, K, V](shape)
   }
 
-  private final class Logic[V >: Null <: BufLike](shape: Shape[V])(implicit ctrl: Control)
+  private final class Logic[A, K >: Null <: BufLike {type Elem = A}, V >: Null <: BufLike](shape: Shape[A, K, V])
+                                                                                          (implicit ctrl: Control, ord: Ordering[A])
     extends NodeImpl(name, shape)
-      with FilterIn3Impl[BufLike, V, BufI, V] {
+      with FilterIn3Impl[K, V, BufI, V] {
 
     private[this] var size : Int  = _
 

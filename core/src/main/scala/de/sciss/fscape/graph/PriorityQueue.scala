@@ -1,6 +1,7 @@
 package de.sciss.fscape
 package graph
 
+import akka.stream.Outlet
 import de.sciss.fscape.stream.{BufLike, Builder, OutA, OutI, StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -25,12 +26,14 @@ final case class PriorityQueue(keys: GE, values: GE, size: GE) extends UGenSourc
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
     val Vec(keys, values, size) = args
-    mkStream[values.Elem](keys = keys.toAny, values = values, size = size.toInt)  // IntelliJ highlight bug
+    mkStream[keys.A, keys.Buf, values.Buf](keys = keys, values = values, size = size.toInt)  // IntelliJ highlight bug
   }
 
-  private def mkStream[V >: Null <: BufLike](keys: OutA, values: StreamIn { type Elem = V }, size: OutI)
+  private def mkStream[A1, K >: Null <: BufLike { type Elem = A1 }, V >: Null <: BufLike](
+                                                keys: StreamIn { type A = A1; type Buf = K },
+                                                values: StreamIn { type Buf = V }, size: OutI)
                                             (implicit b: Builder): StreamOut = {
-    val out = stream.PriorityQueue(keys = keys, values = values.toElem, size = size)
+    val out = stream.PriorityQueue[A1, K, V](keys = keys.toElem, values = values.toElem, size = size)(b, keys.ordering)
     values.mkStreamOut(out)
   }
 }

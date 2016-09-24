@@ -62,14 +62,14 @@ object DebugPoll {
       // bufIn0.assertAllocated()
       // println(s"poll   : $bufIn0 | ${bufIn0.allocCount()}")
 
-      val b0      = bufIn0 // .buf
+      val b0: Array[_] = bufIn0.buf
       var h0      = high0
       var h1      = h0
       var inOffI  = 0
       while (inOffI < stop0) {
         h1 = true
         if (h1 && !h0) {
-          val x0 = b0.at(inOffI)
+          val x0 = b0(inOffI)
           // XXX TODO --- make console selectable
           println(s"$label: $x0")
         }

@@ -47,7 +47,7 @@ object Poll {
     override def toString = s"$name-L($label)"
 
     protected def trigger(buf: BufLike, off: Int): Unit = {
-      val x0 = buf.at(off)
+      val x0 = buf.buf(off)
       // XXX TODO --- make console selectable
       println(s"$label: $x0")
     }

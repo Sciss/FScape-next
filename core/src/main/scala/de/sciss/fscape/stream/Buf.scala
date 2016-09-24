@@ -27,11 +27,11 @@ trait BufLike {
 
   def allocCount(): Int
 
-  def at(idx: Int): Elem
-
   def buf: Array[Elem]
 
-  def ordering: Ordering[Elem]
+//  def at(idx: Int): Elem
+//
+//  def ordering: Ordering[Elem]
 }
 
 object BufD {
@@ -55,9 +55,9 @@ final class BufD private(val buf: Array[Double], var size: Int, borrowed: Boolea
 
   def allocCount(): Int = _allocCount.get()
 
-  def at(idx: Int): Double = buf(idx)
-
-  def ordering: Ordering[Double] = Ordering.Double
+//  def at(idx: Int): Double = buf(idx)
+//
+//  def ordering: Ordering[Double] = Ordering.Double
 
   def acquire(): Unit = if (borrowed) {
     /* val oldCount = */ _allocCount.getAndIncrement()
@@ -95,9 +95,9 @@ final class BufI private(val buf: Array[Int], var size: Int, borrowed: Boolean)
 
   def allocCount(): Int = _allocCount.get()
 
-  def at(idx: Int): Int = buf(idx)
-
-  def ordering: Ordering[Int] = Ordering.Int
+//  def at(idx: Int): Int = buf(idx)
+//
+//  def ordering: Ordering[Int] = Ordering.Int
 
   def acquire(): Unit = if (borrowed)
     _allocCount.getAndIncrement()
@@ -133,9 +133,9 @@ final class BufL private(val buf: Array[Long], var size: Int, borrowed: Boolean)
 
   def allocCount(): Int = _allocCount.get()
 
-  def at(idx: Int): Long = buf(idx)
-
-  def ordering: Ordering[Long] = Ordering.Long
+//  def at(idx: Int): Long = buf(idx)
+//
+//  def ordering: Ordering[Long] = Ordering.Long
 
   def acquire(): Unit = if (borrowed)
     _allocCount.getAndIncrement()

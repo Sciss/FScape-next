@@ -38,7 +38,7 @@ object StreamIn {
     def toDouble(implicit b: Builder): OutD             = unsupported("toDouble")
     def toInt   (implicit b: Builder): OutI             = unsupported("toInt")
     def toLong  (implicit b: Builder): OutL             = unsupported("toLong")
-    def toElem  (implicit b: Builder): Outlet[Elem]     = unsupported("toElem")
+    def toElem  (implicit b: Builder): Outlet[Buf]     = unsupported("toElem")
 
     def isInt   : Boolean = false
     def isLong  : Boolean = false
@@ -46,7 +46,9 @@ object StreamIn {
 
     // type Elem = Nothing
 
-    def mkStreamOut(out: Outlet[Elem]): StreamOut = unsupported("toStreamOut")
+    def mkStreamOut(out: Outlet[Buf]): StreamOut = unsupported("toStreamOut")
+
+    def ordering: Ordering[A] = unsupported("ordering")
   }
 
   trait DoubleLike extends StreamIn {
@@ -56,7 +58,10 @@ object StreamIn {
 
     final def toAny(implicit b: Builder): Outlet[BufLike] = toDouble.as[BufLike]  // retarded Akka API. Why is Outlet not covariant?
 
-    final type Elem = BufD
+    final type A    = Double
+    final type Buf  = BufD
+
+    final def ordering: Ordering[Double] = Ordering.Double
 
     final def toElem(implicit b: Builder): OutD = toDouble
 
@@ -122,7 +127,10 @@ object StreamIn {
 
     final def toAny(implicit b: Builder): Outlet[BufLike] = toInt.as[BufLike]
 
-    final type Elem = BufI
+    final type A    = Int
+    final type Buf  = BufI
+
+    final def ordering: Ordering[Int] = Ordering.Int
 
     final def toElem(implicit b: Builder): OutI = toInt
 
@@ -188,7 +196,10 @@ object StreamIn {
 
     final def toAny(implicit b: Builder): Outlet[BufLike] = toLong.as[BufLike]
 
-    final type Elem = BufL
+    final type A    = Long
+    final type Buf  = BufL
+
+    final def ordering: Ordering[Long] = Ordering.Long
 
     final def toElem(implicit b: Builder): OutL = toLong
 
@@ -311,11 +322,14 @@ trait StreamIn {
   def isLong  : Boolean
   def isDouble: Boolean
 
-  type Elem >: Null <: BufLike
+  type A
+  type Buf >: Null <: BufLike { type Elem = A }
 
-  def toElem  (implicit b: Builder): Outlet[Elem]
+  def toElem  (implicit b: Builder): Outlet[Buf]
 
-  def mkStreamOut(out: Outlet[Elem]): StreamOut
+  def ordering: Ordering[A]
+
+  def mkStreamOut(out: Outlet[Buf]): StreamOut
 }
 
 object StreamOut {
