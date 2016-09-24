@@ -255,7 +255,7 @@ object StreamIn {
       head
     }
 
-    def toAny   (implicit b: Builder): Outlet[BufLike] = toLong.as[BufLike]
+    def toAny   (implicit b: Builder): Outlet[BufLike] = toInt.as[BufLike]
     def toDouble(implicit b: Builder): OutD = singleI(alloc()).toDouble   // just reuse this functionality
     def toInt   (implicit b: Builder): OutI = alloc()
     def toLong  (implicit b: Builder): OutL = singleI(alloc()).toLong     // just reuse this functionality

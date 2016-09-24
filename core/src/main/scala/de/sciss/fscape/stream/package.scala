@@ -29,6 +29,7 @@ package object stream {
   type InI                     = Inlet[BufI]
   type InD                     = Inlet[BufD]
   type InL                     = Inlet[BufL]
+  type InA                     = Inlet[BufLike]
 
   @inline
   def  InI(name: String): InI = Inlet[BufI](name)
@@ -36,11 +37,14 @@ package object stream {
   def  InD(name: String): InD = Inlet[BufD](name)
   @inline
   def  InL(name: String): InL = Inlet[BufL](name)
+  @inline
+  def  InA(name: String): InA = Inlet[BufLike](name)
 
   type OutI                     = Outlet[BufI]
   type OutD                     = Outlet[BufD]
   type OutL                     = Outlet[BufL]
   type OutA                     = Outlet[BufLike]
+  type OutElem[A]               = Outlet[BufLike { type Elem = A }]
 
   @inline
   def  OutI(name: String): OutI = Outlet[BufI](name)

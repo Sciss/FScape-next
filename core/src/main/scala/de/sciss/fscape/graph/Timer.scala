@@ -20,6 +20,10 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 
 /** A UGen that outputs the number of sample frames passed since last triggered.
   * If no trigger is used, it simply outputs a linearly rising ramp.
+  *
+  * @param  trig  trigger signal to reset the counter. Note that the UGen
+  *               shuts down when `trig` finishes, so to use a constant like `0`,
+  *               it has to be wrapped in a `DC`, for example.
   */
 final case class Timer(trig: GE) extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =

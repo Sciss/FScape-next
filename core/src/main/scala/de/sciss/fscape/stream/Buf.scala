@@ -16,6 +16,8 @@ package de.sciss.fscape.stream
 import java.util.concurrent.atomic.AtomicInteger
 
 trait BufLike {
+  type Elem
+
   def release()(implicit ctrl: Control): Unit
   def acquire(): Unit
 
@@ -25,7 +27,11 @@ trait BufLike {
 
   def allocCount(): Int
 
-  def at(idx: Int): Any
+  def at(idx: Int): Elem
+
+  def buf: Array[Elem]
+
+  def ordering: Ordering[Elem]
 }
 
 object BufD {
@@ -41,13 +47,17 @@ object BufD {
 final class BufD private(val buf: Array[Double], var size: Int, borrowed: Boolean)
   extends BufLike {
 
+  type Elem = Double
+
   private[this] val _allocCount = if (borrowed) new AtomicInteger(1) else null
 
   def assertAllocated(): Unit = require(!borrowed || _allocCount.get() > 0)
 
   def allocCount(): Int = _allocCount.get()
 
-  def at(idx: Int): Any = buf(idx)
+  def at(idx: Int): Double = buf(idx)
+
+  def ordering: Ordering[Double] = Ordering.Double
 
   def acquire(): Unit = if (borrowed) {
     /* val oldCount = */ _allocCount.getAndIncrement()
@@ -74,14 +84,20 @@ object BufI {
     new BufI(new Array[Int](size), size = size, borrowed = true)
   }
 }
-final class BufI private(val buf: Array[Int], var size: Int, borrowed: Boolean) extends BufLike {
+final class BufI private(val buf: Array[Int], var size: Int, borrowed: Boolean)
+  extends BufLike {
+
+  type Elem = Int
+
   private[this] val _allocCount = if (borrowed) new AtomicInteger(1) else null
 
   def assertAllocated(): Unit = require(!borrowed || _allocCount.get() > 0)
 
   def allocCount(): Int = _allocCount.get()
 
-  def at(idx: Int): Any = buf(idx)
+  def at(idx: Int): Int = buf(idx)
+
+  def ordering: Ordering[Int] = Ordering.Int
 
   def acquire(): Unit = if (borrowed)
     _allocCount.getAndIncrement()
@@ -106,14 +122,20 @@ object BufL {
     new BufL(new Array[Long](size), size = size, borrowed = true)
   }
 }
-final class BufL private(val buf: Array[Long], var size: Int, borrowed: Boolean) extends BufLike {
+final class BufL private(val buf: Array[Long], var size: Int, borrowed: Boolean)
+  extends BufLike {
+
+  type Elem = Long
+
   private[this] val _allocCount = if (borrowed) new AtomicInteger(1) else null
 
   def assertAllocated(): Unit = require(!borrowed || _allocCount.get() > 0)
 
   def allocCount(): Int = _allocCount.get()
 
-  def at(idx: Int): Any = buf(idx)
+  def at(idx: Int): Long = buf(idx)
+
+  def ordering: Ordering[Long] = Ordering.Long
 
   def acquire(): Unit = if (borrowed)
     _allocCount.getAndIncrement()
