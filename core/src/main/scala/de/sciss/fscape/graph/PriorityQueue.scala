@@ -25,12 +25,14 @@ final case class PriorityQueue(keys: GE, values: GE, size: GE) extends UGenSourc
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
     val Vec(keys, values, size) = args
-    if (values.isInt)
-      stream.PriorityQueue(keys = keys.toAny, values = values.toInt   , size = size.toInt)
-    else if (values.isDouble)
-      stream.PriorityQueue(keys = keys.toAny, values = values.toDouble, size = size.toInt)
-    else if (values.isLong)
-      stream.PriorityQueue(keys = keys.toAny, values = values.toLong  , size = size.toInt)
-    else throw new IllegalArgumentException(s"Unknown buffer type for $values")
+//    if (values.isInt)
+//      stream.PriorityQueue(keys = keys.toAny, values = values.toInt   , size = size.toInt)
+//    else if (values.isDouble)
+//      stream.PriorityQueue(keys = keys.toAny, values = values.toDouble, size = size.toInt)
+//    else if (values.isLong)
+//      stream.PriorityQueue(keys = keys.toAny, values = values.toLong  , size = size.toInt)
+//    else throw new IllegalArgumentException(s"Unknown buffer type for $values")
+    val res = stream.PriorityQueue(keys = keys.toAny, values = values.toAny, size = size.toInt)
+    ???
   }
 }

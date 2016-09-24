@@ -35,20 +35,27 @@ object StreamIn {
     def toDouble(implicit b: Builder): OutD = throw new UnsupportedOperationException("StreamIn.unused.toDouble")
     def toInt   (implicit b: Builder): OutI = throw new UnsupportedOperationException("StreamIn.unused.toInt"   )
     def toLong  (implicit b: Builder): OutL = throw new UnsupportedOperationException("StreamIn.unused.toLong"  )
+    def toElem  (implicit b: Builder): Outlet[Elem] = throw new UnsupportedOperationException("StreamIn.unused.toElem")
 
     def isInt   : Boolean = false
     def isLong  : Boolean = false
     def isDouble: Boolean = true    // arbitrary
   }
 
-  private final class SingleD(peer: OutD) extends StreamIn {
+  private trait DoubleLike extends StreamIn {
+    final def isInt   : Boolean = false
+    final def isLong  : Boolean = false
+    final def isDouble: Boolean = true
+
+    final def toAny(implicit b: Builder): Outlet[BufLike] = toDouble.as[BufLike]  // retarded Akka API. Why is Outlet not covariant?
+
+    final type Elem = BufD
+
+    final def toElem(implicit b: Builder): OutD = toDouble
+  }
+
+  private final class SingleD(peer: OutD) extends DoubleLike {
     private[this] var exhausted = false
-
-    def isInt   : Boolean = false
-    def isLong  : Boolean = false
-    def isDouble: Boolean = true
-
-    def toAny(implicit b: Builder): Outlet[BufLike] = toDouble.as[BufLike]  // retarded Akka API. Why is Outlet not covariant?
 
     def toDouble(implicit b: Builder): OutD = {
       require(!exhausted)
@@ -99,14 +106,20 @@ object StreamIn {
     }
   }
 
-  private final class SingleI(peer: OutI) extends StreamIn {
+  private trait IntLike extends StreamIn {
+    final def isInt   : Boolean = true
+    final def isLong  : Boolean = false
+    final def isDouble: Boolean = false
+
+    final def toAny(implicit b: Builder): Outlet[BufLike] = toInt.as[BufLike]
+
+    final type Elem = BufI
+
+    final def toElem(implicit b: Builder): OutI = toInt
+  }
+
+  private final class SingleI(peer: OutI) extends IntLike {
     private[this] var exhausted = false
-
-    def isInt   : Boolean = true
-    def isLong  : Boolean = false
-    def isDouble: Boolean = false
-
-    def toAny(implicit b: Builder): Outlet[BufLike] = toInt.as[BufLike]
 
     def toInt(implicit b: Builder): OutI = {
       require(!exhausted)
@@ -157,14 +170,20 @@ object StreamIn {
     }
   }
 
-  private final class SingleL(peer: OutL) extends StreamIn {
+  private trait LongLike extends StreamIn {
+    final def isInt   : Boolean = false
+    final def isLong  : Boolean = true
+    final def isDouble: Boolean = false
+
+    final def toAny(implicit b: Builder): Outlet[BufLike] = toLong.as[BufLike]
+
+    final type Elem = BufL
+
+    final def toElem(implicit b: Builder): OutL = toLong
+  }
+
+  private final class SingleL(peer: OutL) extends LongLike {
     private[this] var exhausted = false
-
-    def isInt   : Boolean = false
-    def isLong  : Boolean = true
-    def isDouble: Boolean = false
-
-    def toAny(implicit b: Builder): Outlet[BufLike] = toLong.as[BufLike]
 
     def toLong(implicit b: Builder): OutL = {
       require(!exhausted)
@@ -215,13 +234,9 @@ object StreamIn {
     }
   }
 
-  private final class MultiD(peer: OutD, numSinks: Int) extends StreamIn {
+  private final class MultiD(peer: OutD, numSinks: Int) extends DoubleLike {
     private[this] var remain = numSinks
     private[this] var broad: Vec[OutD] = _ // create lazily because we need stream.Builder
-
-    def isInt   : Boolean = false
-    def isLong  : Boolean = false
-    def isDouble: Boolean = true
 
     private def alloc()(implicit b: Builder): OutD = {
       require(remain > 0)
@@ -232,19 +247,14 @@ object StreamIn {
       head
     }
 
-    def toAny   (implicit b: Builder): Outlet[BufLike] = toDouble.as[BufLike]
     def toDouble(implicit b: Builder): OutD = alloc()
     def toInt   (implicit b: Builder): OutI = singleD(alloc()).toInt   // just reuse this functionality
     def toLong  (implicit b: Builder): OutL = singleD(alloc()).toLong  // just reuse this functionality
   }
 
-  private final class MultiI(peer: OutI, numSinks: Int) extends StreamIn {
+  private final class MultiI(peer: OutI, numSinks: Int) extends IntLike {
     private[this] var remain = numSinks
     private[this] var broad: Vec[OutI] = _ // create lazily because we need stream.Builder
-
-    def isInt   : Boolean = true
-    def isLong  : Boolean = false
-    def isDouble: Boolean = false
 
     private def alloc()(implicit b: Builder): OutI = {
       require(remain > 0)
@@ -255,19 +265,14 @@ object StreamIn {
       head
     }
 
-    def toAny   (implicit b: Builder): Outlet[BufLike] = toInt.as[BufLike]
     def toDouble(implicit b: Builder): OutD = singleI(alloc()).toDouble   // just reuse this functionality
     def toInt   (implicit b: Builder): OutI = alloc()
     def toLong  (implicit b: Builder): OutL = singleI(alloc()).toLong     // just reuse this functionality
   }
 
-  private final class MultiL(peer: OutL, numSinks: Int) extends StreamIn {
+  private final class MultiL(peer: OutL, numSinks: Int) extends LongLike {
     private[this] var remain = numSinks
     private[this] var broad: Vec[OutL] = _ // create lazily because we need stream.Builder
-
-    def isInt   : Boolean = false
-    def isLong  : Boolean = true
-    def isDouble: Boolean = false
 
     private def alloc()(implicit b: Builder): OutL = {
       require(remain > 0)
@@ -278,7 +283,6 @@ object StreamIn {
       head
     }
 
-    def toAny   (implicit b: Builder): Outlet[BufLike] = toLong.as[BufLike]
     def toDouble(implicit b: Builder): OutD = singleL(alloc()).toDouble  // just reuse this functionality
     def toInt   (implicit b: Builder): OutI = singleL(alloc()).toInt     // just reuse this functionality
     def toLong  (implicit b: Builder): OutL = alloc()
@@ -293,6 +297,10 @@ trait StreamIn {
   def isInt   : Boolean
   def isLong  : Boolean
   def isDouble: Boolean
+
+  type Elem <: BufLike
+
+  def toElem  (implicit b: Builder): Outlet[Elem]
 }
 
 object StreamOut {

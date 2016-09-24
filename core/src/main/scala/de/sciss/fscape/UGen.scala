@@ -221,6 +221,9 @@ package graph {
     def isLong  : Boolean = false
     def isDouble: Boolean = false
 
+    type Elem = BufI
+    def toElem(implicit b: stream.Builder): OutI = toInt
+
     def doubleValue: Double = value.toDouble
     def intValue   : Int    = value
     def longValue  : Long   = value.toLong
@@ -238,6 +241,9 @@ package graph {
     def isInt   : Boolean = false
     def isLong  : Boolean = false
     def isDouble: Boolean = true
+
+    type Elem = BufD
+    def toElem(implicit b: stream.Builder): OutD = toDouble
 
     def doubleValue: Double = value
     def intValue   : Int    = {
@@ -266,6 +272,9 @@ package graph {
     def isInt   : Boolean = false
     def isLong  : Boolean = true
     def isDouble: Boolean = false
+
+    type Elem = BufL
+    def toElem(implicit b: stream.Builder): OutL = toLong
 
     def doubleValue: Double = value.toDouble
     def intValue   : Int    = {
