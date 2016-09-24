@@ -54,59 +54,131 @@ object MelFilter {
       with WindowedLogicImpl[Shape]
       with FilterIn6DImpl[BufD, BufI, BufD, BufD, BufD, BufI] {
 
-    private[this] var winSize = 0
-    private[this] var winBuf  : Array[Double] = _
+    private[this] var magSize     = 0
+    private[this] var minFreq     = 0.0
+    private[this] var maxFreq     = 0.0
+    private[this] var sampleRate  = 0.0
+    private[this] var bands       = 0
+
+    private[this] var magBuf    : Array[Double] = _
+    private[this] var melBuf    : Array[Double] = _
+    private[this] var binIndices: Array[Int   ] = _
 
     override protected def stopped(): Unit = {
       super.stopped()
-      winBuf = null
+      magBuf = null
     }
 
     protected def startNextWindow(inOff: Int): Int = {
-      val oldSize = winSize
+      var updatedBins = false
       if (bufIn1 != null && inOff < bufIn1.size) {
-        winSize = math.max(1, bufIn1.buf(inOff))
-      }
-      if (bufIn2 != null && inOff < bufIn2.size) {
-        ??? // minFreq = bufIn2.buf(inOff)
-      }
-      if (bufIn3 != null && inOff < bufIn3.size) {
-        ??? // maxFreq = bufIn3.buf(inOff)
+        val _magSize = math.max(1, bufIn1.buf(inOff))
+        if (magSize != _magSize) {
+          magSize     = _magSize
+          updatedBins = true
+        }
       }
       if (bufIn4 != null && inOff < bufIn4.size) {
-        ??? // sampleRate = bufIn4.buf(inOff)
+        val _sampleRate = bufIn4.buf(inOff)
+        if (sampleRate != _sampleRate) {
+          sampleRate  = _sampleRate
+          updatedBins = true
+        }
+      }
+      if (bufIn2 != null && inOff < bufIn2.size) {
+        val nyquist   = sampleRate/2
+        val _minFreq  = math.max(0, math.min(nyquist, bufIn2.buf(inOff)))
+        if (minFreq != _minFreq) {
+          minFreq     = _minFreq
+          updatedBins = true
+        }
+      }
+      if (bufIn3 != null && inOff < bufIn3.size) {
+        val nyquist   = sampleRate/2
+        val _maxFreq  = math.max(minFreq, math.min(nyquist, bufIn3.buf(inOff)))
+        if (maxFreq != _maxFreq) {
+          maxFreq     = _maxFreq
+          updatedBins = true
+        }
       }
       if (bufIn5 != null && inOff < bufIn5.size) {
-        ??? // bands = bufIn5.buf(inOff)
+        val _bands = math.max(1, bufIn5.buf(inOff))
+        if (bands != _bands) {
+          bands     = _bands
+          updatedBins = true
+        }
       }
-      if (winSize != oldSize) {
-        winBuf = new Array[Double](winSize)
+      if (updatedBins) {
+        magBuf      = new Array[Double](magSize)
+        melBuf      = new Array[Double](bands + 2) // we need two samples more internally
+        binIndices  = calcBinIndices()
       }
-      winSize
+      magSize
     }
 
-    protected def copyInputToWindow(inOff: Int, writeToWinOff: Int, chunk: Int): Unit = {
-      ???
-//      val cy    = coef
-//      val cx    = 1.0 - math.abs(cy)
-//      val a     = bufIn0.buf
-//      val b     = winBuf
-//      var ai    = inOff
-//      var bi    = writeToWinOff
-//      val stop  = ai + chunk
-//      while (ai < stop) {
-//        val x0 = a(ai)
-//        val y0 = b(bi)
-//        val y1 = (cx * x0) + (cy * y0)
-//        b(bi)  = y1
-//        ai += 1
-//        bi += 1
-//      }
+    protected def copyInputToWindow(inOff: Int, writeToWinOff: Int, chunk: Int): Unit =
+      Util.copy(bufIn0.buf, inOff, magBuf, writeToWinOff, chunk)
+
+    protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit = {
+      // add `+ 1` because we skip that first value
+      Util.copy(melBuf, readFromWinOff + 1, bufOut0.buf, outOff, chunk)
     }
 
-    protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit =
-      ??? // Util.copy(winBuf, readFromWinOff, bufOut0.buf, outOff, chunk)
+    private def melToFreq(mel : Double): Double =  700 * (math.pow(10, mel / 2595) - 1)
+    private def freqToMel(freq: Double): Double = 2595 * math.log10(1 + freq / 700)
 
-    protected def processWindow(writeToWinOff: Int): Int = ??? // writeToWinOff
+    private def calcBinIndices(): Array[Int] = {
+      val melFLow   = freqToMel(minFreq)
+      val melFHigh  = freqToMel(maxFreq)
+      val _bands    = bands
+
+      def centerFreq(i: Int): Double = {
+        val temp = melFLow + ((melFHigh - melFLow) / (_bands + 1)) * i
+        melToFreq(temp)
+      }
+
+      val _magSize  = magSize
+      val r         = (_magSize * 2) / sampleRate
+      val _binIdx   = new Array[Int](_bands + 2)
+      var i = 0
+      while (i < _binIdx.length) {
+        val fc  = centerFreq(i)
+        val j   = math.round(fc * r).toInt
+        if (j > _magSize) throw new IllegalArgumentException(s"Frequency $fc exceed Nyquist")
+        _binIdx(i) = j
+        i += 1
+      }
+      _binIdx
+    }
+
+    protected def processWindow(writeToWinOff: Int): Int = {
+      val _bands  = bands
+      val _melBuf = melBuf
+      val _binIdx = binIndices
+      var k = 1
+      while (k <= _bands) {
+        val p = _binIdx(k - 1)
+        val q = _binIdx(k)
+        val r = _binIdx(k + 1)
+        var i = p
+        val s0 = (i - p + 1) / (q - p + 1) // should this be floating point?
+        var num = 0.0
+        while (i <= q) {
+          num += s0 * bin(i)
+          i += 1
+        }
+
+        i = q + 1
+        val s1 = 1 - ((i - q) / (r - q + 1)) // should this be floating point?
+        while (i <= r) {
+          num += s1 * bin(i)
+          i += 1
+        }
+
+        _melBuf(k) = num
+        k += 1
+      }
+      bands
+    }
   }
 }
