@@ -29,7 +29,8 @@ object PriorityQueue {
   def apply[A, K >: Null <: BufElem[A],
             B, V >: Null <: BufElem[B]](keys: Outlet[K],
                                         values: Outlet[V], size: OutI)
-                                       (implicit b: Builder, ord: Ordering[A]): Outlet[V] = {
+                                       (implicit b: Builder, keyTpe: StreamType[A, K],
+                                        valueTpe: StreamType[B, V]): Outlet[V] = {
     val stage0  = new Stage[A, K, B, V]
     val stage   = b.add(stage0)
     b.connect(keys  , stage.in0)
@@ -44,7 +45,8 @@ object PriorityQueue {
     FanInShape3[K, V, BufI, V]
 
   private final class Stage[A, K >: Null <: BufElem[A],
-                            B, V >: Null <: BufElem[B]](implicit ctrl: Control, ord: Ordering[A])
+                            B, V >: Null <: BufElem[B]](implicit ctrl: Control,
+                                                        keyTpe: StreamType[A, K], valueTpe: StreamType[B, V])
     extends StageImpl[Shape[A, K, B, V]](name) {
 
     val shape = new FanInShape3(
@@ -59,9 +61,12 @@ object PriorityQueue {
 
   private final class Logic[A, K >: Null <: BufElem[A],
                             B, V >: Null <: BufElem[B]](shape: Shape[A, K, B, V])
-                                                       (implicit ctrl: Control, ord: Ordering[A])
+                                                       (implicit ctrl: Control, keyTpe: StreamType[A, K],
+                                                        valueTpe: StreamType[B, V])
     extends NodeImpl(name, shape)
       with FilterIn3Impl[K, V, BufI, V] {
+
+    import keyTpe.{ordering => keyOrd}
 
     private[this] var size : Int  = _
 
@@ -74,21 +79,19 @@ object PriorityQueue {
     private[this] var writeMode = false
 
     private[this] var queue : mutable.PriorityQueue[(A, B)] = _
-    private[this] var bufWin: Array[A]                 = _
 
     private[this] var value: B = _
 
-    protected def allocOutBuf0(): V = ???
+    protected def allocOutBuf0(): V = valueTpe.allocBuf()
 
     // highest priority = lowest keys
     private[this] object SortedKeys extends Ordering[(A, B)] {
-      def compare(x: (A, B), y: (A, B)): Int = ord.compare(y._1, x._1)
+      def compare(x: (A, B), y: (A, B)): Int = keyOrd.compare(y._1, x._1)
     }
 
     override protected def stopped(): Unit = {
       super.stopped()
       queue   = null
-      bufWin  = null
     }
 
     def process(): Unit = {
@@ -138,7 +141,7 @@ object PriorityQueue {
           if (i < valStop) _value = _values(i)
           val _key = _keys(i)
           // if the key is higher than the lowest in the queue...
-          if (ord.compare(_key, min) > 0) {
+          if (keyOrd.compare(_key, min) > 0) {
             // ...we remove the head of the queue and add the new key
             q.dequeue()
             q += _key -> _value

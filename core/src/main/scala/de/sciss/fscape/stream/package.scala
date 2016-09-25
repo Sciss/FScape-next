@@ -56,4 +56,6 @@ package object stream {
   def  OutL(name: String): OutL = Outlet[BufL](name)
 
   type GBuilder = GraphDSL.Builder[NotUsed]
+
+  type StreamInElem[A1, Buf1 >: Null <: BufElem[A1]] = StreamIn { type A = A1; type Buf = Buf1 }
 }

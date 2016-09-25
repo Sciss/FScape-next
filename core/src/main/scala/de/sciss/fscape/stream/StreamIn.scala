@@ -38,7 +38,7 @@ object StreamIn {
     def toDouble(implicit b: Builder): OutD             = unsupported("toDouble")
     def toInt   (implicit b: Builder): OutI             = unsupported("toInt")
     def toLong  (implicit b: Builder): OutL             = unsupported("toLong")
-    def toElem  (implicit b: Builder): Outlet[Buf]     = unsupported("toElem")
+    def toElem  (implicit b: Builder): Outlet[Buf]      = unsupported("toElem")
 
     def isInt   : Boolean = false
     def isLong  : Boolean = false
@@ -46,9 +46,15 @@ object StreamIn {
 
     // type Elem = Nothing
 
-    def mkStreamOut(out: Outlet[Buf]): StreamOut = unsupported("toStreamOut")
+    def tpe: StreamType[A, Buf] = unsupported("tpe")
+  }
 
-    def ordering: Ordering[A] = unsupported("ordering")
+  object DoubleType extends StreamType[Double, BufD] {
+    val ordering: Ordering[Double] = Ordering.Double
+
+    final def mkStreamOut(out: OutD): StreamOut = out
+
+    def allocBuf()(implicit ctrl: Control): BufD = ctrl.borrowBufD()
   }
 
   trait DoubleLike extends StreamIn {
@@ -56,16 +62,13 @@ object StreamIn {
     final def isLong  : Boolean = false
     final def isDouble: Boolean = true
 
-    final def toAny(implicit b: Builder): Outlet[BufLike] = toDouble.as[BufLike]  // retarded Akka API. Why is Outlet not covariant?
+    final def toAny (implicit b: Builder): Outlet[BufLike]  = toDouble.as[BufLike]  // retarded Akka API. Why is Outlet not covariant?
+    final def toElem(implicit b: Builder): OutD             = toDouble
 
     final type A    = Double
     final type Buf  = BufD
 
-    final def ordering: Ordering[Double] = Ordering.Double
-
-    final def toElem(implicit b: Builder): OutD = toDouble
-
-    final def mkStreamOut(out: OutD): StreamOut = out
+    final def tpe: StreamType[A, Buf] = DoubleType
   }
 
   private final class SingleD(peer: OutD) extends DoubleLike {
@@ -120,21 +123,26 @@ object StreamIn {
     }
   }
 
+  object IntType extends StreamType[Int, BufI] {
+    val ordering: Ordering[Int] = Ordering.Int
+
+    final def mkStreamOut(out: OutI): StreamOut = out
+
+    def allocBuf()(implicit ctrl: Control): BufI = ctrl.borrowBufI()
+  }
+
   trait IntLike extends StreamIn {
     final def isInt   : Boolean = true
     final def isLong  : Boolean = false
     final def isDouble: Boolean = false
 
-    final def toAny(implicit b: Builder): Outlet[BufLike] = toInt.as[BufLike]
+    final def toAny (implicit b: Builder): Outlet[BufLike]  = toInt.as[BufLike]
+    final def toElem(implicit b: Builder): OutI             = toInt
 
     final type A    = Int
     final type Buf  = BufI
 
-    final def ordering: Ordering[Int] = Ordering.Int
-
-    final def toElem(implicit b: Builder): OutI = toInt
-
-    final def mkStreamOut(out: OutI): StreamOut = out
+    final def tpe: StreamType[Int, BufI] = IntType
   }
 
   private final class SingleI(peer: OutI) extends IntLike {
@@ -189,21 +197,26 @@ object StreamIn {
     }
   }
 
+  object LongType extends StreamType[Long, BufL] {
+    val ordering: Ordering[Long] = Ordering.Long
+
+    final def mkStreamOut(out: OutL): StreamOut = out
+
+    def allocBuf()(implicit ctrl: Control): BufL = ctrl.borrowBufL()
+  }
+
   trait LongLike extends StreamIn {
     final def isInt   : Boolean = false
     final def isLong  : Boolean = true
     final def isDouble: Boolean = false
 
-    final def toAny(implicit b: Builder): Outlet[BufLike] = toLong.as[BufLike]
+    final def toAny (implicit b: Builder): Outlet[BufLike]  = toLong.as[BufLike]
+    final def toElem(implicit b: Builder): OutL             = toLong
 
     final type A    = Long
     final type Buf  = BufL
 
-    final def ordering: Ordering[Long] = Ordering.Long
-
-    final def toElem(implicit b: Builder): OutL = toLong
-
-    final def mkStreamOut(out: OutL): StreamOut = out
+    final def tpe: StreamType[Long, BufL] = LongType
   }
 
   private final class SingleL(peer: OutL) extends LongLike {
@@ -313,23 +326,28 @@ object StreamIn {
   }
 }
 trait StreamIn {
-  def toDouble(implicit b: Builder): OutD
-  def toInt   (implicit b: Builder): OutI
-  def toLong  (implicit b: Builder): OutL
-  def toAny   (implicit b: Builder): Outlet[BufLike]
+  type A
+  type Buf >: Null <: BufElem[A]
 
   def isInt   : Boolean
   def isLong  : Boolean
   def isDouble: Boolean
 
-  type A
-  type Buf >: Null <: BufLike { type Elem = A }
-
+  def toInt   (implicit b: Builder): OutI
+  def toLong  (implicit b: Builder): OutL
+  def toDouble(implicit b: Builder): OutD
+  def toAny   (implicit b: Builder): Outlet[BufLike]
   def toElem  (implicit b: Builder): Outlet[Buf]
 
-  def ordering: Ordering[A]
+  implicit def tpe: StreamType[A, Buf]
+}
+
+trait StreamType[A, Buf >: Null <: BufElem[A]] {
+  implicit val ordering: Ordering[A]
 
   def mkStreamOut(out: Outlet[Buf]): StreamOut
+
+  def allocBuf()(implicit ctrl: Control): Buf
 }
 
 object StreamOut {

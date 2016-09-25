@@ -19,7 +19,7 @@ object MFCCTest extends App {
 
   lazy val g0 = Graph {
     import graph._
-    import specIn.{sampleRate, numChannels}
+    import specIn.{sampleRate, numChannels, numFrames}
     val in        = AudioFileIn(fIn, numChannels = numChannels)
 
     val fftSize   = 1024
@@ -41,8 +41,14 @@ object MFCCTest extends App {
     val el: Int   = (covSize / config.blockSize) + 1
     val cov       = Pearson(mfccSlid.elastic(n = el), mfccSlidT, covSize)
 
+    val covF      = Timer(DC(0)).matchLen(cov)
+    val top10     = PriorityQueue(cov  , covF , size = 10)
+    val top10S    = PriorityQueue(top10, top10, size = 10)
+    ResizeWindow(top10S, 1, 0, 1).poll(Metro(2), "frame") // XXX TODO -- we need a shortcut for this
+
     val sig       = cov
-    AudioFileOut(fOut, AudioFileSpec(numChannels = numChannels, sampleRate = sampleRate), in = sig)
+    val out       = AudioFileOut(fOut, AudioFileSpec(numChannels = numChannels, sampleRate = sampleRate), in = sig)
+    Progress(out / math.ceil(numFrames / fftSize), Metro(2))
   }
 
   lazy val g1 = Graph {

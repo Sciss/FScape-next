@@ -1,7 +1,8 @@
 package de.sciss.fscape
 package graph
 
-import de.sciss.fscape.stream.{BufElem, Builder, OutI, StreamIn, StreamOut}
+import akka.stream.Outlet
+import de.sciss.fscape.stream.{BufElem, Builder, OutI, StreamIn, StreamInElem, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
@@ -25,14 +26,15 @@ final case class PriorityQueue(keys: GE, values: GE, size: GE) extends UGenSourc
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
     val Vec(keys, values, size) = args
-    mkStream[keys.A, keys.Buf, values.A, values.Buf](keys = keys, values = values, size = size.toInt)  // IntelliJ highlight bug
+    mkStream[keys.A, keys.Buf, values.A, values.Buf](keys = keys, values = values, size = size.toInt)  // IntelliJ doesn't get it
   }
 
-  private def mkStream[A1, K >: Null <: BufElem[A1],
-                       B , V >: Null <: BufElem[B]](keys  : StreamIn { type A = A1; type Buf = K },
-                                                    values: StreamIn { type A = B ; type Buf = V }, size: OutI)
-                                                   (implicit b: Builder): StreamOut = {
-    val out = stream.PriorityQueue[A1, K, B, V](keys = keys.toElem, values = values.toElem, size = size)(b, keys.ordering)
-    values.mkStreamOut(out)
+  private def mkStream[A, K >: Null <: BufElem[A], B, V >: Null <: BufElem[B]](keys  : StreamInElem[A, K],
+                                                                               values: StreamInElem[B, V], size: OutI)
+                                                                              (implicit b: Builder): StreamOut = {
+    import keys  .{tpe => kTpe}  // IntelliJ doesn't get it
+    import values.{tpe => vTpe}
+    val out: Outlet[V] = stream.PriorityQueue[A, K, B, V](keys = keys.toElem, values = values.toElem, size = size)
+    vTpe.mkStreamOut(out) // IntelliJ doesn't get it
   }
 }
