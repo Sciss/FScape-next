@@ -22,15 +22,15 @@ import scala.collection.mutable
 /*
 
   TODO:
-   - introduce type parameter `B` for values
    - introduce type class that gives access to allocBuf
 
  */
 object PriorityQueue {
-  def apply[A, K >: Null <: BufLike { type Elem = A }, V >: Null <: BufLike](keys: Outlet[K],
-                                                                             values: Outlet[V], size: OutI)
-                                    (implicit b: Builder, ord: Ordering[A]): Outlet[V] = {
-    val stage0  = new Stage[A, K, V]
+  def apply[A, K >: Null <: BufElem[A],
+            B, V >: Null <: BufElem[B]](keys: Outlet[K],
+                                        values: Outlet[V], size: OutI)
+                                       (implicit b: Builder, ord: Ordering[A]): Outlet[V] = {
+    val stage0  = new Stage[A, K, B, V]
     val stage   = b.add(stage0)
     b.connect(keys  , stage.in0)
     b.connect(values, stage.in1)
@@ -40,24 +40,26 @@ object PriorityQueue {
 
   private final val name = "PriorityQueue"
 
-  private type Shape[A, K >: Null <: BufLike { type Elem = A }, V >: Null <: BufLike] =
+  private type Shape[A, K >: Null <: BufElem[A], B, V >: Null <: BufElem[B]] =
     FanInShape3[K, V, BufI, V]
 
-  private final class Stage[A, K >: Null <: BufLike { type Elem = A }, V >: Null <: BufLike](implicit ctrl: Control, ord: Ordering[A])
-    extends StageImpl[Shape[A, K, V]](name) {
+  private final class Stage[A, K >: Null <: BufElem[A],
+                            B, V >: Null <: BufElem[B]](implicit ctrl: Control, ord: Ordering[A])
+    extends StageImpl[Shape[A, K, B, V]](name) {
 
     val shape = new FanInShape3(
-      in0 = Inlet[K] (s"$name.keys"),
+      in0 = Inlet[K] (s"$name.keys"  ),
       in1 = Inlet[V] (s"$name.values"),
       in2 = InI      (s"$name.size"  ),
       out = Outlet[V](s"$name.out"   )
     )
 
-    def createLogic(attr: Attributes) = new Logic[A, K, V](shape)
+    def createLogic(attr: Attributes) = new Logic[A, K, B, V](shape)
   }
 
-  private final class Logic[A, K >: Null <: BufLike {type Elem = A}, V >: Null <: BufLike](shape: Shape[A, K, V])
-                                                                                          (implicit ctrl: Control, ord: Ordering[A])
+  private final class Logic[A, K >: Null <: BufElem[A],
+                            B, V >: Null <: BufElem[B]](shape: Shape[A, K, B, V])
+                                                       (implicit ctrl: Control, ord: Ordering[A])
     extends NodeImpl(name, shape)
       with FilterIn3Impl[K, V, BufI, V] {
 
@@ -65,18 +67,23 @@ object PriorityQueue {
 
     private[this] var outOff      = 0
     private[this] var outRemain   = 0
-    private[this] var bufWritten  = 0
     private[this] var outSent     = true
 
-    private[this] var bufOff    : Int = _
     private[this] var bufRemain : Int = _
 
     private[this] var writeMode = false
 
-    private[this] var queue : mutable.PriorityQueue[A] = _
+    private[this] var queue : mutable.PriorityQueue[(A, B)] = _
     private[this] var bufWin: Array[A]                 = _
 
+    private[this] var value: B = _
+
     protected def allocOutBuf0(): V = ???
+
+    // highest priority = lowest keys
+    private[this] object SortedKeys extends Ordering[(A, B)] {
+      def compare(x: (A, B), y: (A, B)): Int = ord.compare(y._1, x._1)
+    }
 
     override protected def stopped(): Unit = {
       super.stopped()
@@ -93,13 +100,12 @@ object PriorityQueue {
           readIns()
           if (queue == null) {
             size  = math.max(1, bufIn2.buf(0))
-            queue = mutable.PriorityQueue.empty[A](ord)
+            queue = mutable.PriorityQueue.empty[(A, B)](SortedKeys)
           }
           copyInputToBuffer()
         }
         if (isClosed(in0) && !isAvailable(in0)) {
-          bufRemain   = math.min(bufWritten, size)
-          bufOff      = (math.max(0L, bufWritten - size) % size).toInt
+          bufRemain   = queue.size
           writeMode   = true
           tryWrite()
         }
@@ -108,47 +114,42 @@ object PriorityQueue {
 
     private def copyInputToBuffer(): Unit = {
       val _bufIn0   = bufIn0
-      val arr       = _bufIn0.buf
+      val _bufIn1   = bufIn1
+      val _keys     = _bufIn0.buf
       val inRemain  = _bufIn0.size
+      val _values   = if (_bufIn1 != null) _bufIn1.buf  else null
+      val valStop   = if (_bufIn1 != null) _bufIn1.size else 0
+      var _value    = value
       val q         = queue
       val chunk0    = math.min(size - q.size, inRemain)
       if (chunk0 > 0) { // queue not full yet, simply add items
         var i = 0
         while (i < chunk0) {
-          q += arr(i)
+          if (i < valStop) _value = _values(i)
+          val _key = _keys(i)
+          q += _key -> _value
           i += 1
         }
       }
-      if (chunk0 < inRemain) {
-        var min = q.head
+      if (chunk0 < inRemain) {  // queue is full, replace items
+        var min = q.head._1
         var i = chunk0
         while (i < inRemain) {
-          ???
+          if (i < valStop) _value = _values(i)
+          val _key = _keys(i)
+          // if the key is higher than the lowest in the queue...
+          if (ord.compare(_key, min) > 0) {
+            // ...we remove the head of the queue and add the new key
+            q.dequeue()
+            q += _key -> _value
+            min = q.head._1
+          }
           i += 1
         }
-
       }
+      value = _value
 
-      ???
-
-//      val chunk     = math.min(inRemain, len)
-//      var inOff     = inRemain - chunk
-//      var bufOff    = ((bufWritten + inOff) % len).toInt
-//      val chunk1    = math.min(chunk, len - bufOff)
-//      if (chunk1 > 0) {
-//        // println(s"copy1($inOff / $inRemain -> $bufOff / $len -> $chunk1")
-//        Util.copy(bufIn0.buf, inOff, bufWin, bufOff, chunk1)
-//        bufOff = (bufOff + chunk1) % len
-//        inOff += chunk1
-//      }
-//      val chunk2 = chunk - chunk1
-//      if (chunk2 > 0) {
-//        // println(s"copy2($inOff / $inRemain -> $bufOff / $len -> $chunk2")
-//        Util.copy(bufIn0.buf, inOff, bufWin, bufOff, chunk2)
-//        // bufOff = (bufOff + chunk2) % len
-//        // inOff += chunk2
-//      }
-      bufWritten += inRemain
+//      bufWritten += inRemain
     }
 
     protected def tryWrite(): Unit = {
@@ -161,20 +162,19 @@ object PriorityQueue {
 
       val chunk = math.min(bufRemain, outRemain)
       if (chunk > 0) {
-        ???
-//        val chunk1  = math.min(len - bufOff, chunk)
-//        Util.copy(bufWin, bufOff, bufOut0.buf, outOff, chunk1)
-//        bufOff  = (bufOff + chunk1) % len
-//        outOff += chunk1
-//        val chunk2  = chunk - chunk1
-//        if (chunk2 > 0) {
-//          Util.copy(bufWin, bufOff, bufOut0.buf, outOff, chunk2)
-//          bufOff  = (bufOff + chunk2) % len
-//          outOff += chunk2
-//        }
-//
-//        bufRemain -= chunk
-//        outRemain -= chunk
+        val arr     = bufOut0.buf
+        var outOffI = outOff
+        val q       = queue
+        var i       = 0
+        while (i < chunk) {
+          val _value = q.dequeue()._2
+          arr(outOffI) = _value
+          outOffI += 1
+          i       += 1
+        }
+        outOff     = outOffI
+        outRemain -= chunk
+        bufRemain -= chunk
       }
 
       val flushOut = bufRemain == 0
