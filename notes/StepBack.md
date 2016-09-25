@@ -23,3 +23,12 @@ Like `Slice` but with random access. (`Slices`?)
 
     val a = Slices(in, Sliding(ys, 2, 1))
     
+-------------------------------
+
+Emits triggers when a local maximum/minimum is detected.
+Fuses multiple detected points within a sliding window
+of `size` into single triggers.
+
+    DetectLocalMax(in: GE, size: GE)
+    DetectLocalMin(in: GE, size: GE)
+    
