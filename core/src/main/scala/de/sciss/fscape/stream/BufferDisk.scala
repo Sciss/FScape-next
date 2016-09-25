@@ -44,7 +44,7 @@ object BufferDisk {
     def createLogic(attr: Attributes) = new Logic(shape)
   }
 
-  private final class Logic(shape: FlowShape[BufD, BufD])(implicit ctrl: Control)
+  private final class Logic(shape: Shape)(implicit ctrl: Control)
     extends NodeImpl(name, shape) with InHandler with OutHandler {
 
     private[this] var af: FileBuffer  = _
@@ -87,10 +87,14 @@ object BufferDisk {
     }
 
     def onPull(): Unit = {
-      val chunk = math.min(bufSize, framesWritten - framesRead).toInt
+      val inputDone   = isClosed(shape.in) && !isAvailable(shape.in)
+      val framesAvail = framesWritten - framesRead
+      if (!inputDone && framesAvail < bufSize) return
+
+      val chunk = math.min(bufSize, framesAvail).toInt
       logStream(s"onPull(${shape.out}) $chunk; read = $framesRead; written = $framesWritten")
       if (chunk == 0) {
-        if (isClosed(shape.in) && !isAvailable(shape.in)) {
+        if (inputDone) {
           logStream(s"completeStage() $this")
           completeStage()
         }
