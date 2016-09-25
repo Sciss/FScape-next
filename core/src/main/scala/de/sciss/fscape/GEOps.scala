@@ -103,6 +103,7 @@ final class GEOps1(val `this`: GE) extends AnyVal { me =>
 
 //  /** Drops the last `len` elements of this (finite) signal. */
 //  def dropRight(len: GE): GE = ...
+//  def init: GE = DropRight(in = g, len = 1)
 
   /** Outputs the first element of this signal, then terminates. */
   def head: GE = take     (1)
@@ -110,8 +111,16 @@ final class GEOps1(val `this`: GE) extends AnyVal { me =>
   /** Outputs the last element of this (finite) signal, then terminates. */
   def last: GE = takeRight(1)
 
+  def tail: GE = Drop(in = g, len = 1)
+
   /** Concatenates another signal to this (finite) signal. */
   def ++ (that: GE): GE = Concat(g, that)
+
+  /** Appends a single frame. */
+  def :+ (that: Constant): GE = Concat(g, that)
+
+  /** Prepends a single frame. */
+  def +: (that: Constant): GE = Concat(that, g)
 
   def zip (that: GE): GE = ZipWindow(g, that)
 }

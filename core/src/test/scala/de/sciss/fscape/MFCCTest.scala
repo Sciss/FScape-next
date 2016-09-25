@@ -19,13 +19,17 @@ object MFCCTest extends App {
 
   lazy val g0 = Graph {
     import graph._
-    import specIn.{sampleRate, numChannels, numFrames}
-    val in        = AudioFileIn(fIn, numChannels = numChannels)
+//    import specIn.{sampleRate, numChannels, numFrames}
+//    val in          = AudioFileIn(fIn, numChannels = numChannels)
+    val numChannels = 1
+    val numFrames   = 44100 * 8
+    val sampleRate  = 44100.0
+    val in          = SinOsc(441/sampleRate).take(44100 * 4) ++ SinOsc(882/sampleRate).take(44100 * 4)
 
-    val fftSize   = 1024
-    val stepSize  = fftSize / 2
-    val numMel    = 42
-    val numCoef   = 13
+    val fftSize     = 1024
+    val stepSize    = fftSize / 2
+    val numMel      = 42
+    val numCoef     = 13
 
     val lap       = Sliding (in , fftSize, stepSize) * GenWindow(fftSize, GenWindow.Hann)
     val fft       = Real1FFT(lap, fftSize, mode = 1)
@@ -42,9 +46,15 @@ object MFCCTest extends App {
     val cov       = Pearson(mfccSlid.elastic(n = el), mfccSlidT, covSize)
 
     val covF      = Frames(cov)
-    val top10     = PriorityQueue( cov  , covF , size = 10)  // best results mapped to frames
-    val top10S    = PriorityQueue(-top10, top10, size = 10)  // frames sorted
-    ResizeWindow(top10S, 1, 0, 1).poll(Metro(2), "frame") // XXX TODO -- we need a shortcut for this
+    val numTop    = 1 // 10
+    val top10     = PriorityQueue( cov  , covF , size = numTop)  // best results mapped to frames
+//    val top10S    = PriorityQueue(-top10, top10, size = 10)  // frames in ascending order
+//    ResizeWindow(top10S, 1, 0, 1).poll(Metro(2), "frame") // XXX TODO -- we need a shortcut for this
+
+    val top10Desc = PriorityQueue(top10, top10, size = numTop)  // frames in descending order
+    val frames    = numFrames +: (top10Desc * fftSize ) :+ 0L
+    val spans     = frames.tail zip frames
+    ResizeWindow(spans, 1, 0, 1).poll(Metro(2), "frame") // XXX TODO -- we need a shortcut for this
 
     val sig       = cov
     val out       = AudioFileOut(fOut, AudioFileSpec(numChannels = numChannels, sampleRate = sampleRate), in = sig)
