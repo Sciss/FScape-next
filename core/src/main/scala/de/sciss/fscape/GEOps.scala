@@ -15,8 +15,7 @@ package de.sciss.fscape
 
 import de.sciss.fscape.graph.BinaryOp._
 import de.sciss.fscape.graph.UnaryOp._
-import de.sciss.fscape.graph.{BinaryOp, ChannelProxy, ComplexBinaryOp, ComplexUnaryOp, Concat, Drop, Elastic, Metro, Poll, Take, TakeRight, UnaryOp, UnzipWindow}
-import de.sciss.fscape.graph.Constant
+import de.sciss.fscape.graph.{BinaryOp, ChannelProxy, ComplexBinaryOp, ComplexUnaryOp, Concat, Constant, Drop, Elastic, Metro, Poll, Take, TakeRight, UnaryOp, UnzipWindow, ZipWindow}
 import de.sciss.optional.Optional
 
 final class GEOps1(val `this`: GE) extends AnyVal { me =>
@@ -113,6 +112,8 @@ final class GEOps1(val `this`: GE) extends AnyVal { me =>
 
   /** Concatenates another signal to this (finite) signal. */
   def ++ (that: GE): GE = Concat(g, that)
+
+  def zip (that: GE): GE = ZipWindow(g, that)
 }
 
 final class GEOps2(val `this`: GE) extends AnyVal { me =>

@@ -50,27 +50,31 @@ object Slices {
     extends NodeImpl(name, shape) with OutHandler {
 
     private[this] var af: FileBuffer  = _
-    private[this] val bufSize       = ctrl.blockSize
-    private[this] var buf           = new Array[Double](bufSize)
 
-    private[this] var framesWritten = 0L
-    private[this] var framesRead    = 0L
+    private[this] var framesRead    = 0L  // read from file-buffer and output
+    private[this] var framesWritten = 0L  // input and written to file-buffer
 
     setHandler(shape.out, this)
     setHandler(shape.in0, new InHandler {
       def onPush(): Unit = onPush0()
 
       override def onUpstreamFinish(): Unit = {
-        logStream(s"onUpstreamFinish(${shape.in0}); read = $framesRead; written = $framesWritten")
-        if (isAvailable(shape.out)) onPull()
-//        super.onUpstreamFinish()
+        logStream(s"onUpstreamFinish(${shape.in0}); read = $framesWritten; written = $framesRead")
+        if (!isAvailable(shape.in0)) {
+          clipSpan()
+          process()
+        }
       }
     })
     setHandler(shape.in1, new InHandler {
-      def onPush(): Unit = process()
+      def onPush(): Unit = {
+        logStream(s"onPush(${shape.in1})")
+        process()
+      }
 
       override def onUpstreamFinish(): Unit = {
-        ??? // super.onUpstreamFinish()
+        logStream(s"onUpstreamFinish(${shape.in1})")
+        process()
       }
     })
 
@@ -82,14 +86,19 @@ object Slices {
 
     override protected def stopped(): Unit = {
       super.stopped()
-      buf = null
+      freeAuxBuffers()
+      freeOutputBuffer()
       af.dispose()
       af = null
     }
 
-    private[this] var spansRemain = 0
-    private[this] var spansOff    = 0
     private[this] var bufIn1: BufL = _
+    private[this] var spansOff    = 0
+    private[this] var spansRemain = 0
+
+    private[this] var bufOut: BufD = _
+    private[this] var outOff      = 0
+    private[this] var outRemain   = 0
 
     private[this] var spanStart   = 0L
     private[this] var spanStop    = 0L
@@ -101,14 +110,26 @@ object Slices {
       }
     }
 
+    private def freeOutputBuffer(): Unit = {
+      if (bufOut != null) {
+        bufOut.release()
+        bufOut = null
+      }
+    }
+
     @inline
     private[this] def canReadSpans      = spansRemain == 0 && isAvailable(shape.in1)
 
     @inline
-    private[this] def canStartNextSpan  = spansRemain > 0 && framesWritten == spanStop
+    private[this] def canStartNextSpan  = spansRemain > 0 && framesRead == spanStop
 
     @inline
-    private[this] def canAllocOut       = ??? : Boolean
+    private[this] def canFillOutBuf     = framesRead <= framesWritten
+
+    private def clipSpan(): Unit = {
+      spanStart = math.min(spanStart, framesWritten)
+      spanStop  = math.min(spanStop , framesWritten)
+    }
 
     @tailrec
     private def process(): Unit = {
@@ -120,20 +141,65 @@ object Slices {
         val sz        = bufIn1.size
         spansRemain   = sz - (sz % 2)
         spansOff      = 0
+        tryPull(shape.in1)
         stateChanged  = true
       }
 
       if (canStartNextSpan) {
         spanStart     = bufIn1.buf(spansOff)
         spanStop      = bufIn1.buf(spansOff + 1)
+        if (isClosed(shape.in0) && !isAvailable(shape.in0)) clipSpan()
         spansOff     += 2
         spansRemain  -= 2
-        framesWritten = spanStart
+        framesRead    = spanStart
         stateChanged  = true
       }
 
-      if (canAllocOut) {
-        ???
+      if (canFillOutBuf) {
+        if (bufOut == null) {
+          bufOut        = ctrl.borrowBufD()
+          outOff        = 0
+          outRemain     = bufOut.size
+          stateChanged  = true
+        }
+
+        val stop  = math.min(framesWritten, spanStop)
+        val chunk = math.min(math.abs(stop - framesRead), outRemain).toInt
+        if (chunk > 0) {
+          if (stop > framesRead) { // forward
+            if (af.position != framesRead) af.position = framesRead
+            af.read(bufOut.buf, outOff, chunk)
+            framesRead += chunk
+          } else {  // backward
+            val pos0 = framesRead - chunk
+            if (af.position != pos0) af.position = pos0
+            af.read(bufOut.buf, outOff, chunk)
+            Util.reverse(bufOut.buf, outOff, chunk)
+            framesRead -= chunk
+          }
+          outOff      += chunk
+          outRemain   -= chunk
+          stateChanged = true
+        }
+      }
+
+      if (isAvailable(shape.out)) {
+        val flush = framesRead == spanStop && spansRemain == 0 && isClosed(shape.in1) && !isAvailable(shape.in1)
+        if (flush || (outRemain == 0 && outOff > 0)) {
+          if (outOff > 0) {
+            bufOut.size = outOff
+            push(shape.out, bufOut)
+            bufOut = null
+          } else {
+            freeOutputBuffer()
+          }
+          if (flush) {
+            stateChanged = false
+            completeStage()
+          } else {
+            stateChanged = true
+          }
+        }
       }
 
       if (stateChanged) process()
@@ -143,7 +209,7 @@ object Slices {
       val bufIn = grab(shape.in0)
       tryPull(shape.in0)
       val chunk = bufIn.size
-      logStream(s"onPush(${shape.in0}) $chunk; read = $framesRead; written = $framesWritten")
+      logStream(s"onPush(${shape.in0}) $chunk; read = $framesWritten; written = $framesRead")
 
       try {
         if (af.position != framesWritten) af.position = framesWritten
@@ -154,26 +220,12 @@ object Slices {
         bufIn.release()
       }
 
-      if (isAvailable(shape.out)) onPull()
+      process()
     }
 
     def onPull(): Unit = {
-      val chunk = math.min(bufSize, framesWritten - framesRead).toInt
-      logStream(s"onPull(${shape.out}) $chunk; read = $framesRead; written = $framesWritten")
-      if (chunk == 0) {
-        if (isClosed(shape.in0) && !isAvailable(shape.in0)) {
-          logStream(s"completeStage() $this")
-          completeStage()
-        }
-
-      } else {
-        if (af.position != framesRead) af.position = framesRead
-        val bufOut = ctrl.borrowBufD()
-        af.read(bufOut.buf, 0, chunk)
-        framesRead += chunk
-        bufOut.size = chunk
-        push(shape.out, bufOut)
-      }
+      logStream(s"onPull(${shape.out})")
+      process()
     }
   }
 }

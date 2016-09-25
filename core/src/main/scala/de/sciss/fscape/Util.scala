@@ -86,6 +86,18 @@ object Util {
     }
   }
 
+  def reverse(buf: Array[Double], off: Int, len: Int): Unit = {
+    var i = off
+    var j = i + len - 1
+    while (i < j) {
+      val tmp = buf(i)
+      buf(i) = buf(j)
+      buf(j) = tmp
+      i += 1
+      j -= 1
+    }
+  }
+
   /** Multiplies buffer with a scalar. */
   def mul(buf: Array[Double], off: Int, len: Int, value: Double): Unit = {
     var i     = off
