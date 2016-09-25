@@ -41,7 +41,7 @@ object MFCCTest extends App {
     val el: Int   = (covSize / config.blockSize) + 1
     val cov       = Pearson(mfccSlid.elastic(n = el), mfccSlidT, covSize)
 
-    val covF      = Timer(DC(0)).matchLen(cov)
+    val covF      = Frames(cov)
     val top10     = PriorityQueue( cov  , covF , size = 10)  // best results mapped to frames
     val top10S    = PriorityQueue(-top10, top10, size = 10)  // frames sorted
     ResizeWindow(top10S, 1, 0, 1).poll(Metro(2), "frame") // XXX TODO -- we need a shortcut for this

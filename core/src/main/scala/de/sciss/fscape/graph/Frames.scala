@@ -1,5 +1,5 @@
 /*
- *  Length.scala
+ *  Frames.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2016 Hanns Holger Rutz. All rights reserved.
@@ -18,8 +18,8 @@ import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-/** Reports the length of the input as a single value one the input has terminated. */
-final case class Length(in: GE) extends UGenSource.SingleOut {
+/** A UGen that generates a signal that incrementally counts the frames of its input. */
+final case class Frames(in: GE) extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
     unwrap(Vector(in.expand))
 
@@ -28,6 +28,6 @@ final case class Length(in: GE) extends UGenSource.SingleOut {
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
     val Vec(in) = args
-    stream.Length(in = in.toAny)
+    stream.Frames(in = in.toAny)
   }
 }

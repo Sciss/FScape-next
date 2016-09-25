@@ -1,5 +1,5 @@
 /*
- *  Length.scala
+ *  Frames.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2016 Hanns Holger Rutz. All rights reserved.
@@ -18,7 +18,7 @@ import akka.stream.stage.{InHandler, OutHandler}
 import akka.stream.{Attributes, FlowShape}
 import de.sciss.fscape.stream.impl.{StageImpl, NodeImpl}
 
-object Length {
+object Frames {
   def apply(in: OutA)(implicit b: Builder): OutL = {
     val stage0  = new Stage
     val stage   = b.add(stage0)
@@ -26,7 +26,7 @@ object Length {
     stage.out
   }
 
-  private final val name = "Length"
+  private final val name = "Frames"
 
   private type Shape = FlowShape[BufLike, BufL]
 
@@ -50,27 +50,28 @@ object Length {
     override def preStart(): Unit =
       pull(shape.in)
 
-    // ---- InHandler ----
+    // ---- handlers ----
 
-    def onPush(): Unit = {
-      val buf = grab(shape.in)
-      framesRead += buf.size
-      buf.release()
+    def onPush(): Unit = if (isAvailable(shape.out)) process()
+    def onPull(): Unit = if (isAvailable(shape.in )) process()
+
+    private def process(): Unit = {
+      val bufIn   = grab(shape.in)
+      val bufOut  = ctrl.borrowBufL()
+      val sz      = bufIn.size
+      val arr     = bufOut.buf
+      var i       = 0
+      var j       = framesRead
+      while (i < sz) {
+        arr(i) = j
+        i += 1
+        j += 1
+      }
+      framesRead  = j
+      bufIn.release()
+      bufOut.size = sz
+      push(shape.out, bufOut)
       tryPull(shape.in)
-    }
-
-    override def onUpstreamFinish(): Unit = if (isAvailable(shape.out)) writeAndFinish()
-
-    // ---- OutHandler ----
-
-    def onPull(): Unit = if (isClosed(shape.in)) writeAndFinish()
-
-    private def writeAndFinish(): Unit = {
-      val buf     = ctrl.borrowBufL()
-      buf.size    = 1
-      buf.buf(0)  = framesRead
-      push(shape.out, buf)
-      completeStage()
     }
   }
 }
