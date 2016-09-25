@@ -79,6 +79,7 @@ object PriorityQueue {
     private[this] var writeMode = false
 
     private[this] var queue : mutable.PriorityQueue[(A, B)] = _
+    private[this] var result: Array[B] = _
 
     private[this] var value: B = _
 
@@ -92,6 +93,7 @@ object PriorityQueue {
     override protected def stopped(): Unit = {
       super.stopped()
       queue   = null
+      result  = null
     }
 
     def process(): Unit = {
@@ -108,7 +110,17 @@ object PriorityQueue {
           copyInputToBuffer()
         }
         if (isClosed(in0) && !isAvailable(in0)) {
-          bufRemain   = queue.size
+          val q       = queue
+          queue       = null
+          val sz      = q.size
+          val _res    = valueTpe.newArray(sz)
+          var i = 0
+          while (i < sz) {
+            _res(i)   = q.dequeue()._2
+            i += 1
+          }
+          result      = _res
+          bufRemain   = sz
           writeMode   = true
           tryWrite()
         }
@@ -167,17 +179,19 @@ object PriorityQueue {
       if (chunk > 0) {
         val arr     = bufOut0.buf
         var outOffI = outOff
-        val q       = queue
+        val q       = result
+        var _bufRem = bufRemain
         var i       = 0
         while (i < chunk) {
-          val _value = q.dequeue()._2
+          _bufRem     -= 1
+          val _value   = q(_bufRem)
           arr(outOffI) = _value
-          outOffI += 1
-          i       += 1
+          outOffI     += 1
+          i           += 1
         }
         outOff     = outOffI
         outRemain -= chunk
-        bufRemain -= chunk
+        bufRemain  = _bufRem
       }
 
       val flushOut = bufRemain == 0

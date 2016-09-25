@@ -55,6 +55,8 @@ object StreamIn {
     final def mkStreamOut(out: OutD): StreamOut = out
 
     def allocBuf()(implicit ctrl: Control): BufD = ctrl.borrowBufD()
+
+    def newArray(size: Int): Array[Double] = new Array(size)
   }
 
   trait DoubleLike extends StreamIn {
@@ -129,6 +131,8 @@ object StreamIn {
     final def mkStreamOut(out: OutI): StreamOut = out
 
     def allocBuf()(implicit ctrl: Control): BufI = ctrl.borrowBufI()
+
+    def newArray(size: Int): Array[Int] = new Array(size)
   }
 
   trait IntLike extends StreamIn {
@@ -203,6 +207,8 @@ object StreamIn {
     final def mkStreamOut(out: OutL): StreamOut = out
 
     def allocBuf()(implicit ctrl: Control): BufL = ctrl.borrowBufL()
+
+    def newArray(size: Int): Array[Long] = new Array(size)
   }
 
   trait LongLike extends StreamIn {
@@ -348,6 +354,8 @@ trait StreamType[A, Buf >: Null <: BufElem[A]] {
   def mkStreamOut(out: Outlet[Buf]): StreamOut
 
   def allocBuf()(implicit ctrl: Control): Buf
+
+  def newArray(size: Int): Array[A]
 }
 
 object StreamOut {
