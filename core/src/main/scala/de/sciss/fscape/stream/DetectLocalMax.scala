@@ -52,21 +52,38 @@ object DetectLocalMax {
             |     |     |
       |     |     |     |
 
-      A     B     C     D
+      A     B     C     D       --> B, D
 
       |--size--|
 
       where the first and third peak are spaced further than `size`.
-      We cannot 'drop' A until we know that B will be surpassed by C.
+      Should we keep A until we know that B will be surpassed by C?
       But then the situation repeats - we cannot 'drop' B until we
       know whether C will be surpassed by D?
 
-      The suggested output here is:
-      - A is encountered and stored
-      - B is encountered and stored
-      - C is encountered -- A is accepted and B dropped
-      - D is encountered
-      - the input ends; D is accepted and C is dropped
+      It seems there are only two good strategies:
+      - we build a global memory and then descend from the
+        highest known peak to its left and right. This would
+        be essentially the priority queue, but unbounded and
+        with a spatial post-processing stage.
+      - we proceed strictly sequentially. once we detected
+        a local maximum, the frame count begins, and at the
+        end of that window, simply the highest detected maximum
+        would be emitted. Advantage: much simpler, no
+        random access needed. Disadvantage: we could lose the
+        highest maxima if we are unlucky.
+
+      We'll go for the sequential strategy, and could still
+      implement the optimal one as `DetectGlobalMax`.
+
+      The suggested output then here is:
+      - A is encountered and stored; frame count begins
+      - B is encountered and replaces A
+      - frame count exceeds window size;
+        B is emitted and frame count reset to B's position
+      - C is encountered in "dead zone" and skipped
+      - D is encountered; frame count begins
+      - the input ends; D is emitted
 
       (2)
                              |
@@ -74,16 +91,17 @@ object DetectLocalMax {
                  |     |     |
       |          |     |     |
 
-      A          B     C     D
+      A          B     C     D       --> A, C  (sub-optimal compared to global search yielding A, B, D)
 
       |--size--|
 
       - A is encountered and stored
       - no more peaks are seen for `size` frames; A is accepted
-      - B is encountered and stored
-      - C is encountered and stored
-      - D is encountered -- B is accepted and C is dropped
-      - the input ends; D is accepted
+      - B is encountered and stored; frame count begins
+      - C is encountered and replaces B
+      - D is in "dead" zone and skipped
+      - frame count exceeds window size; C is emitted
+      - the input ends
 
       (3)
                   |
@@ -91,12 +109,12 @@ object DetectLocalMax {
       |           |     |
       |     |     |     |
 
-      A     B     C     D
+      A     B     C     D       --> A, C
 
       |--size--|
 
       - A is encountered and stored
-      - B is encountered, but smaller than A, B is dropped
+      - B is encountered, but smaller and skipped
       - no more peaks are seen for `size` frames after A's position; A is accepted
       - C is encountered and stored
       - D is encountered, but smaller than A, B is dropped
@@ -105,18 +123,17 @@ object DetectLocalMax {
       Algorithm
       =========
 
-      - there are two slots for past maxima; there can be zero, one, or two elements stored at a time
-      - for non-zero slots, we set the maximum frame advance so that the last element just drops out of the window
-      - if frame advance is reached without encountering any more maxima, the last element is accepted,
-        and the slots are cleared
-      - if another maxima is found exceeding the last element, we decide:
-        - if only one slot was used, we store the new maximum to the second slot
-        - if both slots were used, we accept the first element, we drop the second element,
-          and we store the new maximum (as the only element) in the slots.
-      - when input end is reached, we accept the last slot element if any
-
-      XXX TODO:
-      Flaw: We should accept more than two slots; indeed size/2 slots would be the maximum number of slots?
+      - state is 'empty'
+      - loop:
+        - if state is 'blocked', skip until stop frame has been reached. if stream terminates, terminate.
+          otherwise, set state to 'empty', then loop.
+        - if state is 'empty', scan input for next local maximum. if stream terminates, terminate.
+          if max is found, store it, set state to 'found', and set stop frame to found frame plus window size,
+          then loop.
+        - if state is 'found', scan input for next local maximum greater than stored max,
+          but no further than stop frame. if stream terminates, emit stored max, then terminate.
+          if a new larger max is found, replace stored max, then loop. if no larger max is found,
+          emit stored max, set state to 'blocked', set stop frame to found frame plus window size, then loop.
 
    */
 
