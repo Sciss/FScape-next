@@ -143,49 +143,130 @@ object DetectLocalMax {
       with FilterIn2Impl[Buf, BufI, BufI]
       with ChunkImpl[Shape[A, Buf]] {
 
-    private[this] var high  = false
-    private[this] var held  = 0.0
+    private[this] var size          = 0
+
+    private[this] var framesRead    = 0L
+    private[this] var framesWritten = 0L
+    private[this] var state         = 0     // 0 - empty, 1 - found, 2 - blocked
+    private[this] var foundValue: A = _
+    private[this] var foundFrame    = 0L
+    private[this] var stopFrame     = 0L
+    private[this] var x0: A         = _
+    private[this] var s0: Int       = 0     // slope signum (<0, == 0, >0)
+
+    private[this] var readMode      = true
+    private[this] var _complete     = false
+
+    import tpe.ordering
 
     protected def allocOutBuf0(): BufI = ctrl.borrowBufI()
 
-    protected def shouldComplete(): Boolean = ???
+    protected def shouldComplete(): Boolean = _complete && framesWritten == framesRead
 
-    protected def processChunk(): Boolean = {
-      val chunk = math.min(inRemain, outRemain)
-      val res   = chunk > 0
-      if (res) {
-        processChunk(inOff = inOff, outOff = outOff, len = chunk)
-        inOff       += chunk
-        inRemain    -= chunk
-        outOff      += chunk
-        outRemain   -= chunk
-      }
-      res
+    protected def processChunk(): Boolean = if (readMode) processRead() else processWrite()
 
-      ???
-    }
-
-    protected def processChunk(inOff: Int, outOff: Int, len: Int): Unit = {
-      val b0      = bufIn0.buf
-      val b1      = if (bufIn1 == null) null else bufIn1.buf
-      val stop1   = if (b1     == null) 0    else bufIn1.size
-      val out     = bufOut0.buf
-      var h0      = high
-      var v0      = held
-      var inOffI  = inOff
-      var outOffI = outOff
-      val stop0   = inOff + len
-      while (inOffI < stop0) {
-        if (inOffI < stop1) h0 = b1(inOffI) > 0
-        if (h0) {
-          ??? // v0 = b0(inOffI)
+    private def processRead(): Boolean =
+      if (inRemain == 0) {
+        val terminate = isClosed(shape.in0) && !isAvailable(shape.in0)
+        if (terminate) {
+          state     = if (state == 1) 2 else 0
+          readMode  = false
+          _complete = true
         }
-        ??? // out(outOffI) = v0
-        inOffI  += 1
-        outOffI += 1
+        terminate
+
+      } else {
+        var stateChanged = false
+        // if state is 'empty', scan input for next local maximum. if stream terminates, terminate.
+        // if max is found, store it, set state to 'found', and set stop frame to found frame plus window size
+
+        // if state is 'blocked', skip until stop frame has been reached.
+        // if stream terminates, terminate. otherwise, set state to 'empty'
+
+        // if state is 'found', scan input for next local maximum greater than stored max,
+        // but no further than stop frame. if stream terminates, emit stored max, then terminate.
+        // if a new larger max is found, replace stored max, then loop. if no larger max is found,
+        // emit stored max, set state to 'blocked', set stop frame to found frame plus window size
+
+        def calcSkip(): Int = if (state == 0) inRemain else math.min(inRemain, stopFrame - framesRead).toInt
+
+        var skip      = calcSkip()
+        if (skip > 0) stateChanged = true
+        val _sizeStop = if (bufIn1 == null) 0 else bufIn1.size
+        val _in       = bufIn0.buf
+        var _x0       = x0
+        var _s0       = s0
+        while (skip > 0) {
+          val x1      = _in(inOff)
+          val s1      = ordering.compare(x1, _x0)
+          if (inOff < _sizeStop) size = math.max(1, bufIn1.buf(inOff))
+
+          if (state != 2) {
+            val isMax = _s0 > 0 && s1 < 0
+            if (isMax) {
+              if (state == 0) {
+                foundFrame  = framesRead
+                stopFrame   = foundFrame + size
+                foundValue  = _x0
+                state       = 1
+              } else {  // state == 1
+                if (ordering.gt(_x0, foundValue)) {
+                  foundFrame  = framesRead
+                  foundValue  = _x0
+                }
+              }
+            }
+          }
+
+          inRemain   -= 1
+          inOff      += 1
+          framesRead += 1
+          _x0         = x1
+          _s0         = s1
+          skip        = calcSkip()
+        }
+        x0 = _x0
+        s0 = _s0
+
+        if (state != 0) {
+          val reachedStopFrame  = framesRead == stopFrame
+          val terminate         = inRemain == 0 && isClosed(shape.in0) && !isAvailable(shape.in0)
+          if (reachedStopFrame || terminate) {
+            // go from 'found' to 'blocked', from 'blocked' to 'empty'
+            state = if (state == 1) 2 else 0
+            if (terminate || state == 2) readMode = false
+            stateChanged = true
+          }
+        }
+
+        stateChanged
       }
-      high = h0
-      held = v0
+
+    private def processWrite(): Boolean = {
+      var stateChanged = false
+
+      val chunk = if (state == 0) outRemain else math.min(outRemain, foundFrame - framesWritten).toInt
+      if (chunk > 0) {
+        Util.clear(bufOut0.buf, outOff, chunk)
+        outOff        += chunk
+        outRemain     -= chunk
+        framesWritten += chunk
+        stateChanged   = true
+      }
+
+      if (state != 0) {
+        val reachedFoundFrame = framesWritten == foundFrame
+        if (reachedFoundFrame & outRemain > 0) {
+          bufOut0.buf(outOff) = 1
+          outOff             += 1
+          outRemain          -= 1
+          framesWritten      += 1
+          readMode            = true  // continue 'blocked' read
+          stateChanged        = true
+        }
+      }
+
+      stateChanged
     }
   }
 }

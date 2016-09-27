@@ -10,6 +10,8 @@ object MFCCTest extends App {
   val dir     = userHome / "Music" / "work"
   val fIn     = dir / "TubewayArmy-DisconnectFromYouEdit-L.aif"
   val fOut    = dir / "_killme.aif"
+  val fOut2   = dir / "_killme2.aif"
+  val fOut3   = dir / "_killme3.aif"
   val specIn  = AudioFile.readSpec(fIn)
 
   val config = stream.Control.Config()
@@ -50,8 +52,12 @@ object MFCCTest extends App {
     val cov0      = Pearson(mfccSlid.elastic(n = el), mfccSlidT, covSize)
     val cov       = cov0.take(numCov)
 
-    val covF      = Frames(cov)
-    val top10     = PriorityQueue(-cov  , covF , size = numTop)  // lowest covariances mapped to frames
+    val covNeg    = -cov
+    val covMin0   = DetectLocalMax(covNeg, size = 32 /* XXX TODO -- which size? */)
+    val covMin    = covMin0.take(numCov)  // XXX TODO --- bug in DetectLocalMax
+    val keys      = covNeg.elastic() * covMin
+    val values    = Frames(keys)
+    val top10     = PriorityQueue(keys, values, size = numTop)  // lowest covariances mapped to frames
 //    val top10S    = PriorityQueue(-top10, top10, size = 10)  // frames in ascending order
 //    ResizeWindow(top10S, 1, 0, 1).poll(Metro(2), "frame") // XXX TODO -- we need a shortcut for this
 
@@ -64,6 +70,9 @@ object MFCCTest extends App {
     val sig       = cov
     val out       = AudioFileOut(fOut, AudioFileSpec(numChannels = numChannels, sampleRate = sampleRate), in = sig)
     Progress(out / math.ceil(numFrames / fftSize), Metro(2))
+
+    AudioFileOut(fOut2, AudioFileSpec(numChannels = numChannels, sampleRate = sampleRate), in = covNeg)
+    AudioFileOut(fOut3, AudioFileSpec(numChannels = numChannels, sampleRate = sampleRate), in = covMin)
   }
 
   lazy val g1 = Graph {
@@ -72,7 +81,7 @@ object MFCCTest extends App {
     val in        = AudioFileIn(fIn, numChannels = numChannels)
 
     val fftSize   = 1024
-    val stepSize  = fftSize / 2
+      val stepSize  = fftSize / 2
     val numMel    = fftSize/2
     val numCoef   = numMel - 1
 
