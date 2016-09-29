@@ -151,6 +151,7 @@ object DetectLocalMax {
     private[this] var foundValue: A = _
     private[this] var foundFrame    = 0L
     private[this] var stopFrame     = 0L
+    private[this] var writtenTrig   = 0L
     private[this] var x0: A         = _
     private[this] var s0: Int       = 0     // slope signum (<0, == 0, >0)
 
@@ -163,13 +164,15 @@ object DetectLocalMax {
 
     protected def shouldComplete(): Boolean = _complete && framesWritten == framesRead
 
-    protected def processChunk(): Boolean = if (readMode) processRead() else processWrite()
+    protected def processChunk(): Boolean =
+      if (readMode) processRead() else processWrite()
 
     private def processRead(): Boolean =
       if (inRemain == 0) {
         val terminate = isClosed(shape.in0) && !isAvailable(shape.in0)
         if (terminate) {
           state     = if (state == 1) 2 else 0
+          debug(s"up-stream terminated. state -> $state")
           readMode  = false
           _complete = true
         }
@@ -191,6 +194,9 @@ object DetectLocalMax {
         def calcSkip(): Int = if (state == 0) inRemain else math.min(inRemain, stopFrame - framesRead).toInt
 
         var skip      = calcSkip()
+
+        debug(s"read $framesRead - state $state skip $skip stop-frame $stopFrame")
+
         if (skip > 0) stateChanged = true
         val _sizeStop = if (bufIn1 == null) 0 else bufIn1.size
         val _in       = bufIn0.buf
@@ -206,13 +212,17 @@ object DetectLocalMax {
             if (isMax) {
               if (state == 0) {
                 foundFrame  = framesRead
-                stopFrame   = foundFrame + size
+//                stopFrame   = foundFrame + size
+                stopFrame   = math.max(writtenTrig + size, foundFrame + 1)
                 foundValue  = _x0
                 state       = 1
+                debug(s"local max $foundFrame; stop-frame $stopFrame; state -> $state")
               } else {  // state == 1
+                debug(s"local max $framesRead...")
                 if (ordering.gt(_x0, foundValue)) {
                   foundFrame  = framesRead
                   foundValue  = _x0
+                  debug("...is larger")
                 }
               }
             }
@@ -231,9 +241,11 @@ object DetectLocalMax {
         if (state != 0) {
           val reachedStopFrame  = framesRead == stopFrame
           val terminate         = inRemain == 0 && isClosed(shape.in0) && !isAvailable(shape.in0)
+          debug(s"reachedStopFrame? $reachedStopFrame; terminate? $terminate")
           if (reachedStopFrame || terminate) {
             // go from 'found' to 'blocked', from 'blocked' to 'empty'
             state = if (state == 1) 2 else 0
+            debug(s"... state -> $state")
             if (terminate || state == 2) readMode = false
             stateChanged = true
           }
@@ -242,10 +254,17 @@ object DetectLocalMax {
         stateChanged
       }
 
+    private[this] val DEBUG = false
+
+    private def debug(what: => String): Unit = if (DEBUG) println(what)
+
     private def processWrite(): Boolean = {
       var stateChanged = false
 
       val chunk = if (state == 0) outRemain else math.min(outRemain, foundFrame - framesWritten).toInt
+
+      debug(s"write $framesWritten - state $state chunk $chunk")
+
       if (chunk > 0) {
         Util.clear(bufOut0.buf, outOff, chunk)
         outOff        += chunk
@@ -257,10 +276,14 @@ object DetectLocalMax {
       if (state != 0) {
         val reachedFoundFrame = framesWritten == foundFrame
         if (reachedFoundFrame & outRemain > 0) {
+          debug(s"... and consume trigger ------------------- $foundFrame")
+          println(s" T: $foundValue")
           bufOut0.buf(outOff) = 1
           outOff             += 1
           outRemain          -= 1
           framesWritten      += 1
+          stopFrame           = foundFrame + size
+          writtenTrig         = foundFrame
           readMode            = true  // continue 'blocked' read
           stateChanged        = true
         }

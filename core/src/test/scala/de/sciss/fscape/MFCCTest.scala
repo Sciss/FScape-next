@@ -55,6 +55,11 @@ object MFCCTest extends App {
     val covNeg    = -cov
     val covMin0   = DetectLocalMax(covNeg, size = 32 /* XXX TODO -- which size? */)
     val covMin    = covMin0.take(numCov)  // XXX TODO --- bug in DetectLocalMax
+
+    cov.elastic().poll(covMin, " 0")
+    cov.elastic().poll(covMin.drop(1), "-1")
+    cov.elastic().drop(1).poll(covMin, "+1")
+
     val keys      = covNeg.elastic() * covMin
     val values    = Frames(keys)
     val top10     = PriorityQueue(keys, values, size = numTop)  // lowest covariances mapped to frames
@@ -65,9 +70,9 @@ object MFCCTest extends App {
     // if we do _not_ add `sideLen`, we ensure the breaking change comes after the calculated frame
     val frames    = numFrames +: ((top10Desc /* + sideLen */) * stepSize) :+ 0L
     val spans     = frames.tail zip frames
-    ResizeWindow(spans, 1, 0, 1).poll(Metro(2), "frame") // XXX TODO -- we need a shortcut for this
+//    ResizeWindow(spans, 1, 0, 1).poll(Metro(2), "frame") // XXX TODO -- we need a shortcut for this
 
-    val sig       = cov
+    val sig       = keys
     val out       = AudioFileOut(fOut, AudioFileSpec(numChannels = numChannels, sampleRate = sampleRate), in = sig)
     Progress(out / math.ceil(numFrames / fftSize), Metro(2))
 
