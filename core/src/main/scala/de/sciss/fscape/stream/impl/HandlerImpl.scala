@@ -120,7 +120,7 @@ final class AuxInHandlerImpl[A, S <: Shape](in: Inlet[A], logic: FullInOutImpl[S
   logic.setInHandler(in, this)
 }
 
-final class ProcessOutHandlerImpl[A, S <: Shape](out: Outlet[A], logic: FullInOutImpl[S])
+final class ProcessOutHandlerImpl[A, S <: Shape](out: Outlet[A], logic: InOutImpl[S])
   extends OutHandler {
 
   def onPull(): Unit = {

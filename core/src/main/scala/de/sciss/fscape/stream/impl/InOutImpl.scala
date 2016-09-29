@@ -73,3 +73,16 @@ trait FullInOutImpl[S <: Shape] extends InOutImpl[S] {
 
   protected def freeInputBuffers (): Unit
 }
+
+trait DemandInOutImpl[S <: Shape] extends InOutImpl[S] {
+  _: GraphStageLogic =>
+
+  protected def readAuxIns (): Int
+  protected def readMainIns(): Int
+
+  def auxCanRead : Boolean
+  def mainCanRead: Boolean
+
+  def updateAuxCanRead (): Unit
+  def updateMainCanRead(): Unit
+}

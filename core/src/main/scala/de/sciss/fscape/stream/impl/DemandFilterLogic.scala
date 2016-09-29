@@ -1,5 +1,5 @@
 /*
- *  FilterLogicImpl.scala
+ *  DemandFilterLogic.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2016 Hanns Holger Rutz. All rights reserved.
@@ -18,7 +18,7 @@ package impl
 import akka.stream.stage.GraphStageLogic
 import akka.stream.{Inlet, Shape}
 
-trait FilterLogicImpl[In0 >: Null <: BufLike, S <: Shape]
+trait DemandFilterLogic[In0 >: Null <: BufLike, S <: Shape]
   extends InOutImpl[S] {
 
   _: GraphStageLogic =>
@@ -27,12 +27,12 @@ trait FilterLogicImpl[In0 >: Null <: BufLike, S <: Shape]
 
   protected def in0: Inlet[In0]
 
-  protected def inRemain: Int
+  protected def mainInRemain: Int
 
   protected var bufIn0: In0
 
   // ---- impl ----
 
   protected final def inputsEnded: Boolean =
-    inRemain == 0 && isClosed(in0) && !isAvailable(in0)
+    mainInRemain == 0 && isClosed(in0) && !isAvailable(in0)
 }

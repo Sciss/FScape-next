@@ -18,19 +18,19 @@ package impl
 import akka.stream.Shape
 import akka.stream.stage.GraphStageLogic
 
-trait Out1DoubleImpl[S <: Shape] extends FullInOutImpl[S] {
+trait Out1DoubleImpl[S <: Shape] extends InOutImpl[S] {
   _: GraphStageLogic =>
 
   protected final def allocOutBuf0(): BufD = control.borrowBufD()
 }
 
-trait Out1IntImpl[S <: Shape] extends FullInOutImpl[S] {
+trait Out1IntImpl[S <: Shape] extends InOutImpl[S] {
   _: GraphStageLogic =>
 
   protected final def allocOutBuf0(): BufI = control.borrowBufI()
 }
 
-trait Out1LongImpl[S <: Shape] extends FullInOutImpl[S] {
+trait Out1LongImpl[S <: Shape] extends InOutImpl[S] {
   _: GraphStageLogic =>
 
   protected final def allocOutBuf0(): BufL = control.borrowBufL()

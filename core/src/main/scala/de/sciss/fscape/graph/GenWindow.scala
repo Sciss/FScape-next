@@ -193,6 +193,7 @@ object GenWindow {
 
 /** A repeated window generator UGen. It repeats the
   * same window again and again (unless parameters are modulated).
+  * The parameters are demand-rate, polled once per window.
   *
   * @param size   the window size
   * @param shape  the identifier of the window shape, such as `GenWindow.Hann`.

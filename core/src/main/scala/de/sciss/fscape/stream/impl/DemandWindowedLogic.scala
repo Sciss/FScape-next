@@ -1,5 +1,5 @@
 /*
- *  WindowedDemandLogic.scala
+ *  DemandWindowedLogic.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2016 Hanns Holger Rutz. All rights reserved.
@@ -21,7 +21,7 @@ import akka.stream.stage.GraphStageLogic
 /** A logic component for windowed processing, where window parameters
   * are obtained "on demand", i.e. at the speed of one per window.
   */
-trait WindowedDemandLogic[S <: Shape] extends DemandChunkImpl[S] {
+trait DemandWindowedLogic[S <: Shape] extends DemandChunkImpl[S] {
 
   _: GraphStageLogic =>
 

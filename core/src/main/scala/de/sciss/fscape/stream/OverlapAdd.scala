@@ -15,7 +15,7 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape3}
-import de.sciss.fscape.stream.impl.{FilterIn3DImpl, FilterLogicImpl, StageImpl, NodeImpl, WindowedLogicImpl}
+import de.sciss.fscape.stream.impl.{DemandFilterIn3D, DemandFilterLogic, DemandWindowedLogic, NodeImpl, StageImpl}
 
 import scala.collection.mutable
 
@@ -64,16 +64,17 @@ object OverlapAdd {
 
   private final class Logic(shape: Shape)(implicit ctrl: Control)
     extends NodeImpl(name, shape)
-      with WindowedLogicImpl[Shape]
-      with FilterLogicImpl[BufD, Shape]
-      with FilterIn3DImpl[BufD, BufI, BufI] {
+      with DemandWindowedLogic[Shape]
+      with DemandFilterLogic[BufD, Shape]
+      with DemandFilterIn3D[BufD, BufI, BufI] {
 
     private[this] var size  : Int  = _
     private[this] var step  : Int  = _
 
     private[this] val windows = mutable.Buffer.empty[Window]
 
-    protected def startNextWindow(inOff: Int): Int = {
+    protected def startNextWindow(): Int = {
+      val inOff = auxInOff
       if (bufIn1 != null && inOff < bufIn1.size) {
         size = math.max(1, bufIn1.buf(inOff))
       }
@@ -86,7 +87,8 @@ object OverlapAdd {
 
     // var FRAMES_READ = 0
 
-    protected def copyInputToWindow(inOff: Int, writeToWinOff: Int, chunk: Int): Unit = {
+    protected def copyInputToWindow(writeToWinOff: Int, chunk: Int): Unit = {
+      val inOff = mainInOff
       // println(s"-- OLAP copyInputToWindow(inOff = $inOff, writeToWinOff = $writeToWinOff, chunk = $chunk) $FRAMES_READ")
       // FRAMES_READ += chunk
       val win     = windows.last
@@ -98,14 +100,7 @@ object OverlapAdd {
       }
     }
 
-    protected def processWindow(writeToWinOff: Int): Int = {
-      val res = /* if (flush) {
-        if (windows.isEmpty) 0 else math.max(step, windows.maxBy(_.availableOut).availableOut)
-      } else */ step
-
-      // println(s"OLAP processWindow($writeToWinOff, $flush) -> $res")
-      res // -> readFromWinRemain
-    }
+    protected def processWindow(writeToWinOff: Int): Int = step
 
     // var FRAMES_WRITTEN = 0
 
