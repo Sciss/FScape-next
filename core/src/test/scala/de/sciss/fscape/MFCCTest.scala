@@ -8,7 +8,9 @@ import scala.swing.Swing
 
 object MFCCTest extends App {
   val dir     = userHome / "Music" / "work"
-  val fIn     = dir / "TubewayArmy-DisconnectFromYouEdit-L.aif"
+//  val fIn     = dir / "TubewayArmy-DisconnectFromYouEdit-L.aif"
+  val fIn     = userHome/"Documents"/"applications/150501_DEGEM_CD/pcm/Derrida-Jacques_Circumfession_Disc-1_01_Track-1.aif"
+//  val fIn     = userHome/"Documents"/"projects"/"Imperfect"/"audio_work"/"B19h43m37s22aug2016.wav"
   val fOut    = dir / "_killme.aif"
   val fOut2   = dir / "_killme2.aif"
   val fOut3   = dir / "_killme3.aif"
@@ -23,7 +25,8 @@ object MFCCTest extends App {
     import graph._
 
     import specIn.{sampleRate, numChannels, numFrames}
-    val in          = AudioFileIn(fIn, numChannels = numChannels)
+    def mkIn()      = AudioFileIn(fIn, numChannels = numChannels)
+    val in          = mkIn()
 //    val numChannels = 1
 //    val numFrames   = 44100 * 8
 //    val sampleRate  = 44100.0
@@ -33,15 +36,16 @@ object MFCCTest extends App {
     val stepSize    = fftSize / 4  // 2
     val numMel      = 42
     val numCoef     = 21 // 13
-    val sideFrames  = 44100 // 4410 // 22050
-    val spaceFrames = 44100 * 4
+    val sideFrames  = sampleRate.toInt // 4410 // 22050
+    val spaceFrames = sampleRate.toInt * 2 // 4
     val spaceLen    = spaceFrames / stepSize
     val sideLen     = math.max(1, sideFrames / stepSize) // 24
-    val numTop      = 15
+    val numTop      = (numFrames / (spaceFrames * 3)).toInt
     val covSize     = numCoef * sideLen
     val numCov      = numFrames / stepSize - (2 * sideLen)
 
-    val lap       = Sliding (in , fftSize, stepSize) * GenWindow(fftSize, GenWindow.Hann)
+    val inMono    = if (numChannels == 1) in else ChannelProxy(in, 0) + ChannelProxy(in, 1) // XXX TODO --- missing Mix
+    val lap       = Sliding (inMono, fftSize, stepSize) * GenWindow(fftSize, GenWindow.Hann)
     val fft       = Real1FFT(lap, fftSize, mode = 2)
     val mag       = fft.complex.mag
     val mel       = MelFilter(mag, fftSize/2, bands = numMel,
@@ -66,6 +70,9 @@ object MFCCTest extends App {
 
     val keys      = covNeg.elastic() * covMin
     val values    = Frames(keys)
+
+    Progress(values * stepSize / (2 * numFrames), Metro(sampleRate/stepSize), label = "analysis")
+
     val top10     = PriorityQueue(keys, values, size = numTop)  // lowest covariances mapped to frames
 //    val top10S    = PriorityQueue(-top10, top10, size = 10)  // frames in ascending order
 //    ResizeWindow(top10S, 1, 0, 1).poll(Metro(2), "frame") // XXX TODO -- we need a shortcut for this
@@ -74,15 +81,17 @@ object MFCCTest extends App {
     // if we do _not_ add `sideLen`, we ensure the breaking change comes after the calculated frame
     val frames    = numFrames +: ((top10Desc /* + sideLen */) * stepSize) :+ 0L
     val spans     = frames.tail zip frames
-    ResizeWindow(spans, 1, 0, 1).poll(Metro(2), "frame") // XXX TODO -- we need a shortcut for this
+//    ResizeWindow(spans, 1, 0, 1).poll(Metro(2), "frame") // XXX TODO -- we need a shortcut for this
 
-    val covMin1   = RunningMin(cov).last
-    val covMax1   = RunningMax(cov).last
-    val sig       = (BufferDisk(cov) - covMin1) / (covMax1 - covMin1) * -1 + 1 // keys
+    val inDup     = mkIn()
+    val sig       = Slices(inDup, spans)
     val out       = AudioFileOut(fOut, AudioFileSpec(numChannels = numChannels, sampleRate = sampleRate), in = sig)
-    Progress(out / math.ceil(numFrames / fftSize), Metro(2))
+    Progress(out / (2 * numFrames), Metro(sampleRate), label = "write")
 
-//    AudioFileOut(fOut2, AudioFileSpec(numChannels = numChannels, sampleRate = sampleRate), in = )
+//    val covMin1   = RunningMin(cov).last
+//    val covMax1   = RunningMax(cov).last
+//    val sig1      = (BufferDisk(cov) - covMin1) / (covMax1 - covMin1) * -1 + 1 // keys
+//    AudioFileOut(fOut2, AudioFileSpec(numChannels = numChannels, sampleRate = sampleRate), in = sig1)
 //    AudioFileOut(fOut3, AudioFileSpec(numChannels = numChannels, sampleRate = sampleRate), in = covMin)
   }
 
