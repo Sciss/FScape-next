@@ -9,8 +9,8 @@ import scala.swing.Swing
 object MFCCTest extends App {
   val dir     = userHome / "Music" / "work"
 //  val fIn     = dir / "TubewayArmy-DisconnectFromYouEdit-L.aif"
-  val fIn     = userHome/"Documents"/"applications/150501_DEGEM_CD/pcm/Derrida-Jacques_Circumfession_Disc-1_01_Track-1.aif"
-//  val fIn     = userHome/"Documents"/"projects"/"Imperfect"/"audio_work"/"B19h43m37s22aug2016.wav"
+//  val fIn     = userHome/"Documents"/"applications/150501_DEGEM_CD/pcm/Derrida-Jacques_Circumfession_Disc-1_01_Track-1.aif"
+  val fIn     = userHome/"Documents"/"projects"/"Imperfect"/"audio_work"/"B19h43m37s22aug2016.wav"
   val fOut    = dir / "_killme.aif"
   val fOut2   = dir / "_killme2.aif"
   val fOut3   = dir / "_killme3.aif"
@@ -36,8 +36,8 @@ object MFCCTest extends App {
     val stepSize    = fftSize / 4  // 2
     val numMel      = 42
     val numCoef     = 21 // 13
-    val sideFrames  = sampleRate.toInt // 4410 // 22050
-    val spaceFrames = sampleRate.toInt * 2 // 4
+    val sideFrames  = (sampleRate * 0.5).toInt // 4410 // 22050
+    val spaceFrames = sampleRate.toInt * 0.5 // * 2 // 4
     val spaceLen    = spaceFrames / stepSize
     val sideLen     = math.max(1, sideFrames / stepSize) // 24
     val numTop      = (numFrames / (spaceFrames * 3)).toInt
@@ -79,12 +79,18 @@ object MFCCTest extends App {
 
     val top10Desc = PriorityQueue(top10, top10, size = numTop)  // frames in descending order
     // if we do _not_ add `sideLen`, we ensure the breaking change comes after the calculated frame
-    val frames    = numFrames +: ((top10Desc /* + sideLen */) * stepSize) :+ 0L
-    val spans     = frames.tail zip frames
+    val frames      = numFrames +: ((top10Desc /* + sideLen */) * stepSize) :+ 0L
+    val spanStarts  = frames.tail
+    val spanStops   = frames
+    val spans       = spanStarts zip spanStops
 //    ResizeWindow(spans, 1, 0, 1).poll(Metro(2), "frame") // XXX TODO -- we need a shortcut for this
 
     val inDup     = mkIn()
-    val sig       = Slices(inDup, spans)
+    val slices    = Slices(inDup, spans)
+//    val spanLengths = spanStops - spanStarts
+//    val sliceWins = ResizeWindow(spanLengths, size = 1, start = 0, XXX TODO)
+
+    val sig       = slices
     val out       = AudioFileOut(fOut, AudioFileSpec(numChannels = numChannels, sampleRate = sampleRate), in = sig)
     Progress(out / (2 * numFrames), Metro(sampleRate), label = "write")
 
