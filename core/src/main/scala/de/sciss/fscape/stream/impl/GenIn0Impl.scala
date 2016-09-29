@@ -22,7 +22,7 @@ import akka.stream.{Outlet, SourceShape}
   * A generator keeps producing output until down-stream is closed.
   */
 trait GenIn0Impl[Out >: Null <: BufLike]
-  extends Out1LogicImpl[Out, SourceShape[Out]] {
+  extends Out1LogicImpl[Out, SourceShape[Out]] with FullInOutImpl[SourceShape[Out]] {
   _: GraphStageLogic with Node =>
 
   // ---- impl ----

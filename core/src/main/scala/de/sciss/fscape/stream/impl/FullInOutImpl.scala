@@ -29,30 +29,21 @@ trait InOutImpl[S <: Shape] {
 
   def process(): Unit
 
-  /** Whether all inputs are available or have been closed and buffered. */
-  def canRead: Boolean
-
   /** Whether all outputs are available for pushing. */
   def canWrite: Boolean
 
-  /** Whether all input buffers are valid. */
-  def inValid: Boolean
-
-  /** Requests the update of the `canRead` status. */
-  def updateCanRead(): Unit
-
   /** Requests the update of the `canWrite` status. */
   def updateCanWrite(): Unit
-
-  protected def readIns(): Int
 
   protected def writeOuts(outOff: Int): Unit
 
     /** Exposed from `GraphStageLogic` API. */
   def completeStage(): Unit
 
-  protected def freeInputBuffers (): Unit
   protected def freeOutputBuffers(): Unit
+
+  /** Whether all input buffers are valid. */
+  def inValid: Boolean
 
   // ---- impl ----
 
@@ -67,4 +58,18 @@ trait InOutImpl[S <: Shape] {
 
   /** Exposed from protected `GraphStageLogic` API. */
   final def setOutHandler[A](out: Outlet[A], h: OutHandler): Unit = setHandler(out, h)
+}
+
+trait FullInOutImpl[S <: Shape] extends InOutImpl[S] {
+  _: GraphStageLogic =>
+
+  protected def readIns(): Int
+
+  /** Whether all inputs are available or have been closed and buffered. */
+  def canRead: Boolean
+
+  /** Requests the update of the `canRead` status. */
+  def updateCanRead(): Unit
+
+  protected def freeInputBuffers (): Unit
 }

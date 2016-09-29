@@ -33,7 +33,7 @@ import akka.stream.{Inlet, Outlet, Shape}
   *
   * This function is used for a "hot" inlet.
   */
-final class ProcessInHandlerImpl[A, S <: Shape](in: Inlet[A], logic: InOutImpl[S])
+final class ProcessInHandlerImpl[A, S <: Shape](in: Inlet[A], logic: FullInOutImpl[S])
   extends InHandler {
   def onPush(): Unit = {
     logStream(s"onPush($in)")
@@ -67,7 +67,7 @@ final class ProcessInHandlerImpl[A, S <: Shape](in: Inlet[A], logic: InOutImpl[S
   * This function is used for one "hot" inlet among
   * multiple "hot" peers.
   */
-final class EquivalentInHandlerImpl[A, S <: Shape](in: Inlet[A], logic: InOutImpl[S])
+final class EquivalentInHandlerImpl[A, S <: Shape](in: Inlet[A], logic: FullInOutImpl[S])
   extends InHandler {
   def onPush(): Unit = {
     logStream(s"onPush($in)")
@@ -94,7 +94,7 @@ final class EquivalentInHandlerImpl[A, S <: Shape](in: Inlet[A], logic: InOutImp
   *
   * This function is used for an "auxiliary" inlet.
   */
-final class AuxInHandlerImpl[A, S <: Shape](in: Inlet[A], logic: InOutImpl[S])
+final class AuxInHandlerImpl[A, S <: Shape](in: Inlet[A], logic: FullInOutImpl[S])
   extends InHandler {
 
   def onPush(): Unit = {
@@ -120,7 +120,7 @@ final class AuxInHandlerImpl[A, S <: Shape](in: Inlet[A], logic: InOutImpl[S])
   logic.setInHandler(in, this)
 }
 
-final class ProcessOutHandlerImpl[A, S <: Shape](out: Outlet[A], logic: InOutImpl[S])
+final class ProcessOutHandlerImpl[A, S <: Shape](out: Outlet[A], logic: FullInOutImpl[S])
   extends OutHandler {
 
   def onPull(): Unit = {

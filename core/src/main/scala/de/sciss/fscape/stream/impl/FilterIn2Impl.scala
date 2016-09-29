@@ -22,7 +22,7 @@ import akka.stream.stage.GraphStageLogic
   * where left inlet is "hot" and terminates process.
   */
 trait FilterIn2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, Out >: Null <: BufLike]
-  extends In2Impl[In0, In1, Out] {
+  extends In2Impl[In0, In1, Out] with FullInOutImpl[FanInShape2[In0, In1, Out]] {
   _: GraphStageLogic with Node =>
 
   // ---- impl ----

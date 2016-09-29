@@ -1,5 +1,5 @@
 /*
- *  GenIn2Impl.scala
+ *  DemandGenIn3Impl.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2016 Hanns Holger Rutz. All rights reserved.
@@ -15,43 +15,56 @@ package de.sciss.fscape
 package stream
 package impl
 
-import akka.stream.{FanInShape2, Inlet, Outlet}
 import akka.stream.stage.GraphStageLogic
+import akka.stream.{FanInShape3, Inlet, Outlet}
 
 /** Building block for generators with `FanInShape2` type graph stage logic.
   * A generator keeps producing output until down-stream is closed, and does
   * not care about upstream inlets being closed.
   */
-trait GenIn2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, Out >: Null <: BufLike]
-  extends Out1LogicImpl[Out, FanInShape2[In0, In1, Out]] with FullInOutImpl[FanInShape2[In0, In1, Out]] {
+trait DemandGenIn3Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: BufLike, Out >: Null <: BufLike]
+  extends Out1LogicImpl[Out, FanInShape3[In0, In1, In2, Out]] with FullInOutImpl[FanInShape3[In0, In1, In2, Out]] {
   _: GraphStageLogic with Node =>
 
   // ---- impl ----
 
   protected final var bufIn0 : In0 = _
   protected final var bufIn1 : In1 = _
+  protected final var bufIn2 : In2 = _
   protected final var bufOut0: Out = _
 
-  protected final def in0 : Inlet [In0] = shape.in0
-  protected final def in1 : Inlet [In1] = shape.in1
-  protected final def out0: Outlet[Out] = shape.out
+  protected final def in0: Inlet[In0] = shape.in0
+  protected final def in1: Inlet[In1] = shape.in1
+  protected final def in2: Inlet[In2] = shape.in2
 
   private[this] final var _canRead = false
   private[this] final var _inValid = false
 
-  final def canRead: Boolean = _canRead
-  final def inValid: Boolean = _inValid
+  protected final def out0: Outlet[Out] = shape.out
+
+  final def mainCanRead: Boolean = true
+  final def auxCanRead : Boolean = _canRead
+  final def canRead    : Boolean = _canRead
+
+  final def mainIsValid: Boolean = true
+  final def auxIsValid : Boolean = _inValid
+  final def inValid    : Boolean = _inValid
 
   override def preStart(): Unit = {
     val sh = shape
     pull(sh.in0)
     pull(sh.in1)
+    pull(sh.in2)
   }
 
   override protected def stopped(): Unit = {
     freeInputBuffers()
     freeOutputBuffers()
   }
+
+  protected final def readMainIns(): Int = control.blockSize
+
+  protected final def readAuxIns (): Int = readIns()
 
   protected final def readIns(): Int = {
     freeInputBuffers()
@@ -60,10 +73,13 @@ trait GenIn2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, Out >: Null <: 
       bufIn0 = grab(sh.in0)
       tryPull(sh.in0)
     }
-
     if (isAvailable(sh.in1)) {
       bufIn1 = grab(sh.in1)
       tryPull(sh.in1)
+    }
+    if (isAvailable(sh.in2)) {
+      bufIn2 = grab(sh.in2)
+      tryPull(sh.in2)
     }
 
     _inValid = true
@@ -80,6 +96,10 @@ trait GenIn2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, Out >: Null <: 
       bufIn1.release()
       bufIn1 = null
     }
+    if (bufIn2 != null) {
+      bufIn2.release()
+      bufIn2 = null
+    }
   }
 
   protected final def freeOutputBuffers(): Unit =
@@ -95,22 +115,18 @@ trait GenIn2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, Out >: Null <: 
     // be checked in `onUpstreamFinish` which should probably
     // close the stage if not a single buffer had been read!
     _canRead = ((isClosed(sh.in0) && _inValid) || isAvailable(sh.in0)) &&
-               ((isClosed(sh.in1) && _inValid) || isAvailable(sh.in1))
+      ((isClosed(sh.in1) && _inValid) || isAvailable(sh.in1)) &&
+      ((isClosed(sh.in2) && _inValid) || isAvailable(sh.in2))
   }
 
   new AuxInHandlerImpl     (shape.in0, this)
   new AuxInHandlerImpl     (shape.in1, this)
+  new AuxInHandlerImpl     (shape.in2, this)
   new ProcessOutHandlerImpl(shape.out, this)
 }
 
-trait GenIn2DImpl[In0 >: Null <: BufLike, In1 >: Null <: BufLike]
-  extends GenIn2Impl[In0, In1, BufD]
-    with Out1DoubleImpl[FanInShape2[In0, In1, BufD]] {
-  _: GraphStageLogic with Node =>
-}
-
-trait GenIn2IImpl[In0 >: Null <: BufLike, In1 >: Null <: BufLike]
-  extends GenIn2Impl[In0, In1, BufI]
-    with Out1IntImpl[FanInShape2[In0, In1, BufI]] {
+trait DemandGenIn3DImpl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: BufLike]
+  extends DemandGenIn3Impl[In0, In1, In2, BufD]
+    with Out1DoubleImpl[FanInShape3[In0, In1, In2, BufD]] {
   _: GraphStageLogic with Node =>
 }

@@ -21,7 +21,7 @@ import akka.stream.stage.{GraphStageLogic, InHandler, OutHandler}
 import scala.annotation.tailrec
 import scala.math._
 
-trait ResampleImpl[S <: Shape] extends InOutImpl[S] {
+trait ResampleImpl[S <: Shape] extends FullInOutImpl[S] {
   _: GraphStageLogic with Node =>
 
   // ---- abstract ----

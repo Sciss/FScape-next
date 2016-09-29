@@ -18,8 +18,7 @@ package impl
 import akka.stream.stage.GraphStageLogic
 import akka.stream.{Outlet, Shape}
 
-trait Out1LogicImpl[Out >: Null <: BufLike, S <: Shape]
-  extends InOutImpl[S] {
+trait Out1LogicImpl[Out >: Null <: BufLike, S <: Shape] extends InOutImpl[S] {
 
   _: GraphStageLogic =>
 

@@ -16,7 +16,7 @@ package stream
 
 import akka.stream.stage.InHandler
 import akka.stream.{Attributes, FanInShape2}
-import de.sciss.fscape.stream.impl.{InOutImpl, Out1DoubleImpl, Out1LogicImpl, ProcessOutHandlerImpl, SameChunkImpl, StageImpl, NodeImpl}
+import de.sciss.fscape.stream.impl.{FullInOutImpl, Out1DoubleImpl, Out1LogicImpl, ProcessOutHandlerImpl, SameChunkImpl, StageImpl, NodeImpl}
 
 /** Binary operator assuming stream is complex signal (real and imaginary interleaved).
   * Outputs another complex stream even if the operator yields a purely real-valued result.
@@ -47,7 +47,7 @@ object Concat {
   // XXX TODO --- abstract across BufI / BufD?
   private final class Logic(shape: Shape)(implicit ctrl: Control)
     extends NodeImpl(name, shape)
-      with InOutImpl[Shape]
+      with FullInOutImpl[Shape]
       with SameChunkImpl[Shape]
       with Out1LogicImpl[BufD, Shape]
       with Out1DoubleImpl[Shape] {

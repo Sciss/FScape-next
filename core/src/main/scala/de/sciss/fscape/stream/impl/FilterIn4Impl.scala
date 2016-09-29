@@ -21,7 +21,8 @@ import akka.stream.{FanInShape4, Inlet, Outlet}
 /** Building block for `FanInShape4` type graph stage logic. */
 trait FilterIn4Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: BufLike,
                     In3 >: Null <: BufLike, Out >: Null <: BufLike]
-  extends Out1LogicImpl[Out, FanInShape4[In0, In1, In2, In3, Out]] {
+  extends Out1LogicImpl[Out, FanInShape4[In0, In1, In2, In3, Out]]
+    with FullInOutImpl[FanInShape4[In0, In1, In2, In3, Out]] {
   _: GraphStageLogic with Node =>
 
   // ---- impl ----

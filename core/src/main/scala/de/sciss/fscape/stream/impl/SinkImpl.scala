@@ -19,7 +19,7 @@ import akka.stream.{Shape, SinkShape}
 import akka.stream.stage.GraphStageLogic
 
 trait SinkImpl[S <: Shape]
-  extends InOutImpl[S] {
+  extends FullInOutImpl[S] {
   _: GraphStageLogic =>
 
   /** Dummy, always returns `true`. */

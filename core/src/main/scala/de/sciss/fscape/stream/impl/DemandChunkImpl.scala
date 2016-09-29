@@ -24,14 +24,13 @@ import scala.annotation.tailrec
   * between main or full-rate inputs and auxiliary or
   * demand-rate inputs (for example, polling one value per window).
   */
-trait DemandChunkImpl[S <: Shape] /* extends InOutImpl[S] */ {
+trait DemandChunkImpl[S <: Shape] extends InOutImpl[S] {
   _: GraphStageLogic =>
 
   // ---- abstract ----
 
   protected def mainCanRead: Boolean
   protected def auxCanRead : Boolean
-  protected def canWrite   : Boolean
 
   protected def shouldComplete(): Boolean
 
@@ -39,8 +38,6 @@ trait DemandChunkImpl[S <: Shape] /* extends InOutImpl[S] */ {
 
   protected def readMainIns(): Int
   protected def readAuxIns (): Int
-
-  protected def writeOuts(off: Int): Unit
 
   /** Should read and possibly update `inRemain`, `outRemain`, `inOff`, `outOff`.
     *
@@ -65,11 +62,11 @@ trait DemandChunkImpl[S <: Shape] /* extends InOutImpl[S] */ {
   @inline
   private[this] def auxShouldRead  = auxInRemain  == 0 && auxCanRead
 
-  private[this] final var mainInValid = false
-  private[this] final var auxInValid  = false
-  private[this] final var _inValid    = false
-
-  protected final def inValid: Boolean = _inValid
+//  private[this] final var mainInValid = false
+//  private[this] final var auxInValid  = false
+//  private[this] final var _inValid    = false
+//
+//  protected final def inValid: Boolean = _inValid
 
   @tailrec
   final def process(): Unit = {
@@ -80,20 +77,20 @@ trait DemandChunkImpl[S <: Shape] /* extends InOutImpl[S] */ {
       mainInRemain  = readMainIns()
       mainInOff     = 0
       stateChange   = true
-      if (!mainInValid) {
-        mainInValid = true
-        _inValid     = auxInValid
-      }
+//      if (!mainInValid) {
+//        mainInValid = true
+//        _inValid     = auxInValid
+//      }
     }
 
     if (auxShouldRead) {
-      auxInRemain   = readMainIns()
+      auxInRemain   = readAuxIns()
       auxInOff      = 0
       stateChange   = true
-      if (!auxInValid) {
-        auxInValid  = true
-        _inValid     = mainInValid
-      }
+//      if (!auxInValid) {
+//        auxInValid  = true
+//        _inValid     = mainInValid
+//      }
     }
 
     if (outSent) {
@@ -103,7 +100,7 @@ trait DemandChunkImpl[S <: Shape] /* extends InOutImpl[S] */ {
       stateChange   = true
     }
 
-    if (_inValid && processChunk()) stateChange = true
+    if (inValid && processChunk()) stateChange = true
 
     val flushOut = shouldComplete()
     if (!outSent && (outRemain == 0 || flushOut) && canWrite) {

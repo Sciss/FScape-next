@@ -21,7 +21,7 @@ import akka.stream.{Inlet, Shape}
 import scala.annotation.tailrec
 
 /** An I/O process that processes chunks. */
-trait ChunkImpl[S <: Shape] extends InOutImpl[S] {
+trait ChunkImpl[S <: Shape] extends FullInOutImpl[S] {
   _: GraphStageLogic =>
 
   // ---- abstract ----

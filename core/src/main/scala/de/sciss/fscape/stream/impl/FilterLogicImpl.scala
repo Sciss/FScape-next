@@ -18,7 +18,7 @@ import akka.stream.{Inlet, Shape}
 import de.sciss.fscape.stream.BufLike
 
 trait FilterLogicImpl[In0 >: Null <: BufLike, S <: Shape]
-  extends InOutImpl[S] {
+  extends FullInOutImpl[S] {
 
   _: GraphStageLogic =>
 

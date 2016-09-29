@@ -174,14 +174,14 @@ object GenWindow {
       val radius        = 0.5 * winSize
       val sigma         = radius/3
       val sigmaSqr2     = 2 * sigma * sigma
-      val sigmaPi2Sqrt  = math.sqrt(Pi2 * sigma)
+      // val sigmaPi2Sqrt  = math.sqrt(Pi2 * sigma)
       var i             = winOff
       val stop          = i + len
       var j             = bufOff
       while (i < stop) {
         val dist    = i - radius
         val distSqr = dist * dist
-        buf(j)      = math.exp(-distSqr / sigmaSqr2) / sigmaPi2Sqrt
+        buf(j)      = math.exp(-distSqr / sigmaSqr2) // / sigmaPi2Sqrt -- what the hell was this for?
         i          += 1
         j          += 1
       }

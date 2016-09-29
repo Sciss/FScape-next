@@ -23,7 +23,7 @@ import akka.stream.stage.GraphStageLogic
   * not care about upstream inlets being closed.
   */
 trait GenIn1Impl[In >: Null <: BufLike, Out >: Null <: BufLike]
-  extends Out1LogicImpl[Out, FlowShape[In, Out]] {
+  extends Out1LogicImpl[Out, FlowShape[In, Out]] with FullInOutImpl[FlowShape[In, Out]] {
   _: GraphStageLogic with Node =>
 
   // ---- impl ----

@@ -15,7 +15,7 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape3}
-import de.sciss.fscape.stream.impl.{GenIn3DImpl, StageImpl, NodeImpl, WindowedLogicImpl}
+import de.sciss.fscape.stream.impl.{DemandGenIn3DImpl, NodeImpl, StageImpl, WindowedDemandLogic}
 
 object GenWindow {
   import graph.GenWindow.{Hann, Shape => WinShape}
@@ -48,8 +48,8 @@ object GenWindow {
   // XXX TODO -- abstract over data type (BufD vs BufI)?
   private final class Logic(shape: Shape)(implicit ctrl: Control)
     extends NodeImpl(name, shape)
-      with WindowedLogicImpl[Shape]
-      with GenIn3DImpl[BufI, BufI, BufD] {
+      with WindowedDemandLogic[Shape]
+      with DemandGenIn3DImpl[BufI, BufI, BufD] {
 
     // private[this] var winBuf : Array[Double] = _
     private[this] var winSize: Int      = _
@@ -58,8 +58,8 @@ object GenWindow {
 
     protected def inputsEnded: Boolean = false         // never
 
-    protected def startNextWindow(inOff: Int): Int = {
-//      val oldSize = winSize
+    protected def startNextWindow(): Int = {
+      val inOff = auxInOff
       if (bufIn0 != null && inOff < bufIn0.size) {
         winSize = math.max(0, bufIn0.buf(inOff))
       }
@@ -70,16 +70,12 @@ object GenWindow {
       if (bufIn2 != null && inOff < bufIn2.size) {
         param = bufIn2.buf(inOff)
       }
-//      if (winSize != oldSize) {
-//        winBuf = new Array[Double](winSize)
-//      }
       winSize
     }
 
-    protected def copyInputToWindow(inOff: Int, writeToWinOff: Int, chunk: Int): Unit = ()
+    protected def copyInputToWindow(writeToWinOff: Int, chunk: Int): Unit = ()
 
     protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit = {
-      // Util.copy(winBuf, readFromWinOff, bufOut.buf, outOff, chunk)
       _shape.fill(winSize = winSize, winOff = readFromWinOff, buf = bufOut0.buf, bufOff = outOff,
         len = chunk, param = param)
     }

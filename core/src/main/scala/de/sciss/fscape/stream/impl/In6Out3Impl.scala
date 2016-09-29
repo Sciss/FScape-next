@@ -23,7 +23,7 @@ import akka.stream.stage.GraphStageLogic
 trait In6Out3Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: BufLike,
 In3 >: Null <: BufLike, In4 >: Null <: BufLike, In5 >: Null <: BufLike, Out0 >: Null <: BufLike, 
 Out1 >: Null <: BufLike, Out2 >: Null <: BufLike]
-  extends InOutImpl[In6Out3Shape[In0, In1, In2, In3, In4, In5, Out0, Out1, Out2]] {
+  extends FullInOutImpl[In6Out3Shape[In0, In1, In2, In3, In4, In5, Out0, Out1, Out2]] {
   _: GraphStageLogic with Node =>
 
   // ---- impl ----

@@ -1,12 +1,23 @@
 package de.sciss.fscape
 
+import de.sciss.fscape.gui.SimpleGUI
+
+import scala.swing.Swing
+
 object GaussianTest extends App {
   val g = Graph {
     import graph._
-    val sz  = 1024
-    val gen = GenWindow(size = sz, shape = GenWindow.Gauss)
-    Plot1D(gen, size = sz, label = "Gauss")
+    val sz1 = 512
+    val sz2 = 256
+    val gen = GenWindow(size = Concat(sz1, sz2), shape = Concat(GenWindow.Gauss, GenWindow.Triangle), param = 6)
+    Plot1D(gen, size = sz1 + sz2, label = "Gauss")
   }
 
-  stream.Control().run(g)
+  val ctrl = stream.Control()
+
+  Swing.onEDT {
+    SimpleGUI(ctrl)
+  }
+
+  ctrl.run(g)
 }
