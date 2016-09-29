@@ -21,27 +21,31 @@ object MFCCTest extends App {
 
   lazy val g0 = Graph {
     import graph._
+
     import specIn.{sampleRate, numChannels, numFrames}
     val in          = AudioFileIn(fIn, numChannels = numChannels)
 //    val numChannels = 1
 //    val numFrames   = 44100 * 8
 //    val sampleRate  = 44100.0
-//    val in          = SinOsc(441/sampleRate).take(44100 * 4) ++ SinOsc(882/sampleRate).take(44100 * 4)
+//    val in          = (SinOsc(441/sampleRate).take(44100 * 3) ++ SinOsc(882/sampleRate).take(44100 * 2) ++ SinOsc(441/sampleRate).take(44100 * 3)) * 0.5
 
-    val fftSize     = 1024
-    val stepSize    = fftSize / 2
+    val fftSize     = 2048 // 1024
+    val stepSize    = fftSize / 4  // 2
     val numMel      = 42
-    val numCoef     = 13
-    val sideLen     = 24 // 32
-    val numTop      = 10
+    val numCoef     = 21 // 13
+    val sideFrames  = 44100 // 4410 // 22050
+    val spaceFrames = 44100 * 4
+    val spaceLen    = spaceFrames / stepSize
+    val sideLen     = math.max(1, sideFrames / stepSize) // 24
+    val numTop      = 15
     val covSize     = numCoef * sideLen
     val numCov      = numFrames / stepSize - (2 * sideLen)
 
     val lap       = Sliding (in , fftSize, stepSize) * GenWindow(fftSize, GenWindow.Hann)
-    val fft       = Real1FFT(lap, fftSize, mode = 1)
+    val fft       = Real1FFT(lap, fftSize, mode = 2)
     val mag       = fft.complex.mag
     val mel       = MelFilter(mag, fftSize/2, bands = numMel,
-      minFreq = 55, maxFreq = sampleRate/2, sampleRate = sampleRate)
+      minFreq = 60, maxFreq = 14000, sampleRate = sampleRate)
     val mfcc      = DCT_II(mel.log, numMel, numCoef, zero = 0)
 
     // reconstruction of what strugatzki's 'segmentation' is doing (first step)
@@ -52,13 +56,13 @@ object MFCCTest extends App {
     val cov0      = Pearson(mfccSlid.elastic(n = el), mfccSlidT, covSize)
     val cov       = cov0.take(numCov)
 
-    val covNeg    = -cov
-    val covMin0   = DetectLocalMax(covNeg, size = 32 /* XXX TODO -- which size? */)
+    val covNeg    = -cov + 1  // N.B. not `1 - cov` because binary-op-ugen stops when first input stops
+    val covMin0   = DetectLocalMax(covNeg, size = spaceLen /* XXX TODO -- which size? */)
     val covMin    = covMin0.take(numCov)  // XXX TODO --- bug in DetectLocalMax
 
-    cov.elastic().poll(covMin, " 0")
-    cov.elastic().poll(covMin.drop(1), "-1")
-    cov.elastic().drop(1).poll(covMin, "+1")
+//    cov.elastic().poll(covMin, " 0")
+//    cov.elastic().poll(covMin.drop(1), "-1")
+//    cov.elastic().drop(1).poll(covMin, "+1")
 
     val keys      = covNeg.elastic() * covMin
     val values    = Frames(keys)
@@ -70,14 +74,16 @@ object MFCCTest extends App {
     // if we do _not_ add `sideLen`, we ensure the breaking change comes after the calculated frame
     val frames    = numFrames +: ((top10Desc /* + sideLen */) * stepSize) :+ 0L
     val spans     = frames.tail zip frames
-//    ResizeWindow(spans, 1, 0, 1).poll(Metro(2), "frame") // XXX TODO -- we need a shortcut for this
+    ResizeWindow(spans, 1, 0, 1).poll(Metro(2), "frame") // XXX TODO -- we need a shortcut for this
 
-    val sig       = keys
+    val covMin1   = RunningMin(cov).last
+    val covMax1   = RunningMax(cov).last
+    val sig       = (BufferDisk(cov) - covMin1) / (covMax1 - covMin1) * -1 + 1 // keys
     val out       = AudioFileOut(fOut, AudioFileSpec(numChannels = numChannels, sampleRate = sampleRate), in = sig)
     Progress(out / math.ceil(numFrames / fftSize), Metro(2))
 
-    AudioFileOut(fOut2, AudioFileSpec(numChannels = numChannels, sampleRate = sampleRate), in = covNeg)
-    AudioFileOut(fOut3, AudioFileSpec(numChannels = numChannels, sampleRate = sampleRate), in = covMin)
+//    AudioFileOut(fOut2, AudioFileSpec(numChannels = numChannels, sampleRate = sampleRate), in = )
+//    AudioFileOut(fOut3, AudioFileSpec(numChannels = numChannels, sampleRate = sampleRate), in = covMin)
   }
 
   lazy val g1 = Graph {
@@ -91,7 +97,7 @@ object MFCCTest extends App {
     val numCoef   = numMel - 1
 
     val lap       = Sliding(in, fftSize, stepSize) * GenWindow(fftSize, GenWindow.Hann)
-    val fft       = Real1FFT(lap, fftSize, mode = 1)
+    val fft       = Real1FFT(lap, fftSize, mode = 2)
     val mag       = fft.complex.mag
     val mel       = MelFilter(mag, fftSize/2, bands = numMel,
       minFreq = 55, maxFreq = sampleRate/2, sampleRate = sampleRate)

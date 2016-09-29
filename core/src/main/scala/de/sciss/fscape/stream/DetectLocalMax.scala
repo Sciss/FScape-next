@@ -211,16 +211,24 @@ object DetectLocalMax {
             val isMax = _s0 > 0 && s1 < 0
             if (isMax) {
               if (state == 0) {
-                foundFrame  = framesRead
-//                stopFrame   = foundFrame + size
-                stopFrame   = math.max(writtenTrig + size, foundFrame + 1)
+                foundFrame  = framesRead - 1
+
+                // the following two alternative definitions yield
+                // very different outcomes. THe first `foundFrame + size`
+                // tends to produce "more sparse" results, but is better
+                // at catching the highest peaks. The second
+                // `max(writtenTrig + size, foundFrame)` is more dense,
+                // but also performs worse in getting the highest peaks.
+
+                stopFrame   = foundFrame + size + 1
+//                stopFrame   = math.max(writtenTrig + size, framesRead) + 1
                 foundValue  = _x0
                 state       = 1
                 debug(s"local max $foundFrame; stop-frame $stopFrame; state -> $state")
               } else {  // state == 1
                 debug(s"local max $framesRead...")
                 if (ordering.gt(_x0, foundValue)) {
-                  foundFrame  = framesRead
+                  foundFrame  = framesRead - 1
                   foundValue  = _x0
                   debug("...is larger")
                 }
@@ -277,12 +285,12 @@ object DetectLocalMax {
         val reachedFoundFrame = framesWritten == foundFrame
         if (reachedFoundFrame & outRemain > 0) {
           debug(s"... and consume trigger ------------------- $foundFrame")
-          println(s" T: $foundValue")
+//          println(s" T: $foundValue")
           bufOut0.buf(outOff) = 1
           outOff             += 1
           outRemain          -= 1
           framesWritten      += 1
-          stopFrame           = foundFrame + size
+          stopFrame           = foundFrame + size + 1
           writtenTrig         = foundFrame
           readMode            = true  // continue 'blocked' read
           stateChanged        = true
