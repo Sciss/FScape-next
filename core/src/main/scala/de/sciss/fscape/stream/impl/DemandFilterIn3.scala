@@ -134,8 +134,8 @@ trait DemandFilterIn3[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Nul
   final def updateAuxCanRead(): Unit = {
     val sh = shape
     _auxCanRead =
-      ((isClosed(sh.in1) && _inValid) || isAvailable(sh.in1)) &&
-      ((isClosed(sh.in2) && _inValid) || isAvailable(sh.in2))
+      ((isClosed(sh.in1) && _auxInValid) || isAvailable(sh.in1)) &&
+      ((isClosed(sh.in2) && _auxInValid) || isAvailable(sh.in2))
   }
 
   new DemandProcessInHandler(shape.in0, this)

@@ -62,5 +62,6 @@ For which modules would it be difficult to make these translations?
 
 (NOT: Similar to a streaming protocol, there could be a notion of "completed output spans".)
 
+## links
 
-
+- Philipp Haller: "Can we make concurrency in Scala safer?" https://www.youtube.com/watch?v=nwWvPeX6U9w 
