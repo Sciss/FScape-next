@@ -798,7 +798,6 @@ object AffineTransform2D {
           newTable = false
         }
 
-        val _winLen   = _winBuf.length
         val _inPhase  = xT
         val factor    = _m00
         val factorMn1 = min(1.0, factor)
@@ -811,43 +810,35 @@ object AffineTransform2D {
         var value     = 0.0
         val _inPhaseI = _inPhase.toInt
 
-        // left-hand side of window
-        var srcOffI   = _inPhaseI
-        var fltOff    = q * _fltIncr
-        var fltOffI   = fltOff.toInt
-        var srcRem    = if (_wrap) Int.MaxValue else srcOffI
-        srcOffI       = IntFunctions.wrap(srcOffI, 0, _widthIn - 1)
-        while ((fltOffI < _fltLenH) && (srcRem > 0)) {
-          val r    = fltOff % 1.0  // 0...1 for interpol.
-          val w    = _fltBuf(fltOffI) + _fltBufD(fltOffI) * r
-          val Y_CLIP  = IntFunctions.wrap(yT.toInt, 0, _heightIn - 1)
-          val OFF     = Y_CLIP * _widthIn + srcOffI
-          value   += winBuf(OFF) * w
-          srcOffI -= 1
-          if (srcOffI < 0) srcOffI += _widthIn
-          srcRem  -= 1
-          fltOff  += _fltIncr
-          fltOffI  = fltOff.toInt
+        def iterate(dir: Boolean): Unit = {
+          var srcOffI   = if (dir) _inPhaseI else _inPhaseI + 1
+          val q1        = if (dir) q else 1.0 - q
+          var fltOff    = q1 * _fltIncr
+          var fltOffI   = fltOff.toInt
+          var srcRem    = if (_wrap) Int.MaxValue else if (dir) srcOffI else _widthIn - srcOffI
+          srcOffI       = IntFunctions.wrap(srcOffI, 0, _widthIn - 1)
+
+          while ((fltOffI < _fltLenH) && (srcRem > 0)) {
+            val r    = fltOff % 1.0  // 0...1 for interpol.
+            val w    = _fltBuf(fltOffI) + _fltBufD(fltOffI) * r
+            val Y_CLIP  = IntFunctions.wrap(yT.toInt, 0, _heightIn - 1)
+            val OFF     = Y_CLIP * _widthIn + srcOffI
+            value   += winBuf(OFF) * w
+            if (dir) {
+              srcOffI -= 1
+              if (srcOffI < 0) srcOffI += _widthIn
+            } else {
+              srcOffI += 1
+              if (srcOffI == _widthIn) srcOffI = 0
+            }
+            srcRem  -= 1
+            fltOff  += _fltIncr
+            fltOffI  = fltOff.toInt
+          }
         }
 
-        // right-hand side of window
-        srcOffI       = (_inPhaseI + 1) % _winLen
-        fltOff        = (1.0 - q) * _fltIncr
-        fltOffI       = fltOff.toInt
-        srcRem        = if (_wrap) Int.MaxValue else _widthIn - srcOffI
-        srcOffI       = IntFunctions.wrap(srcOffI, 0, _widthIn - 1)
-        while ((fltOffI < _fltLenH) && (srcRem > 0)) {
-          val r    = fltOff % 1.0  // 0...1 for interpol.
-          val w    = _fltBuf(fltOffI) + _fltBufD(fltOffI) * r
-          val Y_CLIP  = IntFunctions.wrap(yT.toInt, 0, _heightIn - 1)
-          val OFF     = Y_CLIP * _widthIn + srcOffI
-          value   += winBuf(OFF) * w
-          srcOffI += 1
-          if (srcOffI == _widthIn) srcOffI = 0
-          srcRem  -= 1
-          fltOff  += _fltIncr
-          fltOffI  = fltOff.toInt
-        }
+        iterate(dir = true )  // left -hand side of window
+        iterate(dir = false)  // right-hand side of window
 
         out(outOffI) = value * gain
         // inPhaseCount   += 1
