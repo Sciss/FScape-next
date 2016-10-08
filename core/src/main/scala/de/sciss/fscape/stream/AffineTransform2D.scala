@@ -580,7 +580,7 @@ object AffineTransform2D {
         val chunk = min(readFromWinRemain, outRemain)
         if (chunk > 0) {
           // logStream(s"readFromWindow(); readFromWinOff = $readFromWinOff, outOff = $outOff, chunk = $chunk")
-          processWindowToOutput(readFromWinOff = readFromWinOff, outOff = outOff, chunk = chunk)
+          processWindowToOutput(imgOutOff = readFromWinOff, outOff = outOff, chunk = chunk)
           readFromWinOff    += chunk
           readFromWinRemain -= chunk
           outOff            += chunk
@@ -631,6 +631,13 @@ object AffineTransform2D {
       }
     }
 
+    private[this] var mi00   = 0.0
+    private[this] var mi10   = 0.0
+    private[this] var mi01   = 0.0
+    private[this] var mi11   = 0.0
+    private[this] var mi02   = 0.0
+    private[this] var mi12   = 0.0
+
     private[this] var m00   = 0.0
     private[this] var m10   = 0.0
     private[this] var m01   = 0.0
@@ -650,11 +657,35 @@ object AffineTransform2D {
 
     private[this] val fltSmpPerCrossing = 4096
 
-    private def processWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit = {
+    // calculates low-pass filter kernel
+    @inline
+    private[this] def updateTable(): Unit = {
+      fltLenH = ((fltSmpPerCrossing * zeroCrossings) / rollOff + 0.5).toInt
+      fltBuf  = new Array[Double](fltLenH)
+      fltBufD = new Array[Double](fltLenH)
+      fltGain = Filter.createAntiAliasFilter(
+        fltBuf, fltBufD, halfWinSize = fltLenH, samplesPerCrossing = fltSmpPerCrossing, rollOff = rollOff,
+        kaiserBeta = kaiserBeta)
+    }
+
+    // calculates inverted matrix
+    @inline
+    private[this] def updateMatrix(): Unit = {
+      val det = mi00 * mi11 - mi01 * mi10
+      m00 =  mi11 / det
+      m10 = -mi10 / det
+      m01 = -mi01 / det
+      m11 =  mi00 / det
+      m02 = (mi01 * mi12 - mi11 * mi02) / det
+      m12 = (mi10 * mi02 - mi00 * mi12) / det
+    }
+
+    private def processWindowToOutput(imgOutOff: Int, outOff: Int, chunk: Int): Unit = {
       var outOffI     = outOff
       val outStop     = outOffI + chunk
       val out         = bufOut0.buf
       val _widthIn    = widthIn
+      val _heightIn   = heightIn
       val _widthOut   = widthOut
       var _m00        = m00
       var _m10        = m10
@@ -666,32 +697,58 @@ object AffineTransform2D {
       var _wrap       = wrapBounds
       val _winBuf     = winBuf
       var newTable    = false
+      var newMatrix   = false
+
+      var x = imgOutOff % _widthOut
+      var y = imgOutOff / _widthOut
 
       while (outOffI < outStop) {
-        val x = outOffI % _widthOut
-        val y = outOffI / _widthOut
-
         if (bufIn5 != null && _aux2InOff < bufIn5.size) {
-          _m00 = bufIn5.buf(_aux2InOff)
+          val value = bufIn5.buf(_aux2InOff)
+          if (mi00 != value) {
+            mi00      = value
+            newMatrix = true
+          }
         }
         if (bufIn6 != null && _aux2InOff < bufIn6.size) {
-          _m10 = bufIn6.buf(_aux2InOff)
+          val value = bufIn6.buf(_aux2InOff)
+          if (mi10 != value) {
+            mi10      = value
+            newMatrix = true
+          }
         }
         if (bufIn7 != null && _aux2InOff < bufIn7.size) {
-          _m01 = bufIn7.buf(_aux2InOff)
+          val value = bufIn7.buf(_aux2InOff)
+          if (mi01 != value) {
+            mi01      = value
+            newMatrix = true
+          }
         }
         if (bufIn8 != null && _aux2InOff < bufIn8.size) {
-          _m11 = bufIn8.buf(_aux2InOff)
+          val value = bufIn8.buf(_aux2InOff)
+          if (mi11 != value) {
+            mi11      = value
+            newMatrix = true
+          }
         }
         if (bufIn9 != null && _aux2InOff < bufIn9.size) {
-          _m02 = bufIn9.buf(_aux2InOff)
+          val value = bufIn9.buf(_aux2InOff)
+          if (mi02 != value) {
+            mi02      = value
+            newMatrix = true
+          }
         }
         if (bufIn10 != null && _aux2InOff < bufIn10.size) {
-          _m12 = bufIn10.buf(_aux2InOff)
+          val value = bufIn10.buf(_aux2InOff)
+          if (mi12 != value) {
+            mi12      = value
+            newMatrix = true
+          }
         }
 
         if (bufIn11 != null && _aux2InOff < bufIn11.size) {
-          _wrap = bufIn11.buf(_aux2InOff) != 0
+          wrapBounds  = bufIn11.buf(_aux2InOff) != 0
+          _wrap       = wrapBounds
         }
 
         if (bufIn12 != null && _aux2InOff < bufIn12.size) {
@@ -718,6 +775,17 @@ object AffineTransform2D {
           }
         }
 
+        if (newMatrix) {
+          updateMatrix()
+          _m00 = m00
+          _m10 = m10
+          _m01 = m01
+          _m11 = m11
+          _m02 = m02
+          _m12 = m12
+          newMatrix = false
+        }
+        
         // [ x']   [  m00  m01  m02  ] [ x ]   [ m00x + m01y + m02 ]
         // [ y'] = [  m10  m11  m12  ] [ y ] = [ m10x + m11y + m12 ]
         // [ 1 ]   [   0    0    1   ] [ 1 ]   [         1         ]
@@ -726,12 +794,7 @@ object AffineTransform2D {
         val yT = _m10 * x + _m11 * y + _m12
 
         if (newTable) {
-          fltLenH = ((fltSmpPerCrossing * zeroCrossings) / rollOff + 0.5).toInt
-          fltBuf  = new Array[Double](fltLenH)
-          fltBufD = new Array[Double](fltLenH)
-          fltGain = Filter.createAntiAliasFilter(
-            fltBuf, fltBufD, halfWinSize = fltLenH, samplesPerCrossing = fltSmpPerCrossing, rollOff = rollOff,
-            kaiserBeta = kaiserBeta)
+          updateTable()
           newTable = false
         }
 
@@ -757,9 +820,11 @@ object AffineTransform2D {
         while ((fltOffI < _fltLenH) && (srcRem > 0)) {
           val r    = fltOff % 1.0  // 0...1 for interpol.
           val w    = _fltBuf(fltOffI) + _fltBufD(fltOffI) * r
-          if (srcOffI < 0) srcOffI += _widthIn
-          value   += winBuf(srcOffI) * w
+          val Y_CLIP  = IntFunctions.wrap(yT.toInt, 0, _heightIn - 1)
+          val OFF     = Y_CLIP * _widthIn + srcOffI
+          value   += winBuf(OFF) * w
           srcOffI -= 1
+          if (srcOffI < 0) srcOffI += _widthIn
           srcRem  -= 1
           fltOff  += _fltIncr
           fltOffI  = fltOff.toInt
@@ -774,7 +839,9 @@ object AffineTransform2D {
         while ((fltOffI < _fltLenH) && (srcRem > 0)) {
           val r    = fltOff % 1.0  // 0...1 for interpol.
           val w    = _fltBuf(fltOffI) + _fltBufD(fltOffI) * r
-          value   += winBuf(srcOffI) * w
+          val Y_CLIP  = IntFunctions.wrap(yT.toInt, 0, _heightIn - 1)
+          val OFF     = Y_CLIP * _widthIn + srcOffI
+          value   += winBuf(OFF) * w
           srcOffI += 1
           if (srcOffI == _widthIn) srcOffI = 0
           srcRem  -= 1
@@ -788,15 +855,12 @@ object AffineTransform2D {
 
         outOffI    += 1
         _aux2InOff += 1
+        x          += 1
+        if (x == _widthOut) {
+          x  = 0
+          y += 1
+        }
       }
-
-      m00 = _m00
-      m01 = _m01
-      m10 = _m10
-      m11 = _m11
-      m02 = _m02
-      m12 = _m12
-      wrapBounds = _wrap
     }
   }
 }

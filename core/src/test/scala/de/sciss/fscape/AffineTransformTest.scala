@@ -16,7 +16,9 @@ object AffineTransformTest extends App {
     val width     = 1024
     val height    = 1024
     val img       = ImageFileIn(file = fIn, numChannels = 3)
-    val at        = AffineTransform.getRotateInstance(math.Pi/180 * 30, width * 0.5, height * 0.5)
+    val at        = AffineTransform.getRotateInstance(math.Pi/180 * 10, width * 0.5, height * 0.5)
+    // at.setToIdentity()
+    // at.setToScale(2.0, 2.0)
     val mat       = new Array[Double](6)
     at.getMatrix(mat)
     val sig0      = AffineTransform2D(img, widthIn = width, heightIn = height, widthOut = width, heightOut = height,
