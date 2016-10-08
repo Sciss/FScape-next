@@ -804,14 +804,14 @@ object AffineTransform2D {
 
         var value     = 0.0
 
-        val xFactor   = _m00
+        val xFactor   = abs(_m00)
         val xFactMin1 = min(1.0, xFactor)
         val xFltIncr  = fltSmpPerCrossing * xFactMin1
         val xGain     = fltGain * xFactMin1
         val xq        = abs(xT) % 1.0
         val xTi       = xT.toInt
 
-        val yFactor   = _m11
+        val yFactor   = abs(_m11)
         val yFactMin1 = min(1.0, yFactor)
         val yFltIncr  = fltSmpPerCrossing * yFactMin1
         val yGain     = fltGain * yFactMin1

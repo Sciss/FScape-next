@@ -22,8 +22,15 @@ object AffineTransformTest extends App {
     at.scale(0.667, 0.667)
     val mat       = new Array[Double](6)
     at.getMatrix(mat)
+    val sin1 = SinOsc(0.011) * math.Pi // 0.99
+    val sin2 = SinOsc(0.012) * math.Pi // 0.99
+    val sin3 = SinOsc(0.013) * math.Pi // 0.99
+    val sin4 = SinOsc(0.014) * math.Pi // 0.99
+//    val sig0      = AffineTransform2D(img, widthIn = width, heightIn = height, widthOut = width, heightOut = height,
+//      m00 = mat(0), m10 = mat(1), m01 = mat(2), m11 = mat(3), m02 = mat(4), m12 = mat(5),
+//      zeroCrossings = 7, wrap = 1)
     val sig0      = AffineTransform2D(img, widthIn = width, heightIn = height, widthOut = width, heightOut = height,
-      m00 = mat(0), m10 = mat(1), m01 = mat(2), m11 = mat(3), m02 = mat(4), m12 = mat(5),
+      m00 = sin1 + mat(0), m10 = sin2 + mat(1), m01 = sin3 + mat(2), m11 = sin4 + mat(3), m02 = mat(4), m12 = mat(5),
       zeroCrossings = 7, wrap = 1)
     val sig       = sig0.max(0).min(1)
 
