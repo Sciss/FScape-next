@@ -20,7 +20,7 @@ import de.sciss.fscape.stream.impl.{DemandFilterLogic, NodeImpl, Out1DoubleImpl,
 import de.sciss.numbers.IntFunctions
 
 import scala.annotation.tailrec
-import math.{max, min}
+import math.{max, min, abs}
 
 object AffineTransform2D {
   def apply(in: OutD, widthIn: OutI, heightIn: OutI, widthOut: OutI, heightOut: OutI,
@@ -798,49 +798,85 @@ object AffineTransform2D {
           newTable = false
         }
 
-        val _inPhase  = xT
-        val factor    = _m00
-        val factorMn1 = min(1.0, factor)
-        val _fltIncr  = fltSmpPerCrossing * factorMn1
-        val gain      = fltGain * factorMn1
         val _fltBuf   = fltBuf
         val _fltBufD  = fltBufD
         val _fltLenH  = fltLenH
-        val q         = _inPhase % 1.0
+
         var value     = 0.0
-        val _inPhaseI = _inPhase.toInt
 
-        def iterate(dir: Boolean): Unit = {
-          var srcOffI   = if (dir) _inPhaseI else _inPhaseI + 1
-          val q1        = if (dir) q else 1.0 - q
-          var fltOff    = q1 * _fltIncr
-          var fltOffI   = fltOff.toInt
-          var srcRem    = if (_wrap) Int.MaxValue else if (dir) srcOffI else _widthIn - srcOffI
-          srcOffI       = IntFunctions.wrap(srcOffI, 0, _widthIn - 1)
+        val xFactor   = _m00
+        val xFactMin1 = min(1.0, xFactor)
+        val xFltIncr  = fltSmpPerCrossing * xFactMin1
+        val xGain     = fltGain * xFactMin1
+        val xq        = abs(xT) % 1.0
+        val xTi       = xT.toInt
 
-          while ((fltOffI < _fltLenH) && (srcRem > 0)) {
-            val r    = fltOff % 1.0  // 0...1 for interpol.
-            val w    = _fltBuf(fltOffI) + _fltBufD(fltOffI) * r
-            val Y_CLIP  = IntFunctions.wrap(yT.toInt, 0, _heightIn - 1)
-            val OFF     = Y_CLIP * _widthIn + srcOffI
-            value   += winBuf(OFF) * w
-            if (dir) {
-              srcOffI -= 1
-              if (srcOffI < 0) srcOffI += _widthIn
-            } else {
-              srcOffI += 1
-              if (srcOffI == _widthIn) srcOffI = 0
+        val yFactor   = _m11
+        val yFactMin1 = min(1.0, yFactor)
+        val yFltIncr  = fltSmpPerCrossing * yFactMin1
+        val yGain     = fltGain * yFactMin1
+        val yq        = abs(yT) % 1.0
+        val yTi       = yT.toInt
+
+        def xIter(dir: Boolean): Unit = {
+          var xSrcOffI  = if (dir) xTi else xTi + 1
+          val xq1       = if (dir) xq  else 1.0 - xq
+          var xFltOff   = xq1 * xFltIncr
+          var xFltOffI  = xFltOff.toInt
+          var xSrcRem   = if (_wrap) Int.MaxValue else if (dir) xSrcOffI else _widthIn - xSrcOffI
+          xSrcOffI      = IntFunctions.wrap(xSrcOffI, 0, _widthIn - 1)
+
+          while ((xFltOffI < _fltLenH) && (xSrcRem > 0)) {
+            val xr  = xFltOff % 1.0  // 0...1 for interpol.
+            val xw  = _fltBuf(xFltOffI) + _fltBufD(xFltOffI) * xr
+
+            def yIter(dir: Boolean): Unit = {
+              var ySrcOffI  = if (dir) yTi else yTi + 1
+              val yq1       = if (dir) yq  else 1.0 - yq
+              var yFltOff   = yq1 * yFltIncr
+              var yFltOffI  = yFltOff.toInt
+              var ySrcRem   = if (_wrap) Int.MaxValue else if (dir) ySrcOffI else _heightIn - ySrcOffI
+              ySrcOffI      = IntFunctions.wrap(ySrcOffI, 0, _widthIn - 1)
+
+              while ((yFltOffI < _fltLenH) && (ySrcRem > 0)) {
+                val yr        = yFltOff % 1.0  // 0...1 for interpol.
+                val yw        = _fltBuf(yFltOffI) + _fltBufD(yFltOffI) * yr
+                val winBufOff = ySrcOffI * _widthIn + xSrcOffI
+
+                value += _winBuf(winBufOff) * xw * yw
+                if (dir) {
+                  ySrcOffI -= 1
+                  if (ySrcOffI < 0) ySrcOffI += _heightIn
+                } else {
+                  ySrcOffI += 1
+                  if (ySrcOffI == _heightIn) ySrcOffI = 0
+                }
+                ySrcRem  -= 1
+                yFltOff  += yFltIncr
+                yFltOffI  = yFltOff.toInt
+              }
             }
-            srcRem  -= 1
-            fltOff  += _fltIncr
-            fltOffI  = fltOff.toInt
+
+            yIter(dir = true )  // left -hand side of window
+            yIter(dir = false)  // right-hand side of window
+
+            if (dir) {
+              xSrcOffI -= 1
+              if (xSrcOffI < 0) xSrcOffI += _widthIn
+            } else {
+              xSrcOffI += 1
+              if (xSrcOffI == _widthIn) xSrcOffI = 0
+            }
+            xSrcRem  -= 1
+            xFltOff  += xFltIncr
+            xFltOffI  = xFltOff.toInt
           }
         }
 
-        iterate(dir = true )  // left -hand side of window
-        iterate(dir = false)  // right-hand side of window
+        xIter(dir = true )  // left -hand side of window
+        xIter(dir = false)  // right-hand side of window
 
-        out(outOffI) = value * gain
+        out(outOffI) = value * xGain * yGain
         // inPhaseCount   += 1
         // readFromWinLen -= 1
 
