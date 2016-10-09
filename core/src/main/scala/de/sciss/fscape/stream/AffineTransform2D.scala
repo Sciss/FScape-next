@@ -587,6 +587,9 @@ object AffineTransform2D {
           outRemain         -= chunk
           aux2InOff         += chunk
           aux2InRemain      -= chunk
+          if (readFromWinRemain == 0) {
+            isNextWindow     = true
+          }
           stateChange        = true
         }
       }
@@ -836,12 +839,16 @@ object AffineTransform2D {
               var yFltOff   = yq1 * yFltIncr
               var yFltOffI  = yFltOff.toInt
               var ySrcRem   = if (_wrap) Int.MaxValue else if (dir) ySrcOffI else _heightIn - ySrcOffI
-              ySrcOffI      = IntFunctions.wrap(ySrcOffI, 0, _widthIn - 1)
+              ySrcOffI      = IntFunctions.wrap(ySrcOffI, 0, _heightIn - 1)
 
               while ((yFltOffI < _fltLenH) && (ySrcRem > 0)) {
                 val yr        = yFltOff % 1.0  // 0...1 for interpol.
                 val yw        = _fltBuf(yFltOffI) + _fltBufD(yFltOffI) * yr
                 val winBufOff = ySrcOffI * _widthIn + xSrcOffI
+
+//                if (winBufOff > _winBuf.length) {
+//                  println(s"x $x, y $y, xT $xT, yT $yT, xSrcOffI $xSrcOffI, ySrcOffI $ySrcOffI, _widthIn ${_widthIn}, _heightIn ${_heightIn}")
+//                }
 
                 value += _winBuf(winBufOff) * xw * yw
                 if (dir) {

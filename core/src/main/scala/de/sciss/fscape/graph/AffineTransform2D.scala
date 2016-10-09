@@ -37,12 +37,13 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * @param m02            coefficient of the third column of the first row (translate-x)
   * @param m12            coefficient of the third column of the second row (translate-y)
   * @param wrap           if non-zero, wraps coordinates around the input images boundaries.
+  *                       __TODO:__ currently `wrap = 0` is broken!
   * @param rollOff        the FIR anti-aliasing roll-off width
   * @param kaiserBeta     the FIR windowing function's parameter
   * @param zeroCrossings  the number of zero-crossings in the truncated and windowed sinc FIR.
   */
 final case class AffineTransform2D(in: GE, widthIn: GE, heightIn: GE, widthOut: GE, heightOut: GE,
-                                   m00: GE, m10: GE, m01: GE, m11: GE, m02: GE, m12: GE, wrap: GE = 0,
+                                   m00: GE, m10: GE, m01: GE, m11: GE, m02: GE, m12: GE, wrap: GE = 1,
                                    rollOff: GE = 0.86, kaiserBeta: GE = 7.5, zeroCrossings: GE = 15)
   extends UGenSource.SingleOut {
 
