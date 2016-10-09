@@ -709,8 +709,8 @@ object AffineTransform2D {
         _m11 = m11
         _m02 = m02
         _m12 = m12
-        val xFactor   = sqrt(_m00 * _m00 * + _m10 * _m10)
-        val yFactor   = sqrt(_m01 * _m01 * + _m11 * _m11)
+        val xFactor   = sqrt(_m00 * _m00 + _m10 * _m10)
+        val yFactor   = sqrt(_m01 * _m01 + _m11 * _m11)
         val xFactMin1 = if (xFactor == 0) 1.0 else min(1.0, xFactor)
         val yFactMin1 = if (yFactor == 0) 1.0 else min(1.0, yFactor)
         // for the malformed case where a scale factor is zero, we give up resampling
