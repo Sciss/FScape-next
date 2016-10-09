@@ -20,7 +20,7 @@ import de.sciss.fscape.stream.impl.{DemandFilterLogic, NodeImpl, Out1DoubleImpl,
 import de.sciss.numbers.IntFunctions
 
 import scala.annotation.tailrec
-import math.{max, min, abs}
+import math.{max, min, abs, sqrt}
 
 object AffineTransform2D {
   def apply(in: OutD, widthIn: OutI, heightIn: OutI, widthOut: OutI, heightOut: OutI,
@@ -577,7 +577,7 @@ object AffineTransform2D {
       }
 
       if (canReadFromWindow) {
-        val chunk = min(readFromWinRemain, outRemain)
+        val chunk = min(min(readFromWinRemain, outRemain), aux2InRemain)
         if (chunk > 0) {
           // logStream(s"readFromWindow(); readFromWinOff = $readFromWinOff, outOff = $outOff, chunk = $chunk")
           processWindowToOutput(imgOutOff = readFromWinOff, outOff = outOff, chunk = chunk)
@@ -690,20 +690,37 @@ object AffineTransform2D {
       val _widthIn    = widthIn
       val _heightIn   = heightIn
       val _widthOut   = widthOut
-      var _m00        = m00
-      var _m10        = m10
-      var _m01        = m01
-      var _m11        = m11
-      var _m02        = m02
-      var _m12        = m12
       var _aux2InOff  = aux2InOff
       var _wrap       = wrapBounds
       val _winBuf     = winBuf
       var newTable    = false
       var newMatrix   = false
 
-      var x = imgOutOff % _widthOut
-      var y = imgOutOff / _widthOut
+      var x           = imgOutOff % _widthOut
+      var y           = imgOutOff / _widthOut
+
+      // updated by `matrixChanged`
+      var _m00, _m10, _m01, _m11, _m02, _m12, xFltIncr, yFltIncr, xGain, yGain = 0.0
+
+      def matrixChanged(): Unit = {
+        _m00 = m00
+        _m10 = m10
+        _m01 = m01
+        _m11 = m11
+        _m02 = m02
+        _m12 = m12
+        val xFactor   = sqrt(_m00 * _m00 * + _m10 * _m10)
+        val yFactor   = sqrt(_m01 * _m01 * + _m11 * _m11)
+        val xFactMin1 = if (xFactor == 0) 1.0 else min(1.0, xFactor)
+        val yFactMin1 = if (yFactor == 0) 1.0 else min(1.0, yFactor)
+        // for the malformed case where a scale factor is zero, we give up resampling
+        xFltIncr      = fltSmpPerCrossing * xFactMin1
+        yFltIncr      = fltSmpPerCrossing * yFactMin1
+        xGain         = fltGain * xFactMin1
+        yGain         = fltGain * yFactMin1
+      }
+
+      matrixChanged()
 
       while (outOffI < outStop) {
         if (bufIn5 != null && _aux2InOff < bufIn5.size) {
@@ -780,12 +797,7 @@ object AffineTransform2D {
 
         if (newMatrix) {
           updateMatrix()
-          _m00 = m00
-          _m10 = m10
-          _m01 = m01
-          _m11 = m11
-          _m02 = m02
-          _m12 = m12
+          matrixChanged()
           newMatrix = false
         }
         
@@ -807,17 +819,8 @@ object AffineTransform2D {
 
         var value     = 0.0
 
-        val xFactor   = abs(_m00)
-        val xFactMin1 = min(1.0, xFactor)
-        val xFltIncr  = fltSmpPerCrossing * xFactMin1
-        val xGain     = fltGain * xFactMin1
         val xq        = abs(xT) % 1.0
         val xTi       = xT.toInt
-
-        val yFactor   = abs(_m11)
-        val yFactMin1 = min(1.0, yFactor)
-        val yFltIncr  = fltSmpPerCrossing * yFactMin1
-        val yGain     = fltGain * yFactMin1
         val yq        = abs(yT) % 1.0
         val yTi       = yT.toInt
 
@@ -884,8 +887,6 @@ object AffineTransform2D {
         xIter(dir = false)  // right-hand side of window
 
         out(outOffI) = value * xGain * yGain
-        // inPhaseCount   += 1
-        // readFromWinLen -= 1
 
         outOffI    += 1
         _aux2InOff += 1
