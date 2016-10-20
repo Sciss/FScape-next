@@ -17,6 +17,8 @@ package stream
 import akka.stream.{Attributes, FanInShape8}
 import de.sciss.fscape.stream.impl.{DemandFilterIn8D, DemandFilterLogic, DemandWindowedLogic, NodeImpl, StageImpl}
 
+import scala.annotation.tailrec
+
 object MatrixInMatrix {
   def apply(in: OutD, rowsOuter: OutI, columnsOuter: OutI, rowsInner: OutI, columnsInner: OutI,
             rowStep: OutI, columnStep: OutI, mode: OutI)(implicit b: Builder): OutD = {
@@ -59,55 +61,120 @@ object MatrixInMatrix {
       with DemandFilterLogic[BufD, Shape]
       with DemandFilterIn8D[BufD, BufI, BufI, BufI, BufI, BufI, BufI, BufI] {
 
-    private[this] var size  : Int  = _
-    private[this] var step  : Int  = _
+    private[this] var rowsOuter   : Int  = _
+    private[this] var columnsOuter: Int  = _
+    private[this] var rowsInner   : Int  = _
+    private[this] var columnsInner: Int  = _
+    private[this] var rowStep     : Int  = _
+    private[this] var columnStep  : Int  = _
+    private[this] var mode        : Int  = _
+    private[this] var sizeInner   : Int  = _
+    private[this] var numColSteps : Int  = _
+    private[this] var numRowSteps : Int  = _
+
+    private[this] var sizeOuter = 0
+    private[this] var winBuf  : Array[Double] = _
 
     protected def startNextWindow(): Int = {
       val inOff = auxInOff
       if (bufIn1 != null && inOff < bufIn1.size) {
-        size = math.max(1, bufIn1.buf(inOff))
+        rowsOuter = math.max(1, bufIn1.buf(inOff))
       }
       if (bufIn2 != null && inOff < bufIn2.size) {
-        step = math.max(1, bufIn2.buf(inOff))
+        columnsOuter = math.max(1, bufIn2.buf(inOff))
       }
-      ??? // windows += new Window(new Array[Double](size))
-      size  // -> writeToWinRemain
+      if (bufIn3 != null && inOff < bufIn3.size) {
+        rowsInner = math.min(math.max(1, bufIn3.buf(inOff)), rowsOuter)
+      }
+      if (bufIn4 != null && inOff < bufIn4.size) {
+        columnsInner = math.min(math.max(1, bufIn4.buf(inOff)), columnsOuter)
+      }
+      if (bufIn5 != null && inOff < bufIn5.size) {
+        rowStep = math.max(1, bufIn5.buf(inOff))
+      }
+      if (bufIn6 != null && inOff < bufIn6.size) {
+        columnStep = math.max(1, bufIn6.buf(inOff))
+      }
+      if (bufIn7 != null && inOff < bufIn7.size) {
+        mode = math.max(0, math.min(2, bufIn7.buf(inOff)))    // XXX TODO --- not yet used
+      }
+      numColSteps      = columnsOuter / columnStep
+      numRowSteps      = rowsOuter    / rowStep
+      sizeInner = rowsInner * columnsInner
+
+      val newSizeOuter = rowsOuter * columnsOuter
+      if (newSizeOuter != sizeOuter) {
+        sizeOuter = newSizeOuter
+        winBuf    = new Array(newSizeOuter)
+      }
+
+      sizeOuter
     }
 
-    // var FRAMES_READ = 0
-
-    protected def copyInputToWindow(writeToWinOff: Int, chunk: Int): Unit = {
-      ???
-//      val inOff = mainInOff
-//      val win     = windows.last
-//      val chunk1  = math.min(chunk, win.inRemain)
-//      // println(s"OLAP copying $chunk1 frames to   window ${windows.length - 1} at ${win.offIn}")
-//      if (chunk1 > 0) {
-//        Util.copy(bufIn0.buf, inOff, win.buf, win.offIn, chunk1)
-//        win.offIn += chunk1
-//      }
+    override protected def stopped(): Unit = {
+      super.stopped()
+      winBuf = null
     }
 
-    protected def processWindow(writeToWinOff: Int): Int = ??? // step
+    protected def copyInputToWindow(writeToWinOff: Int, chunk: Int): Unit =
+      Util.copy(bufIn0.buf, mainInOff, winBuf, writeToWinOff, chunk)
 
+    protected def processWindow(writeToWinOff: Int): Int = {
+      val steps   = numColSteps.toLong * numRowSteps
+      val frames  = steps * sizeInner
+      if (frames > 0x7FFFFFFF) sys.error(s"Matrix too large - $frames frames is larger than 32bit")
+      frames.toInt
+    }
+
+    @tailrec
     protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit = {
-//      Util.clear(bufOut0.buf, outOff, chunk)
-//      var i = 0
-//      while (i < windows.length) {  // take care of index as we drop windows on the way
-//      val win = windows(i)
-//        val chunk1 = math.min(win.availableOut, chunk)
-//        // println(s"OLAP copying $chunk1 frames from window $i at ${win.offOut}")
-//        if (chunk1 > 0) {
-//          Util.add(win.buf, win.offOut, bufOut0.buf, outOff, chunk1)
-//          win.offOut += chunk1
-//        }
-//        if (win.outRemain == 0) {
-//          // println(s"OLAP removing window $i")
-//          windows.remove(i)
-//        } else {
-//          i += 1
-//        }
-//      }
+      val step        = readFromWinOff / sizeInner
+      val stepOff     = readFromWinOff % sizeInner
+      val _rowsIn     = rowsInner
+      val _colsIn     = columnsInner
+      val _rowsOut    = rowsOuter
+      val _colsOut    = columnsOuter
+      // we go down the columns first, as a convention. ok?
+      val rowStepIdx  = step / numColSteps
+      val colStepIdx  = step % numColSteps
+      val rowStart    = rowStepIdx * rowStep    - _rowsIn/2
+      val colStart    = colStepIdx * columnStep - _colsIn/2
+      val colStop     = colStart + _colsIn
+      val rowOff      = stepOff  / _colsIn
+      val colOff      = stepOff  % _colsIn
+
+      val in          = winBuf
+      val out         = bufOut0.buf
+      var outOffI     = outOff
+
+      var colIdx      = colStart + colOff
+      var rowIdx      = rowStart + rowOff
+
+      val chunk1      = _colsIn - colOff + (_rowsIn - rowOff - 1) * _colsIn
+      val chunk2      = math.min(chunk, chunk1)
+      var rem         = chunk2
+      while (rem > 0) {
+        // XXX TODO --- implement modes. We wrap around here
+        val colIdx1   = if (colIdx < 0) colIdx + _colsOut else if (colIdx >= _colsOut) colIdx - _colsOut else colIdx
+        val rowIdx1   = if (rowIdx < 0) rowIdx + _rowsOut else if (rowIdx >= _rowsOut) rowIdx - _rowsOut else rowIdx
+        // println(s"row $rowIdx1, col $colIdx1")
+        // Yes, I know, we could avoid having to multiply in each iteration...
+        val inIdx     = rowIdx1 * _colsOut + colIdx1
+        val x         = in(inIdx)
+        out(outOffI)  = x
+        
+        colIdx  += 1
+        outOffI += 1
+        rem     -= 1
+
+        if (colIdx == colStop) {
+          colIdx  = colStart
+          rowIdx += 1
+        }
+      }
+      
+      if (chunk2 < chunk) 
+        copyWindowToOutput(readFromWinOff = readFromWinOff + chunk2, outOff = outOff + chunk2, chunk = chunk - chunk2)
     }
   }
 }

@@ -17,6 +17,7 @@ import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+/** Note: `mode` is not yet implemented. */
 final case class MatrixInMatrix(in: GE, rowsOuter: GE, columnsOuter: GE, rowsInner: GE, columnsInner: GE,
                                 rowStep: GE = 1, columnStep: GE = 1, mode: GE = 0)
   extends UGenSource.SingleOut {
