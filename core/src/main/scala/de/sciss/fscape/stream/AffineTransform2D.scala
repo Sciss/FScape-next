@@ -214,6 +214,7 @@ object AffineTransform2D {
 
     private[this] var _aux1InValid  = false
     private[this] var _aux1CanRead  = false
+//    private[this] var _aux1Ended    = false
 
     private def updateAux1CanRead(): Unit = {
       val sh = shape
@@ -223,6 +224,11 @@ object AffineTransform2D {
         ((isClosed(sh.in3) && _aux1InValid) || isAvailable(sh.in3)) &&
         ((isClosed(sh.in4) && _aux1InValid) || isAvailable(sh.in4))
     }
+
+//    private def updateAux1Ended(): Unit = {
+//      val sh = shape
+//      _aux1Ended = isClosed(sh.in1) && isClosed(sh.in2) && isClosed(sh.in3) && isClosed(sh.in4)
+//    }
 
     private def freeAux1InBuffers(): Unit = {
       if (bufIn1 != null) {
@@ -284,10 +290,6 @@ object AffineTransform2D {
       setHandler(in, new InHandler {
         def onPush(): Unit = {
           logStream(s"onPush($in)")
-          testRead()
-        }
-
-        private[this] def testRead(): Unit = {
           updateAux1CanRead()
           if (_aux1CanRead) process()
         }
@@ -295,7 +297,9 @@ object AffineTransform2D {
         override def onUpstreamFinish(): Unit = {
           logStream(s"onUpstreamFinish($in)")
           if (_aux1InValid || isAvailable(in)) {
-            testRead()
+            updateAux1CanRead()
+            // updateAux1Ended()
+            if (_aux1CanRead) process()
           } else {
             println(s"Invalid aux $in")
             completeStage()
@@ -308,20 +312,29 @@ object AffineTransform2D {
 
     private[this] var _aux2InValid  = false
     private[this] var _aux2CanRead  = false
+    private[this] var _aux2Ended    = false
 
     private def updateAux2CanRead(): Unit = {
       val sh = shape
       _aux2CanRead =
         ((isClosed(sh.in5 ) && _aux2InValid) || isAvailable(sh.in5 )) &&
-        ((isClosed(sh.in6 ) && _aux2InValid) || isAvailable(sh.in6 )) &&
-        ((isClosed(sh.in7 ) && _aux2InValid) || isAvailable(sh.in7 )) &&
-        ((isClosed(sh.in8 ) && _aux2InValid) || isAvailable(sh.in8 )) &&
-        ((isClosed(sh.in9 ) && _aux2InValid) || isAvailable(sh.in9 )) &&
-        ((isClosed(sh.in10) && _aux2InValid) || isAvailable(sh.in10)) &&
-        ((isClosed(sh.in11) && _aux2InValid) || isAvailable(sh.in11)) &&
-        ((isClosed(sh.in12) && _aux2InValid) || isAvailable(sh.in12)) &&
-        ((isClosed(sh.in13) && _aux2InValid) || isAvailable(sh.in13)) &&
-        ((isClosed(sh.in14) && _aux2InValid) || isAvailable(sh.in14))
+          ((isClosed(sh.in6 ) && _aux2InValid) || isAvailable(sh.in6 )) &&
+          ((isClosed(sh.in7 ) && _aux2InValid) || isAvailable(sh.in7 )) &&
+          ((isClosed(sh.in8 ) && _aux2InValid) || isAvailable(sh.in8 )) &&
+          ((isClosed(sh.in9 ) && _aux2InValid) || isAvailable(sh.in9 )) &&
+          ((isClosed(sh.in10) && _aux2InValid) || isAvailable(sh.in10)) &&
+          ((isClosed(sh.in11) && _aux2InValid) || isAvailable(sh.in11)) &&
+          ((isClosed(sh.in12) && _aux2InValid) || isAvailable(sh.in12)) &&
+          ((isClosed(sh.in13) && _aux2InValid) || isAvailable(sh.in13)) &&
+          ((isClosed(sh.in14) && _aux2InValid) || isAvailable(sh.in14))
+    }
+
+    private def updateAux2Ended(): Unit = {
+      val sh = shape
+      _aux2Ended =
+        isClosed(sh.in5 ) && isClosed(sh.in6 ) && isClosed(sh.in7 ) && isClosed(sh.in8 ) &&
+        isClosed(sh.in9 ) && isClosed(sh.in10) && isClosed(sh.in11) && isClosed(sh.in12) &&
+        isClosed(sh.in13) && isClosed(sh.in14)
     }
 
     private def freeAux2InBuffers(): Unit = {
@@ -438,10 +451,6 @@ object AffineTransform2D {
       setHandler(in, new InHandler {
         def onPush(): Unit = {
           logStream(s"onPush($in)")
-          testRead()
-        }
-
-        private[this] def testRead(): Unit = {
           updateAux2CanRead()
           if (_aux2CanRead) process()
         }
@@ -449,7 +458,9 @@ object AffineTransform2D {
         override def onUpstreamFinish(): Unit = {
           logStream(s"onUpstreamFinish($in)")
           if (_aux2InValid || isAvailable(in)) {
-            testRead()
+            updateAux2CanRead()
+            updateAux2Ended()
+            if (_aux2CanRead) process()
           } else {
             println(s"Invalid aux $in")
             completeStage()
@@ -577,7 +588,9 @@ object AffineTransform2D {
       }
 
       if (canReadFromWindow) {
-        val chunk = min(min(readFromWinRemain, outRemain), aux2InRemain)
+        val chunk0  = min(readFromWinRemain, outRemain)
+        val chunk1  = min(chunk0, aux2InRemain)
+        val chunk   = if (_aux2Ended) chunk0 else chunk1
         if (chunk > 0) {
           // logStream(s"readFromWindow(); readFromWinOff = $readFromWinOff, outOff = $outOff, chunk = $chunk")
           processWindowToOutput(imgOutOff = readFromWinOff, outOff = outOff, chunk = chunk)
@@ -585,8 +598,8 @@ object AffineTransform2D {
           readFromWinRemain -= chunk
           outOff            += chunk
           outRemain         -= chunk
-          aux2InOff         += chunk
-          aux2InRemain      -= chunk
+          aux2InOff         += chunk1
+          aux2InRemain      -= chunk1
           if (readFromWinRemain == 0) {
             isNextWindow     = true
           }

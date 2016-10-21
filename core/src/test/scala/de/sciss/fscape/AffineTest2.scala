@@ -83,7 +83,7 @@ object AffineTest2 {
       gui = SimpleGUI(ctl)
     }
 
-//    showStreamLog = true
+    showStreamLog = true
 
     ctl.run(g)
   }
