@@ -19,7 +19,8 @@ import de.sciss.fscape.stream.{StreamIn, StreamOut}
 import scala.collection.immutable.{IndexedSeq => Vec}
 
 /** An affine transformation UGen for image rotation, scaling, translation, shearing.
-  * It uses a band-limited resampling algorithm.
+  * It uses either a sinc-based band-limited resampling algorithm, or
+  * bicubic interpolation, depending on the `zeroCrossings` parameter.
   *
   * All window defining parameters (`widthIn`, `heightIn`, `widthOut`, `heightOut`)
   * are polled once per matrix. All matrix and filter parameters are polled one per
@@ -38,9 +39,10 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * @param m12            coefficient of the third column of the second row (translate-y)
   * @param wrap           if non-zero, wraps coordinates around the input images boundaries.
   *                       __TODO:__ currently `wrap = 0` is broken!
-  * @param rollOff        the FIR anti-aliasing roll-off width
+  * @param rollOff        the FIR anti-aliasing roll-off width. Between zero and one.
   * @param kaiserBeta     the FIR windowing function's parameter
   * @param zeroCrossings  the number of zero-crossings in the truncated and windowed sinc FIR.
+  *                       If zero, algorithm uses bicubic interpolation instead.
   */
 final case class AffineTransform2D(in: GE, widthIn: GE, heightIn: GE, widthOut: GE, heightOut: GE,
                                    m00: GE, m10: GE, m01: GE, m11: GE, m02: GE, m12: GE, wrap: GE = 1,

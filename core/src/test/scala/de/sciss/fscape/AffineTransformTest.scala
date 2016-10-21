@@ -9,13 +9,7 @@ import de.sciss.fscape.stream.Control
 import scala.swing.Swing
 
 object AffineTransformTest {
-  def main(args: Array[String]): Unit = {
-    // val config = Config()
-    run()
-  }
-
-  case class Config(index: Int, cx: Int, cy: Int, levelsLo: Int = 0, levelsHi: Int = 255, gamma: Double = 1.0,
-                    startAngle: Double, endAngle: Double, dAngle: Double, numFrames: Int)
+  def main(args: Array[String]): Unit = run()
 
   def applyLevels(in: GE, lo: Int, hi: Int, hasAlpha: Boolean = false): GE = if (lo == 0 && hi == 255) in else {
     import graph._
@@ -60,7 +54,8 @@ object AffineTransformTest {
 
       val tempIn    = userHome / "Documents" / "projects" / "Imperfect" / "photos" / "161008_HH"/ "_MG_%d.JPG"
       // val fIn       = userHome / "Documents" / "projects" / "Imperfect" / "photos" / "raspi" / "manual_gain.jpg"
-      val tempOut   = userHome / "Documents" / "projects" / "Imperfect" / "precious"/ "test-%d.jpg"
+//      val tempOut   = userHome / "Documents" / "projects" / "Imperfect" / "precious"/ "test-%d.jpg"
+      val tempOut   = userHome / "Documents" / "temp"/ "test-%d.jpg"
       // val fOut      = userHome / "Documents" / "temp" / "_killme.jpg"
       val widthIn0  = 3456
       val heightIn0 = 5184
@@ -143,7 +138,7 @@ object AffineTransformTest {
   //      zeroCrossings = 7, wrap = 1)
       val sig0      = AffineTransform2D(img, widthIn = widthIn, heightIn = heightIn, widthOut = widthOut, heightOut = heightOut,
         m00 = mat(0), m10 = mat(1), m01 = mat(2), m11 = mat(3), m02 = mat(4), m12 = mat(5),
-        zeroCrossings = 4 /* 7 */, wrap = 1)
+        zeroCrossings = 0 /* 4 */ /* 7 */, wrap = 1)
       val sig       = sig0.max(0).min(1) // .elastic(frameSizeOut / ctrl.blockSize)
 
       val spec  = ImageFile.Spec(width = widthOut, height = heightOut, numChannels = 3, fileType = ImageFile.Type.JPG)

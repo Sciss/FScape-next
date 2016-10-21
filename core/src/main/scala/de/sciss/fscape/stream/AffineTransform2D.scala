@@ -650,7 +650,7 @@ object AffineTransform2D {
 
     private[this] var rollOff       = -1.0  // must be negative for init detection
     private[this] var kaiserBeta    = -1.0
-    private[this] var zeroCrossings = 0
+    private[this] var zeroCrossings = -1
     private[this] var wrapBounds    = false
 
     private[this] var fltLenH     : Int           = _
@@ -683,6 +683,9 @@ object AffineTransform2D {
       m12 = (mi10 * mi02 - mi00 * mi12) / det
     }
 
+    private[this] var xFactor = 0.0
+    private[this] var yFactor = 0.0
+
     private def processWindowToOutput(imgOutOff: Int, outOff: Int, chunk: Int): Unit = {
       var outOffI     = outOff
       val outStop     = outOffI + chunk
@@ -709,8 +712,8 @@ object AffineTransform2D {
         _m11 = m11
         _m02 = m02
         _m12 = m12
-        val xFactor   = sqrt(_m00 * _m00 + _m10 * _m10)
-        val yFactor   = sqrt(_m01 * _m01 + _m11 * _m11)
+        xFactor       = sqrt(_m00 * _m00 + _m10 * _m10)
+        yFactor       = sqrt(_m01 * _m01 + _m11 * _m11)
         val xFactMin1 = if (xFactor == 0) 1.0 else min(1.0, xFactor)
         val yFactMin1 = if (yFactor == 0) 1.0 else min(1.0, yFactor)
         // for the malformed case where a scale factor is zero, we give up resampling
@@ -788,7 +791,9 @@ object AffineTransform2D {
         }
 
         if (bufIn14 != null && _aux2InOff < bufIn14.size) {
-          val newZeroCrossings = max(1, bufIn14.buf(_aux2InOff))
+          // a value of zero indicates bicubic interpolation,
+          // a value greater than zero indicates band-limited sinc interpolation
+          val newZeroCrossings = max(0, bufIn14.buf(_aux2InOff))
           if (zeroCrossings != newZeroCrossings) {
             zeroCrossings = newZeroCrossings
             newTable      = true
@@ -809,84 +814,156 @@ object AffineTransform2D {
         val yT = _m10 * x + _m11 * y + _m12
 
         if (newTable) {
-          updateTable()
+          if (zeroCrossings > 0) {
+            updateTable()
+            val xFactMin1 = if (xFactor == 0) 1.0 else min(1.0, xFactor)
+            val yFactMin1 = if (yFactor == 0) 1.0 else min(1.0, yFactor)
+            xGain         = fltGain * xFactMin1
+            yGain         = fltGain * yFactMin1
+          }
           newTable = false
         }
-
-        val _fltBuf   = fltBuf
-        val _fltBufD  = fltBufD
-        val _fltLenH  = fltLenH
-
-        var value     = 0.0
 
         val xq        = abs(xT) % 1.0
         val xTi       = xT.toInt
         val yq        = abs(yT) % 1.0
         val yTi       = yT.toInt
 
-        def xIter(dir: Boolean): Unit = {
-          var xSrcOffI  = if (dir) xTi else xTi + 1
-          val xq1       = if (dir) xq  else 1.0 - xq
-          var xFltOff   = xq1 * xFltIncr
-          var xFltOffI  = xFltOff.toInt
-          var xSrcRem   = if (_wrap) Int.MaxValue else if (dir) xSrcOffI else _widthIn - xSrcOffI
-          xSrcOffI      = IntFunctions.wrap(xSrcOffI, 0, _widthIn - 1)
+        // ------------------------ bicubic ------------------------
+        if (zeroCrossings == 0) {
 
-          while ((xFltOffI < _fltLenH) && (xSrcRem > 0)) {
-            val xr  = xFltOff % 1.0  // 0...1 for interpol.
-            val xw  = _fltBuf(xFltOffI) + _fltBufD(xFltOffI) * xr
+          val w1 = _widthIn  - 1
+          val h1 = _heightIn - 1
+          val x1 = IntFunctions.wrap(xTi, 0, w1)
+          val y1 = IntFunctions.wrap(yTi, 0, h1)
 
-            def yIter(dir: Boolean): Unit = {
-              var ySrcOffI  = if (dir) yTi else yTi + 1
-              val yq1       = if (dir) yq  else 1.0 - yq
-              var yFltOff   = yq1 * yFltIncr
-              var yFltOffI  = yFltOff.toInt
-              var ySrcRem   = if (_wrap) Int.MaxValue else if (dir) ySrcOffI else _heightIn - ySrcOffI
-              ySrcOffI      = IntFunctions.wrap(ySrcOffI, 0, _heightIn - 1)
+          val value = if (xq < 1.0e-20 && yq < 1.0e-20) {
+            // short cut
+            val winBufOff = y1 * _widthIn + x1
+            _winBuf(winBufOff)
+          } else {
+            // cf. https://en.wikipedia.org/wiki/Bicubic_interpolation
+            // note -- we begin indices at `0` instead of `-1` here
+            val x0  = if (x1 >  0) x1 - 1 else if (_wrap) w1 else 0
+            val y0  = if (y1 >  0) y1 - 1 else if (_wrap) h1 else 0
+            val x2  = if (x1 < w1) x1 + 1 else if (_wrap)  0 else w1
+            val y2  = if (y1 < h1) y1 + 1 else if (_wrap)  0 else h1
+            val x3  = if (x2 < w1) x2 + 1 else if (_wrap)  0 else w1
+            val y3  = if (y2 < h1) y2 + 1 else if (_wrap)  0 else h1
 
-              while ((yFltOffI < _fltLenH) && (ySrcRem > 0)) {
-                val yr        = yFltOff % 1.0  // 0...1 for interpol.
-                val yw        = _fltBuf(yFltOffI) + _fltBufD(yFltOffI) * yr
-                val winBufOff = ySrcOffI * _widthIn + xSrcOffI
+            // XXX TODO --- we could save these multiplications here
+            val y0s = y0 * _widthIn
+            val y1s = y1 * _widthIn
+            val y2s = y2 * _widthIn
+            val y3s = y3 * _widthIn
+            val f00 = _winBuf(y0s + x0)
+            val f10 = _winBuf(y0s + x1)
+            val f20 = _winBuf(y0s + x2)
+            val f30 = _winBuf(y0s + x3)
+            val f01 = _winBuf(y1s + x0)
+            val f11 = _winBuf(y1s + x1)
+            val f21 = _winBuf(y1s + x2)
+            val f31 = _winBuf(y1s + x3)
+            val f02 = _winBuf(y2s + x0)
+            val f12 = _winBuf(y2s + x1)
+            val f22 = _winBuf(y2s + x2)
+            val f32 = _winBuf(y2s + x3)
+            val f03 = _winBuf(y3s + x0)
+            val f13 = _winBuf(y3s + x1)
+            val f23 = _winBuf(y3s + x2)
+            val f33 = _winBuf(y3s + x3)
 
-//                if (winBufOff > _winBuf.length) {
-//                  println(s"x $x, y $y, xT $xT, yT $yT, xSrcOffI $xSrcOffI, ySrcOffI $ySrcOffI, _widthIn ${_widthIn}, _heightIn ${_heightIn}")
-//                }
-
-                value += _winBuf(winBufOff) * xw * yw
-                if (dir) {
-                  ySrcOffI -= 1
-                  if (ySrcOffI < 0) ySrcOffI += _heightIn
-                } else {
-                  ySrcOffI += 1
-                  if (ySrcOffI == _heightIn) ySrcOffI = 0
-                }
-                ySrcRem  -= 1
-                yFltOff  += yFltIncr
-                yFltOffI  = yFltOff.toInt
-              }
+            def bicubic(t: Double, f0: Double, f1: Double, f2: Double, f3: Double): Double = {
+              // XXX TODO --- could save the next two multiplications
+              val tt  = t * t
+              val ttt = tt * t
+              val c0  = 2 * f1
+              val c1  = (-f0 + f2) * t
+              val c2  = (2 * f0 - 5 * f1 + 4 * f2 - f3) * tt
+              val c3  = (-f0  + 3 * f1 - 3 * f2 + f3) * ttt
+              0.5 * (c0 + c1 + c2 + c3)
             }
 
-            yIter(dir = true )  // left -hand side of window
-            yIter(dir = false)  // right-hand side of window
-
-            if (dir) {
-              xSrcOffI -= 1
-              if (xSrcOffI < 0) xSrcOffI += _widthIn
-            } else {
-              xSrcOffI += 1
-              if (xSrcOffI == _widthIn) xSrcOffI = 0
-            }
-            xSrcRem  -= 1
-            xFltOff  += xFltIncr
-            xFltOffI  = xFltOff.toInt
+            val b0 = bicubic(xq, f00, f10, f20, f30)
+            val b1 = bicubic(xq, f01, f11, f21, f31)
+            val b2 = bicubic(xq, f02, f12, f22, f32)
+            val b3 = bicubic(xq, f03, f13, f23, f33)
+            bicubic(yq, b0, b1, b2, b3)
           }
+          out(outOffI) = value
         }
+        // ------------------------- sinc -------------------------
+        else {
+          val _fltBuf   = fltBuf
+          val _fltBufD  = fltBufD
+          val _fltLenH  = fltLenH
 
-        xIter(dir = true )  // left -hand side of window
-        xIter(dir = false)  // right-hand side of window
+          var value     = 0.0
 
-        out(outOffI) = value * xGain * yGain
+          def xIter(dir: Boolean): Unit = {
+            var xSrcOffI  = if (dir) xTi else xTi + 1
+            val xq1       = if (dir) xq  else 1.0 - xq
+            var xFltOff   = xq1 * xFltIncr
+            var xFltOffI  = xFltOff.toInt
+            var xSrcRem   = if (_wrap) Int.MaxValue else if (dir) xSrcOffI else _widthIn - xSrcOffI
+            xSrcOffI      = IntFunctions.wrap(xSrcOffI, 0, _widthIn - 1)
+
+            while ((xFltOffI < _fltLenH) && (xSrcRem > 0)) {
+              val xr  = xFltOff % 1.0  // 0...1 for interpol.
+              val xw  = _fltBuf(xFltOffI) + _fltBufD(xFltOffI) * xr
+
+              def yIter(dir: Boolean): Unit = {
+                var ySrcOffI  = if (dir) yTi else yTi + 1
+                val yq1       = if (dir) yq  else 1.0 - yq
+                var yFltOff   = yq1 * yFltIncr
+                var yFltOffI  = yFltOff.toInt
+                var ySrcRem   = if (_wrap) Int.MaxValue else if (dir) ySrcOffI else _heightIn - ySrcOffI
+                ySrcOffI      = IntFunctions.wrap(ySrcOffI, 0, _heightIn - 1)
+
+                while ((yFltOffI < _fltLenH) && (ySrcRem > 0)) {
+                  val yr        = yFltOff % 1.0  // 0...1 for interpol.
+                  val yw        = _fltBuf(yFltOffI) + _fltBufD(yFltOffI) * yr
+                  val winBufOff = ySrcOffI * _widthIn + xSrcOffI
+
+                  //                if (winBufOff > _winBuf.length) {
+                  //                  println(s"x $x, y $y, xT $xT, yT $yT, xSrcOffI $xSrcOffI, ySrcOffI $ySrcOffI, _widthIn ${_widthIn}, _heightIn ${_heightIn}")
+                  //                }
+
+                  value += _winBuf(winBufOff) * xw * yw
+                  if (dir) {
+                    ySrcOffI -= 1
+                    if (ySrcOffI < 0) ySrcOffI += _heightIn
+                  } else {
+                    ySrcOffI += 1
+                    if (ySrcOffI == _heightIn) ySrcOffI = 0
+                  }
+                  ySrcRem  -= 1
+                  yFltOff  += yFltIncr
+                  yFltOffI  = yFltOff.toInt
+                }
+              }
+
+              yIter(dir = true )  // left -hand side of window
+              yIter(dir = false)  // right-hand side of window
+
+              if (dir) {
+                xSrcOffI -= 1
+                if (xSrcOffI < 0) xSrcOffI += _widthIn
+              } else {
+                xSrcOffI += 1
+                if (xSrcOffI == _widthIn) xSrcOffI = 0
+              }
+              xSrcRem  -= 1
+              xFltOff  += xFltIncr
+              xFltOffI  = xFltOff.toInt
+            }
+          }
+
+          xIter(dir = true )  // left -hand side of window
+          xIter(dir = false)  // right-hand side of window
+
+          out(outOffI) = value * xGain * yGain
+        }
 
         outOffI    += 1
         _aux2InOff += 1
