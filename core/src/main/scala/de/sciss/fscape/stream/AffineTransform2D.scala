@@ -615,10 +615,12 @@ object AffineTransform2D {
         }
       }
       if (bufIn3 != null && inOff < bufIn3.size) {
-        widthOut = max(1, bufIn3.buf(inOff))
+        val _widthOut = max(0, bufIn3.buf(inOff))
+        widthOut = if (_widthOut == 0) widthIn else _widthOut
       }
       if (bufIn4 != null && inOff < bufIn4.size) {
-        heightOut = max(1, bufIn4.buf(inOff))
+        val _heightOut = max(0, bufIn4.buf(inOff))
+        heightOut = if (_heightOut == 0) heightIn else _heightOut
       }
       if (newImageIn) {
         winBuf = new Array[Double](widthIn * heightIn)

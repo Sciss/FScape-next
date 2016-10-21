@@ -45,6 +45,8 @@ trait DemandFilterIn3[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Nul
 
   final def mainCanRead : Boolean = _mainCanRead
   final def auxCanRead  : Boolean = _auxCanRead
+  final def mainInValid : Boolean = _mainInValid
+  final def auxInValid  : Boolean = _auxInValid
   final def inValid     : Boolean = _inValid
 
   override def preStart(): Unit = {

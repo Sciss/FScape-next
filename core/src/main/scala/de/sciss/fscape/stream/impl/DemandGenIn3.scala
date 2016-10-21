@@ -46,8 +46,8 @@ trait DemandGenIn3[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <
   final def auxCanRead : Boolean = _auxCanRead
   final def canRead    : Boolean = _auxCanRead
 
-  final def mainIsValid: Boolean = true
-  final def auxIsValid : Boolean = _auxInValid
+  final def mainInValid: Boolean = true
+  final def auxInValid : Boolean = _auxInValid
   final def inValid    : Boolean = _auxInValid
 
   override def preStart(): Unit = {

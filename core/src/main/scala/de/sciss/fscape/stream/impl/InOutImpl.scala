@@ -80,6 +80,9 @@ trait DemandInOutImpl[S <: Shape] extends InOutImpl[S] {
   protected def readAuxIns (): Int
   protected def readMainIns(): Int
 
+  def auxInValid : Boolean
+  def mainInValid: Boolean
+
   def auxCanRead : Boolean
   def mainCanRead: Boolean
 

@@ -52,6 +52,8 @@ In3 >: Null <: BufLike, In4 >: Null <: BufLike, In5 >: Null <: BufLike, Out >: N
 
   final def mainCanRead : Boolean = _mainCanRead
   final def auxCanRead  : Boolean = _auxCanRead
+  final def mainInValid : Boolean = _mainInValid
+  final def auxInValid  : Boolean = _auxInValid
   final def inValid     : Boolean = _inValid
 
   override def preStart(): Unit = {

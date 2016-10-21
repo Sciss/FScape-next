@@ -28,7 +28,7 @@ final class DemandProcessInHandler[A, S <: Shape](in: Inlet[A], logic: DemandInO
 
   override def onUpstreamFinish(): Unit = {
     logStream(s"onUpstreamFinish($in)")
-    if (logic.inValid) {
+    if (logic.mainInValid) {
       // logic.updateCanRead()
       logic.process()
     } // may lead to `flushOut`
@@ -58,7 +58,7 @@ final class DemandAuxInHandler[A, S <: Shape](in: Inlet[A], logic: DemandInOutIm
 
   override def onUpstreamFinish(): Unit = {
     logStream(s"onUpstreamFinish($in)")
-    if (logic.inValid || logic.isInAvailable(in)) {
+    if (logic.auxInValid || logic.isInAvailable(in)) {
       testRead()
     } else {
       println(s"Invalid aux $in")
