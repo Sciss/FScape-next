@@ -18,7 +18,10 @@ import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-/** A UGen that generates a signal that incrementally counts the frames of its input. */
+/** A UGen that generates a signal that incrementally counts the frames of its input.
+  * The first value output will be `1`, and the last will correspond to the number
+  * of frames seen, i.e. `Length(in)`.
+  */
 final case class Frames(in: GE) extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
     unwrap(Vector(in.expand))

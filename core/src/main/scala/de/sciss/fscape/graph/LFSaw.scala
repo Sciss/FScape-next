@@ -30,7 +30,8 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * To let it start at zero, use a `phase` of `0.5`
   *
   * @param freqN  normalized frequency (f/sr).
-  * @param phase  phase offset in radians
+  * @param phase  phase offset from 0 to 1.
+  *               '''Note:''' negative values are currently broken.
   */
 final case class LFSaw(freqN: GE, phase: GE = 0.0) extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =

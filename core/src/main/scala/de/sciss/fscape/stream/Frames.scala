@@ -63,9 +63,9 @@ object Frames {
       var i       = 0
       var j       = framesRead
       while (i < sz) {
+        j += 1
         arr(i) = j
         i += 1
-        j += 1
       }
       framesRead  = j
       bufIn.release()

@@ -64,13 +64,13 @@ object MFCCTest extends App {
     val covMin      = covMin0.take(numCov)  // XXX TODO --- bug in DetectLocalMax?
 
     val keys        = covNeg.elastic() * covMin
-    val values      = Frames(keys)
+    val values      = Frames(keys) - 1
 
     Progress(values * stepSize / (2 * numFrames), Metro(sampleRate/stepSize), label = "analysis")
 
-    val top10       = PriorityQueue(keys, values, size = numTop)  // lowest covariances mapped to frames
-    val framesDesc0 = PriorityQueue( top10, top10, size = numTop)  // frames in descending order
-    val framesAsc0  = PriorityQueue(-top10, top10, size = numTop)  // frames in ascending order
+    val top10       = PriorityQueue(keys  , values, size = numTop)  // lowest covariances mapped to frames
+    val framesDesc0 = PriorityQueue( top10, top10 , size = numTop)  // frames in descending order
+    val framesAsc0  = PriorityQueue(-top10, top10 , size = numTop)  // frames in ascending order
     // if we do _not_ add `sideLen`, we ensure the breaking change comes after the calculated frame
     val framesDescF = framesDesc0 /* + sideLen */ * stepSize
     val framesAscF  = framesAsc0  /* + sideLen */ * stepSize
