@@ -42,12 +42,12 @@ object GenWindow {
 
   sealed trait Shape {
     def id: Int
-    def fill(winSize: Int, winOff: Int, buf: Array[Double], bufOff: Int, len: Int, param: Double): Unit
+    def fill(winSize: Long, winOff: Long, buf: Array[Double], bufOff: Int, len: Int, param: Double): Unit
   }
   case object Hamming extends Shape {
     final val id = 0
 
-    def fill(winSize: Int, winOff: Int, buf: Array[Double], bufOff: Int, len: Int, param: Double): Unit = {
+    def fill(winSize: Long, winOff: Long, buf: Array[Double], bufOff: Int, len: Int, param: Double): Unit = {
       val norm  = Pi2 / winSize
       var i     = winOff
       val stop  = i + len
@@ -63,7 +63,7 @@ object GenWindow {
   case object Blackman extends Shape {
     final val id = 1
 
-    def fill(winSize: Int, winOff: Int, buf: Array[Double], bufOff: Int, len: Int, param: Double): Unit = {
+    def fill(winSize: Long, winOff: Long, buf: Array[Double], bufOff: Int, len: Int, param: Double): Unit = {
       val norm  = Pi2 / winSize
       var i     = winOff
       val stop  = i + len
@@ -95,7 +95,7 @@ object GenWindow {
       sum
     }
 
-    def fill(winSize: Int, winOff: Int, buf: Array[Double], bufOff: Int, len: Int, param: Double): Unit = {
+    def fill(winSize: Long, winOff: Long, buf: Array[Double], bufOff: Int, len: Int, param: Double): Unit = {
       val norm  = 2.0 / winSize
       val iBeta = 1.0 / calcBesselZero(param)
       var i     = winOff
@@ -109,7 +109,7 @@ object GenWindow {
       }
     }
 
-    def mul(winSize: Int, winOff: Int, buf: Array[Double], bufOff: Int, len: Int, param: Double): Unit = {
+    def mul(winSize: Long, winOff: Long, buf: Array[Double], bufOff: Int, len: Int, param: Double): Unit = {
       val norm  = 2.0 / winSize
       val iBeta = 1.0 / calcBesselZero(param)
       var i     = winOff
@@ -126,7 +126,7 @@ object GenWindow {
   case object Rectangle extends Shape {
     final val id = 3
 
-    def fill(winSize: Int, winOff: Int, buf: Array[Double], bufOff: Int, len: Int, param: Double): Unit = {
+    def fill(winSize: Long, winOff: Long, buf: Array[Double], bufOff: Int, len: Int, param: Double): Unit = {
       var j     = bufOff
       val stop  = j + len
       while (j < stop) {
@@ -138,7 +138,7 @@ object GenWindow {
   case object Hann extends Shape {
     final val id = 4
 
-    def fill(winSize: Int, winOff: Int, buf: Array[Double], bufOff: Int, len: Int, param: Double): Unit = {
+    def fill(winSize: Long, winOff: Long, buf: Array[Double], bufOff: Int, len: Int, param: Double): Unit = {
       val norm  = Pi2 / winSize
       var i     = winOff
       val stop  = i + len
@@ -154,7 +154,7 @@ object GenWindow {
   case object Triangle extends Shape {
     final val id = 5
 
-    def fill(winSize: Int, winOff: Int, buf: Array[Double], bufOff: Int, len: Int, param: Double): Unit = {
+    def fill(winSize: Long, winOff: Long, buf: Array[Double], bufOff: Int, len: Int, param: Double): Unit = {
       val norm  = 2.0 / winSize
       var i     = winOff
       val stop  = i + len
@@ -170,7 +170,7 @@ object GenWindow {
   case object Gauss extends Shape {
     final val id = 6
 
-    def fill(winSize: Int, winOff: Int, buf: Array[Double], bufOff: Int, len: Int, param: Double): Unit = {
+    def fill(winSize: Long, winOff: Long, buf: Array[Double], bufOff: Int, len: Int, param: Double): Unit = {
       val radius        = 0.5 * winSize
       val sigma         = radius/3
       val sigmaSqr2     = 2 * sigma * sigma
@@ -208,6 +208,6 @@ final case class GenWindow(size: GE, shape: GE, param: GE = 0.0) extends UGenSou
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
     val Vec(size, shape, param) = args
-    stream.GenWindow(size = size.toInt, shape = shape.toInt, param = param.toDouble)
+    stream.GenWindow(size = size.toLong, shape = shape.toInt, param = param.toDouble)
   }
 }

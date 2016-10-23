@@ -73,7 +73,7 @@ object OverlapAdd {
 
     private[this] val windows = mutable.Buffer.empty[Window]
 
-    protected def startNextWindow(): Int = {
+    protected def startNextWindow(): Long = {
       val inOff = auxInOff
       if (bufIn1 != null && inOff < bufIn1.size) {
         size = math.max(1, bufIn1.buf(inOff))
@@ -87,7 +87,7 @@ object OverlapAdd {
 
     // var FRAMES_READ = 0
 
-    protected def copyInputToWindow(writeToWinOff: Int, chunk: Int): Unit = {
+    protected def copyInputToWindow(writeToWinOff: Long, chunk: Int): Unit = {
       val inOff = mainInOff
       // println(s"-- OLAP copyInputToWindow(inOff = $inOff, writeToWinOff = $writeToWinOff, chunk = $chunk) $FRAMES_READ")
       // FRAMES_READ += chunk
@@ -100,11 +100,11 @@ object OverlapAdd {
       }
     }
 
-    protected def processWindow(writeToWinOff: Int): Int = step
+    protected def processWindow(writeToWinOff: Long): Long = step
 
     // var FRAMES_WRITTEN = 0
 
-    protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit = {
+    protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit = {
       // println(s"-- OLAP copyWindowToOutput(readFromWinOff = $readFromWinOff, outOff = $outOff, chunk = $chunk) $FRAMES_WRITTEN")
       // FRAMES_WRITTEN += chunk
       Util.clear(bufOut0.buf, outOff, chunk)

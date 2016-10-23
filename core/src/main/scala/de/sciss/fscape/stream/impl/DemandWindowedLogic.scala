@@ -32,7 +32,7 @@ trait DemandWindowedLogic[S <: Shape] extends DemandChunkImpl[S] {
     * @return the number of frames to write to the internal window buffer
     *         (becomes `writeToWinRemain`)
     */
-  protected def startNextWindow(): Int
+  protected def startNextWindow(): Long
 
   /** If crucial inputs have been closed. */
   protected def inputsEnded: Boolean
@@ -42,7 +42,7 @@ trait DemandWindowedLogic[S <: Shape] extends DemandChunkImpl[S] {
     * @param writeToWinOff  current offset into internal window buffer
     * @param chunk          number of frames to copy
     */
-  protected def copyInputToWindow(writeToWinOff: Int, chunk: Int): Unit
+  protected def copyInputToWindow(writeToWinOff: Long, chunk: Int): Unit
 
   /** Called when the internal window buffer is full, in order to
     * proceed to the next phase of copying from window to output.
@@ -54,16 +54,16 @@ trait DemandWindowedLogic[S <: Shape] extends DemandChunkImpl[S] {
     * @return the number of frames available for sending through `copyWindowToOutput`
     *         (this becomes `readFromWinRemain`).
     */
-  protected def processWindow(writeToWinOff: Int /* , flush: Boolean */): Int
+  protected def processWindow(writeToWinOff: Long /* , flush: Boolean */): Long
 
-  protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit
+  protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit
 
   // ---- impl ----
 
-  private[this] final var writeToWinOff     = 0
-  private[this] final var writeToWinRemain  = 0
-  private[this] final var readFromWinOff    = 0
-  private[this] final var readFromWinRemain = 0
+  private[this] final var writeToWinOff     = 0L
+  private[this] final var writeToWinRemain  = 0L
+  private[this] final var readFromWinOff    = 0L
+  private[this] final var readFromWinRemain = 0L
   private[this] final var isNextWindow      = true
 
   @inline
@@ -81,7 +81,7 @@ trait DemandWindowedLogic[S <: Shape] extends DemandChunkImpl[S] {
         // logStream(s"startNextWindow(); writeToWinRemain = $writeToWinRemain")
       }
 
-      val chunk     = math.min(writeToWinRemain, mainInRemain)
+      val chunk     = math.min(writeToWinRemain, mainInRemain).toInt
       val flushIn   = flushIn0 && writeToWinOff > 0
       if (chunk > 0 || flushIn) {
         // logStream(s"writeToWindow(); inOff = $inOff, writeToWinOff = $writeToWinOff, chunk = $chunk")
@@ -108,7 +108,7 @@ trait DemandWindowedLogic[S <: Shape] extends DemandChunkImpl[S] {
     }
 
     if (readFromWinRemain > 0) {
-      val chunk = math.min(readFromWinRemain, outRemain)
+      val chunk = math.min(readFromWinRemain, outRemain).toInt
       if (chunk > 0) {
         // logStream(s"readFromWindow(); readFromWinOff = $readFromWinOff, outOff = $outOff, chunk = $chunk")
         copyWindowToOutput(readFromWinOff = readFromWinOff, outOff = outOff, chunk = chunk)

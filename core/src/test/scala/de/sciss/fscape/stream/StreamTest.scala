@@ -93,6 +93,7 @@ object StreamTest extends App {
 //  }
 
   def const(i: Int   )(implicit b: GraphDSL.Builder[NotUsed]): Outlet[BufI] = b.add(Source.single(BufI(i))).out
+  def const(n: Long  )(implicit b: GraphDSL.Builder[NotUsed]): Outlet[BufL] = b.add(Source.single(BufL(n))).out
   def const(d: Double)(implicit b: GraphDSL.Builder[NotUsed]): Outlet[BufD] = b.add(Source.single(BufD(d))).out
 
 //  val graph = GraphDSL.create() { implicit b =>

@@ -75,7 +75,7 @@ object MatrixInMatrix {
     private[this] var sizeOuter = 0
     private[this] var winBuf  : Array[Double] = _
 
-    protected def startNextWindow(): Int = {
+    protected def startNextWindow(): Long = {
       val inOff = auxInOff
       if (bufIn1 != null && inOff < bufIn1.size) {
         rowsOuter = math.max(1, bufIn1.buf(inOff))
@@ -98,9 +98,9 @@ object MatrixInMatrix {
       if (bufIn7 != null && inOff < bufIn7.size) {
         mode = math.max(0, math.min(2, bufIn7.buf(inOff)))    // XXX TODO --- not yet used
       }
-      numColSteps      = columnsOuter / columnStep
-      numRowSteps      = rowsOuter    / rowStep
-      sizeInner = rowsInner * columnsInner
+      numColSteps = columnsOuter / columnStep
+      numRowSteps = rowsOuter    / rowStep
+      sizeInner   = rowsInner * columnsInner
 
       val newSizeOuter = rowsOuter * columnsOuter
       if (newSizeOuter != sizeOuter) {
@@ -116,10 +116,10 @@ object MatrixInMatrix {
       winBuf = null
     }
 
-    protected def copyInputToWindow(writeToWinOff: Int, chunk: Int): Unit =
-      Util.copy(bufIn0.buf, mainInOff, winBuf, writeToWinOff, chunk)
+    protected def copyInputToWindow(writeToWinOff: Long, chunk: Int): Unit =
+      Util.copy(bufIn0.buf, mainInOff, winBuf, writeToWinOff.toInt, chunk)
 
-    protected def processWindow(writeToWinOff: Int): Int = {
+    protected def processWindow(writeToWinOff: Long): Long = {
       val steps   = numColSteps.toLong * numRowSteps
       val frames  = steps * sizeInner
       if (frames > 0x7FFFFFFF) sys.error(s"Matrix too large - $frames frames is larger than 32bit")
@@ -127,9 +127,10 @@ object MatrixInMatrix {
     }
 
     @tailrec
-    protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit = {
-      val step        = readFromWinOff / sizeInner
-      val stepOff     = readFromWinOff % sizeInner
+    protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit = {
+      val readOffI    = readFromWinOff.toInt
+      val step        = readOffI / sizeInner
+      val stepOff     = readOffI % sizeInner
       val _rowsIn     = rowsInner
       val _colsIn     = columnsInner
       val _rowsOut    = rowsOuter
