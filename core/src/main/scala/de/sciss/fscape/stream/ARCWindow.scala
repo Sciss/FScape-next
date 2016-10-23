@@ -1,5 +1,5 @@
 /*
- *  AGCWindow.scala
+ *  ARCWindow.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2016 Hanns Holger Rutz. All rights reserved.
@@ -17,7 +17,7 @@ package stream
 import akka.stream.{Attributes, FanInShape5}
 import de.sciss.fscape.stream.impl.{DemandFilterIn5D, DemandFilterLogic, DemandWindowedLogic, NodeImpl, StageImpl}
 
-object AGCWindow {
+object ARCWindow {
   def apply(in: OutD, size: OutI, lo: OutD, hi: OutD, lag: OutD)(implicit b: Builder): OutD = {
     val stage0  = new Stage
     val stage   = b.add(stage0)
@@ -29,7 +29,7 @@ object AGCWindow {
     stage.out
   }
 
-  private final val name = "AGCWindow"
+  private final val name = "ARCWindow"
 
   private type Shape = FanInShape5[BufD, BufI, BufD, BufD, BufD, BufD]
 

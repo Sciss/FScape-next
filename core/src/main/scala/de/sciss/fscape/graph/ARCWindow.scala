@@ -1,5 +1,5 @@
 /*
- *  AGCWindow.scala
+ *  ARCWindow.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2016 Hanns Holger Rutz. All rights reserved.
@@ -18,8 +18,8 @@ import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-/** Automatic gain control UGen. It traces the
-  * gain of a windowed input signal.
+/** Automatic range control UGen. It traces the
+  * range of a windowed input signal.
   *
   * @param in     signal to adjust
   * @param size   window size of input
@@ -27,7 +27,9 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * @param hi     desired upper margin of output
   * @param lag    lag or feedback coefficient
   */
-final case class AGCWindow(in: GE, size: GE, lo: GE, hi: GE, lag: GE = 0.96) extends UGenSource.SingleOut {
+final case class ARCWindow(in: GE, size: GE, lo: GE = 0.0, hi: GE = 1.0, lag: GE = 0.96)
+  extends UGenSource.SingleOut {
+
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
     unwrap(Vector(in.expand, size.expand, lo.expand, hi.expand, lag.expand))
 
@@ -36,6 +38,6 @@ final case class AGCWindow(in: GE, size: GE, lo: GE, hi: GE, lag: GE = 0.96) ext
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
     val Vec(in, size, lo, hi, lag) = args
-    stream.AGCWindow(in = in.toDouble, size = size.toInt, lo = lo.toDouble, hi = hi.toDouble, lag = lag.toDouble)
+    stream.ARCWindow(in = in.toDouble, size = size.toInt, lo = lo.toDouble, hi = hi.toDouble, lag = lag.toDouble)
   }
 }
