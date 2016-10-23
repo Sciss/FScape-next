@@ -78,7 +78,7 @@ object PeakCentroid2D {
     private[this] var translateY  : Double = _
     private[this] var peak        : Double = _
 
-    protected def startNextWindow(inOff: Int): Int = {
+    protected def startNextWindow(inOff: Int): Long = {
       val oldSize = size
       if (bufIn1 != null && inOff < bufIn1.size) {
         width = math.max(1, bufIn1.buf(inOff))
@@ -100,12 +100,12 @@ object PeakCentroid2D {
       size
     }
 
-    protected def copyInputToWindow(inOff: Int, writeToWinOff: Int, chunk: Int): Unit =
-      Util.copy(bufIn0.buf, inOff, winBuf, writeToWinOff, chunk)
+    protected def copyInputToWindow(inOff: Int, writeToWinOff: Long, chunk: Int): Unit =
+      Util.copy(bufIn0.buf, inOff, winBuf, writeToWinOff.toInt, chunk)
 
     // private var COUNT = 0
 
-    protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit = {
+    protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit = {
       assert(readFromWinOff == 0 && chunk == 1)
       // Util.copy(winBuf, readFromWinOff, bufOut0.buf, outOff, chunk)
       bufOut0.buf(outOff) = translateX
@@ -119,8 +119,11 @@ object PeakCentroid2D {
     @inline
     private def pixel(x: Int, y: Int): Double = winBuf(y * width + x)
 
-    protected def processWindow(writeToWinOff: Int): Int = {
-      if (writeToWinOff < size) Util.clear(winBuf, writeToWinOff, size - writeToWinOff)
+    protected def processWindow(writeToWinOff: Long): Long = {
+      if (writeToWinOff < size) {
+        val writeOffI = writeToWinOff.toInt
+        Util.clear(winBuf, writeOffI, size - writeOffI)
+      }
 
       var i     = 0
       var max   = Double.NegativeInfinity

@@ -67,7 +67,7 @@ object ThresholdConvolution {
     private[this] var car : Double = _
     private[this] var cai : Double = _
 
-    protected def startNextWindow(inOff: Int): Int = {
+    protected def startNextWindow(inOff: Int): Long = {
       val oldSize = size
       if (bufIn1 != null && inOff < bufIn1.size) {
         size = ??? // math.max(1, bufIn1.buf(inOff))
@@ -84,15 +84,15 @@ object ThresholdConvolution {
       fullSize
     }
 
-    protected def copyInputToWindow(inOff: Int, writeToWinOff: Int, chunk: Int): Unit =
-      Util.copy(bufIn0.buf, inOff, winBuf, writeToWinOff, chunk)
+    protected def copyInputToWindow(inOff: Int, writeToWinOff: Long, chunk: Int): Unit =
+      Util.copy(bufIn0.buf, inOff, winBuf, writeToWinOff.toInt, chunk)
 
-    protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit =
-      Util.copy(winBuf, readFromWinOff, bufOut0.buf, outOff, chunk)
+    protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit =
+      Util.copy(winBuf, readFromWinOff.toInt, bufOut0.buf, outOff, chunk)
 
     //    private var DEBUG = true
 
-    protected def processWindow(writeToWinOff: Int): Int = {
+    protected def processWindow(writeToWinOff: Long): Long = {
       // println(s"crr = $crr, cri = $cri, clr = $clr, cli = $cli, ccr = $ccr, cci = $cci, car = $car, cai = $cai")
 
       // 'variant 1'
@@ -132,7 +132,10 @@ object ThresholdConvolution {
 
       val sz  = size
       val szC = sz << 1
-      if (writeToWinOff < szC) Util.clear(arr, writeToWinOff, szC - writeToWinOff)
+      if (writeToWinOff < szC) {
+        val writeOffI = writeToWinOff.toInt
+        Util.clear(arr, writeOffI, szC - writeOffI)
+      }
 
       var i = 2
       var j = szC - 2

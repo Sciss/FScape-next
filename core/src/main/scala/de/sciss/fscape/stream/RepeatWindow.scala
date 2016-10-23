@@ -26,7 +26,7 @@ object RepeatWindow {
     * @param size   the window size. this is clipped to be `&lt;= 1`
     * @param num    the number of times each window is repeated
     */
-  def apply(in: OutD, size: OutI, num: OutI)(implicit b: Builder): OutD = {
+  def apply(in: OutD, size: OutI, num: OutL)(implicit b: Builder): OutD = {
     val stage0  = new Stage
     val stage   = b.add(stage0)
     b.connect(in  , stage.in0)
@@ -37,13 +37,13 @@ object RepeatWindow {
 
   private final val name = "RepeatWindow"
 
-  private type Shape = FanInShape3[BufD, BufI, BufI, BufD]
+  private type Shape = FanInShape3[BufD, BufI, BufL, BufD]
 
   private final class Stage(implicit ctrl: Control) extends StageImpl[Shape](name) {
     val shape = new FanInShape3(
       in0 = InD (s"$name.in"   ),
       in1 = InI (s"$name.size" ),
-      in2 = InI (s"$name.clump"),
+      in2 = InL (s"$name.num"  ),
       out = OutD(s"$name.out"  )
     )
 
@@ -55,13 +55,13 @@ object RepeatWindow {
     extends NodeImpl(name, shape)
       with WindowedLogicImpl[Shape]
       with FilterLogicImpl[BufD, Shape]
-      with FilterIn3DImpl[BufD, BufI, BufI] {
+      with FilterIn3DImpl[BufD, BufI, BufL] {
 
     private[this] var winBuf : Array[Double] = _
-    private[this] var winSize: Int = _
-    private[this] var num    : Int = _
+    private[this] var winSize: Int  = _
+    private[this] var num    : Long = _
 
-    protected def startNextWindow(inOff: Int): Int = {
+    protected def startNextWindow(inOff: Int): Long = {
       val oldSize = winSize
       if (bufIn1 != null && inOff < bufIn1.size) {
         winSize = math.max(1, bufIn1.buf(inOff))
@@ -75,11 +75,11 @@ object RepeatWindow {
       winSize
     }
 
-    protected def copyInputToWindow(inOff: Int, writeToWinOff: Int, chunk: Int): Unit =
-      Util.copy(bufIn0.buf, inOff, winBuf, writeToWinOff, chunk)
+    protected def copyInputToWindow(inOff: Int, writeToWinOff: Long, chunk: Int): Unit =
+      Util.copy(bufIn0.buf, inOff, winBuf, writeToWinOff.toInt, chunk)
 
-    protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit = {
-      var inOff0  = readFromWinOff % winSize
+    protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit = {
+      var inOff0  = readFromWinOff.toInt % winSize
       var remain  = chunk
       var outOff0 = outOff
       while (remain > 0) {
@@ -91,6 +91,10 @@ object RepeatWindow {
       }
     }
 
-    protected def processWindow(writeToWinOff: Int): Int = winSize * (num - 1) + writeToWinOff
+    protected def processWindow(writeToWinOff: Long): Long = {
+      val n = winSize.toLong * (num - 1) + writeToWinOff
+      // if (n > 0x7FFFFFFF) sys.error(s"$this - int overflow - $n")
+      n
+    }
   }
 }

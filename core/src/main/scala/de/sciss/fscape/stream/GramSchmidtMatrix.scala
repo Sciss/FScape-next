@@ -57,7 +57,7 @@ object GramSchmidtMatrix {
     private[this] var winSize   : Int           = _
     private[this] var normalize : Boolean       = _
 
-    protected def startNextWindow(inOff: Int): Int = {
+    protected def startNextWindow(inOff: Int): Long = {
       val oldSize = winSize
       if (bufIn1 != null && inOff < bufIn1.size) {
         rows = math.max(1, bufIn1.buf(inOff))
@@ -76,11 +76,11 @@ object GramSchmidtMatrix {
       winSize
     }
 
-    protected def copyInputToWindow(inOff: Int, writeToWinOff: Int, chunk: Int): Unit =
-      Util.copy(bufIn0.buf, inOff, winBuf, writeToWinOff, chunk)
+    protected def copyInputToWindow(inOff: Int, writeToWinOff: Long, chunk: Int): Unit =
+      Util.copy(bufIn0.buf, inOff, winBuf, writeToWinOff.toInt, chunk)
 
-    protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit =
-      Util.copy(winBuf, readFromWinOff, bufOut0.buf, outOff, chunk)
+    protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit =
+      Util.copy(winBuf, readFromWinOff.toInt, bufOut0.buf, outOff, chunk)
 
     override protected def stopped(): Unit = {
       super.stopped()
@@ -110,10 +110,13 @@ object GramSchmidtMatrix {
 
     // cf. https://en.wikipedia.org/wiki/Gram%E2%80%93Schmidt_process#Numerical_stability
     // cf. https://gist.github.com/Sciss/e9ed09f4e1e06b4fe379b16378fb5bb5
-    protected def processWindow(writeToWinOff: Int): Int = {
+    protected def processWindow(writeToWinOff: Long): Long = {
       val a     = winBuf
       val size  = winSize
-      if (writeToWinOff < size) Util.clear(a, writeToWinOff, size - writeToWinOff)
+      if (writeToWinOff < size) {
+        val writeOffI = writeToWinOff.toInt
+        Util.clear(a, writeOffI, size - writeOffI)
+      }
 
       val _rows = rows
       val _cols = columns

@@ -94,14 +94,15 @@ trait FFT2LogicImpl extends Node {
     fft = null
   }
 
-  protected final def copyInputToWindow(inOff: Int, writeToWinOff: Int, chunk: Int): Unit =
-    Util.copy(bufIn0.buf, inOff, fftBuf, writeToWinOff, chunk)
+  protected final def copyInputToWindow(inOff: Int, writeToWinOff: Long, chunk: Int): Unit =
+    Util.copy(bufIn0.buf, inOff, fftBuf, writeToWinOff.toInt, chunk)
 
-  protected final def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit =
-    Util.copy(fftBuf, readFromWinOff, bufOut0.buf, outOff, chunk)
+  protected final def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit =
+    Util.copy(fftBuf, readFromWinOff.toInt, bufOut0.buf, outOff, chunk)
 
-  protected final def processWindow(writeToWinOff: Int): Int = {
-    Util.fill(fftBuf, writeToWinOff, fftBuf.length - writeToWinOff, 0.0)
+  protected final def processWindow(writeToWinOff: Long): Long = {
+    val writeOffI = writeToWinOff.toInt
+    Util.fill(fftBuf, writeOffI, fftBuf.length - writeOffI, 0.0)
     performFFT(fft, fftBuf)
     outSize(fftSize)
   }
@@ -119,7 +120,7 @@ abstract class FFT2HalfLogicImpl(name: String, shape: FanInShape4[BufD, BufI, Bu
   private[this] final var columns   : Int = _
   protected     final var mode      : Int = _   // 0 - packed, 1 - unpacked, 2 - discarded
 
-  protected final def startNextWindow(inOff: Int): Int = {
+  protected final def startNextWindow(inOff: Int): Long = {
     if (bufIn1 != null && inOff < bufIn1.size) {
       rows = math.max(1, bufIn1.buf(inOff))
     }
@@ -153,7 +154,7 @@ abstract class FFT2FullLogicImpl(name: String, shape: FanInShape3[BufD, BufI, Bu
   private[this] final var rows      : Int = _
   private[this] final var columns   : Int = _
 
-  protected final def startNextWindow(inOff: Int): Int = {
+  protected final def startNextWindow(inOff: Int): Long = {
     if (bufIn1 != null && inOff < bufIn1.size) {
       rows = math.max(1, bufIn1.buf(inOff))
     }

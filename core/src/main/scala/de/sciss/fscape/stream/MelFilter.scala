@@ -69,7 +69,7 @@ object MelFilter {
       magBuf = null
     }
 
-    protected def startNextWindow(inOff: Int): Int = {
+    protected def startNextWindow(inOff: Int): Long = {
       var updatedBins = false
       if (bufIn1 != null && inOff < bufIn1.size) {
         val _magSize = math.max(1, bufIn1.buf(inOff))
@@ -118,12 +118,12 @@ object MelFilter {
       magSize
     }
 
-    protected def copyInputToWindow(inOff: Int, writeToWinOff: Int, chunk: Int): Unit =
-      Util.copy(bufIn0.buf, inOff, magBuf, writeToWinOff, chunk)
+    protected def copyInputToWindow(inOff: Int, writeToWinOff: Long, chunk: Int): Unit =
+      Util.copy(bufIn0.buf, inOff, magBuf, writeToWinOff.toInt, chunk)
 
-    protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit = {
+    protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit = {
       // add `+ 1` because we skip that first value
-      Util.copy(melBuf, readFromWinOff + 1, bufOut0.buf, outOff, chunk)
+      Util.copy(melBuf, readFromWinOff.toInt + 1, bufOut0.buf, outOff, chunk)
     }
 
     private def melToFreq(mel : Double): Double =  700 * (math.pow(10, mel / 2595) - 1)
@@ -153,7 +153,7 @@ object MelFilter {
       _binIdx
     }
 
-    protected def processWindow(writeToWinOff: Int): Int = {
+    protected def processWindow(writeToWinOff: Long): Long = {
       val _bands  = bands
       val _melBuf = melBuf
       val _binIdx = binIndices

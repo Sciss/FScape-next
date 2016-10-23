@@ -43,8 +43,8 @@ object FileBuffer {
 
     def numFrames: Long = ch.size() / 8 // raf.length() / 8
 
-    private def ensureBuf(len: Int): Unit = {
-      val lim = math.min(len, 8192)
+    private def ensureBuf(len: Long): Unit = {
+      val lim = math.min(len, 8192).toInt
       if (db == null || db.capacity() < lim) {
         bb = ByteBuffer.allocate(lim << 3)
         db = bb.asDoubleBuffer()
@@ -66,9 +66,9 @@ object FileBuffer {
       }
     }
 
-    def writeValue(value: Double, len: Int): Unit = {
+    def writeValue(value: Double, len: Long): Unit = {
       ensureBuf(len)
-      val sz = math.min(len, db.capacity())
+      val sz = math.min(len, db.capacity()).toInt
       db.clear()
       var i = 0
       while (i < sz) {
@@ -77,7 +77,7 @@ object FileBuffer {
       }
       var len0 = len
       while (len0 > 0) {
-        val chunk = math.min(8192, len0)
+        val chunk = math.min(8192, len0).toInt
         bb.rewind().limit(chunk << 3)
         ch.write(bb)
         len0 -= chunk
@@ -120,5 +120,5 @@ trait FileBuffer {
   def read (buf: Array[Double], off: Int, len: Int): Unit
   def write(buf: Array[Double], off: Int, len: Int): Unit
 
-  def writeValue(value: Double, len: Int): Unit
+  def writeValue(value: Double, len: Long): Unit
 }

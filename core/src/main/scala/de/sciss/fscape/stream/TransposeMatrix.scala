@@ -57,7 +57,7 @@ object TransposeMatrix {
     private[this] var winSize: Int = _
     private[this] var bitSet : mutable.BitSet = _
 
-    protected def startNextWindow(inOff: Int): Int = {
+    protected def startNextWindow(inOff: Int): Long = {
       val oldSize = winSize
       if (bufIn1 != null && inOff < bufIn1.size) {
         rows = math.max(1, bufIn1.buf(inOff))
@@ -73,18 +73,21 @@ object TransposeMatrix {
       winSize
     }
 
-    protected def copyInputToWindow(inOff: Int, writeToWinOff: Int, chunk: Int): Unit =
-      Util.copy(bufIn0.buf, inOff, winBuf, writeToWinOff, chunk)
+    protected def copyInputToWindow(inOff: Int, writeToWinOff: Long, chunk: Int): Unit =
+      Util.copy(bufIn0.buf, inOff, winBuf, writeToWinOff.toInt, chunk)
 
-    protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit =
-      Util.copy(winBuf, readFromWinOff, bufOut0.buf, outOff, chunk)
+    protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit =
+      Util.copy(winBuf, readFromWinOff.toInt, bufOut0.buf, outOff, chunk)
 
-    protected def processWindow(writeToWinOff: Int): Int = {
+    protected def processWindow(writeToWinOff: Long): Long = {
       // cf. https://en.wikipedia.org/wiki/In-place_matrix_transposition
       // translated from http://www.geeksforgeeks.org/inplace-m-x-n-size-matrix-transpose/
       val a     = winBuf
       val size  = winSize
-      if (writeToWinOff < size) Util.clear(a, writeToWinOff, size - writeToWinOff)
+      if (writeToWinOff < size) {
+        val writeOffI = writeToWinOff.toInt
+        Util.clear(a, writeOffI, size - writeOffI)
+      }
       val sizeM = size - 1
       val b     = bitSet
       val r     = rows

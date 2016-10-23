@@ -57,7 +57,7 @@ object OnePoleWindow {
       winBuf = null
     }
 
-    protected def startNextWindow(inOff: Int): Int = {
+    protected def startNextWindow(inOff: Int): Long = {
       val oldSize = winSize
       if (bufIn1 != null && inOff < bufIn1.size) {
         winSize = math.max(1, bufIn1.buf(inOff))
@@ -71,13 +71,13 @@ object OnePoleWindow {
       winSize
     }
 
-    protected def copyInputToWindow(inOff: Int, writeToWinOff: Int, chunk: Int): Unit = {
+    protected def copyInputToWindow(inOff: Int, writeToWinOff: Long, chunk: Int): Unit = {
       val cy    = coef
       val cx    = 1.0 - math.abs(cy)
       val a     = bufIn0.buf
       val b     = winBuf
       var ai    = inOff
-      var bi    = writeToWinOff
+      var bi    = writeToWinOff.toInt
       val stop  = ai + chunk
       while (ai < stop) {
         val x0 = a(ai)
@@ -89,9 +89,9 @@ object OnePoleWindow {
       }
     }
 
-    protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit =
-      Util.copy(winBuf, readFromWinOff, bufOut0.buf, outOff, chunk)
+    protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit =
+      Util.copy(winBuf, readFromWinOff.toInt, bufOut0.buf, outOff, chunk)
 
-    protected def processWindow(writeToWinOff: Int): Int = writeToWinOff
+    protected def processWindow(writeToWinOff: Long): Long = writeToWinOff
   }
 }

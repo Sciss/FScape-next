@@ -65,7 +65,7 @@ object ReverseWindow {
     private[this] var winSize: Int = _
     private[this] var clump  : Int = _
 
-    protected def startNextWindow(inOff: Int): Int = {
+    protected def startNextWindow(inOff: Int): Long = {
       val oldSize = winSize
       if (bufIn1 != null && inOff < bufIn1.size) {
         winSize = math.max(1, bufIn1.buf(inOff))
@@ -79,17 +79,18 @@ object ReverseWindow {
       winSize
     }
 
-    protected def copyInputToWindow(inOff: Int, writeToWinOff: Int, chunk: Int): Unit =
-      Util.copy(bufIn0.buf, inOff, winBuf, writeToWinOff, chunk)
+    protected def copyInputToWindow(inOff: Int, writeToWinOff: Long, chunk: Int): Unit =
+      Util.copy(bufIn0.buf, inOff, winBuf, writeToWinOff.toInt, chunk)
 
-    protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit =
-      Util.copy(winBuf, readFromWinOff, bufOut0.buf, outOff, chunk)
+    protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit =
+      Util.copy(winBuf, readFromWinOff.toInt, bufOut0.buf, outOff, chunk)
 
-    protected def processWindow(writeToWinOff: Int): Int = {
+    protected def processWindow(writeToWinOff: Long): Long = {
+      val writeOffI = writeToWinOff.toInt
       var i   = 0
       val cl  = clump
       val cl2 = cl + cl
-      var j   = writeToWinOff - cl  // should use `winBuf.size` instead (flush)?
+      var j   = writeOffI - cl  // should use `winBuf.size` instead (flush)?
       val b   = winBuf
       while (i < j) {
         val k = i + cl

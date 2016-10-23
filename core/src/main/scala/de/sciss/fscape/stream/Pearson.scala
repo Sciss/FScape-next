@@ -59,7 +59,7 @@ object Pearson {
       yBuf = null
     }
 
-    protected def startNextWindow(inOff: Int): Int = {
+    protected def startNextWindow(inOff: Int): Long = {
       val oldSize = size
       if (bufIn2 != null && inOff < bufIn2.size) {
         size = math.max(1, bufIn2.buf(inOff))
@@ -71,36 +71,38 @@ object Pearson {
       size
     }
 
-    protected def copyInputToWindow(inOff: Int, writeToWinOff: Int, chunk: Int): Unit = {
-      Util.copy(bufIn0.buf, inOff, xBuf, writeToWinOff, chunk)
+    protected def copyInputToWindow(inOff: Int, writeToWinOff: Long, chunk: Int): Unit = {
+      val writeOffI = writeToWinOff.toInt
+      Util.copy(bufIn0.buf, inOff, xBuf, writeOffI, chunk)
       val _in1 = bufIn1
       if (_in1 != null) {
         val stop    = math.min(_in1.size, inOff + chunk)
         val chunk1  = math.max(0, stop - inOff)
         if (chunk1 > 0)
-          Util.copy(_in1.buf, inOff, yBuf, writeToWinOff, chunk1)
+          Util.copy(_in1.buf, inOff, yBuf, writeOffI, chunk1)
         val chunk2  = chunk - chunk1
         if (chunk2 > 0) {
-          Util.clear(yBuf, writeToWinOff + chunk1, chunk2)
+          Util.clear(yBuf, writeOffI + chunk1, chunk2)
         }
       } else {
-        Util.clear(yBuf, writeToWinOff, chunk)
+        Util.clear(yBuf, writeOffI, chunk)
       }
     }
 
-    protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit = {
+    protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit = {
       require(chunk <= 1 && readFromWinOff == 0)
       if (chunk == 1) {
         bufOut0.buf(outOff) = coef
       }
     }
 
-    protected def processWindow(len: Int): Int = {
+    protected def processWindow(lenL: Long): Long = {
       val _x  = xBuf
       val _y  = yBuf
       var xm  = 0.0
       var ym  = 0.0
       var i   = 0
+      val len = lenL.toInt
       while (i < len) {
         xm += _x(i)
         ym += _y(i)
@@ -121,7 +123,7 @@ object Pearson {
         sum += xd * yd
         i  += 1
       }
-      // now xsq = variacne(x), ysq = variance(y)
+      // now xsq = variance(x), ysq = variance(y)
       val denom = math.sqrt(xsq * ysq)
       coef = if (denom > 0) sum / denom else sum
       1

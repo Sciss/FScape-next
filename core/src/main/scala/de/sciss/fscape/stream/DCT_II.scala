@@ -64,7 +64,7 @@ object DCT_II {
       coefBuf = null
     }
 
-    protected def startNextWindow(inOff: Int): Int = {
+    protected def startNextWindow(inOff: Int): Long = {
       var updatedBuf = false
       if (bufIn1 != null && inOff < bufIn1.size) {
         val _size = math.max(1, bufIn1.buf(inOff))
@@ -94,13 +94,13 @@ object DCT_II {
       size
     }
 
-    protected def copyInputToWindow(inOff: Int, writeToWinOff: Int, chunk: Int): Unit =
-      Util.copy(bufIn0.buf, inOff, winBuf, writeToWinOff, chunk)
+    protected def copyInputToWindow(inOff: Int, writeToWinOff: Long, chunk: Int): Unit =
+      Util.copy(bufIn0.buf, inOff, winBuf, writeToWinOff.toInt, chunk)
 
-    protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit =
-      Util.copy(coefBuf, readFromWinOff, bufOut0.buf, outOff, chunk)
+    protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit =
+      Util.copy(coefBuf, readFromWinOff.toInt, bufOut0.buf, outOff, chunk)
 
-    protected def processWindow(writeToWinOff: Int): Int = {
+    protected def processWindow(writeToWinOff: Long): Long = {
       val _size       = size
       val _numCoeffs  = numCoeffs
       val _bufIn      = winBuf

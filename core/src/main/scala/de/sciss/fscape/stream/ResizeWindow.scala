@@ -73,7 +73,7 @@ object ResizeWindow {
     private[this] var stopPos     : Int = _
     private[this] var stopNeg     : Int = _
 
-    protected def startNextWindow(inOff: Int): Int = {
+    protected def startNextWindow(inOff: Int): Long = {
       val oldSize = winKeepSize
       if (bufIn1 != null && inOff < bufIn1.size) {
         winInSize = math.max(1, bufIn1.buf(inOff))
@@ -98,28 +98,30 @@ object ResizeWindow {
       winInSize
     }
 
-    protected def copyInputToWindow(inOff: Int, writeToWinOff: Int, chunk: Int): Unit = {
+    protected def copyInputToWindow(inOff: Int, writeToWinOff: Long, chunk: Int): Unit = {
+      val writeOffI = writeToWinOff.toInt
       // ex. startPos = 10, writeToWinOff = 4, chunk = 12, inOff = 7
       // then skipStart becomes 6, inOff1 becomes 13, winOff1 becomes 4 + 6 - 10 = 0, chunk1 becomes 6
       // and we effectively begin writing to the buffer begin having skipped 10 input frames.
-      val skipStart = math.max(0, startPos - writeToWinOff)
+      val skipStart = math.max(0, startPos - writeOffI)
       if (skipStart > chunk) return
       
       val inOff1    = inOff + skipStart
-      val winOff1   = writeToWinOff + skipStart - startPos
+      val winOff1   = writeOffI + skipStart - startPos
       val chunk1    = math.min(chunk - skipStart, winKeepSize - winOff1)
       if (chunk1 <= 0) return
 
       Util.copy(bufIn0.buf, inOff1, winBuf, winOff1, chunk1)
     }
 
-    protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit = {
+    protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit = {
+      val readOffI  = readFromWinOff.toInt
       val arr       = bufOut0.buf
-      val zeroStart = math.min(chunk, math.max(0, -startNeg - readFromWinOff))
+      val zeroStart = math.min(chunk, math.max(0, -startNeg - readOffI))
       if (zeroStart > 0) {
         Util.fill(arr, outOff, zeroStart, 0.0)
       }
-      val winOff1   = readFromWinOff + zeroStart + startNeg
+      val winOff1   = readOffI + zeroStart + startNeg
       val outOff1   = outOff + zeroStart
       val chunk1    = chunk - zeroStart
       val chunk2    = math.min(chunk1, math.max(0, winKeepSize - winOff1))
@@ -142,6 +144,6 @@ object ResizeWindow {
       // println(f"out: winOff $readFromWinOff%4d, outOff $outOff%4d, chunk $chunk%4d >> zeroStart $zeroStart%4d, zeroStop $zeroStop%4d")
     }
 
-    protected def processWindow(writeToWinOff: Int): Int = winOutSize
+    protected def processWindow(writeToWinOff: Long): Long = winOutSize
   }
 }

@@ -20,7 +20,7 @@ import de.sciss.fscape.stream.impl.{BlockingGraphStage, FilterIn5DImpl, FilterLo
 import de.sciss.numbers
 
 object Fourier {
-  def apply(in: OutD, size: OutI, padding: OutI, dir: OutD, mem: OutI)(implicit b: Builder): OutD = {
+  def apply(in: OutD, size: OutL, padding: OutL, dir: OutD, mem: OutI)(implicit b: Builder): OutD = {
     val stage0  = new Stage
     val stage   = b.add(stage0)
     b.connect(in     , stage.in0)
@@ -33,7 +33,7 @@ object Fourier {
 
   private final val name = "Fourier"
 
-  private type Shape = FanInShape5[BufD, BufI, BufI, BufD, BufI, BufD]
+  private type Shape = FanInShape5[BufD, BufL, BufL, BufD, BufI, BufD]
 
   private final class Stage(implicit protected val ctrl: Control)
     extends BlockingGraphStage[Shape](name) {
@@ -42,8 +42,8 @@ object Fourier {
 
     val shape = new FanInShape5(
       in0 = InD (s"$name.in"     ),
-      in1 = InI (s"$name.size"   ),
-      in2 = InI (s"$name.padding"),
+      in1 = InL (s"$name.size"   ),
+      in2 = InL (s"$name.padding"),
       in3 = InD (s"$name.dir"    ),
       in4 = InI (s"$name.mem"    ),
       out = OutD(s"$name.out"    )
@@ -69,17 +69,17 @@ object Fourier {
     extends NodeImpl(name, shape)
       with WindowedLogicImpl[Shape]
       with FilterLogicImpl[BufD, Shape]
-      with FilterIn5DImpl[BufD, BufI, BufI, BufD, BufI] {
+      with FilterIn5DImpl[BufD, BufL, BufL, BufD, BufI] {
 
     private[this] val fileBuffers   = new Array[FileBuffer](4)
     private[this] val tempFiles     = new Array[File      ](4)
 
-    private[this] var size      : Int = _   // already multiplied by `fftInSizeFactor`
-    private[this] var padding   : Int = _   // already multiplied by `fftInSizeFactor`
-    private[this] var memAmount : Int = _
-    private[this] var dir       : Double = _
-    private[this] var gain      : Double = _
-    private[this] var fftSize  = 0          // refreshed as `size + padding`
+    private[this] var size      : Long    = _   // already multiplied by `fftInSizeFactor`
+    private[this] var padding   : Long    = _   // already multiplied by `fftInSizeFactor`
+    private[this] var memAmount : Int     = _
+    private[this] var dir       : Double  = _
+    private[this] var gain      : Double  = _
+    private[this] var fftSize  = 0L          // refreshed as `size + padding`
 
     override protected def stopped(): Unit = {
       super.stopped()
@@ -107,7 +107,7 @@ object Fourier {
       }
     }
 
-    protected def startNextWindow(inOff: Int): Int = {
+    protected def startNextWindow(inOff: Int): Long = {
       import numbers.Implicits._
       val inF = fftInSizeFactor
       if (bufIn1 != null && inOff < bufIn1.size) {
@@ -128,7 +128,7 @@ object Fourier {
         gain  = if (dir > 0) 1.0 / fftSize else 1.0
       }
       if (bufIn4 != null && inOff < bufIn4.size) {
-        memAmount = math.min(fftSize, math.max(2, bufIn4.buf(inOff)).nextPowerOfTwo)
+        memAmount = math.min(fftSize, math.max(2, bufIn4.buf(inOff)).nextPowerOfTwo).toInt
       }
 
       // create new buffers
@@ -143,12 +143,12 @@ object Fourier {
       size
     }
 
-    protected def copyInputToWindow(inOff: Int, writeToWinOff: Int, chunk: Int): Unit = {
+    protected def copyInputToWindow(inOff: Int, writeToWinOff: Long, chunk: Int): Unit = {
       // Write first half of input to 0, second half to 1
       var inOff0    = inOff
       var chunk0    = chunk
       if (writeToWinOff < fftSize) {
-        val chunk1 = math.min(chunk0, fftSize - writeToWinOff)
+        val chunk1 = math.min(chunk0, fftSize - writeToWinOff).toInt
         fileBuffers(0).write(bufIn0.buf, inOff0, chunk1)
         inOff0 += chunk1
         chunk0 -= chunk1
@@ -158,12 +158,12 @@ object Fourier {
       }
     }
 
-    protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit = {
+    protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit = {
       // Read first half of output from 2, second half from 3
       var outOff0   = outOff
       var chunk0    = chunk
       if (readFromWinOff < fftSize) {
-        val chunk1 = math.min(chunk0, fftSize - readFromWinOff)
+        val chunk1 = math.min(chunk0, fftSize - readFromWinOff).toInt
         fileBuffers(2).read(bufOut0.buf, outOff0, chunk1)
         outOff0 += chunk1
         chunk0  -= chunk1
@@ -176,7 +176,7 @@ object Fourier {
       }
     }
 
-    protected def processWindow(writeToWinOff: Int): Int = {
+    protected def processWindow(writeToWinOff: Long): Long = {
       var zero = (fftSize << 1) - writeToWinOff
       if (writeToWinOff < fftSize) {
         val chunk1 = math.min(zero, fftSize - writeToWinOff)

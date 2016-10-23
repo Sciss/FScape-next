@@ -40,7 +40,7 @@ trait RunningWindowValueImpl[S <: Shape]
   private[this] var winSize: Int = _
   private[this] var winBuf : Array[Double] = _
 
-  protected final def startNextWindow(inOff: Int): Int = {
+  protected final def startNextWindow(inOff: Int): Long = {
     val oldSize = winSize
     if (bufIn1 != null && inOff < bufIn1.size) {
       winSize = math.max(1, bufIn1.buf(inOff))
@@ -54,16 +54,16 @@ trait RunningWindowValueImpl[S <: Shape]
     winSize
   }
 
-  protected def copyWindowToOutput(readFromWinOff: Int, outOff: Int, chunk: Int): Unit =
-    Util.copy(winBuf, readFromWinOff, bufOut0.buf, outOff, chunk)
+  protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit =
+    Util.copy(winBuf, readFromWinOff.toInt, bufOut0.buf, outOff, chunk)
 
-  protected final def processWindow(writeToWinOff: Int): Int = writeToWinOff
+  protected final def processWindow(writeToWinOff: Long): Long = writeToWinOff
 
   // XXX TODO --- this is very similar to processChunk in RunningValueImpl; perhaps DRY?
-  protected final def copyInputToWindow(inOff: Int, writeToWinOff: Int, chunk: Int): Unit = {
+  protected final def copyInputToWindow(inOff: Int, writeToWinOff: Long, chunk: Int): Unit = {
     // Util.copy(bufIn0.buf, inOff, winBuf, writeToWinOff, chunk)
     var inOffI  = inOff
-    var outOffI = writeToWinOff
+    var outOffI = writeToWinOff.toInt
     val stop0   = inOffI + chunk
     val b0      = bufIn0.buf
     val b2      = if (bufIn2 == null) null else bufIn2.buf

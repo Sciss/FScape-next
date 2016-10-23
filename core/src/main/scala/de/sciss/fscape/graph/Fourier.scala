@@ -40,6 +40,6 @@ final case class Fourier(in: GE, size: GE, padding: GE = 0, dir: GE = 1.0, mem: 
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
     val Vec(in, size, padding, dir, mem) = args
-    stream.Fourier(in = in.toDouble, size = size.toInt, padding = padding.toInt, dir = dir.toDouble, mem = mem.toInt)
+    stream.Fourier(in = in.toDouble, size = size.toLong, padding = padding.toLong, dir = dir.toDouble, mem = mem.toInt)
   }
 }
