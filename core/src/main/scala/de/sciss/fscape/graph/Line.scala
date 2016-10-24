@@ -21,6 +21,11 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 /** A line segment generating UGen. The UGen terminates
   * when the segment has reached the end.
   *
+  * A line can be used to count integers (in the lower
+  * ranges, where floating point noise is not yet relevant),
+  * e.g. `Line(a, b, b - a + 1)` counts from `a` to
+  * `b` (inclusive).
+  *
   * @param start  starting value
   * @param end    ending value
   * @param len    length of the segment in sample frames

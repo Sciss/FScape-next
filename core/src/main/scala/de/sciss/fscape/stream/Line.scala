@@ -68,8 +68,8 @@ object Line {
 //          println("init")
           start   = bufIn0.buf(0)
           end     = bufIn1.buf(0)
-          len     = math.max(0L, bufIn2.buf(0))
-          slope   = (end - start) / len
+          len     = math.max(1L, bufIn2.buf(0))
+          slope   = (end - start) / (len - 1)
           init    = false
         }
       }
