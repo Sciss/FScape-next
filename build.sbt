@@ -2,7 +2,7 @@ lazy val baseName   = "FScape"
 lazy val baseNameL  = baseName.toLowerCase
 lazy val githubRepo = "FScape-next"
 
-lazy val projectVersion = "2.3.0"
+lazy val projectVersion = "2.4.0-SNAPSHOT"
 lazy val mimaVersion    = "2.2.0"
 
 lazy val baseDescription = "An audio rendering library"
@@ -35,7 +35,7 @@ lazy val akkaVersion           = "2.4.8" // "2.4.10"
 
 // ---- lucre dependencies ----
 
-lazy val soundProcessesVersion = "3.8.1"
+lazy val soundProcessesVersion = "3.9.0-SNAPSHOT"
 
 // ---- projects ----
 
