@@ -849,8 +849,8 @@ object AffineTransform2D {
 
           val w1 = _widthIn  - 1
           val h1 = _heightIn - 1
-          val x1 = IntFunctions.wrap(xTi, 0, w1)
-          val y1 = IntFunctions.wrap(yTi, 0, h1)
+          val x1 = if (_wrap) IntFunctions.wrap(xTi, 0, w1) else IntFunctions.clip(xTi, 0, w1)
+          val y1 = if (_wrap) IntFunctions.wrap(yTi, 0, h1) else IntFunctions.clip(yTi, 0, h1)
 
           val value = if (xq < 1.0e-20 && yq < 1.0e-20) {
             // short cut
