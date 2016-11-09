@@ -103,7 +103,7 @@ object TransposeMatrix {
           // Input matrix [r x c]
           // Output matrix 1
           // i_new = (i*r)%(N-1)
-          val next = (i * r) % sizeM
+          val next = ((i.toLong * r) % sizeM).toInt
           val t1   = a(next)
           a(next)  = t
           t        = t1
