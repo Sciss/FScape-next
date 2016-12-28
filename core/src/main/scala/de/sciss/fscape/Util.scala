@@ -14,7 +14,7 @@
 package de.sciss.fscape
 
 object Util {
-  final val Pi2 = math.Pi * 2
+  final val Pi2: Double = math.Pi * 2
 
   // ---- multi-channel ----
 

@@ -15,7 +15,7 @@ package de.sciss.fscape
 package stream
 package impl
 
-import akka.stream.FanInShape2
+import akka.stream.{FanInShape2, Inlet, Outlet}
 import akka.stream.stage.GraphStageLogic
 
 /** Building block for `FanInShape2` type graph stage logic,
@@ -31,9 +31,9 @@ trait In2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, Out >: Null <: Buf
   protected final var bufIn1 : In1 = _
   protected final var bufOut0: Out = _
 
-  protected final val in0  = shape.in0
-  protected final val in1  = shape.in1
-  protected final val out0 = shape.out
+  protected final val in0 : Inlet[In0]  = shape.in0
+  protected final val in1 : Inlet[In1]  = shape.in1
+  protected final val out0: Outlet[Out] = shape.out
 
   override def preStart(): Unit = {
     pull(in0)

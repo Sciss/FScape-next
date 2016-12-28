@@ -104,7 +104,7 @@ object BinaryOp {
     final val id = 0
     override val name = "+"
 
-    def apply(a: Double, b: Double) = rd.+(a, b)
+    def apply(a: Double, b: Double): Double = rd.+(a, b)
 
     override def apply(a: Constant, b: Constant): Constant = (a, b) match {
       case (ConstantD(_), _)  => super.apply(a, b)
@@ -123,7 +123,7 @@ object BinaryOp {
     final val id = 1
     override val name = "-"
 
-    def apply(a: Double, b: Double) = rd.-(a, b)
+    def apply(a: Double, b: Double): Double = rd.-(a, b)
 
     override def apply(a: Constant, b: Constant): Constant = (a, b) match {
       case (ConstantD(_), _)  => super.apply(a, b)
@@ -153,7 +153,7 @@ object BinaryOp {
       case _                 => super.make(a, b)
     }
 
-    def apply(a: Double, b: Double) = rd.*(a, b)
+    def apply(a: Double, b: Double): Double = rd.*(a, b)
 
     override def apply(a: Constant, b: Constant): Constant = (a, b) match {
       case (ConstantD(_), _)  => super.apply(a, b)
@@ -173,7 +173,7 @@ object BinaryOp {
     final val id = 4
     override val name = "/"
 
-    def apply(a: Double, b: Double) = rd./(a, b)
+    def apply(a: Double, b: Double): Double = rd./(a, b)
 
     override def apply(a: Constant, b: Constant): Constant = (a, b) match {
       case (ConstantD(_), _)  => super.apply(a, b)
@@ -395,7 +395,7 @@ object BinaryOp {
   // case object Gcd            extends Op( 18 )
   case object RoundTo extends Op {
     final val id = 19
-    def apply(a: Double, b: Double) = rd.roundTo(a, b)
+    def apply(a: Double, b: Double): Double = rd.roundTo(a, b)
   }
 
   case object RoundUpTo extends Op {
@@ -450,7 +450,7 @@ object BinaryOp {
 
   case object Ring3 extends Op {
     final val id = 32
-    def apply(a: Double, b: Double) = rd2.ring3(a, b)
+    def apply(a: Double, b: Double): Double = rd2.ring3(a, b)
   }
 
   case object Ring4 extends Op {

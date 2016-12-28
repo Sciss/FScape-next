@@ -165,8 +165,8 @@ sealed trait UGenIn extends UGenInLike {
 
 package graph {
 
-  import akka.stream.{Outlet, scaladsl}
-  import de.sciss.fscape.stream.{BufD, BufI, BufL, BufLike, OutD, OutI, OutL, StreamIn}
+  import akka.stream.scaladsl
+  import de.sciss.fscape.stream.{BufD, BufI, BufL, OutD, OutI, OutL, StreamIn}
 
   object UGenInGroup {
     private final val emptyVal = Apply(Vector.empty)
@@ -180,7 +180,7 @@ package graph {
       private[fscape] def unwrap(i: Int): UGenInLike = outputs(i % outputs.size)
       private[fscape] def unbubble: UGenInLike = this
 
-      override def toString = outputs.mkString("UGenInGroup(", ",", ")")
+      override def toString: String = outputs.mkString("UGenInGroup(", ",", ")")
     }
   }
   sealed trait UGenInGroup extends UGenInLike {
@@ -219,7 +219,7 @@ package graph {
     def intValue   : Int    = value
     def longValue  : Long   = value.toLong
 
-    override def toString = value.toString
+    override def toString: String = value.toString
   }
   object ConstantD {
     final val C0  = new ConstantD(0)
@@ -241,7 +241,7 @@ package graph {
       r
     }
 
-    override def toString = value.toString
+    override def toString: String = value.toString
   }
   object ConstantL {
     final val C0  = new ConstantI(0)
@@ -257,7 +257,7 @@ package graph {
     }
     def longValue  : Long = value
 
-    override def toString = value.toString
+    override def toString: String = value.toString
   }
 
   /** A UGenOutProxy refers to a particular output of a multi-channel UGen.
@@ -267,7 +267,7 @@ package graph {
   final case class UGenOutProxy(ugen: UGen.MultiOut, outputIndex: Int)
     extends UGenIn with UGenProxy {
 
-    override def toString =
+    override def toString: String =
       if (ugen.numOutputs == 1) ugen.toString else s"$ugen.\\($outputIndex)"
   }
 }

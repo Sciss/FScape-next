@@ -108,7 +108,7 @@ final class BufI private(val buf: Array[Int], var size: Int, borrowed: Boolean)
     if (newCount == 0) ctrl.returnBufI(this)
   }
 
-  override def toString =
+  override def toString: String =
     if (size == 1) buf(0).toString else s"BufI(size = $size)@${hashCode.toHexString}"
 }
 
@@ -146,6 +146,6 @@ final class BufL private(val buf: Array[Long], var size: Int, borrowed: Boolean)
     if (newCount == 0) ctrl.returnBufL(this)
   }
 
-  override def toString =
+  override def toString: String =
     if (size == 1) buf(0).toString else s"BufL(size = $size)@${hashCode.toHexString}"
 }

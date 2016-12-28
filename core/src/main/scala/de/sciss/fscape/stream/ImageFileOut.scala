@@ -38,7 +38,7 @@ object ImageFileOut {
   private final class Stage(f: File, spec: Spec)(implicit protected val ctrl: Control)
     extends BlockingGraphStage[Shape](s"$name(${f.name})") {
 
-    override val shape = UniformSinkShape[BufD](Vector.tabulate(spec.numChannels)(ch => InD(s"$name.in$ch")))
+    val shape: Shape = UniformSinkShape[BufD](Vector.tabulate(spec.numChannels)(ch => InD(s"$name.in$ch")))
 
     def createLogic(attr: Attributes) = new Logic(shape, f, spec)
   }

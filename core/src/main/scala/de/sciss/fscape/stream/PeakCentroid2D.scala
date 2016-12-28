@@ -37,7 +37,7 @@ object PeakCentroid2D {
   private type Shape = In6Out3Shape[BufD, BufI, BufI, BufD, BufD, BufI, BufD, BufD, BufD]
 
   private final class Stage(implicit ctrl: Control) extends StageImpl[Shape](name) {
-    val shape = new In6Out3Shape(
+    val shape = In6Out3Shape(
       in0  = InD (s"$name.in"        ),
       in1  = InI (s"$name.width"     ),
       in2  = InI (s"$name.height"    ),

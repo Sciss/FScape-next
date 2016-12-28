@@ -21,5 +21,5 @@ final case class GESeq(elems: Vec[GE]) extends GE {
   private[fscape] def expand(implicit b: UGenGraph.Builder): UGenInLike =
     UGenInGroup(elems.map(_.expand))
 
-  override def toString = elems.mkString("GESeq(", ",", ")")
+  override def toString: String = elems.mkString("GESeq(", ",", ")")
 }

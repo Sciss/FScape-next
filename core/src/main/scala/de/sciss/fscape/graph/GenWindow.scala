@@ -34,8 +34,8 @@ object GenWindow {
       case Gauss    .id => Gauss
     }
 
-    final val MinId = Hamming.id
-    final val MaxId = Gauss  .id
+    final val MinId: Int = Hamming.id
+    final val MaxId: Int = Gauss  .id
 
     implicit def toGE(in: Shape): GE = in.id
   }

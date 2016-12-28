@@ -29,7 +29,7 @@ trait PollImpl[In0 >: Null <: BufLike] extends Sink2Impl[In0, BufI] {
 
   private[this] var high0 = false
 
-  protected final def shouldComplete = isClosed(shape.in0) && !isAvailable(shape.in0)
+  protected final def shouldComplete: Boolean = isClosed(shape.in0) && !isAvailable(shape.in0)
 
   final def process(): Unit = {
     logStream(s"process() $this")

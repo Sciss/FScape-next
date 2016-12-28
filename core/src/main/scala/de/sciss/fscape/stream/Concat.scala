@@ -58,9 +58,9 @@ object Concat {
     protected var bufIn0 : BufD = _
     protected var bufOut0: BufD = _
 
-    protected val in0  = shape.in0
-    protected val in1  = shape.in1
-    protected val out0 = shape.out
+    protected val in0 : InD  = shape.in0
+    protected val in1 : InD  = shape.in1
+    protected val out0: OutD = shape.out
 
     private[this] var _canRead = false
 

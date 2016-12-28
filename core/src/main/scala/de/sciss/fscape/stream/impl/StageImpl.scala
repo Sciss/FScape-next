@@ -23,7 +23,7 @@ abstract class StageImpl[S <: Shape](final protected val name: String)
 
   override def toString = s"$name@${hashCode.toHexString}"
 
-  override def initialAttributes = Attributes.name(toString)
+  override def initialAttributes: Attributes = Attributes.name(toString)
 
   /** We ensure that we use the more specific implementation class,
     * because it registers with the control. */

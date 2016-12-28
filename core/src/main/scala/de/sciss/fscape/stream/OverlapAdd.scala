@@ -38,9 +38,9 @@ object OverlapAdd {
   }
 
   private final class Window(val buf: Array[Double]) {
-    var offIn   = 0
-    var offOut  = 0
-    var size    = buf.length
+    var offIn : Int  = 0
+    var offOut: Int  = 0
+    var size  : Int  = buf.length
 
     def inRemain    : Int = size  - offIn
     def availableOut: Int = offIn - offOut

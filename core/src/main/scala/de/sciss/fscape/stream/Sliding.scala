@@ -45,9 +45,9 @@ object Sliding {
   private final class Window(val buf: DoubleBuffer, val size0: Int, f: File, raf: RandomAccessFile) {
     def this(arr: Array[Double]) = this(DoubleBuffer.wrap(arr), arr.length, null, null)
 
-    var offIn   = 0
-    var offOut  = 0
-    var size    = size0
+    var offIn : Int  = 0
+    var offOut: Int  = 0
+    var size  : Int  = size0
 
     def inRemain    : Int = size  - offIn
     def availableOut: Int = offIn - offOut

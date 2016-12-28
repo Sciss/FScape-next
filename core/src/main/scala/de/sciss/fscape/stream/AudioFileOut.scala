@@ -37,14 +37,12 @@ object AudioFileOut {
 
   private final val name = "AudioFileOut"
 
-//  private type Shape = UniformSinkShape[BufD]
   private type Shape = UniformFanInShape[BufD, BufL]
 
   private final class Stage(f: File, spec: io.AudioFileSpec)(implicit protected val ctrl: Control)
     extends BlockingGraphStage[Shape](s"$name(${f.name})") {
 
-//    override val shape = UniformSinkShape[BufD](Vector.tabulate(spec.numChannels)(ch => InD(s"$name.in$ch")))
-    override val shape = UniformFanInShape[BufD, BufL](
+    val shape: Shape = UniformFanInShape[BufD, BufL](
       OutL(s"$name.out"),
       Vector.tabulate(spec.numChannels)(ch => InD(s"$name.in$ch")): _*
     )

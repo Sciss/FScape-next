@@ -15,7 +15,7 @@ package de.sciss.fscape
 package stream
 package impl
 
-import akka.stream.FlowShape
+import akka.stream.{FlowShape, Inlet, Outlet}
 import akka.stream.stage.GraphStageLogic
 
 /** Building block for `FanInShape2` type graph stage logic. */
@@ -28,8 +28,8 @@ trait FilterIn1Impl[In >: Null <: BufLike, Out >: Null <: BufLike]
   protected final var bufIn0 : In  = _
   protected final var bufOut0: Out = _
 
-  protected final val in0  = shape.in
-  protected final val out0 = shape.out
+  protected final val in0  : Inlet [In]  = shape.in
+  protected final val out0 : Outlet[Out] = shape.out
 
   private[this] final var _canRead = false
   private[this] final var _inValid = false

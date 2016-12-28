@@ -15,7 +15,7 @@ package de.sciss.fscape
 package stream
 package impl
 
-import akka.stream.{Shape, SinkShape}
+import akka.stream.{Inlet, Shape, SinkShape}
 import akka.stream.stage.GraphStageLogic
 
 trait SinkImpl[S <: Shape]
@@ -46,7 +46,7 @@ trait Sink1Impl[In0 >: Null <: BufLike]
 
   protected final var bufIn0: In0 = _
 
-  protected final val in0  = shape.in
+  protected final val in0: Inlet[In0] = shape.in
 
   private[this] final var _canRead = false
   private[this] final var _inValid = false
@@ -98,8 +98,8 @@ trait Sink2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike]
   protected final var bufIn0: In0 = _
   protected final var bufIn1: In1 = _
 
-  protected final val in0  = shape.in0
-  protected final val in1  = shape.in1
+  protected final val in0: Inlet[In0]  = shape.in0
+  protected final val in1: Inlet[In1]  = shape.in1
 
   private[this] final var _canRead = false
   private[this] final var _inValid = false

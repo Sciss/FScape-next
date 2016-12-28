@@ -43,8 +43,8 @@ object UGenGraph {
 
   // ---- IndexedUGen ----
   private[fscape] final class IndexedUGenBuilder(val ugen: UGen /* , var index: Int */, var effective: Boolean) {
-    var children      = Array.fill(ugen.numOutputs)(List.empty[IndexedUGenBuilder]) // mutable.Buffer.empty[IndexedUGenBuilder]
-    var inputIndices  = List.empty[UGenInIndex]
+    var children    : Array[List[IndexedUGenBuilder]]   = Array.fill(ugen.numOutputs)(Nil)
+    var inputIndices: List[UGenInIndex]                 = Nil
 
     override def toString = s"Idx($ugen, $effective) : richInputs = $inputIndices"
   }
@@ -56,7 +56,7 @@ object UGenGraph {
   private[fscape] final class ConstantIndex(val peer: Constant) extends UGenInIndex {
     def makeEffective() = 0
 
-    override def toString = peer.toString
+    override def toString: String = peer.toString
   }
 
   private[fscape] final class UGenProxyIndex(val iu: IndexedUGenBuilder, val outIdx: Int) extends UGenInIndex {

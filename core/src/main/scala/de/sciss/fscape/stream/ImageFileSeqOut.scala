@@ -40,7 +40,7 @@ object ImageFileSeqOut {
   private final class Stage(template: File, spec: Spec)(implicit protected val ctrl: Control)
     extends BlockingGraphStage[Shape](s"$name(${template.name})") {
 
-    override val shape = In1UniformSinkShape[BufI, BufD](
+    val shape: Shape = In1UniformSinkShape[BufI, BufD](
       InI(s"$name.indices"),
       Vector.tabulate(spec.numChannels)(ch => InD(s"$name.in$ch"))
     )

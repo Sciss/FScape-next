@@ -106,11 +106,11 @@ object ZipWindowN {
       var remain    = 0
       var sent      = true
 
-      override def toString = {
-        val sentS   = s"sent = ${if (sent) "T" else "f"}"
-        val closedS = s"closed = ${if (isClosed(let)) "T" else "f"}"
-        val availS  = s"avail = ${if (isAvailable(let)) "T" else "f"}"
-        val flags = s"$sentS, $closedS, $availS"
+      override def toString: String = {
+        val sentS   = s"sent = ${  if (sent)             "T" else "f"}"
+        val closedS = s"closed = ${if (isClosed(let))    "T" else "f"}"
+        val availS  = s"avail = ${ if (isAvailable(let)) "T" else "f"}"
+        val flags   = s"$sentS, $closedS, $availS"
         f"Input($buf, off = $off%05d, remain = $remain%05d, $flags)"
       }
 

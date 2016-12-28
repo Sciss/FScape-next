@@ -214,7 +214,7 @@ object Control {
     }
 
     private final class ActorImpl extends Actor {
-      def receive = {
+      def receive: Receive = {
         case SetProgress(key, frac) =>
           val pf    = _progParts
           val clip  = if (frac < 0.0) 0.0 else if (frac > 1.0) 1.0 else frac
@@ -337,7 +337,7 @@ object Control {
     }
 
     // XXX TODO --- should be in the actor body
-    final def stats = {
+    final def stats: Stats = {
       val res = Stats(numBufD = queueD.size(), numBufI = queueI.size(), numBufL = queueL.size(),
         numNodes = nodes.size)
       println("--- NODES: ---")

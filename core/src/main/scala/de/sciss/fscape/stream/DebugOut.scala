@@ -32,7 +32,7 @@ object DebugOut {
   private final class Stage(implicit protected val ctrl: Control)
     extends BlockingGraphStage[Shape](s"$name") {
 
-    override val shape = SinkShape[BufD](InD(s"$name.in"))
+    val shape: Shape = SinkShape[BufD](InD(s"$name.in"))
 
     def createLogic(attr: Attributes) = new Logic(shape)
   }

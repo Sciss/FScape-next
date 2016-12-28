@@ -2,7 +2,7 @@ lazy val baseName   = "FScape"
 lazy val baseNameL  = baseName.toLowerCase
 lazy val githubRepo = "FScape-next"
 
-lazy val projectVersion = "2.5.0"
+lazy val projectVersion = "2.5.1-SNAPSHOT"
 lazy val mimaVersion    = "2.5.0"
 
 lazy val baseDescription = "An audio rendering library"
@@ -26,16 +26,16 @@ lazy val audioFileVersion      = "1.4.5"
 lazy val fileUtilVersion       = "1.1.2"
 lazy val swingPlusVersion      = "0.2.1"
 lazy val optionalVersion       = "1.0.0"
-lazy val scalaChartVersion     = "0.5.0"
+lazy val scalaChartVersion     = "0.5.1"
 
 // WARNING: it seems there might be a bug in Akka 2.4.10 where
 // a node that first pulls inputs and then calls `completeStage`
 // within the same handler run causes a problem with shutdown.
-lazy val akkaVersion           = "2.4.8" // "2.4.10"
+lazy val akkaVersion           = "2.4.16" // "2.4.10"
 
 // ---- lucre dependencies ----
 
-lazy val soundProcessesVersion = "3.10.0"
+lazy val soundProcessesVersion = "3.10.1"
 
 // ---- projects ----
 

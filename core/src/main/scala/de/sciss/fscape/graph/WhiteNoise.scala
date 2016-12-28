@@ -15,7 +15,6 @@ package de.sciss.fscape
 package graph
 
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
-import de.sciss.fscape.{GE, UGen, UGenGraph, UGenIn, UGenInLike, UGenSource, stream}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
