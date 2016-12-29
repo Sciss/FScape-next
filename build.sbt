@@ -12,7 +12,7 @@ lazy val commonSettings = Seq(
   description        := baseDescription,
   version            := projectVersion,
   scalaVersion       := "2.11.8",
-  crossScalaVersions := Seq("2.11.8" /* , "2.10.6" */),  // Akka does not support Scala 2.10
+  crossScalaVersions := Seq("2.12.1", "2.11.8" /* , "2.10.6" */),  // Akka does not support Scala 2.10
   licenses           := Seq("GPL v2+" -> url("http://www.gnu.org/licenses/gpl-2.0.txt")),
   homepage           := Some(url(s"https://github.com/Sciss/$githubRepo")),
   scalacOptions     ++= Seq("-deprecation", "-unchecked", "-feature", "-encoding", "utf8", "-Xfuture", "-Xlint")
@@ -20,11 +20,11 @@ lazy val commonSettings = Seq(
 
 // ---- core dependencies ----
 
-lazy val dspVersion            = "1.2.2"
+lazy val dspVersion            = "1.2.3"
 lazy val numbersVersion        = "0.1.3"
-lazy val audioFileVersion      = "1.4.5"
+lazy val audioFileVersion      = "1.4.6"
 lazy val fileUtilVersion       = "1.1.2"
-lazy val swingPlusVersion      = "0.2.1"
+lazy val swingPlusVersion      = "0.2.2"
 lazy val optionalVersion       = "1.0.0"
 lazy val scalaChartVersion     = "0.5.1"
 
@@ -35,7 +35,7 @@ lazy val akkaVersion           = "2.4.16" // "2.4.10"
 
 // ---- lucre dependencies ----
 
-lazy val soundProcessesVersion = "3.10.1"
+lazy val soundProcessesVersion = "3.10.2"
 
 // ---- projects ----
 
