@@ -15,9 +15,10 @@ package de.sciss.fscape
 package lucre
 package impl
 
-import de.sciss.fscape.lucre.FScape.Rendering
 import de.sciss.fscape.lucre.FScape.Rendering.State
+import de.sciss.fscape.lucre.FScape.{Output, Rendering}
 import de.sciss.fscape.stream.Control
+import de.sciss.lucre.data.SkipList
 import de.sciss.lucre.event.Targets
 import de.sciss.lucre.event.impl.ObservableImpl
 import de.sciss.lucre.stm.impl.ObjSerializer
@@ -33,7 +34,8 @@ import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
 object FScapeImpl {
-  private final val SER_VERSION = 0x4673  // "Fs"
+  private final val SER_VERSION_OLD = 0x4673  // "Fs"
+  private final val SER_VERSION     = 0x4674
 
   def apply[S <: Sys[S]](implicit tx: S#Tx): FScape[S] = new New[S]
 
@@ -50,13 +52,20 @@ object FScapeImpl {
 
   def readIdentifiedObj[S <: Sys[S]](in: DataInput, access: S#Acc)(implicit tx: S#Tx): FScape[S] = {
     val targets = Targets.read(in, access)
-    new Read(in, access, targets)
+    val serVer  = in.readShort()
+    if (serVer == SER_VERSION) {
+      new Read(in, access, targets)
+    } else if (serVer == SER_VERSION_OLD) {
+      new ReadOLD(in, access, targets)
+    } else {
+      sys.error(s"Incompatible serialized (found $serVer, required $SER_VERSION)")
+    }
   }
 
   // ---- Code ----
 
   implicit object CodeWrapper extends CodeImpl.Wrapper[Unit, Graph, FScape.Code] {
-    def id      = FScape.Code.id
+    def id: Int = FScape.Code.id
     def binding = None
 
     def wrap(in: Unit)(fun: => Any): Graph = Graph(fun)
@@ -129,16 +138,33 @@ object FScapeImpl {
     }
   }
 
-  private sealed trait Impl[S <: Sys[S]]
-    extends FScape[S] with evt.impl.SingleNode[S, FScape.Update[S]] {
-    proc =>
+  private sealed trait Base[S <: Sys[S]] {
+    _: FScape[S] =>
 
     final def tpe: Obj.Type = FScape
 
+    override def toString: String = s"FScape$id"
+
+    // --- rendering ---
+
+    final def run(config: Control.Config)(implicit tx: S#Tx, cursor: stm.Cursor[S],
+                                          workspace: WorkspaceHandle[S]): Rendering[S] = {
+      val g = graph().value
+      val r = new RenderingImpl[S](config)
+      r.start(this, g)
+      r
+    }
+  }
+
+  private sealed trait ImplOLD[S <: Sys[S]]
+    extends FScape[S] with Base[S] with evt.impl.SingleNode[S, FScape.Update[S]] {
+    proc =>
+
     def copy[Out <: Sys[Out]]()(implicit tx: S#Tx, txOut: Out#Tx, context: Copy[S, Out]): Elem[Out] =
       new Impl[Out] { out =>
-        protected val targets   = Targets[Out]
-        val graph               = context(proc.graph)
+        protected val targets: Targets[Out] = Targets[Out]
+        val graph     : GraphObj.Var[Out]                       = context(proc.graph)
+        val outputsMap: SkipList.Map[Out, String, Output[Out]]  = SkipList.Map.empty
         connect()
       }
 
@@ -176,7 +202,7 @@ object FScapeImpl {
     }
 
     final protected def writeData(out: DataOutput): Unit = {
-      out.writeShort(SER_VERSION)
+      out.writeShort(SER_VERSION_OLD)
       graph.write(out)
     }
 
@@ -185,34 +211,158 @@ object FScapeImpl {
       graph.dispose()
     }
 
-    override def toString: String = s"FScape$id"
+    // dummy
+    object outputs extends Outputs[S] {
+      def get(key: String)(implicit tx: S#Tx): Option[Output[S]] = None
 
-    // --- rendering ---
+      def keys(implicit tx: S#Tx): Set[String] = Set.empty
 
-    final def run(config: Control.Config)(implicit tx: S#Tx, cursor: stm.Cursor[S],
-                                          workspace: WorkspaceHandle[S]): Rendering[S] = {
-      val g = graph().value
-      val r = new RenderingImpl[S](config)
-      r.start(this, g)
-      r
+      def iterator(implicit tx: S#Tx): Iterator[Output[S]] = Iterator.empty
+
+      def add(key: String, tpe: Obj.Type)(implicit tx: S#Tx): Output[S] =
+        throw new UnsupportedOperationException(s"Old FScape object without actual outputs, cannot call `add`")
+
+      def remove(key: String)(implicit tx: S#Tx): Boolean = false
+    }
+  }
+
+  private sealed trait Impl[S <: Sys[S]]
+    extends FScape[S] with Base[S] with evt.impl.SingleNode[S, FScape.Update[S]] {
+    proc =>
+
+    // --- abstract ----
+
+    protected def outputsMap: SkipList.Map[S, String, Output[S]]
+
+    // --- impl ----
+
+    def copy[Out <: Sys[Out]]()(implicit tx: S#Tx, txOut: Out#Tx, context: Copy[S, Out]): Elem[Out] =
+      new Impl[Out] { out =>
+        protected val targets: Targets[Out]                     = Targets[Out]
+        val graph     : GraphObj.Var[Out]                       = context(proc.graph)
+        val outputsMap: SkipList.Map[Out, String, Output[Out]]  = SkipList.Map.empty
+
+        context.defer(proc, out) {
+          def copyMap(in : SkipList.Map[S  , String, Output[S  ]],
+                      out: SkipList.Map[Out, String, Output[Out]]): Unit =
+            in.iterator.foreach { case (key, eIn) =>
+              val eOut = context(eIn)
+              out.add(key -> eOut)
+            }
+
+          // copyMap(proc.scanInMap , out.scanInMap)
+          copyMap(proc.outputsMap, out.outputsMap)
+        }
+        connect()
+      }
+
+    import FScape._
+
+    // ---- key maps ----
+
+    def isConnected(implicit tx: S#Tx): Boolean = targets.nonEmpty
+
+    final def connect()(implicit tx: S#Tx): this.type = {
+      graph.changed ---> changed
+      this
+    }
+
+    private def disconnect()(implicit tx: S#Tx): Unit = {
+      graph.changed -/-> changed
+    }
+
+    object changed extends Changed
+      with evt.impl.Generator[S, FScape.Update[S]] {
+      def pullUpdate(pull: evt.Pull[S])(implicit tx: S#Tx): Option[FScape.Update[S]] = {
+        val graphCh     = graph.changed
+        val graphOpt    = if (pull.contains(graphCh)) pull(graphCh) else None
+        val stateOpt    = if (pull.isOrigin(this)) Some(pull.resolve[FScape.Update[S]]) else None
+
+        val seq0 = graphOpt.fold(Vec.empty[Change[S]]) { u =>
+          Vector(GraphChange(u))
+        }
+
+        val seq3 = stateOpt.fold(seq0) { u =>
+          if (seq0.isEmpty) u.changes else seq0 ++ u.changes
+        }
+        if (seq3.isEmpty) None else Some(FScape.Update(proc, seq3))
+      }
+    }
+
+    final protected def writeData(out: DataOutput): Unit = {
+      out.writeShort(SER_VERSION)
+      graph     .write(out)
+      outputsMap.write(out)
+    }
+
+    final protected def disposeData()(implicit tx: S#Tx): Unit = {
+      disconnect()
+      graph     .dispose()
+      outputsMap.dispose()
+    }
+
+    object outputs extends Outputs[S] {
+      protected def fire(added: Option[Output[S]], removed: Option[Output[S]])
+                        (implicit tx: S#Tx): Unit = {
+        val b = Vector.newBuilder[FScape.OutputsChange[S]]
+        b.sizeHint(2)
+        // convention: first the removals, then the additions. thus, overwriting a key yields
+        // successive removal and addition of the same key.
+        removed.foreach { output =>
+          b += FScape.OutputRemoved[S](output)
+        }
+        added.foreach { output =>
+          b += FScape.OutputAdded  [S](output)
+        }
+
+        proc.changed.fire(FScape.Update(proc, b.result()))
+      }
+
+      private def add(key: String, value: Output[S])(implicit tx: S#Tx): Unit = {
+        val optRemoved = outputsMap.add(key -> value)
+        fire(added = Some(value), removed = optRemoved)
+      }
+
+      def remove(key: String)(implicit tx: S#Tx): Boolean =
+        outputsMap.remove(key).exists { output =>
+          fire(added = None, removed = Some(output))
+          true
+        }
+
+      def add(key: String, tpe: Obj.Type)(implicit tx: S#Tx): Output[S] =
+        get(key).getOrElse {
+          val res = OutputImpl[S](proc, key, tpe)
+          add(key, res)
+          res
+        }
+
+      def get(key: String)(implicit tx: S#Tx): Option[Output[S]] = outputsMap.get(key)
+
+      def keys(implicit tx: S#Tx): Set[String] = outputsMap.keysIterator.toSet
+
+      def iterator(implicit tx: S#Tx): Iterator[Output[S]] = outputsMap.iterator.map(_._2)
     }
   }
 
   private final class New[S <: Sys[S]](implicit tx0: S#Tx) extends Impl[S] {
-    protected val targets   = evt.Targets[S](tx0)
-    val graph               = GraphObj.newVar(GraphObj.empty)
+    protected val targets: Targets[S] = Targets(tx0)
+    val graph     : GraphObj.Var[S]                     = GraphObj.newVar(GraphObj.empty)
+    val outputsMap: SkipList.Map[S, String, Output[S]]  = SkipList.Map.empty
     connect()(tx0)
   }
 
-  private final class Read[S <: Sys[S]](in: DataInput, access: S#Acc, protected val targets: evt.Targets[S])
+  private final class ReadOLD[S <: Sys[S]](in: DataInput, access: S#Acc, protected val targets: Targets[S])
+                                          (implicit tx0: S#Tx)
+    extends ImplOLD[S] {
+
+    val graph: GraphObj.Var[S] = GraphObj.readVar(in, access)
+  }
+
+  private final class Read[S <: Sys[S]](in: DataInput, access: S#Acc, protected val targets: Targets[S])
                                        (implicit tx0: S#Tx)
     extends Impl[S] {
 
-    {
-      val serVer = in.readShort()
-      if (serVer != SER_VERSION) sys.error(s"Incompatible serialized (found $serVer, required $SER_VERSION)")
-    }
-
-    val graph = GraphObj.readVar(in, access)
+    val graph     : GraphObj.Var[S]                     = GraphObj    .readVar(in, access)
+    val outputsMap: SkipList.Map[S, String, Output[S]]  = SkipList.Map.read   (in, access)
   }
 }

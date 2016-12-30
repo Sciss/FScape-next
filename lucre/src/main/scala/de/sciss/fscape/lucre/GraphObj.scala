@@ -285,7 +285,7 @@ object GraphObj extends expr.impl.ExprTypeImpl[Graph, GraphObj] {
 
     def changed: EventLike[S, Change[Graph]] = Dummy[S, Change[Graph]]
 
-    def dispose()(implicit tx: S#Tx) = ()
+    def dispose()(implicit tx: S#Tx): Unit = ()
 
     def constValue: Graph = cookie match {
       case `emptyCookie` => emptyGraph

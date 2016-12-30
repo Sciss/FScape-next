@@ -14,7 +14,7 @@
 package de.sciss.fscape
 package lucre
 
-import de.sciss.fscape.lucre.impl.{FScapeImpl => Impl}
+import de.sciss.fscape.lucre.impl.{OutputImpl, FScapeImpl => Impl}
 import de.sciss.fscape.stream.Control
 import de.sciss.lucre.event.{Observable, Publisher}
 import de.sciss.lucre.stm
@@ -38,6 +38,7 @@ object FScape extends Obj.Type {
     */
   override def init(): Unit = {
     super   .init()
+    Output  .init()
     GraphObj.init()
     Code    .init()
   }
@@ -57,6 +58,14 @@ object FScape extends Obj.Type {
   sealed trait Change[S <: Sys[S]]
 
   final case class GraphChange[S <: Sys[S]](change: model.Change[Graph]) extends Change[S]
+
+  /** An output change is either adding or removing an output */
+  sealed trait OutputsChange[S <: Sys[S]] extends Change[S] {
+    def output: Output[S]
+  }
+
+  final case class OutputAdded  [S <: Sys[S]](output: Output[S]) extends OutputsChange[S]
+  final case class OutputRemoved[S <: Sys[S]](output: Output[S]) extends OutputsChange[S]
 
   /** Source code of the graph function. */
   final val attrSource = "graph-source"
@@ -137,7 +146,7 @@ object FScape extends Obj.Type {
   final case class Code(source: String) extends proc.Code {
     type In     = Unit
     type Out    = fscape.Graph
-    def id      = Code.id
+    def id: Int = Code.id
 
     def compileBody()(implicit compiler: proc.Code.Compiler): Future[Unit] = {
       import Impl.CodeWrapper
@@ -149,9 +158,41 @@ object FScape extends Obj.Type {
       CodeImpl.execute[In, Out, Code](this, in)
     }
 
-    def contextName = Code.name
+    def contextName: String = Code.name
 
-    def updateSource(newText: String) = copy(source = newText)
+    def updateSource(newText: String): Code = copy(source = newText)
+  }
+
+  object Output extends Obj.Type {
+    final val typeID = 0x1000C
+
+    def read[S <: Sys[S]](in: DataInput, access: S#Acc)(implicit tx: S#Tx): Output[S] = OutputImpl.read (in, access)
+
+    implicit def serializer[S <: Sys[S]]: Serializer[S#Tx, S#Acc, Output[S]] = OutputImpl.serializer
+
+    override def readIdentifiedObj[S <: Sys[S]](in: DataInput, access: S#Acc)(implicit tx: S#Tx): Obj[S] =
+      OutputImpl.readIdentifiedObj(in, access)
+  }
+  trait Output[S <: Sys[S]] extends Obj[S] {
+    def fscape    : FScape[S]
+    def key       : String
+    def valueType : Obj.Type
+  }
+
+  trait Outputs[S <: Sys[S]] {
+    def get(key: String)(implicit tx: S#Tx): Option[Output[S]]
+
+    def keys(implicit tx: S#Tx): Set[String]
+
+    def iterator(implicit tx: S#Tx): Iterator[Output[S]]
+
+    /** Adds a new output by the given key and type.
+      * If an output by that name and type already exists, the old output is returned.
+      * If the type differs, removes the old output and creates a new one.
+      */
+    def add   (key: String, tpe: Obj.Type)(implicit tx: S#Tx): Output[S]
+
+    def remove(key: String)(implicit tx: S#Tx): Boolean
   }
 }
 
@@ -159,6 +200,8 @@ object FScape extends Obj.Type {
 trait FScape[S <: Sys[S]] extends Obj[S] with Publisher[S, FScape.Update[S]] {
   /** The variable synth graph function of the process. */
   def graph: GraphObj.Var[S]
+
+  def outputs: FScape.Outputs[S]
 
   def run(config: Control.Config = Control.Config())
          (implicit tx: S#Tx, cursor: stm.Cursor[S], workspace: WorkspaceHandle[S]): FScape.Rendering[S]
