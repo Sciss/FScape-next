@@ -11,7 +11,7 @@ lazy val commonSettings = Seq(
   organization       := "de.sciss",
   description        := baseDescription,
   version            := projectVersion,
-  scalaVersion       := "2.11.8",
+  scalaVersion       := "2.12.1",
   crossScalaVersions := Seq("2.12.1", "2.11.8" /* , "2.10.6" */),  // Akka does not support Scala 2.10
   licenses           := Seq("GPL v2+" -> url("http://www.gnu.org/licenses/gpl-2.0.txt")),
   homepage           := Some(url(s"https://github.com/Sciss/$githubRepo")),
@@ -28,10 +28,7 @@ lazy val swingPlusVersion      = "0.2.2"
 lazy val optionalVersion       = "1.0.0"
 lazy val scalaChartVersion     = "0.5.1"
 
-// WARNING: it seems there might be a bug in Akka 2.4.10 where
-// a node that first pulls inputs and then calls `completeStage`
-// within the same handler run causes a problem with shutdown.
-lazy val akkaVersion           = "2.4.16" // "2.4.10"
+lazy val akkaVersion           = "2.4.16"
 
 // ---- lucre dependencies ----
 
@@ -113,4 +110,3 @@ lazy val publishSettings = Seq(
 </developers>
   }
 )
-
