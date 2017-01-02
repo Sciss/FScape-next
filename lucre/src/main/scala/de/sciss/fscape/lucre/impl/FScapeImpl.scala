@@ -25,8 +25,8 @@ import de.sciss.lucre.stm.impl.ObjSerializer
 import de.sciss.lucre.stm.{Copy, Disposable, Elem, NoSys, Obj, Sys, TxnLike}
 import de.sciss.lucre.{stm, event => evt}
 import de.sciss.serial.{DataInput, DataOutput, Serializer}
-import de.sciss.synth.proc.WorkspaceHandle
 import de.sciss.synth.proc.impl.CodeImpl
+import de.sciss.synth.proc.{GenContext, GenView, WorkspaceHandle}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm.Ref
@@ -73,7 +73,47 @@ object FScapeImpl {
     def blockTag = "Unit"
   }
 
-  // ----
+  // ---- GenView ----
+
+  def genViewFactory(config: Control.Config): GenView.Factory = new OutputGenViewFactory(config)
+
+  private final class OutputGenViewFactory(config: Control.Config) extends GenView.Factory {
+    def typeID: Int = Output.typeID
+
+    type Repr[~ <: Sys[~]] = Output[~]
+
+    def apply[S <: Sys[S]](output: Output[S])(implicit tx: S#Tx, context: GenContext[S]): GenView[S] =
+      new OutputGenView(config, tx.newHandle(output), output.valueType)
+  }
+
+  private final class OutputGenView[S <: Sys[S]](config: Control.Config,
+                                                 override val obj: stm.Source[S#Tx, Output[S]],
+                                                 val valueType: Obj.Type)
+                                                (implicit context: GenContext[S])
+    extends GenView[S] with ObservableImpl[S, GenView.State] {
+
+    private[this] val _state = Ref[GenView.State](GenView.Stopped)
+
+    def typeID: Int = Output.typeID
+
+    def value(implicit tx: S#Tx): Option[Try[Obj[S]]] = obj().value
+
+    def state(implicit tx: S#Tx): GenView.State = _state.get(tx.peer)
+
+    def start()(implicit tx: S#Tx): Unit = {
+      val output  = obj()
+      val fscape  = output.fscape
+      import context.{cursor, workspaceHandle}
+      val r       = fscape.run(config)
+      ???
+    }
+
+    def stop()(implicit tx: S#Tx): Unit = ???
+
+    def dispose()(implicit tx: S#Tx): Unit = stop()
+  }
+
+  // ---- Rendering ----
 
   private final class RenderingImpl[S <: Sys[S]](config: Control.Config)(implicit cursor: stm.Cursor[S])
     extends Rendering[S] with ObservableImpl[S, Rendering.State] {

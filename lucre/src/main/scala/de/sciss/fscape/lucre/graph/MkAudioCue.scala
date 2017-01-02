@@ -17,7 +17,10 @@ package graph
 
 import de.sciss.file.File
 import de.sciss.fscape.graph.Constant
+import de.sciss.fscape.stream.{Builder => SBuilder, StreamIn}
 import de.sciss.synth.io.{AudioFileSpec, AudioFileType, SampleFormat}
+
+import scala.collection.immutable.{IndexedSeq => Vec}
 
 object MkAudioCue {
   /** Converts an audio file type to a unique id that can be parsed by the UGen. */
@@ -49,7 +52,7 @@ object MkAudioCue {
   *                     Must be resolvable at init time.
   */
 final case class MkAudioCue(key: String, in: GE, fileType: GE = 0, sampleFormat: GE = 2, sampleRate: GE = 44100.0)
-  extends GE.Lazy {
+  extends UGenSource.SingleOut {
 
   import UGenGraphBuilder.{canResolve, resolve}
 
@@ -60,7 +63,14 @@ final case class MkAudioCue(key: String, in: GE, fileType: GE = 0, sampleFormat:
   canResolve(sampleFormat).left.foreach(fail("sampleFormat", _))
   canResolve(sampleRate  ).left.foreach(fail("sampleRate"  , _))
 
-  protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = {
+  protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = unwrap(in.expand.outputs)
+
+  protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
+    UGen.SingleOut(this, inputs = args, rest = key, isIndividual = true, hasSideEffect = true)
+
+  private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: SBuilder) = ???
+
+  protected def makeUGensXXX(implicit b: UGenGraph.Builder): UGenInLike = {
     val ub = UGenGraphBuilder.get(b)
 
     // ub.requestAttribute(key).fold[(File, Int, Option[AudioFileSpec])] { ... }

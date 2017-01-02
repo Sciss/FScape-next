@@ -21,7 +21,7 @@ import de.sciss.fscape.stream.StreamIn
 import scala.collection.immutable.{IndexedSeq => Vec}
 
 final case class MkInt(key: String, in: GE) extends UGenSource.ZeroOut {
-  protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = ???
+  protected def makeUGens(implicit b: UGenGraph.Builder): Unit = ???
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder) = ???
 

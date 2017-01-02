@@ -29,9 +29,10 @@ trait Node {
 
   control.addNode(this)
 
+  /** Calls `stopped` and then removes the node from the control. */
   override final def postStop(): Unit = {
-    control.removeNode(this)
     stopped()
+    control.removeNode(this)
   }
 
   /** Subclasses can override this */

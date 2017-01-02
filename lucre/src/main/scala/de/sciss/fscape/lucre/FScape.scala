@@ -21,12 +21,14 @@ import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Disposable, Obj, Sys}
 import de.sciss.serial.{DataInput, Serializer}
 import de.sciss.synth.proc
-import de.sciss.synth.proc.WorkspaceHandle
+import de.sciss.synth.proc.GenView.State
 import de.sciss.synth.proc.impl.CodeImpl
+import de.sciss.synth.proc.{Gen, GenView, Workspace, WorkspaceHandle}
 import de.sciss.{fscape, model}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.Future
+import scala.util.Try
 
 object FScape extends Obj.Type {
   final val typeID = 0x1000B
@@ -173,10 +175,9 @@ object FScape extends Obj.Type {
     override def readIdentifiedObj[S <: Sys[S]](in: DataInput, access: S#Acc)(implicit tx: S#Tx): Obj[S] =
       OutputImpl.readIdentifiedObj(in, access)
   }
-  trait Output[S <: Sys[S]] extends Obj[S] {
-    def fscape    : FScape[S]
-    def key       : String
-    def valueType : Obj.Type
+  trait Output[S <: Sys[S]] extends Gen[S] {
+    def fscape: FScape[S]
+    def key   : String
   }
 
   trait Outputs[S <: Sys[S]] {
@@ -194,6 +195,8 @@ object FScape extends Obj.Type {
 
     def remove(key: String)(implicit tx: S#Tx): Boolean
   }
+
+  def genViewFactory(config: Control.Config = Control.Config()): GenView.Factory = Impl.genViewFactory(config)
 }
 
 /** The `FScape` trait is the basic entity representing a sound process. */

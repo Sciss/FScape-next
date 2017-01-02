@@ -15,12 +15,12 @@ package de.sciss.fscape
 package lucre
 
 import de.sciss.fscape.graph.{BinaryOp, Constant, ConstantD, ConstantI, ConstantL, UnaryOp}
-import de.sciss.fscape.lucre.UGenGraphBuilder.ActionRef
+import de.sciss.fscape.lucre.UGenGraphBuilder.{ActionRef, OutputRef}
 import de.sciss.fscape.lucre.graph.Attribute
 import de.sciss.fscape.stream.Control
 import de.sciss.lucre.expr.Expr
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.Sys
+import de.sciss.lucre.stm.{Obj, Sys}
 import de.sciss.synth.proc
 import de.sciss.synth.proc.{SoundProcesses, WorkspaceHandle}
 
@@ -63,25 +63,6 @@ object UGenGraphBuilder {
     }
   }
 
-  //  private def resolveInt(in: GE, builder: UGenGraphBuilder): Int = in match {
-  //    case Constant(f) => f.toInt
-  //    case a: Attribute => ...
-  //    case UnaryOpUGen(op, a) =>
-  //      // support a few ops directly without having to go back to float conversion
-  //      op match {
-  //        case UnaryOpUGen.Neg  => -resolveInt(a, builder)
-  //        case UnaryOpUGen.Abs  => math.abs(resolveInt(a, builder))
-  //        case _                => resolveFloat(in, builder).toInt
-  //      }
-  //    case BinaryOpUGen(op, a, b) =>
-  //      // support a few ops directly without having to go back to float conversion
-  //      op match {
-  //        case BinaryOpUGen.Plus  => ...
-  //        case _                  => resolveFloat(in, builder).toInt
-  //      }
-  //      resolveFloat(in, builder).toInt
-  //  }
-
   def resolve(in: GE, builder: UGenGraphBuilder): Either[String, Constant] = {
     in match {
       case c: Constant => Right(c)
@@ -121,6 +102,11 @@ object UGenGraphBuilder {
     def execute(value: Any): Unit
   }
 
+  /** An "untyped" output-setter reference */
+  trait OutputRef {
+    def set(value: Any): Unit
+  }
+
   // -----------------
 
   private final class BuilderImpl[S <: Sys[S]](f: FScape[S])(implicit tx: S#Tx, cursor: stm.Cursor[S],
@@ -138,6 +124,8 @@ object UGenGraphBuilder {
       f.attr.$[proc.Action](key).map { a =>
         new ActionRefImpl(tx.newHandle(f), tx.newHandle(a))
       }
+
+    def requestOutput(key: String, tpe: Obj.Type): Option[OutputRef] = ???
   }
 
   private final class ActionRefImpl[S <: Sys[S]](fH: stm.Source[S#Tx, FScape[S]], aH: stm.Source[S#Tx, proc.Action[S]])
@@ -151,9 +139,24 @@ object UGenGraphBuilder {
       a.execute(u)
     }
   }
+
+  private final class OutputRefImpl[S <: Sys[S]](outputH: stm.Source[S#Tx, FScape.Output[S]])
+                                                (implicit cursor: stm.Cursor[S], workspace: WorkspaceHandle[S])
+    extends OutputRef {
+
+    def set(value: Any): Unit = SoundProcesses.atomic[S, Unit] { implicit tx =>
+      val out = outputH()
+      out
+      ???
+//      val u = proc.Output.Universe(self = out, workspace = workspace, invoker = Some(f), value = value)
+//      out.execute(u)
+    }
+  }
 }
 trait UGenGraphBuilder extends UGenGraph.Builder {
   def requestAttribute(key: String): Option[Any]
 
-  def requestAction(key: String): Option[ActionRef]
+  def requestAction   (key: String): Option[ActionRef]
+
+  def requestOutput   (key: String, tpe: Obj.Type): Option[OutputRef]
 }

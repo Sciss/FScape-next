@@ -368,7 +368,7 @@ object Control {
   // ---- actor messages
 
   private final case class RemoveNode(node: Node)
-  private case object Cancel
+  private case object      Cancel
   private final case class SetProgress(key: Int, frac: Double)
 }
 trait Control {
@@ -420,7 +420,7 @@ trait Control {
   /** Reports the progress for a particular instance. */
   private[stream] def setProgress(key: Int, frac: Double): Unit
 
-  /** Creates a temporary file. The caller is responsible to deleting the file
+  /** Creates a temporary file. The caller is responsible for deleting the file
     * after it is not needed any longer. (The file will still be marked `deleteOnExit`)
     */
   def createTempFile(): File
@@ -435,7 +435,7 @@ trait Control {
     */
   def status: Future[Unit]
 
-  def stats: Control.Stats
+  def stats : Control.Stats
 
   val config: Control.Config
 

@@ -21,6 +21,8 @@ import de.sciss.lucre.stm.impl.ObjSerializer
 import de.sciss.lucre.stm.{Copy, Elem, NoSys, Obj, Sys}
 import de.sciss.serial.{DataInput, DataOutput, Serializer}
 
+import scala.util.Try
+
 object OutputImpl {
   private final val SER_VERSION = 0x464F  // "FO"
 
@@ -63,6 +65,8 @@ object OutputImpl {
     def tpe: Obj.Type = Output
 
     override def toString: String = s"Output($id, $fscape, $key, $valueType)"
+
+    def value(implicit tx: S#Tx): Option[Try[Obj[S]]] = ???
 
     def copy[Out <: Sys[Out]]()(implicit tx: S#Tx, txOut: Out#Tx, context: Copy[S, Out]): Elem[Out] = {
       val idOut   = txOut.newID()
