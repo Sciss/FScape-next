@@ -67,33 +67,44 @@ object OutputImpl {
   private final class Impl[S <: Sys[S]](protected val targets: evt.Targets[S],
                                         val fscape: FScape[S], val key: String, val valueType: Obj.Type,
                                         valueVr: S#Var[Option[Obj[S]]])
-    extends OutputImpl[S] with evt.impl.SingleNode[S, Output.Update[S]] {
+    extends OutputImpl[S] with evt.impl.SingleNode[S, Output.Update[S]] { self =>
 
     def tpe: Obj.Type = Output
 
     override def toString: String = s"Output($id, $fscape, $key, $valueType)"
 
-    def value(implicit tx: S#Tx): Option[Obj[S]] = ???
+    def value(implicit tx: S#Tx): Option[Obj[S]] = valueVr()
 
-    def value_=(v: Option[Obj[S]])(implicit tx: S#Tx): Unit = ???
+    def value_=(v: Option[Obj[S]])(implicit tx: S#Tx): Unit = {
+      val before = valueVr()
+      if (before != v) {
+        // before.changed -/-> this.changed
+        valueVr() = v
+        // v     .changed ---> this.changed
+        changed.fire(Output.Update(self, v))
+      }
+    }
 
-    def isConnected(implicit tx: S#Tx): Boolean = targets.nonEmpty
+//    def isConnected(implicit tx: S#Tx): Boolean = targets.nonEmpty
 
     def connect()(implicit tx: S#Tx): this.type = {
-      ??? // graph.changed ---> changed
+      () // graph.changed ---> changed
       this
     }
 
     def disconnect()(implicit tx: S#Tx): Unit = {
-      ??? // graph.changed -/-> changed
+      () // graph.changed -/-> changed
     }
 
     object changed extends Changed
       with evt.impl.Generator[S, Output.Update[S]] {
 
-      def pullUpdate(pull: evt.Pull[S])(implicit tx: S#Tx): Option[Output.Update[S]] = {
-        ???
-      }
+      def pullUpdate(pull: evt.Pull[S])(implicit tx: S#Tx): Option[Output.Update[S]] =
+        if (pull.parents(this).isEmpty) {
+          Some(pull.resolve[Output.Update[S]])
+        } else {
+          None
+        }
     }
 
     def copy[Out <: Sys[Out]]()(implicit tx: S#Tx, txOut: Out#Tx, context: Copy[S, Out]): Elem[Out] = {
@@ -112,8 +123,10 @@ object OutputImpl {
       valueVr.write(out)
     }
 
-    protected def disposeData()(implicit tx: S#Tx): Unit =
+    protected def disposeData()(implicit tx: S#Tx): Unit = {
+      disconnect()
       valueVr.dispose()
+    }
   }
 }
 sealed trait OutputImpl[S <: Sys[S]] extends Output[S] {

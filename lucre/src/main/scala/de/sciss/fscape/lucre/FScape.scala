@@ -186,10 +186,10 @@ object FScape extends Obj.Type {
       def mkValue[S <: Sys[S]](implicit tx: S#Tx): Obj[S]
     }
 
-    final case class Update[S <: Sys[S]](gen: Output[S], value: Option[Obj[S]])
+    final case class Update[S <: Sys[S]](output: Output[S], value: Option[Obj[S]])
       extends Gen.Update[S] {
 
-      def output: Output[S] = gen
+      def gen: Output[S] = output
     }
   }
   trait Output[S <: Sys[S]] extends Gen[S] with Publisher[S, Output.Update[S]] {

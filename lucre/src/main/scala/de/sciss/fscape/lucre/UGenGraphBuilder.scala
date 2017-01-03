@@ -168,8 +168,9 @@ object UGenGraphBuilder {
     }
 
     def requestOutput(key: String, tpe: Obj.Type): Option[OutputRef] = {
-      val res = f.outputs.get(key).collect {
-        case out: OutputImpl[S] if out.tpe.typeID == tpe.typeID =>
+      val outOpt  = f.outputs.get(key)
+      val res     = outOpt.collect {
+        case out: OutputImpl[S] if out.valueType.typeID == tpe.typeID =>
           val ref = new OutputRefImpl(tx.newHandle(out))
           outputMap += key -> ((tpe, ref))
           ref

@@ -41,8 +41,9 @@ object MkInt {
 }
 final case class MkInt(key: String, in: GE) extends Lazy.Expander[Unit] {
   protected def makeUGens(implicit b: UGenGraph.Builder): Unit = {
-    val ub  = UGenGraphBuilder.get(b)
-    val ref = ub.requestOutput(key, IntObj).getOrElse(sys.error(s"Missing Attribute $key"))
+    val ub      = UGenGraphBuilder.get(b)
+    val refOpt  = ub.requestOutput(key, IntObj)
+    val ref     = refOpt.getOrElse(sys.error(s"Missing output $key"))
     MkInt.WithRef(this, ref)
   }
 }

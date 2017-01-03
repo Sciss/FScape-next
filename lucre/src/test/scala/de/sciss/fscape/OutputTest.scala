@@ -27,5 +27,10 @@ object OutputTest extends App {
 
     import WorkspaceHandle.Implicits.dummy
     f.run()
+
+    new Thread {
+      override def run(): Unit = Thread.sleep(Long.MaxValue)
+      start()
+    }
   }
 }
