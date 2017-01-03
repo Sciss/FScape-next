@@ -17,6 +17,7 @@ package impl
 
 import de.sciss.fscape.lucre.FScape.Rendering.State
 import de.sciss.fscape.lucre.FScape.{Output, Rendering}
+import de.sciss.fscape.lucre.UGenGraphBuilder.OutputResult
 import de.sciss.fscape.stream.Control
 import de.sciss.lucre.data.SkipList
 import de.sciss.lucre.event.Targets
@@ -99,6 +100,7 @@ object FScapeImpl {
 
     def typeID: Int = Output.typeID
 
+    // XXX TODO --- gosh, this is some tricky stuff. Is this correct? Can we simplify it?
     def value(implicit tx: S#Tx): Option[Try[Obj[S]]] = {
       val (st, res) = _state.get(tx.peer)
       if (!st.isComplete) None else (obj().value, res) match {
@@ -107,9 +109,6 @@ object FScapeImpl {
         case _                    => None
       }
     }
-
-//    def state(implicit tx: S#Tx): GenView.State =
-//      _rendering.get(tx.peer).fold[GenView.State](GenView.Stopped)(_.state)
 
     def state(implicit tx: S#Tx): GenView.State = _state.get(tx.peer)._1
 
@@ -191,33 +190,47 @@ object FScapeImpl {
       res
     }
 
-    private def completeWith(t: Try[Unit]): Unit = if (!_disposed.single.get)
-      cursor.step { implicit tx =>
-        import TxnLike.peer
-        if (!_disposed()) {
-          state_=(Rendering.Completed, Some(t))
-          //        t match {
-          //          case Success(())          => state = Rendering.Success
-          //          case Failure(ex)          => state = Rendering.Failure(ex)
-          //        }
+    private def completeWith(t: Try[Unit], outputMap: Map[String, (Obj.Type, OutputResult[S])],
+                             fscapeH: stm.Source[S#Tx, FScape[S]]): Unit =
+      if (!_disposed.single.get)
+        cursor.step { implicit tx =>
+          import TxnLike.peer
+          if (!_disposed()) {
+            state_=(Rendering.Completed, Some(t))
+            if (t.isSuccess && outputMap.nonEmpty) {
+              outputMap.foreach { case (key, (valueType, outRef)) =>
+                if (outRef.hasProvider) {
+                  // val v = outRef.mkValue()
+                  outRef.updateValue()
+                }
+              }
+            }
+          }
         }
-      }
 
     def start(f: FScape[S], graph: Graph)(implicit tx: S#Tx, workspace: WorkspaceHandle[S]): Unit = {
       val state = UGenGraphBuilder.build(f, graph)
       state match {
         case res: UGenGraphBuilder.Complete[S] =>
+          // clear cached values
+          if (res.outputs.nonEmpty) {
+            f.outputs.iterator.foreach {
+              case out: OutputImpl[S] => out.value = None
+              case _ =>
+            }
+          }
+          val fH = tx.newHandle(f)
           tx.afterCommit {
             try {
               control.runExpanded(res.graph)
               import control.config.executionContext
               val fut = control.status
               fut.andThen {
-                case x => completeWith(x)
+                case x => completeWith(x, res.outputs, fH)
               }
             } catch {
               case NonFatal(ex) =>
-                completeWith(Failure(ex))
+                completeWith(Failure(ex), Map.empty, fH)
             }
           }
           state_=(Rendering.Running(0.0), None)

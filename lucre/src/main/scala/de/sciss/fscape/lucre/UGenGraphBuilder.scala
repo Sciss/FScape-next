@@ -55,7 +55,7 @@ object UGenGraphBuilder {
     /** Current set of used outputs (scan keys to number of channels).
       * This is guaranteed to only grow during incremental building, never shrink.
       */
-    def outputs: Map[String, (Obj.Type, OutputRef)]
+    def outputs: Map[String, (Obj.Type, OutputResult[S])]
   }
 
   sealed trait State[S <: Sys[S]] extends IO[S] {
@@ -137,6 +137,12 @@ object UGenGraphBuilder {
   trait OutputRef {
     def complete(p: Output.Provider): Unit
   }
+  /** An extended references as returned by the completed UGB. */
+  trait OutputResult[S <: Sys[S]] extends OutputRef {
+    def hasProvider: Boolean
+
+    def updateValue()(implicit tx: S#Tx): Unit
+  }
 
   final case class MissingIn(input: String) extends ControlThrowable
 
@@ -147,8 +153,8 @@ object UGenGraphBuilder {
                                                              protected val ctrl: Control)
     extends UGenGraph.BuilderLike with UGenGraphBuilder { builder =>
 
-    private var acceptedInputs: Set[String]                         = Set.empty
-    private var outputMap     : Map[String, (Obj.Type, OutputRef)]  = Map.empty
+    private var acceptedInputs: Set[String]                               = Set.empty
+    private var outputMap     : Map[String, (Obj.Type, OutputResult[S])]  = Map.empty
 
     def requestAttribute(key: String): Option[Any] = {
       val res = f.attr.get(key) collect {
@@ -182,16 +188,16 @@ object UGenGraphBuilder {
       try {
         val ug = build
         new Complete[S] {
-          val graph           : UGenGraph                           = ug
-          val acceptedInputs  : Set[String]                         = builder.acceptedInputs
-          val outputs         : Map[String, (Obj.Type, OutputRef)]  = builder.outputMap
+          val graph           : UGenGraph                                 = ug
+          val acceptedInputs  : Set[String]                               = builder.acceptedInputs
+          val outputs         : Map[String, (Obj.Type, OutputResult[S])]  = builder.outputMap
         }
       } catch {
         case MissingIn(key) =>
           new Incomplete[S] {
-            val rejectedInputs: Set[String]                         = Set(key)
-            val acceptedInputs: Set[String]                         = builder.acceptedInputs
-            val outputs       : Map[String, (Obj.Type, OutputRef)]  = builder.outputMap
+            val rejectedInputs: Set[String]                               = Set(key)
+            val acceptedInputs: Set[String]                               = builder.acceptedInputs
+            val outputs       : Map[String, (Obj.Type, OutputResult[S])]  = builder.outputMap
           }
       }
   }
@@ -210,7 +216,7 @@ object UGenGraphBuilder {
 
   private final class OutputRefImpl[S <: Sys[S]](outputH: stm.Source[S#Tx, OutputImpl[S]])
                                                 (implicit cursor: stm.Cursor[S], workspace: WorkspaceHandle[S])
-    extends OutputRef {
+    extends OutputResult[S] {
 
     @volatile private[this] var provider: Output.Provider = _
 
@@ -218,9 +224,11 @@ object UGenGraphBuilder {
 
     def hasProvider: Boolean = provider != null
 
-    def mkValue()(implicit tx: S#Tx): Obj[S] = {
+    def updateValue()(implicit tx: S#Tx): Unit /* Obj[S] */ = {
       if (provider == null) throw new IllegalStateException("Output was not provided")
-      provider.mkValue
+      val value     = provider.mkValue
+      val output    = outputH()
+      output.value  = Some(value)
     }
   }
 }

@@ -26,7 +26,10 @@ object OutputTest extends App {
     }
 
     import WorkspaceHandle.Implicits.dummy
-    f.run()
+    val r = f.run()
+    r.reactNow { implicit tx => state =>
+      println(s"Rendering state: $state")
+    }
 
     new Thread {
       override def run(): Unit = Thread.sleep(Long.MaxValue)
