@@ -5,6 +5,8 @@ import de.sciss.lucre.expr.IntObj
 import de.sciss.lucre.synth.InMemory
 import de.sciss.synth.proc.WorkspaceHandle
 
+import scala.concurrent.stm.Ref
+
 object OutputTest extends App {
   implicit val cursor = InMemory()
   type S              = InMemory
@@ -15,14 +17,25 @@ object OutputTest extends App {
       import graph._
       import lucre.graph._
       val value = WhiteNoise(100).take(100000000).last
-      MkInt("out", value)
+      MkInt("out-1", value)
+      MkInt("out-2", value + 1)
     }
-    val out = f.outputs.add("out", IntObj)
+    val out1 = f.outputs.add("out-1", IntObj)
+    val out2 = f.outputs.add("out-2", IntObj)
     f.graph() = g
-    assert(out.value.isEmpty)
-    out.changed.react { implicit tx => upd =>
-      println(s"Value is now ${upd.value}")
-      sys.exit()
+    assert(out1.value.isEmpty)
+    assert(out2.value.isEmpty)
+
+    val count = Ref(0)
+
+    import de.sciss.lucre.stm.TxnLike.peer
+    out1.changed.react { implicit tx => upd =>
+      println(s"Value 1 is now ${upd.value}")
+      if (count.transformAndGet(_ + 1) == 2) tx.afterCommit(sys.exit())
+    }
+    out2.changed.react { implicit tx => upd =>
+      println(s"Value 2 is now ${upd.value}")
+      if (count.transformAndGet(_ + 1) == 2) tx.afterCommit(sys.exit())
     }
 
     import WorkspaceHandle.Implicits.dummy

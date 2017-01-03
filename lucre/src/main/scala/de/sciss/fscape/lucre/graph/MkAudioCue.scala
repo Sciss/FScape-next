@@ -17,8 +17,10 @@ package graph
 
 import de.sciss.file.File
 import de.sciss.fscape.graph.Constant
-import de.sciss.fscape.stream.{Builder => SBuilder, StreamIn}
+import de.sciss.fscape.lucre.UGenGraphBuilder.OutputRef
+import de.sciss.fscape.stream.{StreamIn, StreamOut, Builder => SBuilder}
 import de.sciss.synth.io.{AudioFileSpec, AudioFileType, SampleFormat}
+import de.sciss.synth.proc.AudioCue
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
@@ -34,6 +36,24 @@ object MkAudioCue {
 
   /** Recovers a sample format from an id. Throws an exception if the id is invalid. */
   def sampleFormat(id: Int): SampleFormat = AudioFileOut.sampleFormat(id)
+
+  // ----
+
+  final case class WithRef(file: File, spec: AudioFileSpec, in: GE, ref: OutputRef) extends UGenSource.SingleOut {
+
+    protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
+      unwrap(Vector(in.expand))
+
+    protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
+      UGen.SingleOut(this, args, rest = ref, hasSideEffect = true)
+
+    private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: SBuilder): StreamOut = {
+      val in = args.map(_.toDouble)
+      lucre.stream.MkAudioCue(file = file, spec = spec, in = in, ref = ref)
+    }
+
+    override def productPrefix: String = classOf[WithRef].getName
+  }
 }
 /** A graph element that creates a UGen writing to an audio file
   * designated by an `FScape.Output` with a given `key` and the
@@ -52,7 +72,7 @@ object MkAudioCue {
   *                     Must be resolvable at init time.
   */
 final case class MkAudioCue(key: String, in: GE, fileType: GE = 0, sampleFormat: GE = 2, sampleRate: GE = 44100.0)
-  extends UGenSource.SingleOut {
+  extends GE.Lazy {
 
   import UGenGraphBuilder.{canResolve, resolve}
 
@@ -63,31 +83,22 @@ final case class MkAudioCue(key: String, in: GE, fileType: GE = 0, sampleFormat:
   canResolve(sampleFormat).left.foreach(fail("sampleFormat", _))
   canResolve(sampleRate  ).left.foreach(fail("sampleRate"  , _))
 
-  protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = unwrap(in.expand.outputs)
+  protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = {
+    val ub          = UGenGraphBuilder.get(b)
+    val refOpt      = ub.requestOutput(key, AudioCue.Obj)
+    val ref         = refOpt.getOrElse(sys.error(s"Missing output $key"))
 
-  protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
-    UGen.SingleOut(this, inputs = args, rest = key, isIndividual = true, hasSideEffect = true)
-
-  private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: SBuilder) = ???
-
-  protected def makeUGensXXX(implicit b: UGenGraph.Builder): UGenInLike = {
-    val ub = UGenGraphBuilder.get(b)
-
-    // ub.requestAttribute(key).fold[(File, Int, Option[AudioFileSpec])] { ... }
-
-    val f: File = ???
+    val f: File     = ???
     val inExp       = in.expand(b)
     val numChannels = inExp.outputs.size
 
-    val spec = {
-      val fileTypeId  = resolve(fileType    , ub).fold[Constant](fail("fileType"    , _), identity).intValue
-      val sampleFmtId = resolve(sampleFormat, ub).fold[Constant](fail("sampleFormat", _), identity).intValue
-      val sampleRateT = resolve(sampleRate  , ub).fold[Constant](fail("sampleRate"  , _), identity).doubleValue
-      val fileTypeT   = AudioFileOut.fileType    (fileTypeId )
-      val sampleFmtT  = AudioFileOut.sampleFormat(sampleFmtId)
-      AudioFileSpec(fileTypeT, sampleFmtT, numChannels = numChannels, sampleRate = sampleRateT)
-    }
+    val fileTypeId  = resolve(fileType    , ub).fold[Constant](fail("fileType"    , _), identity).intValue
+    val sampleFmtId = resolve(sampleFormat, ub).fold[Constant](fail("sampleFormat", _), identity).intValue
+    val sampleRateT = resolve(sampleRate  , ub).fold[Constant](fail("sampleRate"  , _), identity).doubleValue
+    val fileTypeT   = AudioFileOut.fileType    (fileTypeId )
+    val sampleFmtT  = AudioFileOut.sampleFormat(sampleFmtId)
+    val spec        = AudioFileSpec(fileTypeT, sampleFmtT, numChannels = numChannels, sampleRate = sampleRateT)
 
-    ??? // fscape.graph.AudioFileOut(file = f, spec = spec, in = in)
+    MkAudioCue.WithRef(file = f, spec = spec, in = in, ref = ref)
   }
 }

@@ -14,7 +14,7 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.stage.{InHandler, OutHandler}
+import akka.stream.stage.{GraphStageLogic, InHandler, OutHandler}
 import akka.stream.{Attributes, UniformFanInShape}
 import de.sciss.file._
 import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeImpl}
@@ -50,8 +50,19 @@ object AudioFileOut {
     def createLogic(attr: Attributes) = new Logic(shape, f, spec)
   }
 
-  private final class Logic(shape: Shape, f: File, spec: io.AudioFileSpec)(implicit ctrl: Control)
-    extends NodeImpl(s"$name(${f.name})", shape) with OutHandler { logic =>
+  private final class Logic(shape: Shape, protected val file: File, protected val spec: io.AudioFileSpec)
+                           (implicit ctrl: Control)
+    extends NodeImpl(s"$name(${file.name})", shape) with AbstractLogic {
+  }
+
+  trait AbstractLogic extends Node with OutHandler { logic: GraphStageLogic =>
+    // ---- abstract ----
+
+    protected def file : File
+    protected def spec : io.AudioFileSpec
+    protected def shape: Shape
+
+    // ---- impl ----
 
     private[this] var af      : io.AudioFile = _
     private[this] var buf     : io.Frames = _
@@ -61,6 +72,9 @@ object AudioFileOut {
     private[this] val bufIns        = new Array[BufD](spec.numChannels)
 
     private[this] var shouldStop    = false
+    private[this] var _isSuccess    = false
+
+    protected final def isSuccess: Boolean = _isSuccess
 
     {
       val ins = shape.inSeq
@@ -93,7 +107,7 @@ object AudioFileOut {
 
     override def preStart(): Unit = {
       logStream(s"$this - preStart()")
-      af = io.AudioFile.openWrite(f, spec)
+      af = io.AudioFile.openWrite(file, spec)
       shape.inlets.foreach(pull(_))
     }
 
@@ -113,7 +127,7 @@ object AudioFileOut {
       // }
     }
 
-    def onPull(): Unit =
+    final def onPull(): Unit =
       if (pushed == numChannels) process()
 
     private def process(): Unit = {
@@ -161,7 +175,7 @@ object AudioFileOut {
         }
       }
 
-      val bufOut  = ctrl.borrowBufL()
+      val bufOut  = control.borrowBufL()
       val arrOut  = bufOut.buf
       var j = 0
       while (j < chunk) {
@@ -172,6 +186,7 @@ object AudioFileOut {
       push(shape.out, bufOut)
 
       if (shouldStop) {
+        _isSuccess = true
         completeStage()
       } else {
         ch = 0

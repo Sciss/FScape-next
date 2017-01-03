@@ -45,16 +45,6 @@ object MkInt {
     extends NodeImpl(name, shape)
       with Sink1Impl[BufI] {
 
-    private[this] var res       = 0
-    private[this] var resValid  = false
-
-    override protected def stopped(): Unit = {
-      super.stopped()
-      if (resValid) ref.complete(new Output.Provider {
-        def mkValue[S <: Sys[S]](implicit tx: S#Tx): Obj[S] = IntObj.newConst(res)
-      })
-    }
-
     def process(): Unit = {
       if (!canRead) {
         if (isClosed(shape.in)) {
@@ -69,8 +59,10 @@ object MkInt {
       val stop0   = readIns()
       val b0      = bufIn0.buf
       if (stop0 > 0) {
-        res       = b0(0)
-        resValid  = true
+        val res = b0(0)
+        ref.complete(new Output.Provider {
+          def mkValue[S <: Sys[S]](implicit tx: S#Tx): Obj[S] = IntObj.newConst(res)
+        })
         completeStage()
       }
     }
