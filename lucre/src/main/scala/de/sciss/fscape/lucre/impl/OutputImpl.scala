@@ -29,8 +29,9 @@ object OutputImpl {
   sealed trait Update[S]
 
   def apply[S <: Sys[S]](fscape: FScape[S], key: String, tpe: Obj.Type)(implicit tx: S#Tx): OutputImpl[S] = {
-    val id = tx.newID()
-    new Impl(id, fscape, key, tpe)
+    val id  = tx.newID()
+    val vr  = tx.newVar[Option[Obj[S]]](id, None)
+    new Impl[S](id, fscape, key, tpe, vr)
   }
 
   def read[S <: Sys[S]](in: DataInput, access: S#Acc)(implicit tx: S#Tx): Output[S] =
@@ -59,25 +60,31 @@ object OutputImpl {
     val key     = in.readUTF()
     val tpeID   = in.readInt()
     val tpe     = Obj.getType(tpeID)
-    new Impl(id, fscape, key, tpe)
+    val vr      = tx.readVar[Option[Obj[S]]](id, in)
+    new Impl[S](id, fscape, key, tpe, vr)
   }
 
-  private final class Impl[S <: Sys[S]](val id: S#ID, val fscape: FScape[S], val key: String, val valueType: Obj.Type)
-    extends OutputImpl[S] with ConstObjImpl[S, Any] {
+  private final class Impl[S <: Sys[S]](val id: S#ID, val fscape: FScape[S], val key: String, val valueType: Obj.Type,
+                                        valueVr: S#Var[Option[Obj[S]]])
+    extends OutputImpl[S] with ConstObjImpl[S, Output.Update[S]] {
+
+    ??? // ConstObjImpl
 
     def tpe: Obj.Type = Output
 
     override def toString: String = s"Output($id, $fscape, $key, $valueType)"
 
-    def value(implicit tx: S#Tx): Option[Try[Obj[S]]] = ???
+    def value(implicit tx: S#Tx): Option[Obj[S]] = ???
 
-    def value_=(v: Option[Try[Obj[S]]])(implicit tx: S#Tx): Unit = ???
+    def value_=(v: Option[Obj[S]])(implicit tx: S#Tx): Unit = ???
 
     def copy[Out <: Sys[Out]]()(implicit tx: S#Tx, txOut: Out#Tx, context: Copy[S, Out]): Elem[Out] = {
       val idOut   = txOut.newID()
       val fscOut  = context(fscape)
-      val out     = new Impl(idOut, fscOut, key, valueType)
+      val vrOut   = txOut.newVar[Option[Obj[Out]]](idOut, None)  // correct to drop cache?
+      val out     = new Impl[Out](idOut, fscOut, key, valueType, vrOut)
       out // .connect()
+      ???
     }
 
     protected def writeData(out: DataOutput): Unit = {
@@ -89,5 +96,5 @@ object OutputImpl {
   }
 }
 sealed trait OutputImpl[S <: Sys[S]] extends Output[S] {
-  def value_=(v: Option[Try[Obj[S]]])(implicit tx: S#Tx): Unit
+  def value_=(v: Option[Obj[S]])(implicit tx: S#Tx): Unit
 }

@@ -31,7 +31,7 @@ import de.sciss.synth.proc.{GenContext, GenView, WorkspaceHandle}
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm.Ref
 import scala.util.control.NonFatal
-import scala.util.{Failure, Try}
+import scala.util.{Failure, Success, Try}
 
 object FScapeImpl {
   private final val SER_VERSION_OLD = 0x4673  // "Fs"
@@ -86,28 +86,37 @@ object FScapeImpl {
       new OutputGenView(config, tx.newHandle(output), output.valueType)
   }
 
+  private val successUnit = Success(())
+
   private final class OutputGenView[S <: Sys[S]](config: Control.Config,
                                                  override val obj: stm.Source[S#Tx, Output[S]],
                                                  val valueType: Obj.Type)
                                                 (implicit context: GenContext[S])
     extends GenView[S] with ObservableImpl[S, GenView.State] { view =>
 
-    private[this] val _state      = Ref[GenView.State](GenView.Stopped)
+    private[this] val _state      = Ref[(GenView.State, Try[Unit])]((GenView.Stopped, successUnit))
     private[this] val _rendering  = Ref(Option.empty[(Rendering[S], Disposable[S#Tx])])
 
     def typeID: Int = Output.typeID
 
-    def value(implicit tx: S#Tx): Option[Try[Obj[S]]] = obj().value
+    def value(implicit tx: S#Tx): Option[Try[Obj[S]]] = {
+      val (st, res) = _state.get(tx.peer)
+      if (!st.isComplete) None else (obj().value, res) match {
+        case (Some(v), _)         => Some(Success(v))
+        case (None, Failure(ex))  => Some(Failure(ex))
+        case _                    => None
+      }
+    }
 
 //    def state(implicit tx: S#Tx): GenView.State =
 //      _rendering.get(tx.peer).fold[GenView.State](GenView.Stopped)(_.state)
 
-    def state(implicit tx: S#Tx): GenView.State = _state.get(tx.peer)
+    def state(implicit tx: S#Tx): GenView.State = _state.get(tx.peer)._1
 
     def fscape(implicit tx: S#Tx): FScape[S] = obj().fscape
 
-    private def state_=(st: GenView.State)(implicit tx: S#Tx): Unit = {
-      val stOld = _state.swap(st)(tx.peer)
+    private def state_=(st: GenView.State, res: Try[Unit])(implicit tx: S#Tx): Unit = {
+      val (stOld, resOld) = _state.swap((st, res))(tx.peer)
       if (st.isComplete) {
         disposeObserver()
       }
@@ -116,11 +125,14 @@ object FScapeImpl {
 
     private def mkObserver(r: Rendering[S])(implicit tx: S#Tx): Unit = {
       val obs = r.react { implicit tx => st =>
-        state_=(st)
+        val res = if (st.isComplete) r.result.getOrElse(successUnit) else successUnit
+        state_=(st, res)
       }
       disposeObserver()
       _rendering.set(Some((r, obs)))(tx.peer)
-      state_=(r.state)
+      val st0  = r.state
+      val res0 = if (st0.isComplete) r.result.getOrElse(successUnit) else successUnit
+      state_=(st0, res0)
     }
 
     private def disposeObserver()(implicit tx: S#Tx): Unit =
