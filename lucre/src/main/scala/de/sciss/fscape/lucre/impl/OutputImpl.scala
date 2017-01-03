@@ -16,12 +16,10 @@ package lucre
 package impl
 
 import de.sciss.fscape.lucre.FScape.Output
-import de.sciss.lucre.event.impl.ConstObjImpl
 import de.sciss.lucre.stm.impl.ObjSerializer
 import de.sciss.lucre.stm.{Copy, Elem, NoSys, Obj, Sys}
+import de.sciss.lucre.{event => evt}
 import de.sciss.serial.{DataInput, DataOutput, Serializer}
-
-import scala.util.Try
 
 object OutputImpl {
   private final val SER_VERSION = 0x464F  // "FO"
@@ -29,9 +27,10 @@ object OutputImpl {
   sealed trait Update[S]
 
   def apply[S <: Sys[S]](fscape: FScape[S], key: String, tpe: Obj.Type)(implicit tx: S#Tx): OutputImpl[S] = {
-    val id  = tx.newID()
-    val vr  = tx.newVar[Option[Obj[S]]](id, None)
-    new Impl[S](id, fscape, key, tpe, vr)
+    val tgt = evt.Targets[S]
+//    val id  = tx.newID()
+    val vr  = tx.newVar[Option[Obj[S]]](tgt.id, None)
+    new Impl[S](tgt, fscape, key, tpe, vr).connect()
   }
 
   def read[S <: Sys[S]](in: DataInput, access: S#Acc)(implicit tx: S#Tx): Output[S] =
@@ -49,9 +48,10 @@ object OutputImpl {
   }
 
   def readIdentifiedObj[S <: Sys[S]](in: DataInput, access: S#Acc)(implicit tx: S#Tx): Output[S] = {
-    val cookie  = in.readByte()
-    if (cookie != 3) sys.error(s"Unexpected cookie, expected 3 found $cookie")
-    val id      = tx.readID(in, access)
+    val tgt     = evt.Targets.read(in, access)
+//    val cookie  = in.readByte()
+//    if (cookie != 3) sys.error(s"Unexpected cookie, expected 3 found $cookie")
+//    val id      = tx.readID(in, access)
     val serVer  = in.readShort()
     if (serVer != SER_VERSION)
       sys.error(s"Incompatible serialized version (found ${serVer.toInt.toHexString}, required ${SER_VERSION.toHexString})")
@@ -60,15 +60,14 @@ object OutputImpl {
     val key     = in.readUTF()
     val tpeID   = in.readInt()
     val tpe     = Obj.getType(tpeID)
-    val vr      = tx.readVar[Option[Obj[S]]](id, in)
-    new Impl[S](id, fscape, key, tpe, vr)
+    val vr      = tx.readVar[Option[Obj[S]]](tgt.id, in)
+    new Impl[S](tgt, fscape, key, tpe, vr)
   }
 
-  private final class Impl[S <: Sys[S]](val id: S#ID, val fscape: FScape[S], val key: String, val valueType: Obj.Type,
+  private final class Impl[S <: Sys[S]](protected val targets: evt.Targets[S],
+                                        val fscape: FScape[S], val key: String, val valueType: Obj.Type,
                                         valueVr: S#Var[Option[Obj[S]]])
-    extends OutputImpl[S] with ConstObjImpl[S, Output.Update[S]] {
-
-    ??? // ConstObjImpl
+    extends OutputImpl[S] with evt.impl.SingleNode[S, Output.Update[S]] {
 
     def tpe: Obj.Type = Output
 
@@ -78,13 +77,31 @@ object OutputImpl {
 
     def value_=(v: Option[Obj[S]])(implicit tx: S#Tx): Unit = ???
 
+    def isConnected(implicit tx: S#Tx): Boolean = targets.nonEmpty
+
+    def connect()(implicit tx: S#Tx): this.type = {
+      ??? // graph.changed ---> changed
+      this
+    }
+
+    def disconnect()(implicit tx: S#Tx): Unit = {
+      ??? // graph.changed -/-> changed
+    }
+
+    object changed extends Changed
+      with evt.impl.Generator[S, Output.Update[S]] {
+
+      def pullUpdate(pull: evt.Pull[S])(implicit tx: S#Tx): Option[Output.Update[S]] = {
+        ???
+      }
+    }
+
     def copy[Out <: Sys[Out]]()(implicit tx: S#Tx, txOut: Out#Tx, context: Copy[S, Out]): Elem[Out] = {
-      val idOut   = txOut.newID()
+      val tgtOut  = evt.Targets[Out] // txOut.newID()
       val fscOut  = context(fscape)
-      val vrOut   = txOut.newVar[Option[Obj[Out]]](idOut, None)  // correct to drop cache?
-      val out     = new Impl[Out](idOut, fscOut, key, valueType, vrOut)
-      out // .connect()
-      ???
+      val vrOut   = txOut.newVar[Option[Obj[Out]]](tgtOut.id, None)  // correct to drop cache?
+      val out     = new Impl[Out](tgtOut, fscOut, key, valueType, vrOut)
+      out.connect()
     }
 
     protected def writeData(out: DataOutput): Unit = {
@@ -92,7 +109,11 @@ object OutputImpl {
       fscape.write(out)
       out.writeUTF(key)
       out.writeInt(valueType.typeID)
+      valueVr.write(out)
     }
+
+    protected def disposeData()(implicit tx: S#Tx): Unit =
+      valueVr.dispose()
   }
 }
 sealed trait OutputImpl[S <: Sys[S]] extends Output[S] {
