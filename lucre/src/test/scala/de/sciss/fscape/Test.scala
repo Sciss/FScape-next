@@ -2,13 +2,14 @@ package de.sciss.fscape
 
 import de.sciss.file._
 import de.sciss.fscape.lucre.FScape
-import de.sciss.fscape.lucre.FScape.Rendering
 import de.sciss.fscape.stream.Cancelled
 import de.sciss.lucre.artifact.{Artifact, ArtifactLocation}
 import de.sciss.lucre.expr.IntObj
 import de.sciss.lucre.synth.InMemory
 import de.sciss.synth.io.AudioFile
 import de.sciss.synth.proc.WorkspaceHandle
+
+import scala.util.{Failure, Success}
 
 object Test extends App {
   implicit val cursor = InMemory()
@@ -49,17 +50,16 @@ object Test extends App {
     val r = f.run()
     r.reactNow { implicit tx => state =>
       println(s"Rendering: $state")
-      state match {
-        case Rendering.Failure(Cancelled()) =>
+      if (state.isComplete) r.result.foreach {
+        case Failure(Cancelled()) =>
           sys.exit()
-        case Rendering.Failure(ex) =>
+        case Failure(ex) =>
           ex.printStackTrace()
           sys.exit(1)
-        case Rendering.Success =>
+        case Success(_) =>
           val spec = AudioFile.readSpec(tmpF)
           println(spec)
           sys.exit()
-        case _ =>
       }
     }
   }

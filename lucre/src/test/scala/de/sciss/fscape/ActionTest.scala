@@ -1,13 +1,14 @@
 package de.sciss.fscape
 
 import de.sciss.fscape.lucre.FScape
-import de.sciss.fscape.lucre.FScape.Rendering
 import de.sciss.fscape.stream.Cancelled
 import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.synth.InMemory
 import de.sciss.synth.proc
 import de.sciss.synth.proc.Action.Universe
 import de.sciss.synth.proc.WorkspaceHandle
+
+import scala.util.{Failure, Success}
 
 object ActionTest extends App {
   implicit val cursor = InMemory()
@@ -47,15 +48,14 @@ object ActionTest extends App {
     r = f.run()
     r.reactNow { implicit tx => state =>
       println(s"Rendering: $state")
-      state match {
-        case Rendering.Failure(Cancelled()) =>
+      if (state.isComplete) r.result.foreach {
+        case Failure(Cancelled()) =>
           sys.exit()
-        case Rendering.Failure(ex) =>
+        case Failure(ex) =>
           ex.printStackTrace()
           sys.exit(1)
-        case Rendering.Success =>
+        case Success(_) =>
           sys.exit()
-        case _ =>
       }
     }
   }

@@ -31,7 +31,7 @@ import de.sciss.synth.proc.{GenContext, GenView, WorkspaceHandle}
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm.Ref
 import scala.util.control.NonFatal
-import scala.util.{Failure, Success, Try}
+import scala.util.{Failure, Try}
 
 object FScapeImpl {
   private final val SER_VERSION_OLD = 0x4673  // "Fs"
@@ -90,27 +90,71 @@ object FScapeImpl {
                                                  override val obj: stm.Source[S#Tx, Output[S]],
                                                  val valueType: Obj.Type)
                                                 (implicit context: GenContext[S])
-    extends GenView[S] with ObservableImpl[S, GenView.State] {
+    extends GenView[S] with ObservableImpl[S, GenView.State] { view =>
 
-    private[this] val _state = Ref[GenView.State](GenView.Stopped)
+    private[this] val _state      = Ref[GenView.State](GenView.Stopped)
+    private[this] val _rendering  = Ref(Option.empty[(Rendering[S], Disposable[S#Tx])])
 
     def typeID: Int = Output.typeID
 
     def value(implicit tx: S#Tx): Option[Try[Obj[S]]] = obj().value
 
+//    def state(implicit tx: S#Tx): GenView.State =
+//      _rendering.get(tx.peer).fold[GenView.State](GenView.Stopped)(_.state)
+
     def state(implicit tx: S#Tx): GenView.State = _state.get(tx.peer)
 
-    def start()(implicit tx: S#Tx): Unit = {
-      val output  = obj()
-      val fscape  = output.fscape
-      import context.{cursor, workspaceHandle}
-      val r       = fscape.run(config)
-      ???
+    def fscape(implicit tx: S#Tx): FScape[S] = obj().fscape
+
+    private def state_=(st: GenView.State)(implicit tx: S#Tx): Unit = {
+      val stOld = _state.swap(st)(tx.peer)
+      if (st.isComplete) {
+        disposeObserver()
+      }
+      if (st != stOld) view.fire(st)
     }
 
-    def stop()(implicit tx: S#Tx): Unit = ???
+    private def mkObserver(r: Rendering[S])(implicit tx: S#Tx): Unit = {
+      val obs = r.react { implicit tx => st =>
+        state_=(st)
+      }
+      disposeObserver()
+      _rendering.set(Some((r, obs)))(tx.peer)
+      state_=(r.state)
+    }
 
-    def dispose()(implicit tx: S#Tx): Unit = stop()
+    private def disposeObserver()(implicit tx: S#Tx): Unit =
+      _rendering.swap(None)(tx.peer).foreach { case (r, obs) =>
+        obs.dispose()
+        val _fscape = fscape
+        context.release(_fscape)
+      }
+
+    def start()(implicit tx: S#Tx): Unit = {
+      val isRunning = _rendering.get(tx.peer).exists { case (r, _) =>
+        r.state.isComplete
+      }
+      if (!isRunning) startNew()
+    }
+
+    private def startNew()(implicit tx: S#Tx): Unit = {
+      val _fscape = fscape
+      val r       = context.acquire[Rendering[S]](_fscape) {
+        import context.{cursor, workspaceHandle}
+        val g   = _fscape.graph().value
+        val _r  = new RenderingImpl[S](config)
+        _r.start(_fscape, g)
+        _r
+      }
+      mkObserver(r)
+    }
+
+    def stop()(implicit tx: S#Tx): Unit =
+      _rendering.get(tx.peer).foreach { case (r, _) =>
+        r.cancel()
+      }
+
+    def dispose()(implicit tx: S#Tx): Unit = disposeObserver()
   }
 
   // ---- Rendering ----
@@ -118,9 +162,12 @@ object FScapeImpl {
   private final class RenderingImpl[S <: Sys[S]](config: Control.Config)(implicit cursor: stm.Cursor[S])
     extends Rendering[S] with ObservableImpl[S, Rendering.State] {
 
-    private[this] val _state        = Ref[Rendering.State](Rendering.Running)
+    private[this] val _state        = Ref[Rendering.State](Rendering.Stopped)
+    private[this] val _result       = Ref(Option.empty[Try[Unit]])
     private[this] val _disposed     = Ref(false)
     implicit val control: Control   = Control(config)
+
+    def result(implicit tx: S#Tx): Option[Try[Unit]] = _result.get(tx.peer)
 
     def reactNow(fun: (S#Tx) => (State) => Unit)(implicit tx: S#Tx): Disposable[S#Tx] = {
       val res = react(fun)
@@ -131,9 +178,12 @@ object FScapeImpl {
     private def completeWith(t: Try[Unit]): Unit = if (!_disposed.single.get)
       cursor.step { implicit tx =>
         import TxnLike.peer
-        if (!_disposed()) t match {
-          case Success(())          => state = Rendering.Success
-          case Failure(ex)          => state = Rendering.Failure(ex)
+        if (!_disposed()) {
+          state_=(Rendering.Completed, Some(t))
+          //        t match {
+          //          case Success(())          => state = Rendering.Success
+          //          case Failure(ex)          => state = Rendering.Failure(ex)
+          //        }
         }
       }
 
@@ -153,9 +203,10 @@ object FScapeImpl {
               completeWith(Failure(ex))
           }
         }
+        state_=(Rendering.Running(0.0), None)
       } catch {
         case NonFatal(ex) =>
-          state = Rendering.Failure(ex)
+          state_=(Rendering.Completed,  Some(Failure(ex)))
       }
     }
 
@@ -164,10 +215,11 @@ object FScapeImpl {
       _state()
     }
 
-    protected def state_=(value: Rendering.State)(implicit tx: S#Tx): Unit = {
+    protected def state_=(value: Rendering.State, res: Option[Try[Unit]])(implicit tx: S#Tx): Unit = {
       import TxnLike.peer
-      val old = _state.swap(value)
-      if (old != value) fire(value)
+      val old     = _state .swap(value)
+      val oldRes  = _result.swap(res)
+      if (old != value || (value == Rendering.Completed && oldRes != res)) fire(value)
     }
 
     def cancel()(implicit tx: S#Tx): Unit =

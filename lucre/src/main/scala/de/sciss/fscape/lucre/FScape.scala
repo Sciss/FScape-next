@@ -21,9 +21,8 @@ import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Disposable, Obj, Sys}
 import de.sciss.serial.{DataInput, Serializer}
 import de.sciss.synth.proc
-import de.sciss.synth.proc.GenView.State
 import de.sciss.synth.proc.impl.CodeImpl
-import de.sciss.synth.proc.{Gen, GenView, Workspace, WorkspaceHandle}
+import de.sciss.synth.proc.{Gen, GenView, WorkspaceHandle}
 import de.sciss.{fscape, model}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -78,36 +77,44 @@ object FScape extends Obj.Type {
   // ----
 
   object Rendering {
-    sealed trait State {
-      def isComplete: Boolean
-    }
-    case object Success extends State {
-      def isComplete = true
-    }
-    /** Rendering either failed or was aborted.
-      * In the case of abortion, the throwable is
-      * of type `Cancelled`.
-      */
-    final case class Failure (ex : Throwable) extends State {
-      def isComplete = true
-    }
-//    final case class Progress(amount: Double) extends State {
-//      override def toString = s"$productPrefix($toInt%)"
-//
-//      def isComplete = false
-//
-//      /** Returns an integer progress percentage between 0 and 100 */
-//      def toInt = (amount * 100).toInt
+//    sealed trait State {
+//      def isComplete: Boolean
 //    }
-    case object Running extends State {
-      def isComplete = false
-    }
+//    case object Success extends State {
+//      def isComplete = true
+//    }
+//    /** Rendering either failed or was aborted.
+//      * In the case of abortion, the throwable is
+//      * of type `Cancelled`.
+//      */
+//    final case class Failure (ex : Throwable) extends State {
+//      def isComplete = true
+//    }
+////    final case class Progress(amount: Double) extends State {
+////      override def toString = s"$productPrefix($toInt%)"
+////
+////      def isComplete = false
+////
+////      /** Returns an integer progress percentage between 0 and 100 */
+////      def toInt = (amount * 100).toInt
+////    }
+//    case object Running extends State {
+//      def isComplete = false
+//    }
+
+    type State      = GenView.State
+    val  Stopped    = GenView.Stopped
+    val  Completed  = GenView.Completed
+    val  Running    = GenView.Running
+    type Running    = GenView.Running
 
     val  Cancelled = fscape.stream.Cancelled
     type Cancelled = fscape.stream.Cancelled
   }
   trait Rendering[S <: Sys[S]] extends Observable[S#Tx, Rendering.State] with Disposable[S#Tx] {
     def state(implicit tx: S#Tx): Rendering.State
+
+    def result(implicit tx: S#Tx): Option[Try[Unit]]
 
     def control: Control
 
