@@ -192,25 +192,28 @@ object FScapeImpl {
       }
 
     def start(f: FScape[S], graph: Graph)(implicit tx: S#Tx, workspace: WorkspaceHandle[S]): Unit = {
-      try {
-        val ugens = UGenGraphBuilder.build(f, graph)
-        tx.afterCommit {
-          try {
-            control.runExpanded(ugens)
-            import control.config.executionContext
-            val fut = control.status
-            fut.andThen {
-              case x => completeWith(x)
+      val state = UGenGraphBuilder.build(f, graph)
+      state match {
+        case res: UGenGraphBuilder.Complete[S] =>
+          tx.afterCommit {
+            try {
+              control.runExpanded(res.graph)
+              import control.config.executionContext
+              val fut = control.status
+              fut.andThen {
+                case x => completeWith(x)
+              }
+            } catch {
+              case NonFatal(ex) =>
+                completeWith(Failure(ex))
             }
-          } catch {
-            case NonFatal(ex) =>
-              completeWith(Failure(ex))
           }
-        }
-        state_=(Rendering.Running(0.0), None)
-      } catch {
-        case NonFatal(ex) =>
-          state_=(Rendering.Completed,  Some(Failure(ex)))
+          state_=(Rendering.Running(0.0), None)
+
+        case res: UGenGraphBuilder.Incomplete[S] =>
+          val msg = res.rejectedInputs.mkString("Missing inputs: ", ", ", "")
+          val ex  = new IllegalStateException(msg)
+          state_=(Rendering.Completed, Some(Failure(ex)))
       }
     }
 

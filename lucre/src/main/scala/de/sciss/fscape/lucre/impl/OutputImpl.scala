@@ -28,7 +28,7 @@ object OutputImpl {
 
   sealed trait Update[S]
 
-  def apply[S <: Sys[S]](fscape: FScape[S], key: String, tpe: Obj.Type)(implicit tx: S#Tx): Output[S] = {
+  def apply[S <: Sys[S]](fscape: FScape[S], key: String, tpe: Obj.Type)(implicit tx: S#Tx): OutputImpl[S] = {
     val id = tx.newID()
     new Impl(id, fscape, key, tpe)
   }
@@ -37,6 +37,9 @@ object OutputImpl {
     serializer[S].read(in, access)
 
   def serializer[S <: Sys[S]]: Serializer[S#Tx, S#Acc, Output[S]] = anySer.asInstanceOf[Ser[S]]
+
+  implicit def implSer[S <: Sys[S]]: Serializer[S#Tx, S#Acc, OutputImpl[S]] =
+    anySer.asInstanceOf[Serializer[S#Tx, S#Acc, OutputImpl[S]]]
 
   private val anySer = new Ser[NoSys]
 
@@ -60,13 +63,15 @@ object OutputImpl {
   }
 
   private final class Impl[S <: Sys[S]](val id: S#ID, val fscape: FScape[S], val key: String, val valueType: Obj.Type)
-    extends Output[S] with ConstObjImpl[S, Any] {
+    extends OutputImpl[S] with ConstObjImpl[S, Any] {
 
     def tpe: Obj.Type = Output
 
     override def toString: String = s"Output($id, $fscape, $key, $valueType)"
 
     def value(implicit tx: S#Tx): Option[Try[Obj[S]]] = ???
+
+    def value_=(v: Option[Try[Obj[S]]])(implicit tx: S#Tx): Unit = ???
 
     def copy[Out <: Sys[Out]]()(implicit tx: S#Tx, txOut: Out#Tx, context: Copy[S, Out]): Elem[Out] = {
       val idOut   = txOut.newID()
@@ -82,4 +87,7 @@ object OutputImpl {
       out.writeInt(valueType.typeID)
     }
   }
+}
+sealed trait OutputImpl[S <: Sys[S]] extends Output[S] {
+  def value_=(v: Option[Try[Obj[S]]])(implicit tx: S#Tx): Unit
 }
