@@ -15,6 +15,7 @@ package de.sciss.fscape
 package lucre
 
 import de.sciss.fscape.graph.{BinaryOp, Constant, ConstantD, ConstantI, ConstantL, UnaryOp}
+import de.sciss.fscape.lucre.FScape.Output
 import de.sciss.fscape.lucre.UGenGraphBuilder.{ActionRef, OutputRef}
 import de.sciss.fscape.lucre.graph.Attribute
 import de.sciss.fscape.stream.Control
@@ -104,7 +105,7 @@ object UGenGraphBuilder {
 
   /** An "untyped" output-setter reference */
   trait OutputRef {
-    def set(value: Any): Unit
+    def complete(p: Output.Provider): Unit
   }
 
   // -----------------
@@ -144,19 +145,12 @@ object UGenGraphBuilder {
                                                 (implicit cursor: stm.Cursor[S], workspace: WorkspaceHandle[S])
     extends OutputRef {
 
-    def set(value: Any): Unit = SoundProcesses.atomic[S, Unit] { implicit tx =>
-      val out = outputH()
-      out
-      ???
-//      val u = proc.Output.Universe(self = out, workspace = workspace, invoker = Some(f), value = value)
-//      out.execute(u)
-    }
+    def complete(p: Output.Provider): Unit = ???
   }
 }
 trait UGenGraphBuilder extends UGenGraph.Builder {
   def requestAttribute(key: String): Option[Any]
 
-  def requestAction   (key: String): Option[ActionRef]
-
+  def requestAction   (key: String)               : Option[ActionRef]
   def requestOutput   (key: String, tpe: Obj.Type): Option[OutputRef]
 }

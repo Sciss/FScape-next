@@ -139,7 +139,11 @@ object FScapeImpl {
 
     private def startNew()(implicit tx: S#Tx): Unit = {
       val _fscape = fscape
-      val r       = context.acquire[Rendering[S]](_fscape) {
+      // the idea is that each of the output views can
+      // trigger the rendering, but we ensure there is
+      // always no more than one rendering (per context)
+      // running.
+      val r = context.acquire[Rendering[S]](_fscape) {
         import context.{cursor, workspaceHandle}
         val g   = _fscape.graph().value
         val _r  = new RenderingImpl[S](config)

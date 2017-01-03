@@ -181,6 +181,10 @@ object FScape extends Obj.Type {
 
     override def readIdentifiedObj[S <: Sys[S]](in: DataInput, access: S#Acc)(implicit tx: S#Tx): Obj[S] =
       OutputImpl.readIdentifiedObj(in, access)
+
+    trait Provider {
+      def mkValue[S <: Sys[S]](implicit tx: S#Tx): Obj[S]
+    }
   }
   trait Output[S <: Sys[S]] extends Gen[S] {
     def fscape: FScape[S]
