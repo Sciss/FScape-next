@@ -30,6 +30,7 @@ Let's play this through with a combination of `Int` and `AudioCue`.
 
 ```scala
 import de.sciss.fscape._
+import graph._
 import lucre.graph._
 
 val g = Graph {
@@ -37,7 +38,7 @@ val g = Graph {
   val max = RunningMax(in.abs).last
   val inv = -in // whatever
   MkAudioCue(key = "audio", in = inv)
-  MkDouble  (key = "max"  , in = max)
+  MkInt     (key = "max"  , in = max)
 }
 ```
 
@@ -110,6 +111,13 @@ re-validation then happens at a later point, either as a `value` in an output is
 (preventing an object to be emitted from `value()`), or through an active call. If re-validation yields
 the old key, the flag can be flipped back.
 
+It is clear that we cannot prevent false retention of objects pointing to invalidated
+cached values. Even if we change from `Obj[S]` to a flat value in `Gen`, we could still
+lift a `File` to an `Artifact.Obj` etc. Without a real reference counting mechanism, we
+must therefore rely on the use site being very careful about the use of a `Gen` value.
+We must introduce an in-memory transactional use counter similar to what filecache-txn
+does.
+
 # Re-thought
 
 Caching needs to be fundamentally solved/implemented in SoundProcesses first. It should be
@@ -120,3 +128,10 @@ should support cached attributes in a principle manner, not by overloading it fr
 It is also clear then that a use-site must be able to trigger cache regeneration in a black-box
 manner when it encounters a value, it cannot have knowledge of FScape and the way an FScape patch
 is run. This should go into the `buildAsync` part of the aural proc.
+
+# Resources
+
+So in `MkAudioCue`, how do we allocate the resource, and how to we evict it?
+
+- say we have a `TxnProducer` in file-cache, with directory inside the workspace directory
+  (in in `/tmp` for in-memory workspace)

@@ -62,7 +62,8 @@ object MkAudioCue {
       super.stopped()
       if (isSuccess) ref.complete(new Output.Provider {
         def mkValue[S <: Sys[S]](implicit tx: S#Tx): Obj[S] = {
-          val flat = AudioCue(file, spec, 0L, 1.0)
+          val spec1 = spec.copy(numFrames = framesWritten)
+          val flat  = AudioCue(file, spec1, 0L, 1.0)
           AudioCue.Obj.newConst(flat)
         }
       })

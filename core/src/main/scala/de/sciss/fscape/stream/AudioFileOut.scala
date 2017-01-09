@@ -74,7 +74,8 @@ object AudioFileOut {
     private[this] var shouldStop    = false
     private[this] var _isSuccess    = false
 
-    protected final def isSuccess: Boolean = _isSuccess
+    protected final def isSuccess     : Boolean  = _isSuccess
+    protected final def framesWritten : Long     = af.numFrames
 
     {
       val ins = shape.inSeq
