@@ -1,15 +1,18 @@
 package de.sciss.fscape
 
 import de.sciss.fscape.lucre.FScape
+import de.sciss.fscape.lucre.FScape.Output
 import de.sciss.lucre.expr.IntObj
 import de.sciss.lucre.synth.InMemory
-import de.sciss.synth.proc.WorkspaceHandle
+import de.sciss.synth.proc.{GenContext, GenView, WorkspaceHandle}
 
 import scala.concurrent.stm.Ref
 
 object OutputTest extends App {
   implicit val cursor = InMemory()
   type S              = InMemory
+
+  FScape.init()
 
   cursor.step { implicit tx =>
     val f = FScape[S]
@@ -24,27 +27,37 @@ object OutputTest extends App {
     val out2 = f.outputs.add("out-2", IntObj)
     f.graph() = g
 
-    ???
 //    assert(out1.value.isEmpty)
 //    assert(out2.value.isEmpty)
 
     val count = Ref(0)
 
-    import de.sciss.lucre.stm.TxnLike.peer
-    out1.changed.react { implicit tx => upd =>
-//      println(s"Value 1 is now ${upd.value}")
-      if (count.transformAndGet(_ + 1) == 2) tx.afterCommit(sys.exit())
-    }
-    out2.changed.react { implicit tx => upd =>
-//      println(s"Value 2 is now ${upd.value}")
-      if (count.transformAndGet(_ + 1) == 2) tx.afterCommit(sys.exit())
+    import WorkspaceHandle.Implicits.dummy
+    implicit val genCtx = GenContext[S]
+
+    def mkView(out: Output[S], idx: Int): GenView[S] = {
+      val view = GenView(out)
+      val key  = view.acquire()
+
+      import de.sciss.lucre.stm.TxnLike.peer
+      view.react { implicit tx => upd =>
+        if (upd.isComplete) {
+          view.value(key).foreach { value =>
+            println(s"Value ${idx + 1} is now $value")
+            if (count.transformAndGet(_ + 1) == 2) tx.afterCommit(sys.exit())
+          }
+        }
+      }
+      view
     }
 
-    import WorkspaceHandle.Implicits.dummy
-    val r = f.run()
-    r.reactNow { implicit tx => state =>
-      println(s"Rendering state: $state")
-    }
+    val view1 = mkView(out1, idx = 0)
+    val view2 = mkView(out2, idx = 1)
+
+//    val r = f.run()
+//    r.reactNow { implicit tx => state =>
+//      println(s"Rendering state: $state")
+//    }
 
     new Thread {
       override def run(): Unit = Thread.sleep(Long.MaxValue)

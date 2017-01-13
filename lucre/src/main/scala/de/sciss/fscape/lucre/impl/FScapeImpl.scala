@@ -113,9 +113,14 @@ object FScapeImpl {
 //      }
 //    }
 
-    def acquire()(implicit tx: S#Tx): Future[Obj[S]] = ???
+    object Key
+    type Key = Key.type
 
-    def release(obj: Obj[S])(implicit tx: S#Tx): Unit = ???
+    def value(key: Key)(implicit tx: S#Tx): Option[Try[Obj[S]]] = ???
+
+    def acquire()(implicit tx: S#Tx): Key = ???
+
+    def release(key: Key)(implicit tx: S#Tx): Unit = ???
 
     def state(implicit tx: S#Tx): GenView.State = _state.get(tx.peer)._1
 
