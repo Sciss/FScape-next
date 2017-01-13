@@ -16,6 +16,7 @@ package lucre
 package impl
 
 import de.sciss.fscape.lucre.FScape.Output
+import de.sciss.lucre.event.impl.ConstObjImpl
 import de.sciss.lucre.stm.impl.ObjSerializer
 import de.sciss.lucre.stm.{Copy, Elem, NoSys, Obj, Sys}
 import de.sciss.lucre.{event => evt}
@@ -27,10 +28,11 @@ object OutputImpl {
   sealed trait Update[S]
 
   def apply[S <: Sys[S]](fscape: FScape[S], key: String, tpe: Obj.Type)(implicit tx: S#Tx): OutputImpl[S] = {
-    val tgt = evt.Targets[S]
-//    val id  = tx.newID()
-    val vr  = tx.newVar[Option[Obj[S]]](tgt.id, None)
-    new Impl[S](tgt, fscape, key, tpe, vr).connect()
+//    val tgt = evt.Targets[S]
+//    val id = tgt.id
+    val id  = tx.newID()
+    val vr  = tx.newVar[Option[Obj[S]]](id, None)
+    new Impl[S](id, fscape, key, tpe, vr).connect()
   }
 
   def read[S <: Sys[S]](in: DataInput, access: S#Acc)(implicit tx: S#Tx): Output[S] =
@@ -48,7 +50,9 @@ object OutputImpl {
   }
 
   def readIdentifiedObj[S <: Sys[S]](in: DataInput, access: S#Acc)(implicit tx: S#Tx): Output[S] = {
-    val tgt     = evt.Targets.read(in, access)
+//    val tgt     = evt.Targets.read(in, access)
+//    val id = tgt.id
+    val id = tx.readID(in, access)
 //    val cookie  = in.readByte()
 //    if (cookie != 3) sys.error(s"Unexpected cookie, expected 3 found $cookie")
 //    val id      = tx.readID(in, access)
@@ -60,14 +64,14 @@ object OutputImpl {
     val key     = in.readUTF()
     val tpeID   = in.readInt()
     val tpe     = Obj.getType(tpeID)
-    val vr      = tx.readVar[Option[Obj[S]]](tgt.id, in)
-    new Impl[S](tgt, fscape, key, tpe, vr)
+    val vr      = tx.readVar[Option[Obj[S]]](id, in)
+    new Impl[S](id /* tgt */, fscape, key, tpe, vr)
   }
 
-  private final class Impl[S <: Sys[S]](protected val targets: evt.Targets[S],
+  private final class Impl[S <: Sys[S]](val id: S#ID /* protected val targets: evt.Targets[S] */,
                                         val fscape: FScape[S], val key: String, val valueType: Obj.Type,
                                         valueVr: S#Var[Option[Obj[S]]])
-    extends OutputImpl[S] with evt.impl.SingleNode[S, Output.Update[S]] { self =>
+    extends OutputImpl[S] with ConstObjImpl[S, Any] /* evt.impl.SingleNode[S, Output.Update[S]] */ { self =>
 
     def tpe: Obj.Type = Output
 
@@ -81,7 +85,7 @@ object OutputImpl {
         // before.changed -/-> this.changed
         valueVr() = v
         // v     .changed ---> this.changed
-        changed.fire(Output.Update(self, v))
+//        changed.fire(Output.Update(self, v))
       }
     }
 
@@ -96,22 +100,24 @@ object OutputImpl {
       () // graph.changed -/-> changed
     }
 
-    object changed extends Changed
-      with evt.impl.Generator[S, Output.Update[S]] {
-
-      def pullUpdate(pull: evt.Pull[S])(implicit tx: S#Tx): Option[Output.Update[S]] =
-        if (pull.parents(this).isEmpty) {
-          Some(pull.resolve[Output.Update[S]])
-        } else {
-          None
-        }
-    }
+//    object changed extends Changed
+//      with evt.impl.Generator[S, Output.Update[S]] {
+//
+//      def pullUpdate(pull: evt.Pull[S])(implicit tx: S#Tx): Option[Output.Update[S]] =
+//        if (pull.parents(this).isEmpty) {
+//          Some(pull.resolve[Output.Update[S]])
+//        } else {
+//          None
+//        }
+//    }
 
     def copy[Out <: Sys[Out]]()(implicit tx: S#Tx, txOut: Out#Tx, context: Copy[S, Out]): Elem[Out] = {
-      val tgtOut  = evt.Targets[Out] // txOut.newID()
+//      val tgtOut  = evt.Targets[Out] // txOut.newID()
+//      val idOut   = tgtOut.id
+      val idOut   = txOut.newID()
       val fscOut  = context(fscape)
-      val vrOut   = txOut.newVar[Option[Obj[Out]]](tgtOut.id, None)  // correct to drop cache?
-      val out     = new Impl[Out](tgtOut, fscOut, key, valueType, vrOut)
+      val vrOut   = txOut.newVar[Option[Obj[Out]]](idOut, None)  // correct to drop cache?
+      val out     = new Impl[Out](idOut, fscOut, key, valueType, vrOut)
       out.connect()
     }
 

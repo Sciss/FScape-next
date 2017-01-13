@@ -47,7 +47,7 @@ sealed trait UGen extends Product {
   def numOutputs: Int
 
   // the full UGen spec:
-  // name, inputs
+  // name, inputs, rest
   override final def productPrefix: String = "UGen"
   final def productArity: Int = 3
 
@@ -85,9 +85,9 @@ object UGen {
     * hence can directly function as input to another UGen without expansion.
     */
   trait SingleOut extends UGenProxy with UGen {
-    final def numOutputs = 1
+    final def numOutputs  = 1
     final def outputIndex = 0
-    final def ugen: UGen = this
+    final def ugen: UGen  = this
 
     def source: UGenSource.SingleOut
   }

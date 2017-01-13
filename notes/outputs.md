@@ -135,3 +135,113 @@ So in `MkAudioCue`, how do we allocate the resource, and how to we evict it?
 
 - say we have a `TxnProducer` in file-cache, with directory inside the workspace directory
   (in in `/tmp` for in-memory workspace)
+  
+The main problems enter through object duplication: Say the cache key is calculated from the structure
+of the UGen graph (including structural representation of its flattened attribute inputs). Now
+the `FScape` object is duplicated, for example because an encompassing `Sonification` is duplicated.
+The structural hash key will be identical, the `S#ID` fields of the `FScape` objects not. If we
+only use the structural key, both sonifications share the same cache, which is useful. Now the
+copy is edited and the UGen graph updated. The self-observing `FScape` object might wish to evict
+the cache entry at the "old" key, but it does not know that there is another copy that actually
+uses the old cache entry. Should we be pessimistic or optimistic? It is clear that the user could
+also delete the `Sonification` instance, and because we do not have any reference counting, there is
+no way to register this deletion in the cache manager.
+
+From the above, it should become clear that the only reasonable setup is a cache with a limit,
+and an option for the user to explicitly wipe the cache. However, then there isn't much of an advantage
+having a separate cache in the workspace directory as opposed to a global cache?
+
+## Structural Equality
+
+We do not implement `equals` on UGen at the moment. As the discussion with changing from set to
+vector in the UGen graph builder has shown, there is no reasonable _universal_ equality for UGens,
+but it depends on the context. We thus propose a function `UGen => Seq[Any]` that produces the
+elements for structural equality in caching the graph.
+
+This sequence will most likely be the concatenation of the recursively mapped `inputs` of the UGen
+and the `rest` argument, which could map particular types in a particular way, for example a `File`
+to its path, length, and modification date.
+
+### Analysis: `rest` usage
+
+In "core":
+
+- `Int` (`numChannels`, `opID`)
+- `File` (input, i.e. existing)
+- `AudioFileSpec`
+- `File` (output, i.e. possibly not existing)
+- `String` (label)
+
+In "lucre":
+
+- `ActionRef` (__not structural__)
+- `OutputRef` (__not structural__)
+
+N.B.: `Attribute` is a nested graph element that produces a `Constant` in the UGen, so this is
+already structurally solved. Similar: `AudioFileIn.NumFrames`, `AudioFileIn.SampleRate`.
+`AudioFileIn` obtains a flat `File` instance and falls back to the core equivalent graph element.
+Dito for `AudioFileOut`.
+
+Clearly, `ActionRef` and `OutputRef` are not structural values. Since both denote _output_ type values,
+strictly speaking they need not be part of a structural _input_ specification. That is, they do not influence
+what the graph "calculates", although of course they influence what happens with the calculated output.
+
+These two types are unfortunate in that we could imagine they would appear not in the UGen expansion, but
+in the stream instantiation. However, we want to be able to trace missing inputs at the earlier point.
+
+An `Action` is the perfect example for an inherently opaque object, there is no (reasonable) way we can produce a
+flat structural representation from it. In the case of `...Ref`, we should simply add the string keys to
+the `rest` structure.
+
+If we don't want to rely on the `Product` serializer known from synth graphs, we should introduce a small
+sum type `Structure` that wraps the above types, giving explicit `ImmutableSerializer` instances.
+
+```scala
+import de.sciss.serial.ImmutableSerializer
+
+object Structure {
+  case class Int(peer: scala.Int) extends Structure {
+    type A = scala.Int
+    def serializer = ImmutableSerializer.Int
+  }
+}
+trait Structure {
+  type A
+  def serializer: ImmutableSerializer[A]
+}
+```
+
+etc. And then the `rest` argument becomes `structure: List[Structure]`.
+The disadvantage of course is that we need an extensions mechanism if we want to keep `Structure` open
+(e.g. for adding custom types in SysSon). Perhaps using a `Product` (tuples...) is better then? Binary
+compatibility is not a big issue as we can simply declare a cache invalid if we can't deserialize it.
+
+## How does `MkAudioCue` obtain its output file?
+
+- the `stream.Builder` (sub-class) should have the create-temp-file method for a file-cache
+- that temp file must be registered, so it is deleted if the stream fails
+- the `Output.Provider` must be changed to additionally provide part of the cache value
+  (the temp file in this case)
+
+The confusing bit stems from the file-cache API that must be interwoven with the `run` of `FScape` (or
+indirectly through `GenView#start()`). In particular, we need defined behaviour if the cache key is still
+valid when running the graph. The cleanest would be to change `requestOutput` to indicate a difference
+between missing output and valid output. If the output is already valid, we drop the UGen, or insert a
+dummy UGen if a UGen output is required (e.g. `Frames` for `MkAudioCue`.)
+
+There is chicken-and-egg problem, though, because the UGen structural key is obtained exactly by
+expanding the element graph, i.e. an action that invokes `requestOutput`. In summary, we may _not_ allocate
+resources before the stream stage, pure UGen graph expansion should be side-effect free.
+
+__Proposal:__ Explicitly running the `FScape` when the key is already valid should be transparent to the
+graph; all UGens runs as normal, however the clean-up stage then deletes the files created in the cache
+directory, instead of submitting them to the cache value. For simplicity we could add a `createCacheFile`
+method to `stream.Builder` in "core", so we do not need to sub-class this.
+
+## How do we prevent evicting used files?
+
+- remove `value` method from `Gen`
+- i.e. enforce going through `GenView`
+- perhaps `Obj[S#I]` is the way to go (look into `AuralProc` to see if this is easily fitted in?)
+- in the view we must call `acquire` and `release` to obtain _any_ value (for the sake of consistency across
+  all types of cached objects)

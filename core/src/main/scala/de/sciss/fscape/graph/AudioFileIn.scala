@@ -23,7 +23,7 @@ final case class AudioFileIn(file: File, numChannels: Int) extends UGenSource.Mu
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = makeUGen(Vector.empty)
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
-    UGen.MultiOut(this, inputs = args, numOutputs = numChannels, rest = file,
+    UGen.MultiOut(this, inputs = args, numOutputs = numChannels, rest = file :: numChannels :: Nil,
       isIndividual = true, hasSideEffect = true)
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Vec[StreamOut] =

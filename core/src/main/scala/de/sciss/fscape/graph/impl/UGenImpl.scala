@@ -18,7 +18,7 @@ package impl
 import scala.collection.immutable.{IndexedSeq => Vec}
 
 final class ZeroOutImpl(val source: UGenSource.ZeroOut, val inputs: Vec[UGenIn], protected val rest: Any,
-                         val isIndividual: Boolean)
+                        val isIndividual: Boolean)
   extends UGen.ZeroOut {
 
   def name: String = source.name

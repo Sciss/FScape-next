@@ -24,7 +24,7 @@ final case class ImageFileSeqIn(template: File, numChannels: Int, indices: GE) e
     unwrap(Vector(indices.expand))
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
-    UGen.MultiOut(this, inputs = args, numOutputs = numChannels, rest = template,
+    UGen.MultiOut(this, inputs = args, numOutputs = numChannels, rest = template :: numChannels :: Nil,
       isIndividual = true, hasSideEffect = true)
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Vec[StreamOut] = {

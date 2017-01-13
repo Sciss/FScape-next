@@ -1,5 +1,5 @@
 /*
- *  MkScalar.scala
+ *  MkInt.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2017 Hanns Holger Rutz. All rights reserved.
@@ -47,19 +47,3 @@ final case class MkInt(key: String, in: GE) extends Lazy.Expander[Unit] {
     MkInt.WithRef(this, ref)
   }
 }
-
-//final case class MkDouble(key: String, in: GE) extends UGenSource.ZeroOut {
-//  protected def makeUGens(implicit b: UGenGraph.Builder): Unit = ...
-//
-//  protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit = ...
-//
-//  private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder) = ...
-//}
-//
-//final case class MkLong(key: String, in: GE) extends GE.Lazy {
-//  protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = ...
-//}
-//
-//final case class MkBoolean(key: String, in: GE) extends GE.Lazy {
-//  protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = ...
-//}

@@ -30,6 +30,7 @@ import de.sciss.synth.proc.impl.CodeImpl
 import de.sciss.synth.proc.{GenContext, GenView, WorkspaceHandle}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
+import scala.concurrent.Future
 import scala.concurrent.stm.Ref
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
@@ -100,15 +101,21 @@ object FScapeImpl {
 
     def typeID: Int = Output.typeID
 
+
+
     // XXX TODO --- gosh, this is some tricky stuff. Is this correct? Can we simplify it?
-    def value(implicit tx: S#Tx): Option[Try[Obj[S]]] = {
-      val (st, res) = _state.get(tx.peer)
-      if (!st.isComplete) None else (obj().value, res) match {
-        case (Some(v), _)         => Some(Success(v))
-        case (None, Failure(ex))  => Some(Failure(ex))
-        case _                    => None
-      }
-    }
+//    def value(implicit tx: S#Tx): Option[Try[Obj[S]]] = {
+//      val (st, res) = _state.get(tx.peer)
+//      if (!st.isComplete) None else (obj().value, res) match {
+//        case (Some(v), _)         => Some(Success(v))
+//        case (None, Failure(ex))  => Some(Failure(ex))
+//        case _                    => None
+//      }
+//    }
+
+    def acquire()(implicit tx: S#Tx): Future[Obj[S]] = ???
+
+    def release(obj: Obj[S])(implicit tx: S#Tx): Unit = ???
 
     def state(implicit tx: S#Tx): GenView.State = _state.get(tx.peer)._1
 
@@ -215,7 +222,7 @@ object FScapeImpl {
           // clear cached values
           if (res.outputs.nonEmpty) {
             f.outputs.iterator.foreach {
-              case out: OutputImpl[S] => out.value = None
+              case out: OutputImpl[S] => out.value_=(None)
               case _ =>
             }
           }

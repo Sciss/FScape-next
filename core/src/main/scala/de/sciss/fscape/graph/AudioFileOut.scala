@@ -34,7 +34,7 @@ final case class AudioFileOut(file: File, spec: AudioFileSpec, in: GE) extends U
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = unwrap(in.expand.outputs)
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
-    UGen.SingleOut(this, inputs = args, rest = file, isIndividual = true, hasSideEffect = true)
+    UGen.SingleOut(this, inputs = args, rest = file :: spec :: Nil, isIndividual = true, hasSideEffect = true)
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
     stream.AudioFileOut(file = file, spec = spec, in = args.map(_.toDouble))

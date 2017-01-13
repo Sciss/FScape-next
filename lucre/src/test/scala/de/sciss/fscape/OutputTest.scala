@@ -23,18 +23,20 @@ object OutputTest extends App {
     val out1 = f.outputs.add("out-1", IntObj)
     val out2 = f.outputs.add("out-2", IntObj)
     f.graph() = g
-    assert(out1.value.isEmpty)
-    assert(out2.value.isEmpty)
+
+    ???
+//    assert(out1.value.isEmpty)
+//    assert(out2.value.isEmpty)
 
     val count = Ref(0)
 
     import de.sciss.lucre.stm.TxnLike.peer
     out1.changed.react { implicit tx => upd =>
-      println(s"Value 1 is now ${upd.value}")
+//      println(s"Value 1 is now ${upd.value}")
       if (count.transformAndGet(_ + 1) == 2) tx.afterCommit(sys.exit())
     }
     out2.changed.react { implicit tx => upd =>
-      println(s"Value 2 is now ${upd.value}")
+//      println(s"Value 2 is now ${upd.value}")
       if (count.transformAndGet(_ + 1) == 2) tx.afterCommit(sys.exit())
     }
 

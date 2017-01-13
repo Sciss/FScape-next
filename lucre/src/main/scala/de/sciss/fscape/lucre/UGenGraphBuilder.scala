@@ -228,7 +228,7 @@ object UGenGraphBuilder {
       if (provider == null) throw new IllegalStateException("Output was not provided")
       val value     = provider.mkValue
       val output    = outputH()
-      output.value  = Some(value)
+      output.value_=(Some(value))
     }
   }
 }
