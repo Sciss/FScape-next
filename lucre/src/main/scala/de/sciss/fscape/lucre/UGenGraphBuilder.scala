@@ -71,6 +71,10 @@ object UGenGraphBuilder {
   trait Complete[S <: Sys[S]] extends State[S] {
     final def isComplete = true
 
+    /** Structural hash, lazily calculated from `Vec[UGen]` */
+    def structure: Long
+
+    /** Runnable stream graph, lazily calculated from `Vec[UGen]` */
     def graph: UGenGraph
 
     final def rejectedInputs: Set[String] = Set.empty
@@ -149,8 +153,7 @@ object UGenGraphBuilder {
   // -----------------
 
   private final class BuilderImpl[S <: Sys[S]](f: FScape[S])(implicit tx: S#Tx, cursor: stm.Cursor[S],
-                                                             workspace: WorkspaceHandle[S],
-                                                             protected val ctrl: Control)
+                                                             workspace: WorkspaceHandle[S])
     extends UGenGraph.BuilderLike with UGenGraphBuilder { builder =>
 
     private var acceptedInputs: Set[String]                               = Set.empty
@@ -184,11 +187,21 @@ object UGenGraphBuilder {
       res
     }
 
-    def tryBuild(): State[S] =
+    def tryBuild()(implicit ctrl: Control): State[S] =
       try {
-        val ug = build
+        val iUGens = UGenGraph.indexUGens(ugens)
         new Complete[S] {
-          val graph           : UGenGraph                                 = ug
+          private def calcStructure(): Long = {
+            ???
+          }
+
+          private def calcStream(): UGenGraph = {
+            val rg = UGenGraph.buildStream(iUGens)
+            UGenGraph(rg)
+          }
+
+          lazy val structure  : Long                                      = calcStructure()
+          lazy val graph      : UGenGraph                                 = calcStream()
           val acceptedInputs  : Set[String]                               = builder.acceptedInputs
           val outputs         : Map[String, (Obj.Type, OutputResult[S])]  = builder.outputMap
         }

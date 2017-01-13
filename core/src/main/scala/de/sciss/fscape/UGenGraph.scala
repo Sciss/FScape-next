@@ -42,7 +42,7 @@ object UGenGraph {
   }
 
   // ---- IndexedUGen ----
-  private[fscape] final class IndexedUGenBuilder(val ugen: UGen /* , var index: Int */, var effective: Boolean) {
+  final class IndexedUGenBuilder(val ugen: UGen /* , var index: Int */, var effective: Boolean) {
     var children    : Array[List[IndexedUGenBuilder]]   = Array.fill(ugen.numOutputs)(Nil)
     var inputIndices: List[UGenInIndex]                 = Nil
 
@@ -72,106 +72,109 @@ object UGenGraph {
     override def toString = s"$iu[$outIdx]"
   }
 
-  private final class BuilderImpl(implicit protected val ctrl: stream.Control) extends BuilderLike
+  private final class BuilderImpl extends BuilderLike
+
+  // - converts to StreamIn objects that automatically insert stream broadcasters
+  //   and dummy sinks
+  def buildStream(ugens: Vec[IndexedUGenBuilder])(implicit ctrl: stream.Control): RunnableGraph[NotUsed] = {
+    // empty graphs are not supported by Akka
+    if (ugens.isEmpty) throw new IllegalStateException("Graph is empty")
+    val _graph = GraphDSL.create() { implicit dsl =>
+      implicit val sb = stream.Builder()
+
+      var ugenOutMap = Map.empty[IndexedUGenBuilder, Array[StreamIn]]
+
+      ugens.foreach { iu =>
+        val args: Vec[StreamIn] = iu.inputIndices.map {
+          case c: ConstantIndex   => c.peer
+          case u: UGenProxyIndex  => ugenOutMap(u.iu)(u.outIdx)
+        } (breakOut)
+
+        @inline def add(value: Array[StreamIn]): Unit = {
+          // println(s"map += $iu -> ${value.mkString("[", ", ", "]")}")
+          ugenOutMap += iu -> value
+        }
+
+        iu.ugen match {
+          case ugen: UGen.SingleOut =>
+            val out         = ugen.source.makeStream(args)
+            val numChildren = iu.children(0).size
+            val value       = Array(out.toIn(numChildren))
+            add(value)
+
+          case ugen: UGen.MultiOut  =>
+            val outs  = ugen.source.makeStream(args)
+            val value = outs.zipWithIndex.map { case (out, outIdx) =>
+              val numChildren = iu.children(outIdx).size
+              out.toIn(numChildren)
+            } (breakOut) : Array[StreamIn]
+            add(value)
+
+          case ugen: UGen.ZeroOut   =>
+            ugen.source.makeStream(args)
+        }
+      }
+      ClosedShape
+    }
+    RunnableGraph.fromGraph(_graph)
+  }
+
+
+  // - builds parent-child graph of UGens
+  // - deletes no-op sub-trees
+  def indexUGens(ugens: Vec[UGen]): Vec[IndexedUGenBuilder] = {
+    var numIneffective  = ugens.size
+    val indexedUGens    = ugens.map { ugen =>
+      val eff = ugen.hasSideEffect
+      if (eff) numIneffective -= 1
+      new IndexedUGenBuilder(ugen, eff)
+    }
+
+    val ugenMap: Map[AnyRef, IndexedUGenBuilder] = indexedUGens.map(iu => (iu.ugen, iu))(breakOut)
+    indexedUGens.foreach { iu =>
+      iu.inputIndices = iu.ugen.inputs.map {
+        case c: Constant =>
+          new ConstantIndex(c)
+
+        case up: UGenProxy =>
+          val iui = ugenMap(up.ugen)
+          iui.children(up.outputIndex) ::= iu
+          new UGenProxyIndex(iui, up.outputIndex)
+      } (breakOut)
+      if (iu.effective) iu.inputIndices.foreach(numIneffective -= _.makeEffective())
+    }
+    val filtered: Vec[IndexedUGenBuilder] =
+      if (numIneffective == 0)
+        indexedUGens
+      else
+        indexedUGens.collect {
+          case iu if iu.effective =>
+            for (outputIndex <- iu.children.indices) {
+              iu.children(outputIndex) = iu.children(outputIndex).filter(_.effective)
+            }
+            iu
+        }
+
+    filtered
+  }
 
   private[fscape] trait BuilderLike extends Builder {
     // ---- abstract ----
 
-    implicit protected def ctrl: stream.Control
+//    implicit protected def ctrl: stream.Control
 
     // ---- impl ----
 
-    private[this] var ugens     = Vector.empty[UGen]
+    private[this] var _ugens    = Vector.empty[UGen]
     // private[this] val ugenSet   = mutable.Set.empty[UGen]
     private[this] var sourceMap = Map.empty[AnyRef, Any]
 
-    def build: UGenGraph = {
-      val iUGens  = indexUGens()
+    protected final def ugens: Vec[UGen] = _ugens
+
+    def build(implicit ctrl: stream.Control): UGenGraph = {
+      val iUGens  = indexUGens(_ugens)
       val rg      = buildStream(iUGens)
       UGenGraph(rg)
-    }
-
-    // - converts to StreamIn objects that automatically insert stream broadcasters
-    //   and dummy sinks
-    private def buildStream(ugens: Vec[IndexedUGenBuilder]): RunnableGraph[NotUsed] = {
-      // empty graphs are not supported by Akka
-      if (ugens.isEmpty) throw new IllegalStateException("Graph is empty")
-      val _graph = GraphDSL.create() { implicit dsl =>
-        implicit val sb = stream.Builder()
-
-        var ugenOutMap = Map.empty[IndexedUGenBuilder, Array[StreamIn]]
-
-        ugens.foreach { iu =>
-          val args: Vec[StreamIn] = iu.inputIndices.map {
-            case c: ConstantIndex   => c.peer
-            case u: UGenProxyIndex  => ugenOutMap(u.iu)(u.outIdx)
-          } (breakOut)
-
-          @inline def add(value: Array[StreamIn]): Unit = {
-            // println(s"map += $iu -> ${value.mkString("[", ", ", "]")}")
-            ugenOutMap += iu -> value
-          }
-
-          iu.ugen match {
-            case ugen: UGen.SingleOut =>
-              val out         = ugen.source.makeStream(args)
-              val numChildren = iu.children(0).size
-              val value       = Array(out.toIn(numChildren))
-              add(value)
-
-            case ugen: UGen.MultiOut  =>
-              val outs  = ugen.source.makeStream(args)
-              val value = outs.zipWithIndex.map { case (out, outIdx) =>
-                val numChildren = iu.children(outIdx).size
-                out.toIn(numChildren)
-              } (breakOut) : Array[StreamIn]
-              add(value)
-
-            case ugen: UGen.ZeroOut   =>
-              ugen.source.makeStream(args)
-          }
-        }
-        ClosedShape
-      }
-      RunnableGraph.fromGraph(_graph)
-    }
-
-    // - builds parent-child graph of UGens
-    // - deletes no-op sub-trees
-    private def indexUGens(): Vec[IndexedUGenBuilder] = {
-      var numIneffective  = ugens.size
-      val indexedUGens    = ugens.map { ugen =>
-        val eff = ugen.hasSideEffect
-        if (eff) numIneffective -= 1
-        new IndexedUGenBuilder(ugen, eff)
-      }
-
-      val ugenMap: Map[AnyRef, IndexedUGenBuilder] = indexedUGens.map(iu => (iu.ugen, iu))(breakOut)
-      indexedUGens.foreach { iu =>
-        iu.inputIndices = iu.ugen.inputs.map {
-          case c: Constant =>
-            new ConstantIndex(c)
-
-          case up: UGenProxy =>
-            val iui = ugenMap(up.ugen)
-            iui.children(up.outputIndex) ::= iu
-            new UGenProxyIndex(iui, up.outputIndex)
-        } (breakOut)
-        if (iu.effective) iu.inputIndices.foreach(numIneffective -= _.makeEffective())
-      }
-      val filtered: Vec[IndexedUGenBuilder] =
-        if (numIneffective == 0)
-          indexedUGens
-        else
-          indexedUGens.collect {
-            case iu if iu.effective =>
-              for (outputIndex <- iu.children.indices) {
-                iu.children(outputIndex) = iu.children(outputIndex).filter(_.effective)
-              }
-              iu
-          }
-
-      filtered
     }
 
     private def printSmart(x: Any): String = x match {
@@ -209,7 +212,7 @@ object UGenGraph {
       // (Imagine a `DC(0.0)` going into two entirely different places!)
 
       // if (ugenSet.add(ugen)) {
-        ugens :+= ugen
+        _ugens :+= ugen
         logGraph(s"addUGen ${ugen.name} @ ${ugen.hashCode.toHexString} ${if (ugen.isIndividual) "indiv" else ""}")
       // } else {
       //  logGraph(s"addUGen ${ugen.name} @ ${ugen.hashCode.toHexString} - duplicate")

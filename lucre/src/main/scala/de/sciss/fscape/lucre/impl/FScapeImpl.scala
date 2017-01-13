@@ -96,8 +96,8 @@ object FScapeImpl {
                                                 (implicit context: GenContext[S])
     extends GenView[S] with ObservableImpl[S, GenView.State] { view =>
 
-    private[this] val _state      = Ref[(GenView.State, Try[Unit])]((GenView.Stopped, successUnit))
-    private[this] val _rendering  = Ref(Option.empty[(Rendering[S], Disposable[S#Tx])])
+//    private[this] val _state      = Ref[(GenView.State, Try[Unit])]((GenView.Stopped, successUnit))
+//    private[this] val _rendering  = Ref(Option.empty[(Rendering[S], Disposable[S#Tx])])
 
     def typeID: Int = Output.typeID
 
@@ -118,7 +118,10 @@ object FScapeImpl {
     def value(key: Key)(implicit tx: S#Tx): Option[Try[Obj[S]]] = ???
 
     def acquire()(implicit tx: S#Tx): Key = {
-      start()
+      val _fscape = fscape
+      val fscV = context.acquire[FScapeView[S]](_fscape) {
+        FScapeView(_fscape, config)
+      }
       new Key
     }
 
@@ -126,66 +129,66 @@ object FScapeImpl {
       require (key.valid.swap(false)(tx.peer))
     }
 
-    def state(implicit tx: S#Tx): GenView.State = _state.get(tx.peer)._1
+    def state(implicit tx: S#Tx): GenView.State = ??? // _state.get(tx.peer)._1
 
     def fscape(implicit tx: S#Tx): FScape[S] = obj().fscape
 
-    private def state_=(st: GenView.State, res: Try[Unit])(implicit tx: S#Tx): Unit = {
-      val (stOld, resOld) = _state.swap((st, res))(tx.peer)
-      if (st.isComplete) {
-        disposeObserver()
-      }
-      if (st != stOld) view.fire(st)
-    }
+//    private def state_=(st: GenView.State, res: Try[Unit])(implicit tx: S#Tx): Unit = {
+//      val (stOld, resOld) = _state.swap((st, res))(tx.peer)
+//      if (st.isComplete) {
+//        disposeObserver()
+//      }
+//      if (st != stOld) view.fire(st)
+//    }
 
-    private def mkObserver(r: Rendering[S])(implicit tx: S#Tx): Unit = {
-      val obs = r.react { implicit tx => st =>
-        val res = if (st.isComplete) r.result.getOrElse(successUnit) else successUnit
-        state_=(st, res)
-      }
-      disposeObserver()
-      _rendering.set(Some((r, obs)))(tx.peer)
-      val st0  = r.state
-      val res0 = if (st0.isComplete) r.result.getOrElse(successUnit) else successUnit
-      state_=(st0, res0)
-    }
+//    private def mkObserver(r: Rendering[S])(implicit tx: S#Tx): Unit = {
+//      val obs = r.react { implicit tx => st =>
+//        val res = if (st.isComplete) r.result.getOrElse(successUnit) else successUnit
+//        state_=(st, res)
+//      }
+//      disposeObserver()
+//      _rendering.set(Some((r, obs)))(tx.peer)
+//      val st0  = r.state
+//      val res0 = if (st0.isComplete) r.result.getOrElse(successUnit) else successUnit
+//      state_=(st0, res0)
+//    }
 
-    private def disposeObserver()(implicit tx: S#Tx): Unit =
-      _rendering.swap(None)(tx.peer).foreach { case (r, obs) =>
-        obs.dispose()
-        val _fscape = fscape
-        context.release(_fscape)
-      }
+//    private def disposeObserver()(implicit tx: S#Tx): Unit =
+//      _rendering.swap(None)(tx.peer).foreach { case (r, obs) =>
+//        obs.dispose()
+//        val _fscape = fscape
+//        context.release(_fscape)
+//      }
 
-    def start()(implicit tx: S#Tx): Unit = {
-      val isRunning = _rendering.get(tx.peer).exists { case (r, _) =>
-        !r.state.isComplete
-      }
-      if (!isRunning) startNew()
-    }
+//    def start()(implicit tx: S#Tx): Unit = {
+//      val isRunning = _rendering.get(tx.peer).exists { case (r, _) =>
+//        !r.state.isComplete
+//      }
+//      if (!isRunning) startNew()
+//    }
 
-    private def startNew()(implicit tx: S#Tx): Unit = {
-      val _fscape = fscape
-      // the idea is that each of the output views can
-      // trigger the rendering, but we ensure there is
-      // always no more than one rendering (per context)
-      // running.
-      val r = context.acquire[Rendering[S]](_fscape) {
-        import context.{cursor, workspaceHandle}
-        val g   = _fscape.graph().value
-        val _r  = new RenderingImpl[S](config)
-        _r.start(_fscape, g)
-        _r
-      }
-      mkObserver(r)
-    }
+//    private def startNew()(implicit tx: S#Tx): Unit = {
+//      val _fscape = fscape
+//      // the idea is that each of the output views can
+//      // trigger the rendering, but we ensure there is
+//      // always no more than one rendering (per context)
+//      // running.
+//      val r = context.acquire[Rendering[S]](_fscape) {
+//        import context.{cursor, workspaceHandle}
+//        val g   = _fscape.graph().value
+//        val _r  = new RenderingImpl[S](config)
+//        _r.start(_fscape, g)
+//        _r
+//      }
+//      mkObserver(r)
+//    }
 
-    def stop()(implicit tx: S#Tx): Unit =
-      _rendering.get(tx.peer).foreach { case (r, _) =>
-        r.cancel()
-      }
+//    def stop()(implicit tx: S#Tx): Unit =
+//      _rendering.get(tx.peer).foreach { case (r, _) =>
+//        r.cancel()
+//      }
 
-    def dispose()(implicit tx: S#Tx): Unit = disposeObserver()
+    def dispose()(implicit tx: S#Tx): Unit = ??? // disposeObserver()
   }
 
   // ---- Rendering ----
