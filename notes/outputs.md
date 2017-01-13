@@ -245,3 +245,10 @@ method to `stream.Builder` in "core", so we do not need to sub-class this.
 - perhaps `Obj[S#I]` is the way to go (look into `AuralProc` to see if this is easily fitted in?)
 - in the view we must call `acquire` and `release` to obtain _any_ value (for the sake of consistency across
   all types of cached objects)
+
+# New `acquire`/`release` API
+
+- client calls `acquire` on an `OutputView`
+- output-view calls `acquire` on the `GenContext` for the `FScape` instance, yielding an `FScapeView` (internal API)
+- fscape-view when created, evaluates and observes the graph and the connected attributes. (yes?)
+- fscape-view thus maintains a cache key

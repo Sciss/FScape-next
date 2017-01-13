@@ -13,6 +13,7 @@ object OutputTest extends App {
   type S              = InMemory
 
   FScape.init()
+  GenView.addFactory(FScape.genViewFactory())
 
   cursor.step { implicit tx =>
     val f = FScape[S]

@@ -101,8 +101,6 @@ object FScapeImpl {
 
     def typeID: Int = Output.typeID
 
-
-
     // XXX TODO --- gosh, this is some tricky stuff. Is this correct? Can we simplify it?
 //    def value(implicit tx: S#Tx): Option[Try[Obj[S]]] = {
 //      val (st, res) = _state.get(tx.peer)
@@ -113,14 +111,20 @@ object FScapeImpl {
 //      }
 //    }
 
-    object Key
-    type Key = Key.type
+    class Key {
+      private[OutputGenView] val valid = Ref(true)
+    }
 
     def value(key: Key)(implicit tx: S#Tx): Option[Try[Obj[S]]] = ???
 
-    def acquire()(implicit tx: S#Tx): Key = ???
+    def acquire()(implicit tx: S#Tx): Key = {
+      start()
+      new Key
+    }
 
-    def release(key: Key)(implicit tx: S#Tx): Unit = ???
+    def release(key: Key)(implicit tx: S#Tx): Unit = {
+      require (key.valid.swap(false)(tx.peer))
+    }
 
     def state(implicit tx: S#Tx): GenView.State = _state.get(tx.peer)._1
 
@@ -155,7 +159,7 @@ object FScapeImpl {
 
     def start()(implicit tx: S#Tx): Unit = {
       val isRunning = _rendering.get(tx.peer).exists { case (r, _) =>
-        r.state.isComplete
+        !r.state.isComplete
       }
       if (!isRunning) startNew()
     }
