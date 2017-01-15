@@ -14,6 +14,7 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.UGen.Aux
 import de.sciss.fscape.stream.StreamIn
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -33,10 +34,10 @@ final case class Progress(in: GE, trig: GE, label: String = "render")
   extends UGenSource.ZeroOut {
 
   protected def makeUGens(implicit b: UGenGraph.Builder): Unit =
-  unwrap(Vector(in.expand, trig.expand))
+    unwrap(Vector(in.expand, trig.expand))
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit =
-  UGen.ZeroOut(this, inputs = args, rest = label)
+    UGen.ZeroOut(this, inputs = args, aux = Aux.String(label) :: Nil)
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit = {
     val Vec(in, trig) = args

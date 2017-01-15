@@ -14,6 +14,8 @@
 package de.sciss.fscape
 package lucre
 
+import java.util
+
 import de.sciss.fscape.graph.{BinaryOp, Constant, ConstantD, ConstantI, ConstantL, UnaryOp}
 import de.sciss.fscape.lucre.FScape.Output
 import de.sciss.fscape.lucre.UGenGraphBuilder.{ActionRef, OutputRef}
@@ -23,6 +25,7 @@ import de.sciss.fscape.stream.Control
 import de.sciss.lucre.expr.Expr
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Obj, Sys}
+import de.sciss.serial.DataOutput
 import de.sciss.synth.proc
 import de.sciss.synth.proc.{SoundProcesses, WorkspaceHandle}
 
@@ -134,11 +137,13 @@ object UGenGraphBuilder {
 
   /** An "untyped" action reference, i.e. without system type and transactions revealed */
   trait ActionRef {
+    def key: String
     def execute(value: Any): Unit
   }
 
   /** An "untyped" output-setter reference */
   trait OutputRef {
+    def key: String
     def complete(p: Output.Provider): Unit
   }
   /** An extended references as returned by the completed UGB. */
@@ -170,7 +175,7 @@ object UGenGraphBuilder {
 
     def requestAction(key: String): Option[ActionRef] = {
       val res = f.attr.$[proc.Action](key).map { a =>
-        new ActionRefImpl(tx.newHandle(f), tx.newHandle(a))
+        new ActionRefImpl(key, tx.newHandle(f), tx.newHandle(a))
       }
       if (res.isDefined) acceptedInputs += key
       res
@@ -180,7 +185,7 @@ object UGenGraphBuilder {
       val outOpt  = f.outputs.get(key)
       val res     = outOpt.collect {
         case out: OutputImpl[S] if out.valueType.typeID == tpe.typeID =>
-          val ref = new OutputRefImpl(tx.newHandle(out))
+          val ref = new OutputRefImpl(key, tx.newHandle(out))
           outputMap += key -> ((tpe, ref))
           ref
       }
@@ -192,7 +197,56 @@ object UGenGraphBuilder {
         val iUGens = UGenGraph.indexUGens(ugens)
         new Complete[S] {
           private def calcStructure(): Long = {
-            ???
+            // val t1 = System.currentTimeMillis()
+            var idx = 0
+            val out = DataOutput()
+            out.writeInt(iUGens.size)
+            iUGens.foreach { iu =>
+              assert(iu.index == -1)
+              iu.index = idx
+              val ugen = iu.ugen
+              out.writeUTF(ugen.name)
+              val ins  = iu.inputIndices
+              out.writeShort(ugen.inputs.size)
+              ins.foreach {
+                // UGenIn = [UGenProxy = [UGen.SingleOut, UGenOutProxy], Constant = [ConstantI, ConstantD, ConstantL]]
+                case ci: UGenGraph.ConstantIndex =>
+                  ci.peer match {
+                    case ConstantI(v) =>
+                      out.writeByte(1)
+                      out.writeInt(v)
+                    case ConstantD(v) =>
+                      out.writeByte(2)
+                      out.writeDouble(v)
+                    case ConstantL(v) =>
+                      out.writeByte(3)
+                      out.writeLong(v)
+                  }
+
+                case pi: UGenGraph.UGenProxyIndex =>
+                  val refIdx = pi.iu.index
+                  assert(refIdx >= 0)
+                  out.writeByte(0)
+                  out.writeInt(refIdx)
+                  out.writeShort(pi.outIdx)
+              }
+
+              val aux = ugen.aux
+              if (aux.isEmpty) {
+                out.writeShort(0)
+              } else {
+                out.writeShort(aux.size)
+                aux.foreach(_.write(out))
+              }
+
+              idx += 1
+            }
+
+            val bytes = out.toByteArray
+            val res = util.Arrays.hashCode(bytes) & 0x00000000FFFFFFFFL // XXX TODO use real 64-bit or 128-bit hash
+            // val t2 = System.currentTimeMillis()
+            // println(s"calcStructure took ${t2 - t1}ms")
+            res
           }
 
           private def calcStream(): UGenGraph = {
@@ -215,7 +269,8 @@ object UGenGraphBuilder {
       }
   }
 
-  private final class ActionRefImpl[S <: Sys[S]](fH: stm.Source[S#Tx, FScape[S]], aH: stm.Source[S#Tx, proc.Action[S]])
+  private final class ActionRefImpl[S <: Sys[S]](val key: String,
+                                                 fH: stm.Source[S#Tx, FScape[S]], aH: stm.Source[S#Tx, proc.Action[S]])
                                                 (implicit cursor: stm.Cursor[S], workspace: WorkspaceHandle[S])
     extends ActionRef {
 
@@ -227,7 +282,8 @@ object UGenGraphBuilder {
     }
   }
 
-  private final class OutputRefImpl[S <: Sys[S]](outputH: stm.Source[S#Tx, OutputImpl[S]])
+  private final class OutputRefImpl[S <: Sys[S]](val key: String,
+                                                 outputH: stm.Source[S#Tx, OutputImpl[S]])
                                                 (implicit cursor: stm.Cursor[S], workspace: WorkspaceHandle[S])
     extends OutputResult[S] {
 

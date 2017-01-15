@@ -15,6 +15,7 @@ package de.sciss.fscape
 package graph
 
 import de.sciss.file.File
+import de.sciss.fscape.UGen.Aux
 import de.sciss.fscape.stream.StreamIn
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -26,7 +27,8 @@ final case class ImageFileSeqOut(template: File, spec: ImageFile.Spec, indices: 
     unwrap(indices.expand +: in.expand.outputs)
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit =
-    UGen.ZeroOut(this, inputs = args, rest = template :: spec :: Nil, isIndividual = true)
+    UGen.ZeroOut(this, inputs = args,
+      aux = Aux.FileOut(template) :: Aux.ImageFileSpec(spec) :: Nil, isIndividual = true)
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit = {
     val indices +: in = args

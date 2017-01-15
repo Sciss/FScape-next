@@ -252,4 +252,3 @@ method to `stream.Builder` in "core", so we do not need to sub-class this.
 - output-view calls `acquire` on the `GenContext` for the `FScape` instance, yielding an `FScapeView` (internal API)
 - fscape-view when created, evaluates and observes the graph and the connected attributes. (yes?)
 - fscape-view thus maintains a cache key (or the current plus still held old keys)
-

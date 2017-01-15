@@ -45,11 +45,12 @@ object UGenGraph {
   final class IndexedUGenBuilder(val ugen: UGen /* , var index: Int */, var effective: Boolean) {
     var children    : Array[List[IndexedUGenBuilder]]   = Array.fill(ugen.numOutputs)(Nil)
     var inputIndices: List[UGenInIndex]                 = Nil
+    var index       : Int                               = -1
 
     override def toString = s"Idx($ugen, $effective) : richInputs = $inputIndices"
   }
 
-  private[fscape] trait UGenInIndex {
+  private[fscape] sealed trait UGenInIndex {
     def makeEffective(): Int
   }
 

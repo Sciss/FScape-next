@@ -38,12 +38,11 @@ object OutputTest extends App {
 
     def mkView(out: Output[S], idx: Int): GenView[S] = {
       val view = GenView(out)
-      val key  = view.acquire()
 
       import de.sciss.lucre.stm.TxnLike.peer
       view.react { implicit tx => upd =>
         if (upd.isComplete) {
-          view.value(key).foreach { value =>
+          view.value.foreach { value =>
             println(s"Value ${idx + 1} is now $value")
             if (count.transformAndGet(_ + 1) == 2) tx.afterCommit(sys.exit())
           }

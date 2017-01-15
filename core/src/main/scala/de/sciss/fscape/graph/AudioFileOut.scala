@@ -15,6 +15,7 @@ package de.sciss.fscape
 package graph
 
 import de.sciss.file.File
+import de.sciss.fscape.UGen.Aux
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 import de.sciss.synth.io.AudioFileSpec
 
@@ -34,7 +35,8 @@ final case class AudioFileOut(file: File, spec: AudioFileSpec, in: GE) extends U
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = unwrap(in.expand.outputs)
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
-    UGen.SingleOut(this, inputs = args, rest = file :: spec :: Nil, isIndividual = true, hasSideEffect = true)
+    UGen.SingleOut(this, inputs = args,
+      aux = Aux.FileOut(file) :: Aux.AudioFileSpec(spec) :: Nil, isIndividual = true, hasSideEffect = true)
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
     stream.AudioFileOut(file = file, spec = spec, in = args.map(_.toDouble))

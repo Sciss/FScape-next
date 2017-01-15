@@ -15,6 +15,7 @@ package de.sciss.fscape
 package graph
 
 import de.sciss.file.File
+import de.sciss.fscape.UGen.Aux
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -24,7 +25,9 @@ final case class ImageFileSeqIn(template: File, numChannels: Int, indices: GE) e
     unwrap(Vector(indices.expand))
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
-    UGen.MultiOut(this, inputs = args, numOutputs = numChannels, rest = template :: numChannels :: Nil,
+    UGen.MultiOut(this, inputs = args, numOutputs = numChannels,
+      // XXX TODO --- obviously the template does not capture the specs of the individual files :-(
+      aux = Aux.FileIn(template) :: Aux.Int(numChannels) :: Nil,
       isIndividual = true, hasSideEffect = true)
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Vec[StreamOut] = {

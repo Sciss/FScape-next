@@ -33,6 +33,7 @@ lazy val akkaVersion           = "2.4.16"
 // ---- lucre dependencies ----
 
 lazy val soundProcessesVersion = "3.10.3-SNAPSHOT"
+lazy val fileCacheVersion      = "0.3.4"
 
 // ---- projects ----
 
@@ -78,7 +79,8 @@ lazy val lucre = Project(id = s"$baseNameL-lucre", base = file("lucre"))
   .settings(
     description := "Bridge from FScape to SoundProcesses",
     libraryDependencies ++= Seq(
-      "de.sciss" %% "soundprocesses-core" % soundProcessesVersion
+      "de.sciss" %% "soundprocesses-core" % soundProcessesVersion,
+      "de.sciss" %% "filecache-txn"       % fileCacheVersion
     ),
     mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-lucre" % mimaVersion)
   )

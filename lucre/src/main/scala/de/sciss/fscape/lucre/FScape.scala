@@ -103,7 +103,7 @@ object FScape extends Obj.Type {
 //    }
 
     type State      = GenView.State
-    val  Stopped    = GenView.Stopped
+//    val  Stopped    = GenView.Stopped
     val  Completed  = GenView.Completed
     val  Running    = GenView.Running
     type Running    = GenView.Running

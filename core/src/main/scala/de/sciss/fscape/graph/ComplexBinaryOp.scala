@@ -14,6 +14,7 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.UGen.Aux
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.annotation.switch
@@ -171,7 +172,7 @@ final case class ComplexBinaryOp(op: Int, a: GE, b: GE) extends UGenSource.Singl
     unwrap(Vector(a.expand, b.expand))
 
   protected def makeUGen(args: Vec[UGenIn])(implicit builder: UGenGraph.Builder): UGenInLike =
-    UGen.SingleOut(this, inputs = args, rest = op)
+    UGen.SingleOut(this, inputs = args, aux = Aux.Int(op) :: Nil)
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit builder: stream.Builder): StreamOut = {
     val Vec(a, b) = args

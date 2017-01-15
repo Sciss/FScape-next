@@ -16,6 +16,7 @@ package lucre
 package graph
 
 import de.sciss.file.File
+import de.sciss.fscape.UGen.Aux
 import de.sciss.fscape.graph.Constant
 import de.sciss.fscape.lucre.UGenGraphBuilder.OutputRef
 import de.sciss.fscape.stream.{StreamIn, StreamOut, Builder => SBuilder}
@@ -45,7 +46,7 @@ object MkAudioCue {
       unwrap(Vector(in.expand))
 
     protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
-      UGen.SingleOut(this, args, rest = ref, hasSideEffect = true)
+      UGen.SingleOut(this, args, aux = Aux.String(ref.key) :: Nil, hasSideEffect = true)
 
     private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: SBuilder): StreamOut = {
       val in = args.map(_.toDouble)

@@ -17,14 +17,14 @@ package impl
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-final class ZeroOutImpl(val source: UGenSource.ZeroOut, val inputs: Vec[UGenIn], protected val rest: Any,
+final class ZeroOutImpl(val source: UGenSource.ZeroOut, val inputs: Vec[UGenIn], val aux: List[UGen.Aux],
                         val isIndividual: Boolean)
   extends UGen.ZeroOut {
 
   def name: String = source.name
 }
 
-final class SingleOutImpl(val source: UGenSource.SingleOut, val inputs: Vec[UGenIn], protected val rest: Any,
+final class SingleOutImpl(val source: UGenSource.SingleOut, val inputs: Vec[UGenIn], val aux: List[UGen.Aux],
                           val isIndividual: Boolean, val hasSideEffect: Boolean)
   extends UGen.SingleOut {
 
@@ -32,7 +32,7 @@ final class SingleOutImpl(val source: UGenSource.SingleOut, val inputs: Vec[UGen
 }
 
 final class MultiOutImpl(val source: UGenSource.MultiOut, val numOutputs: Int, val inputs: Vec[UGenIn],
-                         protected val rest: Any, val isIndividual: Boolean, val hasSideEffect: Boolean)
+                         val aux: List[UGen.Aux], val isIndividual: Boolean, val hasSideEffect: Boolean)
   extends UGen.MultiOut {
 
   def name: String = source.name

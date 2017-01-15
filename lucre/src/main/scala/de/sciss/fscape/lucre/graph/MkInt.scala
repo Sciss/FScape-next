@@ -15,6 +15,7 @@ package de.sciss.fscape
 package lucre
 package graph
 
+import de.sciss.fscape.UGen.Aux
 import de.sciss.fscape.lucre.UGenGraphBuilder.OutputRef
 import de.sciss.fscape.stream
 import de.sciss.fscape.stream.StreamIn
@@ -29,7 +30,7 @@ object MkInt {
       unwrap(Vector(peer.in.expand))
 
     protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit =
-      UGen.ZeroOut(this, args, rest = ref)
+      UGen.ZeroOut(this, args, aux = Aux.String(ref.key) :: Nil)
 
     private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit = {
       val Vec(in) = args

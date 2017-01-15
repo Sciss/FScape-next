@@ -30,10 +30,9 @@ import de.sciss.synth.proc.impl.CodeImpl
 import de.sciss.synth.proc.{GenContext, GenView, WorkspaceHandle}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
-import scala.concurrent.Future
 import scala.concurrent.stm.Ref
 import scala.util.control.NonFatal
-import scala.util.{Failure, Success, Try}
+import scala.util.{Failure, Try}
 
 object FScapeImpl {
   private final val SER_VERSION_OLD = 0x4673  // "Fs"
@@ -84,111 +83,44 @@ object FScapeImpl {
 
     type Repr[~ <: Sys[~]] = Output[~]
 
-    def apply[S <: Sys[S]](output: Output[S])(implicit tx: S#Tx, context: GenContext[S]): GenView[S] =
-      new OutputGenView(config, tx.newHandle(output), output.valueType)
+    def apply[S <: Sys[S]](output: Output[S])(implicit tx: S#Tx, context: GenContext[S]): GenView[S] = {
+      val _fscape = output.fscape
+      val fscView = context.acquire[FScapeView[S]](_fscape) {
+        FScapeView(_fscape, config)
+      }
+      new OutputGenView(config, tx.newHandle(output), output.valueType, fscView).init()
+    }
   }
 
-  private val successUnit = Success(())
-
   private final class OutputGenView[S <: Sys[S]](config: Control.Config,
-                                                 override val obj: stm.Source[S#Tx, Output[S]],
-                                                 val valueType: Obj.Type)
+                                                 outputH: stm.Source[S#Tx, Output[S]],
+                                                 val valueType: Obj.Type,
+                                                 fscView: FScapeView[S])
                                                 (implicit context: GenContext[S])
     extends GenView[S] with ObservableImpl[S, GenView.State] { view =>
 
-//    private[this] val _state      = Ref[(GenView.State, Try[Unit])]((GenView.Stopped, successUnit))
-//    private[this] val _rendering  = Ref(Option.empty[(Rendering[S], Disposable[S#Tx])])
+    private[this] var observer: Disposable[S#Tx] = _
 
     def typeID: Int = Output.typeID
 
-    // XXX TODO --- gosh, this is some tricky stuff. Is this correct? Can we simplify it?
-//    def value(implicit tx: S#Tx): Option[Try[Obj[S]]] = {
-//      val (st, res) = _state.get(tx.peer)
-//      if (!st.isComplete) None else (obj().value, res) match {
-//        case (Some(v), _)         => Some(Success(v))
-//        case (None, Failure(ex))  => Some(Failure(ex))
-//        case _                    => None
-//      }
-//    }
+    def state(implicit tx: S#Tx): GenView.State = fscView.state
 
-    class Key {
-      private[OutputGenView] val valid = Ref(true)
-    }
+    def value(implicit tx: S#Tx): Option[Try[Obj[S]]] = ???
 
-    def value(key: Key)(implicit tx: S#Tx): Option[Try[Obj[S]]] = ???
+    private def fscape(implicit tx: S#Tx): FScape[S] = outputH().fscape
 
-    def acquire()(implicit tx: S#Tx): Key = {
-      val _fscape = fscape
-      val fscV = context.acquire[FScapeView[S]](_fscape) {
-        FScapeView(_fscape, config)
+    def init()(implicit tx: S#Tx): this.type = {
+      observer = fscView.react { implicit tx => upd =>
+        fire(upd)
       }
-      new Key
+      this
     }
 
-    def release(key: Key)(implicit tx: S#Tx): Unit = {
-      require (key.valid.swap(false)(tx.peer))
+    def dispose()(implicit tx: S#Tx): Unit = {
+      observer.dispose()
+      val _fscape = fscape
+      context.release(_fscape)
     }
-
-    def state(implicit tx: S#Tx): GenView.State = ??? // _state.get(tx.peer)._1
-
-    def fscape(implicit tx: S#Tx): FScape[S] = obj().fscape
-
-//    private def state_=(st: GenView.State, res: Try[Unit])(implicit tx: S#Tx): Unit = {
-//      val (stOld, resOld) = _state.swap((st, res))(tx.peer)
-//      if (st.isComplete) {
-//        disposeObserver()
-//      }
-//      if (st != stOld) view.fire(st)
-//    }
-
-//    private def mkObserver(r: Rendering[S])(implicit tx: S#Tx): Unit = {
-//      val obs = r.react { implicit tx => st =>
-//        val res = if (st.isComplete) r.result.getOrElse(successUnit) else successUnit
-//        state_=(st, res)
-//      }
-//      disposeObserver()
-//      _rendering.set(Some((r, obs)))(tx.peer)
-//      val st0  = r.state
-//      val res0 = if (st0.isComplete) r.result.getOrElse(successUnit) else successUnit
-//      state_=(st0, res0)
-//    }
-
-//    private def disposeObserver()(implicit tx: S#Tx): Unit =
-//      _rendering.swap(None)(tx.peer).foreach { case (r, obs) =>
-//        obs.dispose()
-//        val _fscape = fscape
-//        context.release(_fscape)
-//      }
-
-//    def start()(implicit tx: S#Tx): Unit = {
-//      val isRunning = _rendering.get(tx.peer).exists { case (r, _) =>
-//        !r.state.isComplete
-//      }
-//      if (!isRunning) startNew()
-//    }
-
-//    private def startNew()(implicit tx: S#Tx): Unit = {
-//      val _fscape = fscape
-//      // the idea is that each of the output views can
-//      // trigger the rendering, but we ensure there is
-//      // always no more than one rendering (per context)
-//      // running.
-//      val r = context.acquire[Rendering[S]](_fscape) {
-//        import context.{cursor, workspaceHandle}
-//        val g   = _fscape.graph().value
-//        val _r  = new RenderingImpl[S](config)
-//        _r.start(_fscape, g)
-//        _r
-//      }
-//      mkObserver(r)
-//    }
-
-//    def stop()(implicit tx: S#Tx): Unit =
-//      _rendering.get(tx.peer).foreach { case (r, _) =>
-//        r.cancel()
-//      }
-
-    def dispose()(implicit tx: S#Tx): Unit = ??? // disposeObserver()
   }
 
   // ---- Rendering ----
@@ -196,7 +128,7 @@ object FScapeImpl {
   private final class RenderingImpl[S <: Sys[S]](config: Control.Config)(implicit cursor: stm.Cursor[S])
     extends Rendering[S] with ObservableImpl[S, Rendering.State] {
 
-    private[this] val _state        = Ref[Rendering.State](Rendering.Stopped)
+    private[this] val _state        = Ref[Rendering.State](Rendering.Running(0.0)) // Rendering.Stopped)
     private[this] val _result       = Ref(Option.empty[Try[Unit]])
     private[this] val _disposed     = Ref(false)
     implicit val control: Control   = Control(config)
