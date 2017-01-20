@@ -10,7 +10,7 @@ import de.sciss.synth.proc.{GenContext, GenView, WorkspaceHandle}
 
 import scala.concurrent.stm.Ref
 
-object OutputTest extends App {
+object IntOutputTest extends App {
   implicit val cursor = InMemory()
   type S              = InMemory
 
