@@ -21,7 +21,7 @@ import de.sciss.fscape.lucre.FScape.Output
 import de.sciss.fscape.lucre.UGenGraphBuilder.OutputRef
 import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeImpl}
 import de.sciss.fscape.stream.{AudioFileOut, BufD, BufL, Builder, Control, InD, OutD, OutL}
-import de.sciss.lucre.stm.{Obj, Sys}
+import de.sciss.serial.DataOutput
 import de.sciss.synth.io
 import de.sciss.synth.io.AudioFileSpec
 import de.sciss.synth.proc.AudioCue
@@ -60,11 +60,11 @@ object MkAudioCue {
 
     override protected def stopped(): Unit = {
       super.stopped()
-      if (isSuccess) ref.complete(new Output.Provider {
-        def mkValue[S <: Sys[S]](implicit tx: S#Tx): Obj[S] = {
+      if (isSuccess) ref.complete(new Output.Writer {
+        def write(out: DataOutput): Unit = {
           val spec1 = spec.copy(numFrames = framesWritten)
           val flat  = AudioCue(file, spec1, 0L, 1.0)
-          AudioCue.Obj.newConst(flat)
+          AudioCue.serializer.write(flat, out)
         }
       })
     }

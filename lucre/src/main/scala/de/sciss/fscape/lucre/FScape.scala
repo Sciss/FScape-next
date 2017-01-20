@@ -19,7 +19,7 @@ import de.sciss.fscape.stream.Control
 import de.sciss.lucre.event.{Observable, Publisher}
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Disposable, Obj, Sys}
-import de.sciss.serial.{DataInput, Serializer}
+import de.sciss.serial.{DataInput, DataOutput, Serializer}
 import de.sciss.synth.proc
 import de.sciss.synth.proc.impl.CodeImpl
 import de.sciss.synth.proc.{Gen, GenView, WorkspaceHandle}
@@ -182,9 +182,20 @@ object FScape extends Obj.Type {
     override def readIdentifiedObj[S <: Sys[S]](in: DataInput, access: S#Acc)(implicit tx: S#Tx): Obj[S] =
       OutputImpl.readIdentifiedObj(in, access)
 
-    trait Provider {
-      def mkValue[S <: Sys[S]](implicit tx: S#Tx): Obj[S]
+    trait Reader {
+      def key: String
+      def tpe: Obj.Type
+
+      def readOutput[S <: Sys[S]](in: DataInput)(implicit tx: S#Tx): Obj[S]
     }
+
+    type Writer = de.sciss.serial.Writable
+
+//    trait Writer {
+//      // def mkValue[S <: Sys[S]](implicit tx: S#Tx): Obj[S]
+//
+//      def writeOutput(out: DataOutput): Unit
+//    }
 
 //    final case class Update[S <: Sys[S]](output: Output[S], value: Option[Obj[S]])
 //      extends Gen.Update[S] {

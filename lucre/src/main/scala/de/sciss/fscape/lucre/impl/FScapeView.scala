@@ -15,7 +15,7 @@ package de.sciss.fscape
 package lucre
 package impl
 
-import de.sciss.file.File
+import de.sciss.file._
 import de.sciss.filecache
 import de.sciss.filecache.TxnProducer
 import de.sciss.fscape.lucre.UGenGraphBuilder.{MissingIn, OutputResult}
@@ -55,19 +55,29 @@ object FScapeView {
               control.runExpanded(res.graph)
               val fut = control.status
               fut.map { _ =>
-                val resources: Map[String, List[File]] = res.outputs.map { case (key, (_, outRes)) =>
-                  key -> outRes.cacheFiles
+                val resourcesB  = List.newBuilder[File]
+                val dataB       = Map.newBuilder[String, Array[Byte]]
+
+                res.outputs.foreach { outRes =>
+                  resourcesB ++= outRes.cacheFiles
+                  val out = DataOutput()
+                  outRes.writer.write(out)
+                  val arr = out.toByteArray
+                  dataB += outRes.key -> arr
                 }
-                new CacheValue(resources)
+
+                val resources = resourcesB.result()
+                val data      = dataB     .result()
+                new CacheValue(resources, data)
               }
             } catch {
               case NonFatal(ex) =>
                 Future.failed(ex)
             }
           }
-          val impl = new Impl[S](struct, fut)
+          val impl = new Impl[S](struct, res.outputs, fut)
           fut.onComplete {
-            cvt => impl.completeWith(cvt, res.outputs)
+            cvt => impl.completeWith(cvt)
           }
           impl
         }
@@ -84,7 +94,8 @@ object FScapeView {
   private type CacheKey = Long
 
   private object CacheValue {
-    private[this] val listSer = ImmutableSerializer.map[String, List[File]]
+//    private[this] val resourcesSer = ImmutableSerializer.list[File]
+//    private[this] val dataSer      = ImmutableSerializer.map[String, Array[Byte]]
 
     private[this] val COOKIE = 0x46734356   // "FsCV"
 
@@ -92,17 +103,42 @@ object FScapeView {
       def read(in: DataInput): CacheValue = {
         val cookie = in.readInt()
         if (cookie != COOKIE) sys.error(s"Unexpected cookie (found $cookie, expected $COOKIE)")
-        val map = listSer.read(in)
-        new CacheValue(map)
+        val numFiles  = in.readUnsignedShort()
+        val resources = if (numFiles == 0) Nil else List.fill(numFiles)(new File(in.readUTF()))
+        val numData   = in.readShort()
+        val data: Map[String, Array[Byte]] = if (numData == 0) Map.empty else {
+          val b     = Map.newBuilder[String, Array[Byte]]
+          b.sizeHint(numData)
+          var i     = 0
+          while (i < numData) {
+            val key   = in.readUTF()
+            val sz    = in.readUnsignedShort()
+            val data  = new Array[Byte](sz)
+            in.readFully(data)
+            b += key -> data
+            i += 1
+          }
+          b.result()
+        }
+        new CacheValue(resources, data)
       }
 
       def write(v: CacheValue, out: DataOutput): Unit = {
         out.writeInt(COOKIE)
-        listSer.write(v.resources, out)
+        val numFiles = v.resources.size
+        out.writeShort(numFiles)
+        if (numFiles > 0) v.resources.foreach(f => out.writeUTF(f.path))
+        val numData = v.data.size
+        out.writeShort(numData)
+        if (numData > 0) v.data.foreach { case (key, data) =>
+          out.writeUTF(key)
+          out.writeShort(data.length)
+          out.write(data)
+        }
       }
     }
   }
-  private final class CacheValue(val resources: Map[String, List[File]])
+  private final class CacheValue(val resources: List[File], val data: Map[String, Array[Byte]])
 
   private[this] lazy val producer: TxnProducer[CacheKey, CacheValue] = {
     val cacheCfg = filecache.Config[CacheKey, CacheValue]()
@@ -162,30 +198,53 @@ object FScapeView {
   }
 
   // FScape is rendering
-  private final class Impl[S <: Sys[S]](struct: CacheKey, fut: Future[CacheValue])(implicit cursor: stm.Cursor[S])
+  private final class Impl[S <: Sys[S]](struct: CacheKey, outputs: List[OutputResult[S]],
+                                        fut: Future[CacheValue])(implicit cursor: stm.Cursor[S])
     extends FScapeView[S] with ObservableImpl[S, GenView.State] {
 
     private[this] val _disposed = Ref(false)
     private[this] val _state    = Ref[GenView.State](if (fut.isCompleted) GenView.Completed else GenView.Running(0.0))
-    private[this] val _result   = Ref[Option[Try[Unit]]](fut.value.map(_.map(_ => ())))
+    private[this] val _result   = Ref[Option[Try[CacheValue]]](fut.value)
 
-    def result(implicit tx: S#Tx): Option[Try[Unit]] = _result.get(tx.peer)
+    def result(outputView: OutputGenView[S])(implicit tx: S#Tx): Option[Try[Obj[S]]] = {
+      _result.get(tx.peer) match {
+        case Some(Success(cv)) =>
+          outputView.output match {
+            case oi: OutputImpl[S] =>
+              val valOpt: Option[Obj[S]] = oi.value.orElse {
+                val key = outputView.key
+                outputs.find(_.key == key).flatMap { outRef =>
+                  val in = DataInput(cv.data(key))
+                  outRef.updateValue(in)
+                  oi.value
+                }
+              }
+              valOpt.map(v => Success(v))
 
-    def completeWith(t: Try[CacheValue], outputMap: Map[String, (Obj.Type, OutputResult[S])]): Unit =
+            case _ => None
+          }
+        case res @ Some(Failure(_)) =>
+          res.asInstanceOf[Option[Try[Obj[S]]]]
+
+        case None => None
+      }
+    }
+
+    def completeWith(t: Try[CacheValue]): Unit =
       if (!_disposed.single.get)
         cursor.step { implicit tx =>
           import TxnLike.peer
           if (!_disposed()) {
-            if (t.isSuccess && outputMap.nonEmpty) {
-              outputMap.foreach { case (key, (valueType, outRef)) =>
-                if (outRef.hasProvider) {
-                  // val v = outRef.mkValue()
-                  outRef.updateValue()
-                }
+            // update first...
+            if (t.isSuccess && outputs.nonEmpty) t.foreach { cv =>
+              outputs.foreach { outRef =>
+                val in = DataInput(cv.data(outRef.key))
+                outRef.updateValue(in)
               }
             }
             _state .set(GenView.Completed)(tx.peer)
-            _result.set(fut.value.map(_.map(_ => ())))(tx.peer)
+            _result.set(fut.value)(tx.peer)
+            // ...then issue event
             fire(GenView.Completed)
           }
         }
@@ -207,17 +266,18 @@ object FScapeView {
 
   // FScape does not provide outputs, nothing to do
   private final class EmptyImpl[S <: Sys[S]] extends DummyImpl[S] {
-    def result(implicit tx: S#Tx): Option[Try[Unit]] = Some(Success(()))
+    def result(output: OutputGenView[S])(implicit tx: S#Tx): Option[Try[Obj[S]]] = None
   }
 
   // FScape failed early (e.g. graph inputs incomplete)
   private final class FailedImpl[S <: Sys[S]](rejected: Set[String]) extends DummyImpl[S] {
-    def result(implicit tx: S#Tx): Option[Try[Unit]] = Some(Failure(MissingIn(rejected.head)))
+    def result(output: OutputGenView[S])(implicit tx: S#Tx): Option[Try[Obj[S]]] =
+      Some(Failure(MissingIn(rejected.head)))
   }
 }
 
 trait FScapeView[S <: Sys[S]] extends Observable[S#Tx, GenView.State] with Disposable[S#Tx] {
   def state(implicit tx: S#Tx): GenView.State
 
-  def result(implicit tx: S#Tx): Option[Try[Unit]]
+  def result(output: OutputGenView[S])(implicit tx: S#Tx): Option[Try[Obj[S]]]
 }

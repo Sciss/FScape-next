@@ -88,7 +88,7 @@ object FScapeImpl {
       val fscView = context.acquire[FScapeView[S]](_fscape) {
         FScapeView(_fscape, config)
       }
-      new OutputGenView(config, tx.newHandle(output), output.valueType, fscView).init()
+      new OutputGenView(config, tx.newHandle(output), output.key, output.valueType, fscView).init()
     }
   }
 
@@ -110,19 +110,17 @@ object FScapeImpl {
       res
     }
 
-    private def completeWith(t: Try[Unit], outputMap: Map[String, (Obj.Type, OutputResult[S])],
+    private def completeWith(t: Try[Unit], outputs: List[OutputResult[S]],
                              fscapeH: stm.Source[S#Tx, FScape[S]]): Unit =
       if (!_disposed.single.get)
         cursor.step { implicit tx =>
           import TxnLike.peer
           if (!_disposed()) {
             state_=(Rendering.Completed, Some(t))
-            if (t.isSuccess && outputMap.nonEmpty) {
-              outputMap.foreach { case (key, (valueType, outRef)) =>
-                if (outRef.hasProvider) {
-                  // val v = outRef.mkValue()
-                  outRef.updateValue()
-                }
+            if (t.isSuccess && outputs.nonEmpty) {
+              outputs.foreach { outRef =>
+                val in = DataInput(???)
+                outRef.updateValue(in)
               }
             }
           }
@@ -150,7 +148,7 @@ object FScapeImpl {
               }
             } catch {
               case NonFatal(ex) =>
-                completeWith(Failure(ex), Map.empty, fH)
+                completeWith(Failure(ex), Nil, fH)
             }
           }
           state_=(Rendering.Running(0.0), None)

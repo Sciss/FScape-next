@@ -16,10 +16,13 @@ package lucre
 package graph
 
 import de.sciss.fscape.UGen.Aux
+import de.sciss.fscape.lucre.FScape.Output
 import de.sciss.fscape.lucre.UGenGraphBuilder.OutputRef
 import de.sciss.fscape.stream
 import de.sciss.fscape.stream.StreamIn
 import de.sciss.lucre.expr.IntObj
+import de.sciss.lucre.stm.{Obj, Sys}
+import de.sciss.serial.{DataInput, ImmutableSerializer}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
@@ -40,10 +43,18 @@ object MkInt {
     override def productPrefix: String = classOf[WithRef].getName
   }
 }
-final case class MkInt(key: String, in: GE) extends Lazy.Expander[Unit] {
+final case class MkInt(key: String, in: GE) extends Lazy.Expander[Unit] with Output.Reader {
+
+  def tpe: Obj.Type = IntObj
+
+  def readOutput[S <: Sys[S]](in: DataInput)(implicit tx: S#Tx): Obj[S] = {
+    val flat = ImmutableSerializer.Int.read(in)
+    IntObj.newConst(flat)
+  }
+
   protected def makeUGens(implicit b: UGenGraph.Builder): Unit = {
     val ub      = UGenGraphBuilder.get(b)
-    val refOpt  = ub.requestOutput(key, IntObj)
+    val refOpt  = ub.requestOutput(this)
     val ref     = refOpt.getOrElse(sys.error(s"Missing output $key"))
     MkInt.WithRef(this, ref)
   }

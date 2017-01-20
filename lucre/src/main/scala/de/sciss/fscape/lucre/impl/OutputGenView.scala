@@ -26,6 +26,7 @@ import scala.util.{Failure, Success, Try}
 
 final class OutputGenView[S <: Sys[S]](config: Control.Config,
                                        outputH: stm.Source[S#Tx, Output[S]],
+                                       val key: String,
                                        val valueType: Obj.Type,
                                        fscView: FScapeView[S])
                                       (implicit context: GenContext[S])
@@ -37,23 +38,32 @@ final class OutputGenView[S <: Sys[S]](config: Control.Config,
 
   def state(implicit tx: S#Tx): GenView.State = fscView.state
 
+  def output(implicit tx: S#Tx): Output[S] = outputH()
+
   def reactNow(fun: S#Tx => GenView.State => Unit)(implicit tx: S#Tx): Disposable[S#Tx] = {
     val res = react(fun)
     fun(tx)(state)
     res
   }
 
-  def value(implicit tx: S#Tx): Option[Try[Obj[S]]] = fscView.result match {
-    case Some(Success(_)) =>
-      outputH() match {
-        case oi: OutputImpl[S] => oi.value.map(v => Success(v))
-        case _ => None
-      }
-    case res @ Some(Failure(_)) =>
-      res.asInstanceOf[Option[Try[Obj[S]]]]
+  def value(implicit tx: S#Tx): Option[Try[Obj[S]]] = fscView.result(this)
 
-    case None => None
-  }
+//  match {
+//    case Some(Success(_)) =>
+//      outputH() match {
+//        case oi: OutputImpl[S] =>
+//          oi.value.getOrElse {
+//            fscView
+//          }
+//
+//          oi.value.map(v => Success(v))
+//        case _ => None
+//      }
+//    case res @ Some(Failure(_)) =>
+//      res.asInstanceOf[Option[Try[Obj[S]]]]
+//
+//    case None => None
+//  }
 
   private def fscape(implicit tx: S#Tx): FScape[S] = outputH().fscape
 

@@ -17,8 +17,11 @@ package graph
 
 import de.sciss.fscape.UGen.Aux
 import de.sciss.fscape.graph.Constant
+import de.sciss.fscape.lucre.FScape.Output
 import de.sciss.fscape.lucre.UGenGraphBuilder.OutputRef
 import de.sciss.fscape.stream.{StreamIn, StreamOut, Builder => SBuilder}
+import de.sciss.lucre.stm.{Obj, Sys}
+import de.sciss.serial.DataInput
 import de.sciss.synth.io.{AudioFileSpec, AudioFileType, SampleFormat}
 import de.sciss.synth.proc.AudioCue
 
@@ -73,7 +76,7 @@ object MkAudioCue {
   *                     Must be resolvable at init time.
   */
 final case class MkAudioCue(key: String, in: GE, fileType: GE = 0, sampleFormat: GE = 2, sampleRate: GE = 44100.0)
-  extends GE.Lazy {
+  extends GE.Lazy with Output.Reader {
 
   import UGenGraphBuilder.{canResolve, resolve}
 
@@ -84,9 +87,16 @@ final case class MkAudioCue(key: String, in: GE, fileType: GE = 0, sampleFormat:
   canResolve(sampleFormat).left.foreach(fail("sampleFormat", _))
   canResolve(sampleRate  ).left.foreach(fail("sampleRate"  , _))
 
+  def tpe: Obj.Type = AudioCue.Obj
+
+  def readOutput[S <: Sys[S]](in: DataInput)(implicit tx: S#Tx): Obj[S] = {
+    val flat = AudioCue.serializer.read(in)
+    AudioCue.Obj.newConst(flat)
+  }
+
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = {
     val ub          = UGenGraphBuilder.get(b)
-    val refOpt      = ub.requestOutput(key, AudioCue.Obj)
+    val refOpt      = ub.requestOutput(this)
     val ref         = refOpt.getOrElse(sys.error(s"Missing output $key"))
 
     val inExp       = in.expand(b)

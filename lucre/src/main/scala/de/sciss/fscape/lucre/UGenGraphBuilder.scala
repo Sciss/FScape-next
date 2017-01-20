@@ -25,8 +25,8 @@ import de.sciss.fscape.lucre.impl.OutputImpl
 import de.sciss.fscape.stream.Control
 import de.sciss.lucre.expr.Expr
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{Obj, Sys}
-import de.sciss.serial.DataOutput
+import de.sciss.lucre.stm.Sys
+import de.sciss.serial.{DataInput, DataOutput}
 import de.sciss.synth.proc
 import de.sciss.synth.proc.{SoundProcesses, WorkspaceHandle}
 
@@ -60,7 +60,7 @@ object UGenGraphBuilder {
     /** Current set of used outputs (scan keys to number of channels).
       * This is guaranteed to only grow during incremental building, never shrink.
       */
-    def outputs: Map[String, (Obj.Type, OutputResult[S])]
+    def outputs: List[OutputResult[S]]
   }
 
   sealed trait State[S <: Sys[S]] extends IO[S] {
@@ -158,19 +158,23 @@ object UGenGraphBuilder {
       * the node has completed and the passed `Output.Provider` is ready
       * to receive the `mkValue` call.
       */
-    def complete(p: Output.Provider): Unit
+    def complete(w: Output.Writer): Unit
   }
   /** An extended references as returned by the completed UGB. */
   trait OutputResult[S <: Sys[S]] extends OutputRef {
+    def reader: Output.Reader
+
     /** Returns `true` after `complete` has been called, or `false` before.
       * `true` signals that `updateValue` may now be called.
       */
-    def hasProvider: Boolean
+    def hasWriter: Boolean
+
+    def writer: Output.Writer
 
     /** Issues the underlying `Output` implementation to replace its
       * value with the new updated value.
       */
-    def updateValue()(implicit tx: S#Tx): Unit
+    def updateValue(in: DataInput)(implicit tx: S#Tx): Unit
 
     /** A list of cache files created during rendering for this key,
       * created via `createCacheFile()`, or `Nil` if this output did not
@@ -187,8 +191,8 @@ object UGenGraphBuilder {
                                                              workspace: WorkspaceHandle[S])
     extends UGenGraph.BuilderLike with UGenGraphBuilder { builder =>
 
-    private var acceptedInputs: Set[String]                               = Set.empty
-    private var outputMap     : Map[String, (Obj.Type, OutputResult[S])]  = Map.empty
+    private var acceptedInputs: Set[String]           = Set.empty
+    private var _outputs      : List[OutputResult[S]] = Nil   // in reverse order here
 
     def requestAttribute(key: String): Option[Any] = {
       val res = f.attr.get(key) collect {
@@ -207,12 +211,12 @@ object UGenGraphBuilder {
       res
     }
 
-    def requestOutput(key: String, tpe: Obj.Type): Option[OutputRef] = {
-      val outOpt  = f.outputs.get(key)
+    def requestOutput(reader: Output.Reader): Option[OutputRef] = {
+      val outOpt  = f.outputs.get(reader.key)
       val res     = outOpt.collect {
-        case out: OutputImpl[S] if out.valueType.typeID == tpe.typeID =>
-          val ref = new OutputRefImpl(key, tx.newHandle(out))
-          outputMap += key -> ((tpe, ref))
+        case out: OutputImpl[S] if out.valueType.typeID == reader.tpe.typeID =>
+          val ref = new OutputRefImpl(reader, tx.newHandle(out))
+          _outputs ::= ref
           ref
       }
       res
@@ -280,17 +284,17 @@ object UGenGraphBuilder {
             UGenGraph(rg)
           }
 
-          lazy val structure  : Long                                      = calcStructure()
-          lazy val graph      : UGenGraph                                 = calcStream()
-          val acceptedInputs  : Set[String]                               = builder.acceptedInputs
-          val outputs         : Map[String, (Obj.Type, OutputResult[S])]  = builder.outputMap
+          lazy val structure  : Long                   = calcStructure()
+          lazy val graph      : UGenGraph              = calcStream()
+          val acceptedInputs  : Set[String]            = builder.acceptedInputs
+          val outputs         : List[OutputResult[S]]  = builder._outputs.reverse
         }
       } catch {
         case MissingIn(key) =>
           new Incomplete[S] {
-            val rejectedInputs: Set[String]                               = Set(key)
-            val acceptedInputs: Set[String]                               = builder.acceptedInputs
-            val outputs       : Map[String, (Obj.Type, OutputResult[S])]  = builder.outputMap
+            val rejectedInputs: Set[String]            = Set(key)
+            val acceptedInputs: Set[String]            = builder.acceptedInputs
+            val outputs       : List[OutputResult[S]]  = builder._outputs.reverse
           }
       }
   }
@@ -308,21 +312,27 @@ object UGenGraphBuilder {
     }
   }
 
-  private final class OutputRefImpl[S <: Sys[S]](val key: String,
+  private final class OutputRefImpl[S <: Sys[S]](val reader: Output.Reader,
                                                  outputH: stm.Source[S#Tx, OutputImpl[S]])
                                                 (implicit cursor: stm.Cursor[S], workspace: WorkspaceHandle[S])
     extends OutputResult[S] {
 
-    @volatile private[this] var provider  : Output.Provider = _
+    @volatile private[this] var _writer: Output.Writer = _
     private[this] val cacheFilesRef = Ref(List.empty[File]) // TMap.empty[String, File] // Ref(List.empty[File])
 
-    def complete(p: Output.Provider): Unit = provider = p
+    def key: String = reader.key
 
-    def hasProvider: Boolean = provider != null
+    def complete(w: Output.Writer): Unit = _writer = w
 
-    def updateValue()(implicit tx: S#Tx): Unit /* Obj[S] */ = {
-      if (provider == null) throw new IllegalStateException("Output was not provided")
-      val value     = provider.mkValue
+    def hasWriter: Boolean = _writer != null
+
+    def writer: Output.Writer = {
+      if (_writer == null) throw new IllegalStateException("Output was not provided")
+      _writer
+    }
+
+    def updateValue(in: DataInput)(implicit tx: S#Tx): Unit = {
+      val value     = reader.readOutput[S](in)
       val output    = outputH()
       output.value_=(Some(value))
     }
@@ -330,7 +340,6 @@ object UGenGraphBuilder {
     def createCacheFile(): File = {
       val c       = Cache.instance
       val res     = java.io.File.createTempFile("fscape", c.resourceExtension, c.folder)
-//      cacheFilesRef.single += key1 -> res
       cacheFilesRef.single.transform(res :: _)
       res
     }
@@ -341,6 +350,6 @@ object UGenGraphBuilder {
 trait UGenGraphBuilder extends UGenGraph.Builder {
   def requestAttribute(key: String): Option[Any]
 
-  def requestAction   (key: String)               : Option[ActionRef]
-  def requestOutput   (key: String, tpe: Obj.Type): Option[OutputRef]
+  def requestAction   (key: String)          : Option[ActionRef]
+  def requestOutput   (reader: Output.Reader): Option[OutputRef]
 }
