@@ -15,7 +15,6 @@ package de.sciss.fscape
 package lucre
 package graph
 
-import de.sciss.file.File
 import de.sciss.fscape.UGen.Aux
 import de.sciss.fscape.graph.Constant
 import de.sciss.fscape.lucre.UGenGraphBuilder.OutputRef
@@ -40,7 +39,7 @@ object MkAudioCue {
 
   // ----
 
-  final case class WithRef(file: File, spec: AudioFileSpec, in: GE, ref: OutputRef) extends UGenSource.SingleOut {
+  final case class WithRef(spec: AudioFileSpec, in: GE, ref: OutputRef) extends UGenSource.SingleOut {
 
     protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
       unwrap(Vector(in.expand))
@@ -49,7 +48,8 @@ object MkAudioCue {
       UGen.SingleOut(this, args, aux = Aux.String(ref.key) :: Nil, hasSideEffect = true)
 
     private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: SBuilder): StreamOut = {
-      val in = args.map(_.toDouble)
+      val in    = args.map(_.toDouble)
+      val file  =  ref.createCacheFile("audio")
       lucre.stream.MkAudioCue(file = file, spec = spec, in = in, ref = ref)
     }
 
@@ -89,7 +89,6 @@ final case class MkAudioCue(key: String, in: GE, fileType: GE = 0, sampleFormat:
     val refOpt      = ub.requestOutput(key, AudioCue.Obj)
     val ref         = refOpt.getOrElse(sys.error(s"Missing output $key"))
 
-    val f: File     = ???
     val inExp       = in.expand(b)
     val numChannels = inExp.outputs.size
 
@@ -100,6 +99,6 @@ final case class MkAudioCue(key: String, in: GE, fileType: GE = 0, sampleFormat:
     val sampleFmtT  = AudioFileOut.sampleFormat(sampleFmtId)
     val spec        = AudioFileSpec(fileTypeT, sampleFmtT, numChannels = numChannels, sampleRate = sampleRateT)
 
-    MkAudioCue.WithRef(file = f, spec = spec, in = in, ref = ref)
+    MkAudioCue.WithRef(spec = spec, in = in, ref = ref)
   }
 }

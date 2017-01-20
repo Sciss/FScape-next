@@ -15,13 +15,15 @@ package de.sciss.fscape
 package lucre
 package impl
 
+import de.sciss.file.File
 import de.sciss.filecache
 import de.sciss.filecache.TxnProducer
+import de.sciss.fscape.lucre.UGenGraphBuilder.OutputResult
 import de.sciss.fscape.stream.Control
 import de.sciss.lucre.event.Observable
 import de.sciss.lucre.event.impl.{DummyObservableImpl, ObservableImpl}
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{Disposable, Sys, TxnLike}
+import de.sciss.lucre.stm.{Disposable, Obj, Sys, TxnLike}
 import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer}
 import de.sciss.synth.proc.{GenContext, GenView}
 
@@ -45,26 +47,29 @@ object FScapeView {
           new EmptyImpl[S]
         } else {
           // - otherwise check structure:
-          val key = res.structure
+          val struct = res.structure
           // - check file cache for structure
           import control.config.executionContext
-          val fut: Future[CacheValue] = FScapeView.acquire[S](key) {
+          val fut: Future[CacheValue] = FScapeView.acquire[S](struct) {
             try {
               control.runExpanded(res.graph)
               val fut = control.status
               fut.map { _ =>
                 // case x => completeWith(x, res.outputs, fH)
                 println("Yo Chuck! continue here!")
-                new CacheValue {}
+                val resources: Map[String, Map[String, File]] = res.outputs.map { case (key, (_, outRes)) =>
+                  key -> outRes.cacheFiles
+                }
+                new CacheValue(resources)
               }
             } catch {
               case NonFatal(ex) =>
                 Future.failed(ex)
             }
           }
-          val impl = new Impl[S](key, fut)
+          val impl = new Impl[S](struct, fut)
           fut.onComplete {
-            res => impl.completeWith(res)
+            cvt => impl.completeWith(cvt, res.outputs)
           }
           impl
         }
@@ -81,22 +86,35 @@ object FScapeView {
   private type CacheKey = Long
 
   private object CacheValue {
-    implicit object serializer extends ImmutableSerializer[CacheValue] {
-      def read(in: DataInput): CacheValue = new CacheValue {}
+    private[this] val mapSer = ImmutableSerializer.map[String, Map[String, File]]
 
-      def write(v: CacheValue, out: DataOutput): Unit = ()
+    private[this] val COOKIE = 0x46734356   // "FsCV"
+
+    implicit object serializer extends ImmutableSerializer[CacheValue] {
+      def read(in: DataInput): CacheValue = {
+        val cookie = in.readInt()
+        if (cookie != COOKIE) sys.error(s"Unexpected cookie (found $cookie, expected $COOKIE)")
+        val map = mapSer.read(in)
+        new CacheValue(map)
+      }
+
+      def write(v: CacheValue, out: DataOutput): Unit = {
+        out.writeInt(COOKIE)
+        mapSer.write(v.resources, out)
+      }
     }
   }
-  private trait CacheValue
+  private final class CacheValue(val resources: Map[String, Map[String, File]])
 
-  private[this] val producer: TxnProducer[CacheKey, CacheValue] = {
+  private[this] lazy val producer: TxnProducer[CacheKey, CacheValue] = {
     val cacheCfg = filecache.Config[CacheKey, CacheValue]()
+    val global   = Cache.instance
     //    cacheCfg.accept
-    //    cacheCfg.capacity
     //    cacheCfg.evict
-    //    cacheCfg.executionContext
-    //    cacheCfg.extension
-    //    cacheCfg.folder
+    cacheCfg.capacity         = global.capacity
+    cacheCfg.executionContext = global.executionContext
+    cacheCfg.extension        = global.extension
+    cacheCfg.folder           = global.folder
     atomic { implicit tx => TxnProducer(cacheCfg) }
   }
 
@@ -146,26 +164,26 @@ object FScapeView {
   }
 
   // FScape is rendering
-  private final class Impl[S <: Sys[S]](key: CacheKey, fut: Future[CacheValue])(implicit cursor: stm.Cursor[S])
+  private final class Impl[S <: Sys[S]](struct: CacheKey, fut: Future[CacheValue])(implicit cursor: stm.Cursor[S])
     extends FScapeView[S] with ObservableImpl[S, GenView.State] {
 
     private[this] val _disposed = Ref(false)
     private[this] val _state    = Ref[GenView.State](if (fut.isCompleted) GenView.Completed else GenView.Running(0.0))
 
-    def completeWith(t: Try[CacheValue]): Unit =
+    def completeWith(t: Try[CacheValue], outputMap: Map[String, (Obj.Type, OutputResult[S])]): Unit =
       if (!_disposed.single.get)
         cursor.step { implicit tx =>
           import TxnLike.peer
           if (!_disposed()) {
             state_=(GenView.Completed) // (Rendering.Completed, Some(t))
-//            if (t.isSuccess && outputMap.nonEmpty) {
-//              outputMap.foreach { case (key, (valueType, outRef)) =>
-//                if (outRef.hasProvider) {
-//                  // val v = outRef.mkValue()
-//                  outRef.updateValue()
-//                }
-//              }
-//            }
+            if (t.isSuccess && outputMap.nonEmpty) {
+              outputMap.foreach { case (key, (valueType, outRef)) =>
+                if (outRef.hasProvider) {
+                  // val v = outRef.mkValue()
+                  outRef.updateValue()
+                }
+              }
+            }
           }
         }
 
@@ -179,7 +197,7 @@ object FScapeView {
 
     def dispose()(implicit tx: S#Tx): Unit =    // XXX TODO --- should cancel processor
       if (!_disposed.swap(true)(tx.peer))
-        FScapeView.release[S](key)
+        FScapeView.release[S](struct)
   }
 
   private sealed trait DummyImpl[S <: Sys[S]] extends FScapeView[S]

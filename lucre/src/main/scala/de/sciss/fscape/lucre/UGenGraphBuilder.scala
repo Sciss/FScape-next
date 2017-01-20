@@ -16,6 +16,7 @@ package lucre
 
 import java.util
 
+import de.sciss.file.File
 import de.sciss.fscape.graph.{BinaryOp, Constant, ConstantD, ConstantI, ConstantL, UnaryOp}
 import de.sciss.fscape.lucre.FScape.Output
 import de.sciss.fscape.lucre.UGenGraphBuilder.{ActionRef, OutputRef}
@@ -29,6 +30,7 @@ import de.sciss.serial.DataOutput
 import de.sciss.synth.proc
 import de.sciss.synth.proc.{SoundProcesses, WorkspaceHandle}
 
+import scala.concurrent.stm.TMap
 import scala.util.control.ControlThrowable
 
 object UGenGraphBuilder {
@@ -143,14 +145,41 @@ object UGenGraphBuilder {
 
   /** An "untyped" output-setter reference */
   trait OutputRef {
+    /** The key in the `FScape` objects `outputs` dictionary. */
     def key: String
+
+    /** Requests the stream control to create and memorize a
+      * file that will be written during the rendering and should
+      * be added as a resource associated with this key/reference.
+      *
+      * @param key  a key for the particular resource that will be
+      *             used in the map given by `cacheFiles`.
+      */
+    def createCacheFile(key: String): File
+
+    /** To be called by the stream node upon completion. Signals that
+      * the node has completed and the passed `Output.Provider` is ready
+      * to receive the `mkValue` call.
+      */
     def complete(p: Output.Provider): Unit
   }
   /** An extended references as returned by the completed UGB. */
   trait OutputResult[S <: Sys[S]] extends OutputRef {
+    /** Returns `true` after `complete` has been called, or `false` before.
+      * `true` signals that `updateValue` may now be called.
+      */
     def hasProvider: Boolean
 
+    /** Issues the underlying `Output` implementation to replace its
+      * value with the new updated value.
+      */
     def updateValue()(implicit tx: S#Tx): Unit
+
+    /** A list of cache files created during rendering for this key,
+      * created via `createCacheFile()`, or `Nil` if this output did not
+      * produce any additional resource files.
+      */
+    def cacheFiles: Map[String, File]
   }
 
   final case class MissingIn(input: String) extends ControlThrowable
@@ -287,7 +316,8 @@ object UGenGraphBuilder {
                                                 (implicit cursor: stm.Cursor[S], workspace: WorkspaceHandle[S])
     extends OutputResult[S] {
 
-    @volatile private[this] var provider: Output.Provider = _
+    @volatile private[this] var provider  : Output.Provider = _
+    private[this] val cacheFilesRef = TMap.empty[String, File] // Ref(List.empty[File])
 
     def complete(p: Output.Provider): Unit = provider = p
 
@@ -299,6 +329,15 @@ object UGenGraphBuilder {
       val output    = outputH()
       output.value_=(Some(value))
     }
+
+    def createCacheFile(key1: String): File = {
+      val c       = Cache.instance
+      val res     = java.io.File.createTempFile("fscape", c.resourceExtension, c.folder)
+      cacheFilesRef.single += key1 -> res
+      res
+    }
+
+    def cacheFiles /* (implicit tx: S#Tx) */: Map[String, File] = cacheFilesRef.snapshot
   }
 }
 trait UGenGraphBuilder extends UGenGraph.Builder {

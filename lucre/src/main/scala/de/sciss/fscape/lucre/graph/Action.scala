@@ -52,21 +52,21 @@ final case class Action(trig: GE, key: String) extends Lazy.Expander[Unit] {
   }
 }
 
-/** A graph element that executes an action upon receiving a trigger,
-  * sampling the values at that moment and making them available
-  * in the action through the `values` method.
-  *
-  * @param trig   the trigger input signal
-  * @param in     the input signal to sample and pass on to the action
-  * @param key    a key into the process' attribute map. the value peer stored
-  *               at that location should be of type `proc.Action`
-  */
-final case class Reaction(trig: GE, in: GE, key: String) extends Lazy.Expander[Unit] {
-  protected def makeUGens(implicit b: UGenGraph.Builder): Unit = {
-    val ub = UGenGraphBuilder.get(b)
-    val ar = ub.requestAction(key).getOrElse(sys.error(s"Missing Attribute $key"))
-//    ub.requestInput(Input.Action(key))
-//    impl.ActionResponder.makeUGen(trig, Some(Flatten(in)), key)
-    ???
-  }
-}
+///** A graph element that executes an action upon receiving a trigger,
+//  * sampling the values at that moment and making them available
+//  * in the action through the `values` method.
+//  *
+//  * @param trig   the trigger input signal
+//  * @param in     the input signal to sample and pass on to the action
+//  * @param key    a key into the process' attribute map. the value peer stored
+//  *               at that location should be of type `proc.Action`
+//  */
+//final case class Reaction(trig: GE, in: GE, key: String) extends Lazy.Expander[Unit] {
+//  protected def makeUGens(implicit b: UGenGraph.Builder): Unit = {
+//    val ub = UGenGraphBuilder.get(b)
+//    val ar = ub.requestAction(key).getOrElse(sys.error(s"Missing Attribute $key"))
+////    ub.requestInput(Input.Action(key))
+////    impl.ActionResponder.makeUGen(trig, Some(Flatten(in)), key)
+//      ...
+//  }
+//}
