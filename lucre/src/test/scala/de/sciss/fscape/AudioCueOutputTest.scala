@@ -46,7 +46,7 @@ object AudioCueOutputTest extends App {
       val view = GenView(out)
 
       import de.sciss.lucre.stm.TxnLike.peer
-      view.react { implicit tx => upd =>
+      view.reactNow { implicit tx => upd =>
         if (upd.isComplete) {
           view.value.foreach { value =>
             println(s"Value ${idx + 1} is now $value")
@@ -59,11 +59,6 @@ object AudioCueOutputTest extends App {
 
     val view1 = mkView(out1, idx = 0)
     val view2 = mkView(out2, idx = 1)
-
-    //    val r = f.run()
-    //    r.reactNow { implicit tx => state =>
-    //      println(s"Rendering state: $state")
-    //    }
 
     new Thread {
       override def run(): Unit = Thread.sleep(Long.MaxValue)

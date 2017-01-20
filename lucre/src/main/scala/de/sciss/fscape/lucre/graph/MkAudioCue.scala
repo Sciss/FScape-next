@@ -49,7 +49,7 @@ object MkAudioCue {
 
     private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: SBuilder): StreamOut = {
       val in    = args.map(_.toDouble)
-      val file  =  ref.createCacheFile("audio")
+      val file  =  ref.createCacheFile()
       lucre.stream.MkAudioCue(file = file, spec = spec, in = in, ref = ref)
     }
 

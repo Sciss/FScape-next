@@ -30,7 +30,7 @@ import de.sciss.serial.DataOutput
 import de.sciss.synth.proc
 import de.sciss.synth.proc.{SoundProcesses, WorkspaceHandle}
 
-import scala.concurrent.stm.TMap
+import scala.concurrent.stm.Ref
 import scala.util.control.ControlThrowable
 
 object UGenGraphBuilder {
@@ -151,11 +151,8 @@ object UGenGraphBuilder {
     /** Requests the stream control to create and memorize a
       * file that will be written during the rendering and should
       * be added as a resource associated with this key/reference.
-      *
-      * @param key  a key for the particular resource that will be
-      *             used in the map given by `cacheFiles`.
       */
-    def createCacheFile(key: String): File
+    def createCacheFile(): File
 
     /** To be called by the stream node upon completion. Signals that
       * the node has completed and the passed `Output.Provider` is ready
@@ -179,7 +176,7 @@ object UGenGraphBuilder {
       * created via `createCacheFile()`, or `Nil` if this output did not
       * produce any additional resource files.
       */
-    def cacheFiles: Map[String, File]
+    def cacheFiles: List[File]
   }
 
   final case class MissingIn(input: String) extends ControlThrowable
@@ -317,7 +314,7 @@ object UGenGraphBuilder {
     extends OutputResult[S] {
 
     @volatile private[this] var provider  : Output.Provider = _
-    private[this] val cacheFilesRef = TMap.empty[String, File] // Ref(List.empty[File])
+    private[this] val cacheFilesRef = Ref(List.empty[File]) // TMap.empty[String, File] // Ref(List.empty[File])
 
     def complete(p: Output.Provider): Unit = provider = p
 
@@ -330,14 +327,15 @@ object UGenGraphBuilder {
       output.value_=(Some(value))
     }
 
-    def createCacheFile(key1: String): File = {
+    def createCacheFile(): File = {
       val c       = Cache.instance
       val res     = java.io.File.createTempFile("fscape", c.resourceExtension, c.folder)
-      cacheFilesRef.single += key1 -> res
+//      cacheFilesRef.single += key1 -> res
+      cacheFilesRef.single.transform(res :: _)
       res
     }
 
-    def cacheFiles /* (implicit tx: S#Tx) */: Map[String, File] = cacheFilesRef.snapshot
+    def cacheFiles: List[File] = cacheFilesRef.single.get
   }
 }
 trait UGenGraphBuilder extends UGenGraph.Builder {

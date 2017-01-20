@@ -37,6 +37,12 @@ final class OutputGenView[S <: Sys[S]](config: Control.Config,
 
   def state(implicit tx: S#Tx): GenView.State = fscView.state
 
+  def reactNow(fun: S#Tx => GenView.State => Unit)(implicit tx: S#Tx): Disposable[S#Tx] = {
+    val res = react(fun)
+    fun(tx)(state)
+    res
+  }
+
   def value(implicit tx: S#Tx): Option[Try[Obj[S]]] = fscView.result match {
     case Some(Success(_)) =>
       outputH() match {

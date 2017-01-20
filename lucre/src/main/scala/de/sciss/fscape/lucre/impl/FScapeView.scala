@@ -55,7 +55,7 @@ object FScapeView {
               control.runExpanded(res.graph)
               val fut = control.status
               fut.map { _ =>
-                val resources: Map[String, Map[String, File]] = res.outputs.map { case (key, (_, outRes)) =>
+                val resources: Map[String, List[File]] = res.outputs.map { case (key, (_, outRes)) =>
                   key -> outRes.cacheFiles
                 }
                 new CacheValue(resources)
@@ -84,7 +84,7 @@ object FScapeView {
   private type CacheKey = Long
 
   private object CacheValue {
-    private[this] val mapSer = ImmutableSerializer.map[String, Map[String, File]]
+    private[this] val listSer = ImmutableSerializer.map[String, List[File]]
 
     private[this] val COOKIE = 0x46734356   // "FsCV"
 
@@ -92,17 +92,17 @@ object FScapeView {
       def read(in: DataInput): CacheValue = {
         val cookie = in.readInt()
         if (cookie != COOKIE) sys.error(s"Unexpected cookie (found $cookie, expected $COOKIE)")
-        val map = mapSer.read(in)
+        val map = listSer.read(in)
         new CacheValue(map)
       }
 
       def write(v: CacheValue, out: DataOutput): Unit = {
         out.writeInt(COOKIE)
-        mapSer.write(v.resources, out)
+        listSer.write(v.resources, out)
       }
     }
   }
-  private final class CacheValue(val resources: Map[String, Map[String, File]])
+  private final class CacheValue(val resources: Map[String, List[File]])
 
   private[this] lazy val producer: TxnProducer[CacheKey, CacheValue] = {
     val cacheCfg = filecache.Config[CacheKey, CacheValue]()
