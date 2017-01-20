@@ -39,7 +39,7 @@ object Cache {
   def init(folder: File, capacity: Limit, extension: String = "fsc", resourceExtension: String = "bin",
            executionContext: ExecutionContext = ExecutionContext.global): Unit =
     sync.synchronized {
-      if (_instance == null) throw new IllegalStateException(s"Cache - already initialized")
+      if (_instance != null) throw new IllegalStateException(s"Cache - already initialized")
       _instance = new Impl(folder = folder, capacity = capacity, extension = extension,
         resourceExtension = resourceExtension, executionContext = executionContext)
     }

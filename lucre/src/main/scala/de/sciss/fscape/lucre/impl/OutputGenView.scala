@@ -22,7 +22,7 @@ import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Disposable, Obj, Sys}
 import de.sciss.synth.proc.{GenContext, GenView}
 
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 final class OutputGenView[S <: Sys[S]](config: Control.Config,
                                        outputH: stm.Source[S#Tx, Output[S]],
@@ -37,7 +37,17 @@ final class OutputGenView[S <: Sys[S]](config: Control.Config,
 
   def state(implicit tx: S#Tx): GenView.State = fscView.state
 
-  def value(implicit tx: S#Tx): Option[Try[Obj[S]]] = ???
+  def value(implicit tx: S#Tx): Option[Try[Obj[S]]] = fscView.result match {
+    case Some(Success(_)) =>
+      outputH() match {
+        case oi: OutputImpl[S] => oi.value.map(v => Success(v))
+        case _ => None
+      }
+    case res @ Some(Failure(_)) =>
+      res.asInstanceOf[Option[Try[Obj[S]]]]
+
+    case None => None
+  }
 
   private def fscape(implicit tx: S#Tx): FScape[S] = outputH().fscape
 

@@ -1,6 +1,8 @@
 package de.sciss.fscape
 
-import de.sciss.fscape.lucre.FScape
+import de.sciss.file.File
+import de.sciss.filecache.Limit
+import de.sciss.fscape.lucre.{Cache, FScape}
 import de.sciss.fscape.lucre.FScape.Output
 import de.sciss.lucre.expr.IntObj
 import de.sciss.lucre.synth.InMemory
@@ -14,6 +16,8 @@ object OutputTest extends App {
 
   FScape.init()
   GenView.addFactory(FScape.genViewFactory())
+  val folder = File.createTemp(directory = true)
+  Cache.init(folder = folder, capacity = Limit())
 
   cursor.step { implicit tx =>
     val f = FScape[S]

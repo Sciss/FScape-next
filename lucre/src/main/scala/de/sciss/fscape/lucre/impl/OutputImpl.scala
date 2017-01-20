@@ -136,5 +136,6 @@ object OutputImpl {
   }
 }
 sealed trait OutputImpl[S <: Sys[S]] extends Output[S] {
+  def value(implicit tx: S#Tx): Option[Obj[S]]
   def value_=(v: Option[Obj[S]])(implicit tx: S#Tx): Unit
 }

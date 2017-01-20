@@ -18,7 +18,7 @@ package impl
 import de.sciss.file.File
 import de.sciss.filecache
 import de.sciss.filecache.TxnProducer
-import de.sciss.fscape.lucre.UGenGraphBuilder.OutputResult
+import de.sciss.fscape.lucre.UGenGraphBuilder.{MissingIn, OutputResult}
 import de.sciss.fscape.stream.Control
 import de.sciss.lucre.event.Observable
 import de.sciss.lucre.event.impl.{DummyObservableImpl, ObservableImpl}
@@ -30,7 +30,7 @@ import de.sciss.synth.proc.{GenContext, GenView}
 import scala.concurrent.Future
 import scala.concurrent.stm.{Ref, TMap, atomic}
 import scala.util.control.NonFatal
-import scala.util.{Success, Try}
+import scala.util.{Failure, Success, Try}
 
 object FScapeView {
   def apply[S <: Sys[S]](peer: FScape[S], config: Control.Config)
@@ -55,8 +55,6 @@ object FScapeView {
               control.runExpanded(res.graph)
               val fut = control.status
               fut.map { _ =>
-                // case x => completeWith(x, res.outputs, fH)
-                println("Yo Chuck! continue here!")
                 val resources: Map[String, Map[String, File]] = res.outputs.map { case (key, (_, outRes)) =>
                   key -> outRes.cacheFiles
                 }
@@ -169,13 +167,15 @@ object FScapeView {
 
     private[this] val _disposed = Ref(false)
     private[this] val _state    = Ref[GenView.State](if (fut.isCompleted) GenView.Completed else GenView.Running(0.0))
+    private[this] val _result   = Ref[Option[Try[Unit]]](fut.value.map(_.map(_ => ())))
+
+    def result(implicit tx: S#Tx): Option[Try[Unit]] = _result.get(tx.peer)
 
     def completeWith(t: Try[CacheValue], outputMap: Map[String, (Obj.Type, OutputResult[S])]): Unit =
       if (!_disposed.single.get)
         cursor.step { implicit tx =>
           import TxnLike.peer
           if (!_disposed()) {
-            state_=(GenView.Completed) // (Rendering.Completed, Some(t))
             if (t.isSuccess && outputMap.nonEmpty) {
               outputMap.foreach { case (key, (valueType, outRef)) =>
                 if (outRef.hasProvider) {
@@ -184,16 +184,13 @@ object FScapeView {
                 }
               }
             }
+            _state .set(GenView.Completed)(tx.peer)
+            _result.set(fut.value.map(_.map(_ => ())))(tx.peer)
+            fire(GenView.Completed)
           }
         }
 
-
     def state(implicit tx: S#Tx): GenView.State = _state.get(tx.peer)
-
-    private def state_=(value: GenView.State)(implicit tx: S#Tx): Unit = {
-      val old = _state.swap(value)(tx.peer)
-      if (value != old) fire(value)
-    }
 
     def dispose()(implicit tx: S#Tx): Unit =    // XXX TODO --- should cancel processor
       if (!_disposed.swap(true)(tx.peer))
@@ -209,12 +206,18 @@ object FScapeView {
   }
 
   // FScape does not provide outputs, nothing to do
-  private final class EmptyImpl[S <: Sys[S]] extends DummyImpl[S]
+  private final class EmptyImpl[S <: Sys[S]] extends DummyImpl[S] {
+    def result(implicit tx: S#Tx): Option[Try[Unit]] = Some(Success(()))
+  }
 
   // FScape failed early (e.g. graph inputs incomplete)
-  private final class FailedImpl[S <: Sys[S]](rejected: Set[String]) extends DummyImpl[S]
+  private final class FailedImpl[S <: Sys[S]](rejected: Set[String]) extends DummyImpl[S] {
+    def result(implicit tx: S#Tx): Option[Try[Unit]] = Some(Failure(MissingIn(rejected.head)))
+  }
 }
 
 trait FScapeView[S <: Sys[S]] extends Observable[S#Tx, GenView.State] with Disposable[S#Tx] {
   def state(implicit tx: S#Tx): GenView.State
+
+  def result(implicit tx: S#Tx): Option[Try[Unit]]
 }
