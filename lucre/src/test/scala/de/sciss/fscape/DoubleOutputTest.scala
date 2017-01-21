@@ -2,16 +2,16 @@ package de.sciss.fscape
 
 import de.sciss.file._
 import de.sciss.filecache.Limit
-import de.sciss.fscape.lucre.{Cache, FScape}
 import de.sciss.fscape.lucre.FScape.Output
-import de.sciss.lucre.expr.IntObj
+import de.sciss.fscape.lucre.{Cache, FScape}
+import de.sciss.lucre.expr.DoubleObj
 import de.sciss.lucre.synth.InMemory
 import de.sciss.synth.proc.{GenContext, GenView, WorkspaceHandle}
 
 import scala.concurrent.stm.Ref
 import scala.util.{Failure, Success}
 
-object IntOutputTest extends App {
+object DoubleOutputTest extends App {
   implicit val cursor = InMemory()
   type S              = InMemory
 
@@ -28,11 +28,11 @@ object IntOutputTest extends App {
       import lucre.graph._
       1.poll(0, label = "rendering")
       val value = WhiteNoise(100).take(100000000).last
-      MkInt("out-1", value)
-      MkInt("out-2", value + 1)
+      MkDouble("out-1", value)
+      MkDouble("out-2", value + 1)
     }
-    val out1 = f.outputs.add("out-1", IntObj)
-    val out2 = f.outputs.add("out-2", IntObj)
+    val out1 = f.outputs.add("out-1", DoubleObj)
+    val out2 = f.outputs.add("out-2", DoubleObj)
     f.graph() = g
 
     val count = Ref(0)
