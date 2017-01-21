@@ -50,7 +50,7 @@ object AudioCueOutputTest extends App {
           view.value.foreach { value =>
             value match {
               case Success(v)  =>
-                println(s"Value ${idx + 1} is now $value")
+                println(s"Value ${idx + 1} is now $v")
               case Failure(ex) =>
                 println(s"Value ${idx + 1} failed:")
                 ex.printStackTrace()

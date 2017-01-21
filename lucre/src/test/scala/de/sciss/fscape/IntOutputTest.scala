@@ -9,6 +9,7 @@ import de.sciss.lucre.synth.InMemory
 import de.sciss.synth.proc.{GenContext, GenView, WorkspaceHandle}
 
 import scala.concurrent.stm.Ref
+import scala.util.{Failure, Success}
 
 object IntOutputTest extends App {
   implicit val cursor = InMemory()
@@ -46,7 +47,13 @@ object IntOutputTest extends App {
       view.reactNow { implicit tx => upd =>
         if (upd.isComplete) {
           view.value.foreach { value =>
-            println(s"Value ${idx + 1} is now $value")
+            value match {
+              case Success(v)  =>
+                println(s"Value ${idx + 1} is now $v")
+              case Failure(ex) =>
+                println(s"Value ${idx + 1} failed:")
+                ex.printStackTrace()
+            }
             if (count.transformAndGet(_ + 1) == 2) tx.afterCommit(sys.exit())
           }
         }

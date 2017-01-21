@@ -99,6 +99,7 @@ object AudioFileOut {
           shouldStop = true
         } else {
           logStream(s"onUpstreamFinish($in)")
+          _isSuccess = true
           super.onUpstreamFinish()
         }
       }
