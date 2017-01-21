@@ -339,7 +339,8 @@ object UGenGraphBuilder {
 
     def createCacheFile(): File = {
       val c       = Cache.instance
-      val res     = java.io.File.createTempFile("fscape", c.resourceExtension, c.folder)
+      val resExt  = if (c.resourceExtension.startsWith(".")) c.resourceExtension else s".${c.resourceExtension}"
+      val res     = java.io.File.createTempFile("fscape", resExt, c.folder)
       cacheFilesRef.single.transform(res :: _)
       res
     }

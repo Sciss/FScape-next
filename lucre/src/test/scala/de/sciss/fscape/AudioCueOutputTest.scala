@@ -6,9 +6,10 @@ import de.sciss.fscape.lucre.{Cache, FScape}
 import de.sciss.fscape.lucre.FScape.Output
 import de.sciss.lucre.expr.IntObj
 import de.sciss.lucre.synth.InMemory
-import de.sciss.synth.proc.{GenContext, GenView, WorkspaceHandle}
+import de.sciss.synth.proc.{AudioCue, GenContext, GenView, WorkspaceHandle}
 
 import scala.concurrent.stm.Ref
+import scala.util.{Failure, Success}
 
 object AudioCueOutputTest extends App {
   implicit val cursor = InMemory()
@@ -26,11 +27,12 @@ object AudioCueOutputTest extends App {
       import graph._
       import lucre.graph._
       1.poll(0, label = "rendering")
-      val value = WhiteNoise(100).take(100000000).last
-      MkInt("out-1", value)
-      MkInt("out-2", value + 1)
+      val value = WhiteNoise(100).take(44100L * 10)
+      val mx    = RunningMax(value).last
+      MkAudioCue("out-1", value)
+      MkInt     ("out-2", mx   )
     }
-    val out1 = f.outputs.add("out-1", IntObj)
+    val out1 = f.outputs.add("out-1", AudioCue.Obj)
     val out2 = f.outputs.add("out-2", IntObj)
     f.graph() = g
 
@@ -46,7 +48,13 @@ object AudioCueOutputTest extends App {
       view.reactNow { implicit tx => upd =>
         if (upd.isComplete) {
           view.value.foreach { value =>
-            println(s"Value ${idx + 1} is now $value")
+            value match {
+              case Success(v)  =>
+                println(s"Value ${idx + 1} is now $value")
+              case Failure(ex) =>
+                println(s"Value ${idx + 1} failed:")
+                ex.printStackTrace()
+            }
             if (count.transformAndGet(_ + 1) == 2) tx.afterCommit(sys.exit())
           }
         }
