@@ -1,6 +1,6 @@
 package de.sciss.fscape
 
-import de.sciss.file.File
+import de.sciss.file._
 import de.sciss.filecache.Limit
 import de.sciss.fscape.lucre.{Cache, FScape}
 import de.sciss.fscape.lucre.FScape.Output
@@ -16,7 +16,8 @@ object IntOutputTest extends App {
 
   FScape.init()
   GenView.addFactory(FScape.genViewFactory())
-  val folder = File.createTemp(directory = true)
+  val folder = userHome / "Documents" / "temp" / "fscape_test" // File.createTemp(directory = true)
+  folder.mkdir()
   Cache.init(folder = folder, capacity = Limit())
 
   cursor.step { implicit tx =>
@@ -24,6 +25,7 @@ object IntOutputTest extends App {
     val g = Graph {
       import graph._
       import lucre.graph._
+      1.poll(0, label = "rendering")
       val value = WhiteNoise(100).take(100000000).last
       MkInt("out-1", value)
       MkInt("out-2", value + 1)
@@ -31,9 +33,6 @@ object IntOutputTest extends App {
     val out1 = f.outputs.add("out-1", IntObj)
     val out2 = f.outputs.add("out-2", IntObj)
     f.graph() = g
-
-//    assert(out1.value.isEmpty)
-//    assert(out2.value.isEmpty)
 
     val count = Ref(0)
 

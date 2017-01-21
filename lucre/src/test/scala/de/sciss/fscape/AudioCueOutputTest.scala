@@ -25,17 +25,14 @@ object AudioCueOutputTest extends App {
     val g = Graph {
       import graph._
       import lucre.graph._
+      1.poll(0, label = "rendering")
       val value = WhiteNoise(100).take(100000000).last
-      DC(0).take(1).poll(0, label = "rendering")
       MkInt("out-1", value)
       MkInt("out-2", value + 1)
     }
     val out1 = f.outputs.add("out-1", IntObj)
     val out2 = f.outputs.add("out-2", IntObj)
     f.graph() = g
-
-    //    assert(out1.value.isEmpty)
-    //    assert(out2.value.isEmpty)
 
     val count = Ref(0)
 

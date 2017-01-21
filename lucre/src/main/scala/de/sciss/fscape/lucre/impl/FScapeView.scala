@@ -143,8 +143,9 @@ object FScapeView {
   private[this] lazy val producer: TxnProducer[CacheKey, CacheValue] = {
     val cacheCfg = filecache.Config[CacheKey, CacheValue]()
     val global   = Cache.instance
-    //    cacheCfg.accept
-    //    cacheCfg.evict
+    cacheCfg.accept           = { (key, value) => true }
+    cacheCfg.space            = { (key, value) => value.resources.map    (_.length()).sum }
+    cacheCfg.evict            = { (key, value) => value.resources.foreach(_.delete())     }
     cacheCfg.capacity         = global.capacity
     cacheCfg.executionContext = global.executionContext
     cacheCfg.extension        = global.extension
