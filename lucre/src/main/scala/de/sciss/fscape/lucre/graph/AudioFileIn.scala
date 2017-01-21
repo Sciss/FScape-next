@@ -17,6 +17,7 @@ package graph
 
 import de.sciss.file.File
 import de.sciss.fscape
+import de.sciss.fscape.lucre.UGenGraphBuilder.Input
 import de.sciss.synth.io.AudioFile
 import de.sciss.synth.proc.AudioCue
 
@@ -41,7 +42,7 @@ object AudioFileIn {
 
   private def getCue(key: String, b: UGenGraph.Builder): AudioCue = {
     val ub  = UGenGraphBuilder.get(b)
-    val res = ub.requestAttribute(key).fold[AudioCue](sys.error(s"AudioFileIn missing attribute $key")) {
+    val res = ub.requestInput(Input.Attribute(key)).peer.fold[AudioCue](sys.error(s"AudioFileIn missing attribute $key")) {
       case a: AudioCue => a
       case f: File =>
         val spec = AudioFile.readSpec(f)

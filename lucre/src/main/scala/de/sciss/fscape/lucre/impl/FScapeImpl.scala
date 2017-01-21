@@ -104,7 +104,7 @@ object FScapeImpl {
 
     def result(implicit tx: S#Tx): Option[Try[Unit]] = _result.get(tx.peer)
 
-    def reactNow(fun: (S#Tx) => (State) => Unit)(implicit tx: S#Tx): Disposable[S#Tx] = {
+    def reactNow(fun: S#Tx => State => Unit)(implicit tx: S#Tx): Disposable[S#Tx] = {
       val res = react(fun)
       fun(tx)(state)
       res
@@ -126,8 +126,8 @@ object FScapeImpl {
           }
         }
 
-    def start(f: FScape[S], graph: Graph)(implicit tx: S#Tx, workspace: WorkspaceHandle[S]): Unit = {
-      val state = UGenGraphBuilder.build(f, graph)
+    def start(f: FScape[S])(implicit tx: S#Tx, workspace: WorkspaceHandle[S]): Unit = {
+      val state = UGenGraphBuilder.build(???, f)
       state match {
         case res: UGenGraphBuilder.Complete[S] =>
           // clear cached values
@@ -191,9 +191,9 @@ object FScapeImpl {
 
     final def run(config: Control.Config)(implicit tx: S#Tx, cursor: stm.Cursor[S],
                                           workspace: WorkspaceHandle[S]): Rendering[S] = {
-      val g = graph().value
+      // val g = graph().value
       val r = new RenderingImpl[S](config)
-      r.start(this, g)
+      r.start(this)
       r
     }
   }

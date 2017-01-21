@@ -18,6 +18,7 @@ package graph
 import de.sciss.file.File
 import de.sciss.fscape
 import de.sciss.fscape.graph.Constant
+import de.sciss.fscape.lucre.UGenGraphBuilder.Input
 import de.sciss.synth.io.{AudioFileSpec, AudioFileType, SampleFormat}
 import de.sciss.synth.proc.AudioCue
 
@@ -106,7 +107,7 @@ final case class AudioFileOut(key: String, in: GE, fileType: GE = 0, sampleForma
 
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = {
     val ub = UGenGraphBuilder.get(b)
-    val (f, numChannels, specOpt) = ub.requestAttribute(key).fold[(File, Int, Option[AudioFileSpec])] {
+    val (f, numChannels, specOpt) = ub.requestInput(Input.Attribute(key)).peer.fold[(File, Int, Option[AudioFileSpec])] {
       sys.error(s"Missing Attribute $key")
     } {
       case a: AudioCue =>

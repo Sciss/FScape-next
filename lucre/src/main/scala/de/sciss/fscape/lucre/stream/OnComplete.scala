@@ -15,12 +15,12 @@ package de.sciss.fscape
 package lucre.stream
 
 import akka.stream.{Attributes, ClosedShape}
-import de.sciss.fscape.lucre.UGenGraphBuilder.ActionRef
+import de.sciss.fscape.lucre.UGenGraphBuilder.Input
 import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 import de.sciss.fscape.stream.{Builder, Control}
 
 object OnComplete {
-  def apply(ref: ActionRef)(implicit b: Builder): Unit = {
+  def apply(ref: Input.Action.Value)(implicit b: Builder): Unit = {
     val stage0 = new Stage(ref)
     b.add(stage0)
   }
@@ -29,13 +29,13 @@ object OnComplete {
 
   private type Shape = ClosedShape
 
-  private final class Stage(ref: ActionRef)(implicit ctrl: Control) extends StageImpl[Shape](name) {
+  private final class Stage(ref: Input.Action.Value)(implicit ctrl: Control) extends StageImpl[Shape](name) {
     val shape = ClosedShape
 
     def createLogic(attr: Attributes) = new Logic(shape, ref)
   }
 
-  private final class Logic(shape: Shape, ref: ActionRef)(implicit ctrl: Control)
+  private final class Logic(shape: Shape, ref: Input.Action.Value)(implicit ctrl: Control)
     extends NodeImpl(name, shape) {
 
     override def preStart(): Unit = {

@@ -19,11 +19,10 @@ import java.util
 import de.sciss.file.File
 import de.sciss.fscape.graph.{BinaryOp, Constant, ConstantD, ConstantI, ConstantL, UnaryOp}
 import de.sciss.fscape.lucre.FScape.Output
-import de.sciss.fscape.lucre.UGenGraphBuilder.{ActionRef, OutputRef}
+import de.sciss.fscape.lucre.UGenGraphBuilder.OutputRef
 import de.sciss.fscape.lucre.graph.Attribute
 import de.sciss.fscape.lucre.impl.OutputImpl
 import de.sciss.fscape.stream.Control
-import de.sciss.lucre.expr.Expr
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.Sys
 import de.sciss.serial.{DataInput, DataOutput}
@@ -39,11 +38,11 @@ object UGenGraphBuilder {
     case _ => sys.error("Out of context expansion")
   }
 
-  def build[S <: Sys[S]](f: FScape[S], graph: Graph)(implicit tx: S#Tx, cursor: stm.Cursor[S],
+  def build[S <: Sys[S]](context: Context[S], f: FScape[S])(implicit tx: S#Tx, cursor: stm.Cursor[S],
                                                      workspace: WorkspaceHandle[S],
                                                      ctrl: Control): State[S] = {
-    val b = new BuilderImpl(f)
-    var g0 = graph
+    val b = new BuilderImpl(context, f)
+    var g0 = f.graph.value // graph
     while (g0.nonEmpty) {
       g0 = Graph {
         g0.sources.foreach { source =>
@@ -54,8 +53,76 @@ object UGenGraphBuilder {
     b.tryBuild()
   }
 
+  /** A pure marker trait to rule out some type errors. */
+  trait Key
+  /** A scalar value found in the attribute map. */
+  final case class AttributeKey(name: String) extends Key
+
+  /** A pure marker trait to rule out some type errors. */
+  trait Value {
+//    def async: Boolean
+  }
+
+  object Input {
+    object Attribute {
+      final case class Value(peer: Option[Any]) extends UGenGraphBuilder.Value {
+//        def async = false
+        override def productPrefix = "Input.Attribute.Value"
+      }
+    }
+    /** Specifies access to a an attribute's value at build time.
+      *
+      * @param name   name (key) of the attribute
+      */
+    final case class Attribute(name: String) extends Input {
+      type Key    = AttributeKey
+      type Value  = Attribute.Value
+
+      def key = AttributeKey(name)
+
+      override def productPrefix = "Input.Attribute"
+    }
+
+    object Action {
+//      case object Value extends UGenGraphBuilder.Value {
+//        def async = false
+//        override def productPrefix = "Input.Action.Value"
+//      }
+      /** An "untyped" action reference, i.e. without system type and transactions revealed */
+      trait Value extends UGenGraphBuilder.Value {
+        def key: String
+        def execute(value: Any): Unit
+      }
+    }
+    /** Specifies access to an action.
+      *
+      * @param name   name (key) of the attribute referring to an action
+      */
+    final case class Action(name: String) extends Input {
+      type Key    = AttributeKey
+      type Value  = Action.Value // .type
+
+      def key = AttributeKey(name)
+
+      override def productPrefix = "Input.Action"
+    }
+  }
+  trait Input {
+    type Key   <: UGenGraphBuilder.Key
+    type Value <: UGenGraphBuilder.Value
+
+    def key: Key
+  }
+
+  trait Context[S <: Sys[S]] {
+//    def server: Server
+
+    def requestInput[Res](req: UGenGraphBuilder.Input { type Value = Res }, io: IO /* Requester */[S])(implicit tx: S#Tx): Res
+  }
+
   trait IO[S <: Sys[S]] {
-    def acceptedInputs: Set[String]
+    // def acceptedInputs: Set[String]
+    def acceptedInputs: Map[Key, Map[Input, Input#Value]]
 
     /** Current set of used outputs (scan keys to number of channels).
       * This is guaranteed to only grow during incremental building, never shrink.
@@ -107,7 +174,7 @@ object UGenGraphBuilder {
     in match {
       case c: Constant => Right(c)
       case a: Attribute =>
-        builder.requestAttribute(a.key).fold[Either[String, Constant]] {
+        builder.requestInput(Input.Attribute(a.key)).peer.fold[Either[String, Constant]] {
           a.default.fold[Either[String, Constant]] {
             Left(s"Missing attribute for key: ${a.key}")
           } {
@@ -135,12 +202,6 @@ object UGenGraphBuilder {
           bf <- resolve(b, builder).right
         } yield op0.apply(af, bf)
     }
-  }
-
-  /** An "untyped" action reference, i.e. without system type and transactions revealed */
-  trait ActionRef {
-    def key: String
-    def execute(value: Any): Unit
   }
 
   /** An "untyped" output-setter reference */
@@ -187,29 +248,45 @@ object UGenGraphBuilder {
 
   // -----------------
 
-  private final class BuilderImpl[S <: Sys[S]](f: FScape[S])(implicit tx: S#Tx, cursor: stm.Cursor[S],
+  private final class BuilderImpl[S <: Sys[S]](context: Context[S], f: FScape[S])(implicit tx: S#Tx, cursor: stm.Cursor[S],
                                                              workspace: WorkspaceHandle[S])
-    extends UGenGraph.BuilderLike with UGenGraphBuilder { builder =>
+    extends UGenGraph.BuilderLike with UGenGraphBuilder with IO[S] { builder =>
 
-    private var acceptedInputs: Set[String]           = Set.empty
-    private var _outputs      : List[OutputResult[S]] = Nil   // in reverse order here
+//    private var acceptedInputs: Set[String]           = Set.empty
+    private[this] var _acceptedInputs   = Map.empty[Key, Map[Input, Input#Value]]
+    private[this] var _outputs          = List.empty[OutputResult[S]] // in reverse order here
 
-    def requestAttribute(key: String): Option[Any] = {
-      val res = f.attr.get(key) collect {
-        case x: Expr[S, _]  => x.value
-        case other          => other
-      }
-      if (res.isDefined) acceptedInputs += key
+    def acceptedInputs: Map[Key, Map[Input, Input#Value]] = _acceptedInputs
+    def outputs       : List[OutputResult[S]]             = _outputs
+
+    def requestInput(req: Input): req.Value = {
+      // we pass in `this` and not `in`, because that way the context
+      // can find accepted inputs that have been added during the current build cycle!
+      val res   = context.requestInput[req.Value](req, this)(tx)
+      val key   = req.key
+      val map0  = _acceptedInputs.getOrElse(key, Map.empty)
+      val map1  = map0 + (req -> res)
+      _acceptedInputs += key -> map1
+//      logAural(s"acceptedInputs += ${req.key} -> $res")
       res
     }
 
-    def requestAction(key: String): Option[ActionRef] = {
-      val res = f.attr.$[proc.Action](key).map { a =>
-        new ActionRefImpl(key, tx.newHandle(f), tx.newHandle(a))
-      }
-      if (res.isDefined) acceptedInputs += key
-      res
-    }
+//    def requestAttribute(key: String): Option[Any] = {
+//      val res = f.attr.get(key) collect {
+//        case x: Expr[S, _]  => x.value
+//        case other          => other
+//      }
+//      if (res.isDefined) acceptedInputs += key
+//      res
+//    }
+//
+//    def requestAction(key: String): Option[ActionRef] = {
+//      val res = f.attr.$[proc.Action](key).map { a =>
+//        new ActionRefImpl(key, tx.newHandle(f), tx.newHandle(a))
+//      }
+//      if (res.isDefined) acceptedInputs += key
+//      res
+//    }
 
     def requestOutput(reader: Output.Reader): Option[OutputRef] = {
       val outOpt  = f.outputs.get(reader.key)
@@ -284,17 +361,17 @@ object UGenGraphBuilder {
             UGenGraph(rg)
           }
 
-          lazy val structure  : Long                   = calcStructure()
-          lazy val graph      : UGenGraph              = calcStream()
-          val acceptedInputs  : Set[String]            = builder.acceptedInputs
-          val outputs         : List[OutputResult[S]]  = builder._outputs.reverse
+          lazy val structure  : Long                              = calcStructure()
+          lazy val graph      : UGenGraph                         = calcStream()
+          val acceptedInputs  : Map[Key, Map[Input, Input#Value]] = builder._acceptedInputs
+          val outputs         : List[OutputResult[S]]             = builder._outputs.reverse
         }
       } catch {
         case MissingIn(key) =>
           new Incomplete[S] {
-            val rejectedInputs: Set[String]            = Set(key)
-            val acceptedInputs: Set[String]            = builder.acceptedInputs
-            val outputs       : List[OutputResult[S]]  = builder._outputs.reverse
+            val rejectedInputs: Set[String]                       = Set(key)
+            val acceptedInputs: Map[Key, Map[Input, Input#Value]] = builder._acceptedInputs
+            val outputs       : List[OutputResult[S]]             = builder._outputs.reverse
           }
       }
   }
@@ -302,7 +379,7 @@ object UGenGraphBuilder {
   private final class ActionRefImpl[S <: Sys[S]](val key: String,
                                                  fH: stm.Source[S#Tx, FScape[S]], aH: stm.Source[S#Tx, proc.Action[S]])
                                                 (implicit cursor: stm.Cursor[S], workspace: WorkspaceHandle[S])
-    extends ActionRef {
+    extends Input.Action.Value {
 
     def execute(value: Any): Unit = SoundProcesses.atomic[S, Unit] { implicit tx =>
       val f = fH()
@@ -349,8 +426,11 @@ object UGenGraphBuilder {
   }
 }
 trait UGenGraphBuilder extends UGenGraph.Builder {
-  def requestAttribute(key: String): Option[Any]
+//  def requestAttribute(key: String): Option[Any]
+//
+//  def requestAction   (key: String)          : Option[ActionRef]
 
-  def requestAction   (key: String)          : Option[ActionRef]
-  def requestOutput   (reader: Output.Reader): Option[OutputRef]
+  def requestInput(input: UGenGraphBuilder.Input): input.Value
+
+  def requestOutput(reader: Output.Reader): Option[OutputRef]
 }

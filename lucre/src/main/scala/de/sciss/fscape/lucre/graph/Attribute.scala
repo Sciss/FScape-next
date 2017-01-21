@@ -16,6 +16,7 @@ package de.sciss.fscape.lucre.graph
 import de.sciss.fscape.UGenGraph.Builder
 import de.sciss.fscape.graph.{Constant, ConstantD, ConstantI, ConstantL, UGenInGroup}
 import de.sciss.fscape.lucre.UGenGraphBuilder
+import de.sciss.fscape.lucre.UGenGraphBuilder.Input
 import de.sciss.fscape.{GE, UGenGraph, UGenInLike}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -96,7 +97,7 @@ final case class Attribute(key: String, default: Option[Attribute.Default], fixe
   protected def makeUGens(implicit b: Builder): UGenInLike = {
     val ub = UGenGraphBuilder.get(b)
     // val defChans  = default.fold(-1)(_.size)
-    val res: UGenInLike = ub.requestAttribute(key).fold[UGenInLike] {
+    val res: UGenInLike = ub.requestInput(Input.Attribute(key)).peer.fold[UGenInLike] {
       val d = default.getOrElse(sys.error(s"Missing Attribute $key"))
       if (fixed < 0) d.expand else d.tabulate(fixed)
     } { value =>

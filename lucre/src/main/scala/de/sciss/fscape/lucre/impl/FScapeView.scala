@@ -35,10 +35,9 @@ import scala.util.{Failure, Success, Try}
 object FScapeView {
   def apply[S <: Sys[S]](peer: FScape[S], config: Control.Config)
                         (implicit tx: S#Tx, context: GenContext[S]): FScapeView[S] = {
-    val graph = peer.graph.value
     import context.{cursor, workspaceHandle}
     implicit val control: Control = Control(config)
-    val uState  = UGenGraphBuilder.build(peer, graph)
+    val uState  = UGenGraphBuilder.build(???, peer)
     val fH      = tx.newHandle(peer)
     uState match {
       case res: UGenGraphBuilder.Complete[S] =>
@@ -56,7 +55,7 @@ object FScapeView {
               val fut = control.status
               fut.map { _ =>
                 val resourcesB  = List.newBuilder[File]
-                val dataB       = Map.newBuilder[String, Array[Byte]]
+                val dataB       = Map .newBuilder[String, Array[Byte]]
 
                 res.outputs.foreach { outRes =>
                   resourcesB ++= outRes.cacheFiles
@@ -163,7 +162,7 @@ object FScapeView {
 
   // mostly same as filecache.impl.TxnConsumerImpl.acquire
   private def acquire[S <: Sys[S]](key: CacheKey)(source: => Future[CacheValue])
-                                  (implicit tx: S#Tx): Future[CacheValue] = {
+                                  (implicit tx: S#Tx)      : Future[CacheValue] = {
     import TxnLike.peer
     map.get(key).fold {
       val fut = producer.acquireWith(key)(source)

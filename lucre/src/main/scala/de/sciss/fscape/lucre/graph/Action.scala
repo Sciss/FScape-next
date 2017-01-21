@@ -16,13 +16,13 @@ package lucre.graph
 
 import de.sciss.fscape.UGen.Aux
 import de.sciss.fscape.lucre.UGenGraphBuilder
-import de.sciss.fscape.lucre.UGenGraphBuilder.ActionRef
+import de.sciss.fscape.lucre.UGenGraphBuilder.Input
 import de.sciss.fscape.stream.StreamIn
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
 object Action {
-  final case class WithRef(action: Action, ref: ActionRef) extends UGenSource.ZeroOut {
+  final case class WithRef(action: Action, ref: Input.Action.Value) extends UGenSource.ZeroOut {
 
     protected def makeUGens(implicit b: UGenGraph.Builder): Unit =
       unwrap(Vector(action.trig.expand))
@@ -47,7 +47,7 @@ object Action {
 final case class Action(trig: GE, key: String) extends Lazy.Expander[Unit] {
   protected def makeUGens(implicit b: UGenGraph.Builder): Unit = {
     val ub  = UGenGraphBuilder.get(b)
-    val ref = ub.requestAction(key).getOrElse(sys.error(s"Missing Attribute $key"))
+    val ref = ub.requestInput(Input.Action(key)) // .getOrElse(sys.error(s"Missing Attribute $key"))
     Action.WithRef(this, ref)
   }
 }

@@ -15,12 +15,12 @@ package de.sciss.fscape
 package lucre.stream
 
 import akka.stream.{Attributes, SinkShape}
-import de.sciss.fscape.lucre.UGenGraphBuilder.ActionRef
+import de.sciss.fscape.lucre.UGenGraphBuilder.Input
 import de.sciss.fscape.stream.impl.{NodeImpl, Sink1Impl, StageImpl}
 import de.sciss.fscape.stream.{BufI, Builder, Control, _}
 
 object Action {
-  def apply(trig: OutI, ref: ActionRef)(implicit b: Builder): Unit = {
+  def apply(trig: OutI, ref: Input.Action.Value)(implicit b: Builder): Unit = {
     val stage0  = new Stage(ref)
     val stage   = b.add(stage0)
     b.connect(trig, stage.in)
@@ -30,7 +30,7 @@ object Action {
 
   private type Shape = SinkShape[BufI]
 
-  private final class Stage(ref: ActionRef)(implicit ctrl: Control) extends StageImpl[Shape](name) {
+  private final class Stage(ref: Input.Action.Value)(implicit ctrl: Control) extends StageImpl[Shape](name) {
     val shape = new SinkShape(
       in = InI(s"$name.trig")
     )
@@ -38,7 +38,7 @@ object Action {
     def createLogic(attr: Attributes) = new Logic(shape, ref)
   }
 
-  private final class Logic(shape: Shape, ref: ActionRef)(implicit ctrl: Control)
+  private final class Logic(shape: Shape, ref: Input.Action.Value)(implicit ctrl: Control)
     extends NodeImpl(name, shape)
       with Sink1Impl[BufI] {
 
