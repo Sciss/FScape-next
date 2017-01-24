@@ -26,8 +26,7 @@ import de.sciss.fscape.stream.Control
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.Sys
 import de.sciss.serial.{DataInput, DataOutput}
-import de.sciss.synth.proc
-import de.sciss.synth.proc.{SoundProcesses, WorkspaceHandle}
+import de.sciss.synth.proc.WorkspaceHandle
 
 import scala.concurrent.stm.Ref
 import scala.util.control.ControlThrowable
@@ -271,23 +270,6 @@ object UGenGraphBuilder {
       res
     }
 
-//    def requestAttribute(key: String): Option[Any] = {
-//      val res = f.attr.get(key) collect {
-//        case x: Expr[S, _]  => x.value
-//        case other          => other
-//      }
-//      if (res.isDefined) acceptedInputs += key
-//      res
-//    }
-//
-//    def requestAction(key: String): Option[ActionRef] = {
-//      val res = f.attr.$[proc.Action](key).map { a =>
-//        new ActionRefImpl(key, tx.newHandle(f), tx.newHandle(a))
-//      }
-//      if (res.isDefined) acceptedInputs += key
-//      res
-//    }
-
     def requestOutput(reader: Output.Reader): Option[OutputRef] = {
       val outOpt  = f.outputs.get(reader.key)
       val res     = outOpt.collect {
@@ -374,19 +356,6 @@ object UGenGraphBuilder {
             val outputs       : List[OutputResult[S]]             = builder._outputs.reverse
           }
       }
-  }
-
-  private final class ActionRefImpl[S <: Sys[S]](val key: String,
-                                                 fH: stm.Source[S#Tx, FScape[S]], aH: stm.Source[S#Tx, proc.Action[S]])
-                                                (implicit cursor: stm.Cursor[S], workspace: WorkspaceHandle[S])
-    extends Input.Action.Value {
-
-    def execute(value: Any): Unit = SoundProcesses.atomic[S, Unit] { implicit tx =>
-      val f = fH()
-      val a = aH()
-      val u = proc.Action.Universe(self = a, workspace = workspace, invoker = Some(f), value = value)
-      a.execute(u)
-    }
   }
 
   private final class OutputRefImpl[S <: Sys[S]](val reader: Output.Reader,

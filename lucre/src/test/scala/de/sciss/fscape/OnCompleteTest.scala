@@ -19,6 +19,11 @@ object OnCompleteTest extends App {
       }
   }
 
+  new Thread {
+    override def run(): Unit = Thread.sleep(Long.MaxValue)
+    start()
+  }
+
   cursor.step { implicit tx =>
     val f = FScape[S]
     val g = Graph {
