@@ -33,12 +33,20 @@ import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
 object FScapeView {
+  /** Creates a view with the default `UGenGraphBuilder.Context`. */
   def apply[S <: Sys[S]](peer: FScape[S], config: Control.Config)
                         (implicit tx: S#Tx, context: GenContext[S]): FScapeView[S] = {
+    val ugbCtx = new UGenGraphBuilderContextImpl.Default(peer)
+    apply(peer, ugbCtx, config)
+  }
+
+  /** Creates a view with the custom `UGenGraphBuilder.Context`. */
+  def apply[S <: Sys[S]](peer: FScape[S], ugbContext: UGenGraphBuilder.Context[S], config: Control.Config)
+                       (implicit tx: S#Tx, context: GenContext[S]): FScapeView[S] = {
     import context.{cursor, workspaceHandle}
     implicit val control: Control = Control(config)
-    val uState  = UGenGraphBuilder.build(???, peer)
-    val fH      = tx.newHandle(peer)
+    val ugbCtx = new UGenGraphBuilderContextImpl.Default(peer)
+    val uState = UGenGraphBuilder.build(ugbCtx, peer)
     uState match {
       case res: UGenGraphBuilder.Complete[S] =>
         // - if there are no outputs, we're done
