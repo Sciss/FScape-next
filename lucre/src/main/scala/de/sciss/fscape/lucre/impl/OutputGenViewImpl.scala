@@ -15,7 +15,7 @@ package de.sciss.fscape
 package lucre
 package impl
 
-import de.sciss.fscape.lucre.FScape.Output
+import de.sciss.fscape.lucre.FScape.{Output, Rendering}
 import de.sciss.fscape.stream.Control
 import de.sciss.lucre.event.impl.ObservableImpl
 import de.sciss.lucre.stm
@@ -25,17 +25,17 @@ import de.sciss.synth.proc.{GenContext, GenView}
 import scala.util.Try
 
 object OutputGenViewImpl {
-  def apply[S <: Sys[S]](config: Control.Config, output: Output[S], fscView: FScapeView[S])
+  def apply[S <: Sys[S]](config: Control.Config, output: Output[S], rendering: Rendering[S])
                         (implicit tx: S#Tx, context: GenContext[S]): OutputGenView[S] = {
     new Impl(config, tx.newHandle(output), key = output.key, valueType = output.valueType,
-      fscView = fscView).init()
+      rendering = rendering).init()
   }
 
   private final class Impl[S <: Sys[S]](config: Control.Config,
                                         outputH: stm.Source[S#Tx, Output[S]],
                                         val key: String,
                                         val valueType: Obj.Type,
-                                        fscView: FScapeView[S])
+                                        rendering: Rendering[S])
                                        (implicit context: GenContext[S])
     extends OutputGenView[S] with ObservableImpl[S, GenView.State] {
     view =>
@@ -44,7 +44,7 @@ object OutputGenViewImpl {
 
     def typeID: Int = Output.typeID
 
-    def state(implicit tx: S#Tx): GenView.State = fscView.state
+    def state(implicit tx: S#Tx): GenView.State = rendering.state
 
     def output(implicit tx: S#Tx): Output[S] = outputH()
 
@@ -54,29 +54,12 @@ object OutputGenViewImpl {
       res
     }
 
-    def value(implicit tx: S#Tx): Option[Try[Obj[S]]] = fscView.result(this)
-
-  //  match {
-  //    case Some(Success(_)) =>
-  //      outputH() match {
-  //        case oi: OutputImpl[S] =>
-  //          oi.value.getOrElse {
-  //            fscView
-  //          }
-  //
-  //          oi.value.map(v => Success(v))
-  //        case _ => None
-  //      }
-  //    case res @ Some(Failure(_)) =>
-  //      res.asInstanceOf[Option[Try[Obj[S]]]]
-  //
-  //    case None => None
-  //  }
+    def value(implicit tx: S#Tx): Option[Try[Obj[S]]] = rendering.outputResult(this)
 
     private def fscape(implicit tx: S#Tx): FScape[S] = outputH().fscape
 
     def init()(implicit tx: S#Tx): this.type = {
-      observer = fscView.react { implicit tx => upd =>
+      observer = rendering.react { implicit tx => upd =>
         fire(upd)
       }
       this

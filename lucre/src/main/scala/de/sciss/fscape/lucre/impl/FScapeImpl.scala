@@ -15,24 +15,18 @@ package de.sciss.fscape
 package lucre
 package impl
 
-import de.sciss.fscape.lucre.FScape.Rendering.State
 import de.sciss.fscape.lucre.FScape.{Output, Rendering}
-import de.sciss.fscape.lucre.UGenGraphBuilder.OutputResult
 import de.sciss.fscape.stream.Control
 import de.sciss.lucre.data.SkipList
 import de.sciss.lucre.event.Targets
-import de.sciss.lucre.event.impl.ObservableImpl
 import de.sciss.lucre.stm.impl.ObjSerializer
-import de.sciss.lucre.stm.{Copy, Disposable, Elem, NoSys, Obj, Sys, TxnLike}
-import de.sciss.lucre.{stm, event => evt}
+import de.sciss.lucre.stm.{Copy, Elem, NoSys, Obj, Sys}
+import de.sciss.lucre.{event => evt}
 import de.sciss.serial.{DataInput, DataOutput, Serializer}
 import de.sciss.synth.proc.impl.CodeImpl
-import de.sciss.synth.proc.{GenContext, GenView, WorkspaceHandle}
+import de.sciss.synth.proc.{GenContext, GenView}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
-import scala.concurrent.stm.Ref
-import scala.util.control.NonFatal
-import scala.util.{Failure, Try}
 
 object FScapeImpl {
   private final val SER_VERSION_OLD = 0x4673  // "Fs"
@@ -85,8 +79,8 @@ object FScapeImpl {
 
     def apply[S <: Sys[S]](output: Output[S])(implicit tx: S#Tx, context: GenContext[S]): GenView[S] = {
       val _fscape = output.fscape
-      val fscView = context.acquire[FScapeView[S]](_fscape) {
-        FScapeView(_fscape, config)
+      val fscView = context.acquire[Rendering[S]](_fscape) {
+        RenderingImpl(_fscape, config)
       }
       OutputGenView(config, output, fscView)
     }
@@ -94,91 +88,91 @@ object FScapeImpl {
 
   // ---- Rendering ----
 
-  private final class RenderingImpl[S <: Sys[S]](config: Control.Config)(implicit cursor: stm.Cursor[S])
-    extends Rendering[S] with ObservableImpl[S, Rendering.State] {
-
-    private[this] val _state        = Ref[Rendering.State](Rendering.Running(0.0)) // Rendering.Stopped)
-    private[this] val _result       = Ref(Option.empty[Try[Unit]])
-    private[this] val _disposed     = Ref(false)
-    implicit val control: Control   = Control(config)
-
-    def result(implicit tx: S#Tx): Option[Try[Unit]] = _result.get(tx.peer)
-
-    def reactNow(fun: S#Tx => State => Unit)(implicit tx: S#Tx): Disposable[S#Tx] = {
-      val res = react(fun)
-      fun(tx)(state)
-      res
-    }
-
-    private def completeWith(t: Try[Unit], outputs: List[OutputResult[S]],
-                             fscapeH: stm.Source[S#Tx, FScape[S]]): Unit =
-      if (!_disposed.single.get)
-        cursor.step { implicit tx =>
-          import TxnLike.peer
-          if (!_disposed()) {
-            state_=(Rendering.Completed, Some(t))
-            if (t.isSuccess && outputs.nonEmpty) {
-              outputs.foreach { outRef =>
-                val in = DataInput(???)
-                outRef.updateValue(in)
-              }
-            }
-          }
-        }
-
-    def start(f: FScape[S])(implicit tx: S#Tx, workspace: WorkspaceHandle[S]): Unit = {
-      val state = UGenGraphBuilder.build(???, f)
-      state match {
-        case res: UGenGraphBuilder.Complete[S] =>
-          // clear cached values
-          if (res.outputs.nonEmpty) {
-            f.outputs.iterator.foreach {
-              case out: OutputImpl[S] => out.value_=(None)
-              case _ =>
-            }
-          }
-          val fH = tx.newHandle(f)
-          tx.afterCommit {
-            try {
-              control.runExpanded(res.graph)
-              import control.config.executionContext
-              val fut = control.status
-              fut.andThen {
-                case x => completeWith(x, res.outputs, fH)
-              }
-            } catch {
-              case NonFatal(ex) =>
-                completeWith(Failure(ex), Nil, fH)
-            }
-          }
-          state_=(Rendering.Running(0.0), None)
-
-        case res: UGenGraphBuilder.Incomplete[S] =>
-          val msg = res.rejectedInputs.mkString("Missing inputs: ", ", ", "")
-          val ex  = new IllegalStateException(msg)
-          state_=(Rendering.Completed, Some(Failure(ex)))
-      }
-    }
-
-    def state(implicit tx: S#Tx): State = {
-      import TxnLike.peer
-      _state()
-    }
-
-    protected def state_=(value: Rendering.State, res: Option[Try[Unit]])(implicit tx: S#Tx): Unit = {
-      import TxnLike.peer
-      val old     = _state .swap(value)
-      val oldRes  = _result.swap(res)
-      if (old != value || (value == Rendering.Completed && oldRes != res)) fire(value)
-    }
-
-    def cancel()(implicit tx: S#Tx): Unit =
-      tx.afterCommit(control.cancel())
-
-    def dispose()(implicit tx: S#Tx): Unit = {
-      cancel()
-    }
-  }
+//  private final class RenderingImpl[S <: Sys[S]](config: Control.Config)(implicit cursor: stm.Cursor[S])
+//    extends Rendering[S] with ObservableImpl[S, Rendering.State] {
+//
+//    private[this] val _state        = Ref[Rendering.State](Rendering.Running(0.0)) // Rendering.Stopped)
+//    private[this] val _result       = Ref(Option.empty[Try[Unit]])
+//    private[this] val _disposed     = Ref(false)
+//    implicit val control: Control   = Control(config)
+//
+//    def result(implicit tx: S#Tx): Option[Try[Unit]] = _result.get(tx.peer)
+//
+//    def reactNow(fun: S#Tx => State => Unit)(implicit tx: S#Tx): Disposable[S#Tx] = {
+//      val res = react(fun)
+//      fun(tx)(state)
+//      res
+//    }
+//
+//    private def completeWith(t: Try[Unit], outputs: List[OutputResult[S]],
+//                             fscapeH: stm.Source[S#Tx, FScape[S]]): Unit =
+//      if (!_disposed.single.get)
+//        cursor.step { implicit tx =>
+//          import TxnLike.peer
+//          if (!_disposed()) {
+//            state_=(Rendering.Completed, Some(t))
+//            if (t.isSuccess && outputs.nonEmpty) {
+//              outputs.foreach { outRef =>
+//                val in = DataInput(...)
+//                outRef.updateValue(in)
+//              }
+//            }
+//          }
+//        }
+//
+//    def start(f: FScape[S])(implicit tx: S#Tx, workspace: WorkspaceHandle[S]): Unit = {
+//      val state = UGenGraphBuilder.build(..., f)
+//      state match {
+//        case res: UGenGraphBuilder.Complete[S] =>
+//          // clear cached values
+//          if (res.outputs.nonEmpty) {
+//            f.outputs.iterator.foreach {
+//              case out: OutputImpl[S] => out.value_=(None)
+//              case _ =>
+//            }
+//          }
+//          val fH = tx.newHandle(f)
+//          tx.afterCommit {
+//            try {
+//              control.runExpanded(res.graph)
+//              import control.config.executionContext
+//              val fut = control.status
+//              fut.andThen {
+//                case x => completeWith(x, res.outputs, fH)
+//              }
+//            } catch {
+//              case NonFatal(ex) =>
+//                completeWith(Failure(ex), Nil, fH)
+//            }
+//          }
+//          state_=(Rendering.Running(0.0), None)
+//
+//        case res: UGenGraphBuilder.Incomplete[S] =>
+//          val msg = res.rejectedInputs.mkString("Missing inputs: ", ", ", "")
+//          val ex  = new IllegalStateException(msg)
+//          state_=(Rendering.Completed, Some(Failure(ex)))
+//      }
+//    }
+//
+//    def state(implicit tx: S#Tx): State = {
+//      import TxnLike.peer
+//      _state()
+//    }
+//
+//    protected def state_=(value: Rendering.State, res: Option[Try[Unit]])(implicit tx: S#Tx): Unit = {
+//      import TxnLike.peer
+//      val old     = _state .swap(value)
+//      val oldRes  = _result.swap(res)
+//      if (old != value || (value == Rendering.Completed && oldRes != res)) fire(value)
+//    }
+//
+//    def cancel()(implicit tx: S#Tx): Unit =
+//      tx.afterCommit(control.cancel())
+//
+//    def dispose()(implicit tx: S#Tx): Unit = {
+//      cancel()
+//    }
+//  }
 
   private sealed trait Base[S <: Sys[S]] {
     _: FScape[S] =>
@@ -189,13 +183,8 @@ object FScapeImpl {
 
     // --- rendering ---
 
-    final def run(config: Control.Config)(implicit tx: S#Tx, cursor: stm.Cursor[S],
-                                          workspace: WorkspaceHandle[S]): Rendering[S] = {
-      // val g = graph().value
-      val r = new RenderingImpl[S](config)
-      r.start(this)
-      r
-    }
+    final def run(config: Control.Config)(implicit tx: S#Tx, context: GenContext[S]): Rendering[S] =
+      Rendering(this, config)
   }
 
   private sealed trait ImplOLD[S <: Sys[S]]

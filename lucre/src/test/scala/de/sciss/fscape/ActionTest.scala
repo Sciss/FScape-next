@@ -6,7 +6,7 @@ import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.synth.InMemory
 import de.sciss.synth.proc
 import de.sciss.synth.proc.Action.Universe
-import de.sciss.synth.proc.WorkspaceHandle
+import de.sciss.synth.proc.{GenContext, WorkspaceHandle}
 
 import scala.util.{Failure, Success}
 
@@ -45,6 +45,7 @@ object ActionTest extends App {
 
   cursor.step { implicit tx =>
     val f = fH()
+    implicit val ctx = GenContext[S]
     r = f.run()
     r.reactNow { implicit tx => state =>
       println(s"Rendering: $state")

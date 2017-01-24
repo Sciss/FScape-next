@@ -5,7 +5,7 @@ import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.synth.InMemory
 import de.sciss.synth.proc
 import de.sciss.synth.proc.Action.Universe
-import de.sciss.synth.proc.WorkspaceHandle
+import de.sciss.synth.proc.{GenContext, WorkspaceHandle}
 
 object OnCompleteTest extends App {
   implicit val cursor = InMemory()
@@ -34,6 +34,7 @@ object OnCompleteTest extends App {
     f.attr.put("action", a)
     f.graph() = g
     import WorkspaceHandle.Implicits.dummy
+    implicit val ctx = GenContext[S]
     f.run()
   }
 }

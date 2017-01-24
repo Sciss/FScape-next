@@ -14,7 +14,7 @@
 package de.sciss.fscape
 package lucre
 
-import de.sciss.fscape.lucre.impl.{OutputImpl, FScapeImpl => Impl}
+import de.sciss.fscape.lucre.impl.{OutputImpl, UGenGraphBuilderContextImpl, FScapeImpl => Impl}
 import de.sciss.fscape.stream.Control
 import de.sciss.lucre.event.{Observable, Publisher}
 import de.sciss.lucre.stm
@@ -22,7 +22,7 @@ import de.sciss.lucre.stm.{Disposable, Obj, Sys}
 import de.sciss.serial.{DataInput, Serializer}
 import de.sciss.synth.proc
 import de.sciss.synth.proc.impl.CodeImpl
-import de.sciss.synth.proc.{Gen, GenView, WorkspaceHandle}
+import de.sciss.synth.proc.{Gen, GenContext, GenView, WorkspaceHandle}
 import de.sciss.{fscape, model}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -77,46 +77,29 @@ object FScape extends Obj.Type {
   // ----
 
   object Rendering {
-//    sealed trait State {
-//      def isComplete: Boolean
-//    }
-//    case object Success extends State {
-//      def isComplete = true
-//    }
-//    /** Rendering either failed or was aborted.
-//      * In the case of abortion, the throwable is
-//      * of type `Cancelled`.
-//      */
-//    final case class Failure (ex : Throwable) extends State {
-//      def isComplete = true
-//    }
-////    final case class Progress(amount: Double) extends State {
-////      override def toString = s"$productPrefix($toInt%)"
-////
-////      def isComplete = false
-////
-////      /** Returns an integer progress percentage between 0 and 100 */
-////      def toInt = (amount * 100).toInt
-////    }
-//    case object Running extends State {
-//      def isComplete = false
-//    }
-
     type State      = GenView.State
-//    val  Stopped    = GenView.Stopped
     val  Completed  = GenView.Completed
     val  Running    = GenView.Running
     type Running    = GenView.Running
 
     val  Cancelled = fscape.stream.Cancelled
     type Cancelled = fscape.stream.Cancelled
+
+    /** Creates a view with the default `UGenGraphBuilder.Context`. */
+    def apply[S <: Sys[S]](peer: FScape[S], config: Control.Config)
+                          (implicit tx: S#Tx, context: GenContext[S]): Rendering[S] = {
+      val ugbCtx = new UGenGraphBuilderContextImpl.Default(peer)
+      impl.RenderingImpl(peer, ugbCtx, config)
+    }
   }
   trait Rendering[S <: Sys[S]] extends Observable[S#Tx, Rendering.State] with Disposable[S#Tx] {
     def state(implicit tx: S#Tx): Rendering.State
 
     def result(implicit tx: S#Tx): Option[Try[Unit]]
 
-    def control: Control
+    def outputResult(output: OutputGenView[S])(implicit tx: S#Tx): Option[Try[Obj[S]]]
+
+    // def control: Control
 
     /** Like `react` but invokes the function immediately with the current state. */
     def reactNow(fun: S#Tx => Rendering.State => Unit)(implicit tx: S#Tx): Disposable[S#Tx]
@@ -235,5 +218,5 @@ trait FScape[S <: Sys[S]] extends Obj[S] with Publisher[S, FScape.Update[S]] {
   def outputs: FScape.Outputs[S]
 
   def run(config: Control.Config = Control.Config())
-         (implicit tx: S#Tx, cursor: stm.Cursor[S], workspace: WorkspaceHandle[S]): FScape.Rendering[S]
+         (implicit tx: S#Tx, context: GenContext[S]): FScape.Rendering[S]
 }

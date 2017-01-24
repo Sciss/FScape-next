@@ -18,9 +18,10 @@ package impl
 import de.sciss.file._
 import de.sciss.filecache
 import de.sciss.filecache.TxnProducer
+import de.sciss.fscape.lucre.FScape.Rendering
+import de.sciss.fscape.lucre.FScape.Rendering.State
 import de.sciss.fscape.lucre.UGenGraphBuilder.{MissingIn, OutputResult}
 import de.sciss.fscape.stream.Control
-import de.sciss.lucre.event.Observable
 import de.sciss.lucre.event.impl.{DummyObservableImpl, ObservableImpl}
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Disposable, Obj, Sys, TxnLike}
@@ -32,17 +33,17 @@ import scala.concurrent.stm.{Ref, TMap, atomic}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
-object FScapeView {
+object RenderingImpl {
   /** Creates a view with the default `UGenGraphBuilder.Context`. */
   def apply[S <: Sys[S]](peer: FScape[S], config: Control.Config)
-                        (implicit tx: S#Tx, context: GenContext[S]): FScapeView[S] = {
+                        (implicit tx: S#Tx, context: GenContext[S]): Rendering[S] = {
     val ugbCtx = new UGenGraphBuilderContextImpl.Default(peer)
     apply(peer, ugbCtx, config)
   }
 
   /** Creates a view with the custom `UGenGraphBuilder.Context`. */
   def apply[S <: Sys[S]](peer: FScape[S], ugbContext: UGenGraphBuilder.Context[S], config: Control.Config)
-                       (implicit tx: S#Tx, context: GenContext[S]): FScapeView[S] = {
+                       (implicit tx: S#Tx, context: GenContext[S]): Rendering[S] = {
     import context.{cursor, workspaceHandle}
     implicit val control: Control = Control(config)
     val ugbCtx = new UGenGraphBuilderContextImpl.Default(peer)
@@ -57,7 +58,7 @@ object FScapeView {
           val struct = res.structure
           // - check file cache for structure
           import control.config.executionContext
-          val fut: Future[CacheValue] = FScapeView.acquire[S](struct) {
+          val fut: Future[CacheValue] = RenderingImpl.acquire[S](struct) {
             try {
               control.runExpanded(res.graph)
               val fut = control.status
@@ -82,7 +83,7 @@ object FScapeView {
                 Future.failed(ex)
             }
           }
-          val impl = new Impl[S](struct, res.outputs, fut)
+          val impl = new Impl[S](struct, res.outputs, control, fut)
           fut.onComplete {
             cvt => impl.completeWith(cvt)
           }
@@ -207,14 +208,20 @@ object FScapeView {
 
   // FScape is rendering
   private final class Impl[S <: Sys[S]](struct: CacheKey, outputs: List[OutputResult[S]],
+                                        control: Control,
                                         fut: Future[CacheValue])(implicit cursor: stm.Cursor[S])
-    extends FScapeView[S] with ObservableImpl[S, GenView.State] {
+    extends Rendering[S] with ObservableImpl[S, GenView.State] {
 
     private[this] val _disposed = Ref(false)
     private[this] val _state    = Ref[GenView.State](if (fut.isCompleted) GenView.Completed else GenView.Running(0.0))
     private[this] val _result   = Ref[Option[Try[CacheValue]]](fut.value)
 
-    def result(outputView: OutputGenView[S])(implicit tx: S#Tx): Option[Try[Obj[S]]] = {
+    def result(implicit tx: S#Tx): Option[Try[Unit]] = _result.get(tx.peer).map(_.map(_ => ()))
+
+    def cancel()(implicit tx: S#Tx): Unit =
+      tx.afterCommit(control.cancel())
+
+    def outputResult(outputView: OutputGenView[S])(implicit tx: S#Tx): Option[Try[Obj[S]]] = {
       _result.get(tx.peer) match {
         case Some(Success(cv)) =>
           outputView.output match {
@@ -236,6 +243,12 @@ object FScapeView {
 
         case None => None
       }
+    }
+
+    def reactNow(fun: S#Tx => State => Unit)(implicit tx: S#Tx): Disposable[S#Tx] = {
+      val res = react(fun)
+      fun(tx)(state)
+      res
     }
 
     def completeWith(t: Try[CacheValue]): Unit =
@@ -260,32 +273,47 @@ object FScapeView {
     def state(implicit tx: S#Tx): GenView.State = _state.get(tx.peer)
 
     def dispose()(implicit tx: S#Tx): Unit =    // XXX TODO --- should cancel processor
-      if (!_disposed.swap(true)(tx.peer))
-        FScapeView.release[S](struct)
+      if (!_disposed.swap(true)(tx.peer)) {
+        RenderingImpl.release[S](struct)
+        cancel()
+      }
   }
 
-  private sealed trait DummyImpl[S <: Sys[S]] extends FScapeView[S]
+  private sealed trait DummyImpl[S <: Sys[S]] extends Rendering[S]
     with DummyObservableImpl[S] {
 
     final def state(implicit tx: S#Tx): GenView.State = GenView.Completed
 
     final def dispose()(implicit tx: S#Tx): Unit = ()
+
+    def reactNow(fun: S#Tx => State => Unit)(implicit tx: S#Tx): Disposable[S#Tx] = {
+      val res = react(fun)
+      fun(tx)(state)
+      res
+    }
+
+    def cancel()(implicit tx: S#Tx): Unit = ()
   }
 
   // FScape does not provide outputs, nothing to do
   private final class EmptyImpl[S <: Sys[S]] extends DummyImpl[S] {
-    def result(output: OutputGenView[S])(implicit tx: S#Tx): Option[Try[Obj[S]]] = None
+    def result(implicit tx: S#Tx): Option[Try[Unit]] = None
+
+    def outputResult(output: OutputGenView[S])(implicit tx: S#Tx): Option[Try[Obj[S]]] = None
   }
 
   // FScape failed early (e.g. graph inputs incomplete)
   private final class FailedImpl[S <: Sys[S]](rejected: Set[String]) extends DummyImpl[S] {
-    def result(output: OutputGenView[S])(implicit tx: S#Tx): Option[Try[Obj[S]]] =
-      Some(Failure(MissingIn(rejected.head)))
+    def result(implicit tx: S#Tx): Option[Try[Unit]] = nada
+
+    def outputResult(output: OutputGenView[S])(implicit tx: S#Tx): Option[Try[Obj[S]]] = nada
+
+    private def nada: Option[Try[Nothing]] = Some(Failure(MissingIn(rejected.head)))
   }
 }
-
-trait FScapeView[S <: Sys[S]] extends Observable[S#Tx, GenView.State] with Disposable[S#Tx] {
-  def state(implicit tx: S#Tx): GenView.State
-
-  def result(output: OutputGenView[S])(implicit tx: S#Tx): Option[Try[Obj[S]]]
-}
+//
+//trait FScapeView[S <: Sys[S]] extends Observable[S#Tx, GenView.State] with Disposable[S#Tx] {
+//  def state(implicit tx: S#Tx): GenView.State
+//
+//  def result(output: OutputGenView[S])(implicit tx: S#Tx): Option[Try[Obj[S]]]
+//}
