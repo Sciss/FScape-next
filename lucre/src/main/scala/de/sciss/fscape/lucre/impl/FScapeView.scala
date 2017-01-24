@@ -220,7 +220,7 @@ object FScapeView {
           outputView.output match {
             case oi: OutputImpl[S] =>
               val valOpt: Option[Obj[S]] = oi.value.orElse {
-                val key = outputView.key
+                val key = oi.key // outputView.key
                 outputs.find(_.key == key).flatMap { outRef =>
                   val in = DataInput(cv.data(key))
                   outRef.updateValue(in)

@@ -88,7 +88,7 @@ object FScapeImpl {
       val fscView = context.acquire[FScapeView[S]](_fscape) {
         FScapeView(_fscape, config)
       }
-      new OutputGenView(config, tx.newHandle(output), output.key, output.valueType, fscView).init()
+      OutputGenView(config, output, fscView)
     }
   }
 

@@ -299,3 +299,42 @@ behaviour of `apply`, looking for the txn-local `AuralSonification`, and then cr
 This is all a bit messy and complex, but the easiest solution I can think of in the current SP design.
 This means, we should make `FScapeView` kind of the equivalent of `AuralProcImpl` in that it has default
 implementation for `requestInput` and exposes some methods that can be overridden.
+
+## Unify API
+
+That is unifying `Rendering` and `FScapeView`:
+
+```scala
+import de.sciss.lucre.stm.{Disposable, Sys, Obj}
+import de.sciss.lucre.event.Observable
+import scala.util.Try
+
+trait Control 
+
+object Rendering {
+  trait State
+}
+trait Rendering[S <: Sys[S]] extends Observable[S#Tx, Rendering.State] with Disposable[S#Tx] {
+  def state(implicit tx: S#Tx): Rendering.State
+
+  def result(implicit tx: S#Tx): Option[Try[Unit]]
+
+  def control: Control
+
+  def reactNow(fun: S#Tx => Rendering.State => Unit)(implicit tx: S#Tx): Disposable[S#Tx]
+
+  def cancel()(implicit tx: S#Tx): Unit
+}
+
+trait OutputGenView[S <: Sys[S]]
+
+trait FScapeView[S <: Sys[S]] extends Observable[S#Tx, Rendering /* GenView */.State] with Disposable[S#Tx] {
+  def state(implicit tx: S#Tx): Rendering /* GenView */.State
+
+  def result(output: OutputGenView[S])(implicit tx: S#Tx): Option[Try[Obj[S]]]
+}
+```
+
+There is no problem giving `OutputGenView` is limited public API. `FScapeView` already has `control` stored
+internally, `cancel` would not be a problem either, also not `result` without argument. Indeed, `control` is
+not needed as public API, so we don't need to give a dummy to `FScapeView.Empty` etc.

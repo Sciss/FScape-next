@@ -19,7 +19,7 @@ import de.sciss.fscape.stream.Control
 import de.sciss.lucre.event.{Observable, Publisher}
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Disposable, Obj, Sys}
-import de.sciss.serial.{DataInput, DataOutput, Serializer}
+import de.sciss.serial.{DataInput, Serializer}
 import de.sciss.synth.proc
 import de.sciss.synth.proc.impl.CodeImpl
 import de.sciss.synth.proc.{Gen, GenView, WorkspaceHandle}
