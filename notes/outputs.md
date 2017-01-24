@@ -252,3 +252,50 @@ method to `stream.Builder` in "core", so we do not need to sub-class this.
 - output-view calls `acquire` on the `GenContext` for the `FScape` instance, yielding an `FScapeView` (internal API)
 - fscape-view when created, evaluates and observes the graph and the connected attributes. (yes?)
 - fscape-view thus maintains a cache key (or the current plus still held old keys)
+
+# UGB.Input
+
+The problem now is there is no "top-down" instance that can enhance the attribute resolution as was the case
+with `AuralSonificationImpl` that wraps `AuralProcImpl`. There must thus be another way to inject `UGB.Input`
+extensions.
+
+The current command chain would be as follows:
+
+- `AuralProcImpl.requestInput`
+- we must extend `UGB.Input.Scalar.Value` and possibly others to include `async` as a constructor parameter
+- it would find a `Gen`
+- it would somehow have access to a `GenContext` (__how?__)
+- it would call `GenView(gen)` and obtain a `GenView`.
+- it would then call `value` to see if a cached value is available
+    - if yes, check if it was successful
+        - if yes, return a synchronous `UGB.Value`
+        - if no , fail the aural proc build
+    - if no, call `reactNow` and return an asynchronous `UGB.Value`
+        - in `buildAsyncAttrInput`, wrap the `GenView` in an `AsyncResource` and attach it
+
+Furthermore, we need to find the injection point for `UGB.Context`. Since `FScapeView()` is called from
+`OutputGenViewFactory`, the logical point is to extend `FScape.genViewFactory` to take such a context?
+Can that context be generated globally and independently from parent object knowledge. In other words, 
+how do we get from an `FScape.Output` to a `Sonification` in order to access `sonif.sources` and finally
+find a `Matrix`?
+
+The only possible entry point here would be through `AuralSonification` and the `findSource` method of its
+implementation. Of course, a dirty hack is always to set a `TxnLocal`... This implies that the matrix is
+looked up in the same transaction as the aural view's `play` call. Is this so? The following snippet from
+`OutputGenViewFactory` suggest that this is __not__ the case:
+
+```
+val fscView = context.acquire[FScapeView[S]](_fscape) {
+  FScapeView(_fscape, config)
+}
+```
+
+In other words, the current assumption is that all inputs are available through `fscape.attr`.
+__But:__ There is nothing wrong with installing, in SysSon, our own `genViewFactory` that changes the
+behaviour of `apply`, looking for the txn-local `AuralSonification`, and then creating a sub-class of
+`FScapeView` that deals with the specific matrix look-ups; and here we'd also have the particular 
+`UGB.Context` built-in.
+
+This is all a bit messy and complex, but the easiest solution I can think of in the current SP design.
+This means, we should make `FScapeView` kind of the equivalent of `AuralProcImpl` in that it has default
+implementation for `requestInput` and exposes some methods that can be overridden.

@@ -39,8 +39,8 @@ object UGenGraphBuilder {
   }
 
   def build[S <: Sys[S]](context: Context[S], f: FScape[S])(implicit tx: S#Tx, cursor: stm.Cursor[S],
-                                                     workspace: WorkspaceHandle[S],
-                                                     ctrl: Control): State[S] = {
+                                                            workspace: WorkspaceHandle[S],
+                                                            ctrl: Control): State[S] = {
     val b = new BuilderImpl(context, f)
     var g0 = f.graph.value // graph
     while (g0.nonEmpty) {
@@ -262,7 +262,7 @@ object UGenGraphBuilder {
     def requestInput(req: Input): req.Value = {
       // we pass in `this` and not `in`, because that way the context
       // can find accepted inputs that have been added during the current build cycle!
-      val res   = context.requestInput[req.Value](req, this)(tx)
+      val res   = context.requestInput[req.Value](req, this)(tx)  // IntelliJ highlight bug
       val key   = req.key
       val map0  = _acceptedInputs.getOrElse(key, Map.empty)
       val map1  = map0 + (req -> res)
