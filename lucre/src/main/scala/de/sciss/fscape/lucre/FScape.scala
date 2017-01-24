@@ -98,7 +98,7 @@ object FScape extends Obj.Type {
 
     def outputResult(output: OutputGenView[S])(implicit tx: S#Tx): Option[Try[Obj[S]]]
 
-    // def control: Control
+    def control: Control
 
     /** Like `react` but invokes the function immediately with the current state. */
     def reactNow(fun: S#Tx => Rendering.State => Unit)(implicit tx: S#Tx): Disposable[S#Tx]

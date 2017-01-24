@@ -66,7 +66,7 @@ object RenderingImpl {
         val isEmpty = res.outputs.isEmpty
         // - if there are no outputs, we're done
         if (isEmpty && !force) {
-          new EmptyImpl[S]
+          new EmptyImpl[S](control)
         } else {
           // - otherwise check structure:
           val struct = res.structure
@@ -118,7 +118,7 @@ object RenderingImpl {
         }
 
       case res =>
-        new FailedImpl[S](res.rejectedInputs)
+        new FailedImpl[S](control, res.rejectedInputs)
     }
   }
 
@@ -231,18 +231,15 @@ object RenderingImpl {
 
   // FScape is rendering
   private final class Impl[S <: Sys[S]](struct: CacheKey, outputs: List[OutputResult[S]],
-                                        control: Control, fut: Future[CacheValue],
+                                        val control: Control, fut: Future[CacheValue],
                                         useCache: Boolean)(implicit cursor: stm.Cursor[S])
-    extends Rendering[S] with ObservableImpl[S, GenView.State] {
+    extends Basic[S] with ObservableImpl[S, GenView.State] {
 
     private[this] val _disposed = Ref(false)
     private[this] val _state    = Ref[GenView.State](if (fut.isCompleted) GenView.Completed else GenView.Running(0.0))
     private[this] val _result   = Ref[Option[Try[CacheValue]]](fut.value)
 
     def result(implicit tx: S#Tx): Option[Try[Unit]] = _result.get(tx.peer).map(_.map(_ => ()))
-
-    def cancel()(implicit tx: S#Tx): Unit =
-      tx.afterCommit(control.cancel())
 
     def outputResult(outputView: OutputGenView[S])(implicit tx: S#Tx): Option[Try[Obj[S]]] = {
       _result.get(tx.peer) match {
@@ -266,12 +263,6 @@ object RenderingImpl {
 
         case None => None
       }
-    }
-
-    def reactNow(fun: S#Tx => State => Unit)(implicit tx: S#Tx): Disposable[S#Tx] = {
-      val res = react(fun)
-      fun(tx)(state)
-      res
     }
 
     def completeWith(t: Try[CacheValue]): Unit =
@@ -302,31 +293,34 @@ object RenderingImpl {
       }
   }
 
-  private sealed trait DummyImpl[S <: Sys[S]] extends Rendering[S]
-    with DummyObservableImpl[S] {
-
-    final def state(implicit tx: S#Tx): GenView.State = GenView.Completed
-
-    final def dispose()(implicit tx: S#Tx): Unit = ()
-
+  private sealed trait Basic[S <: Sys[S]] extends Rendering[S] {
     def reactNow(fun: S#Tx => State => Unit)(implicit tx: S#Tx): Disposable[S#Tx] = {
       val res = react(fun)
       fun(tx)(state)
       res
     }
 
-    def cancel()(implicit tx: S#Tx): Unit = ()
+    def cancel()(implicit tx: S#Tx): Unit =
+      tx.afterCommit(control.cancel())
+  }
+
+  private sealed trait DummyImpl[S <: Sys[S]] extends Basic[S]
+    with DummyObservableImpl[S] {
+
+    final def state(implicit tx: S#Tx): GenView.State = GenView.Completed
+
+    final def dispose()(implicit tx: S#Tx): Unit = ()
   }
 
   // FScape does not provide outputs, nothing to do
-  private final class EmptyImpl[S <: Sys[S]] extends DummyImpl[S] {
+  private final class EmptyImpl[S <: Sys[S]](val control: Control) extends DummyImpl[S] {
     def result(implicit tx: S#Tx): Option[Try[Unit]] = Some(Success(()))
 
     def outputResult(output: OutputGenView[S])(implicit tx: S#Tx): Option[Try[Obj[S]]] = None
   }
 
   // FScape failed early (e.g. graph inputs incomplete)
-  private final class FailedImpl[S <: Sys[S]](rejected: Set[String]) extends DummyImpl[S] {
+  private final class FailedImpl[S <: Sys[S]](val control: Control, rejected: Set[String]) extends DummyImpl[S] {
     def result(implicit tx: S#Tx): Option[Try[Unit]] = nada
 
     def outputResult(output: OutputGenView[S])(implicit tx: S#Tx): Option[Try[Obj[S]]] = nada
