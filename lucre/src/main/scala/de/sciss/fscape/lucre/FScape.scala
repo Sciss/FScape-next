@@ -17,12 +17,11 @@ package lucre
 import de.sciss.fscape.lucre.impl.{OutputImpl, UGenGraphBuilderContextImpl, FScapeImpl => Impl}
 import de.sciss.fscape.stream.Control
 import de.sciss.lucre.event.{Observable, Publisher}
-import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Disposable, Obj, Sys}
 import de.sciss.serial.{DataInput, Serializer}
 import de.sciss.synth.proc
 import de.sciss.synth.proc.impl.CodeImpl
-import de.sciss.synth.proc.{Gen, GenContext, GenView, WorkspaceHandle}
+import de.sciss.synth.proc.{Gen, GenContext, GenView}
 import de.sciss.{fscape, model}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -89,7 +88,7 @@ object FScape extends Obj.Type {
     def apply[S <: Sys[S]](peer: FScape[S], config: Control.Config)
                           (implicit tx: S#Tx, context: GenContext[S]): Rendering[S] = {
       val ugbCtx = new UGenGraphBuilderContextImpl.Default(peer)
-      impl.RenderingImpl(peer, ugbCtx, config)
+      impl.RenderingImpl(peer, ugbCtx, config, force = true)
     }
   }
   trait Rendering[S <: Sys[S]] extends Observable[S#Tx, Rendering.State] with Disposable[S#Tx] {

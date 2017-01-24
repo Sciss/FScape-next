@@ -28,37 +28,51 @@ import de.sciss.lucre.stm.{Disposable, Obj, Sys, TxnLike}
 import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer}
 import de.sciss.synth.proc.{GenContext, GenView}
 
-import scala.concurrent.Future
+import scala.concurrent.{Future, Promise}
 import scala.concurrent.stm.{Ref, TMap, atomic}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
 object RenderingImpl {
-  /** Creates a view with the default `UGenGraphBuilder.Context`. */
-  def apply[S <: Sys[S]](peer: FScape[S], config: Control.Config)
+  /** Creates a view with the default `UGenGraphBuilder.Context`.
+    *
+    * @param fscape     the fscape object whose graph is to be rendered
+    * @param config     configuration for the stream control
+    * @param force      if `true`, always renders even if there are no
+    *                   outputs.
+    */
+  def apply[S <: Sys[S]](fscape: FScape[S], config: Control.Config, force: Boolean)
                         (implicit tx: S#Tx, context: GenContext[S]): Rendering[S] = {
-    val ugbCtx = new UGenGraphBuilderContextImpl.Default(peer)
-    apply(peer, ugbCtx, config)
+    val ugbCtx = new UGenGraphBuilderContextImpl.Default(fscape)
+    apply(fscape, ugbCtx, config, force = force)
   }
 
-  /** Creates a view with the custom `UGenGraphBuilder.Context`. */
-  def apply[S <: Sys[S]](peer: FScape[S], ugbContext: UGenGraphBuilder.Context[S], config: Control.Config)
+  /** Creates a view with the custom `UGenGraphBuilder.Context`.
+    *
+    * @param fscape     the fscape object whose graph is to be rendered
+    * @param ugbContext the graph builder context that responds to input requests
+    * @param config     configuration for the stream control
+    * @param force      if `true`, always renders even if there are no
+    */
+  def apply[S <: Sys[S]](fscape: FScape[S], ugbContext: UGenGraphBuilder.Context[S], config: Control.Config,
+                         force: Boolean)
                        (implicit tx: S#Tx, context: GenContext[S]): Rendering[S] = {
     import context.{cursor, workspaceHandle}
     implicit val control: Control = Control(config)
-    val ugbCtx = new UGenGraphBuilderContextImpl.Default(peer)
-    val uState = UGenGraphBuilder.build(ugbCtx, peer)
+    val ugbCtx = new UGenGraphBuilderContextImpl.Default(fscape)
+    val uState = UGenGraphBuilder.build(ugbCtx, fscape)
     uState match {
       case res: UGenGraphBuilder.Complete[S] =>
+        val isEmpty = res.outputs.isEmpty
         // - if there are no outputs, we're done
-        if (res.outputs.isEmpty) {
+        if (isEmpty && !force) {
           new EmptyImpl[S]
         } else {
           // - otherwise check structure:
           val struct = res.structure
-          // - check file cache for structure
           import control.config.executionContext
-          val fut: Future[CacheValue] = RenderingImpl.acquire[S](struct) {
+
+          def mkFuture(): Future[CacheValue] =
             try {
               control.runExpanded(res.graph)
               val fut = control.status
@@ -82,8 +96,21 @@ object RenderingImpl {
               case NonFatal(ex) =>
                 Future.failed(ex)
             }
+
+          val useCache = !isEmpty
+          val fut: Future[CacheValue] = if (useCache) {
+            // - check file cache for structure
+            RenderingImpl.acquire[S](struct)(mkFuture())
+          } else {
+            val p = Promise[CacheValue]()
+            tx.afterCommit {
+              val _fut = mkFuture()
+              p.completeWith(_fut)
+            }
+            p.future
           }
-          val impl = new Impl[S](struct, res.outputs, control, fut)
+
+          val impl = new Impl[S](struct, res.outputs, control, fut, useCache = useCache)
           fut.onComplete {
             cvt => impl.completeWith(cvt)
           }
@@ -94,10 +121,6 @@ object RenderingImpl {
         new FailedImpl[S](res.rejectedInputs)
     }
   }
-
-  private val successUnit = Success(())
-
-  // private final class CacheKey(c: UGenGraphBuilder.Complete[S])
 
   private type CacheKey = Long
 
@@ -208,8 +231,8 @@ object RenderingImpl {
 
   // FScape is rendering
   private final class Impl[S <: Sys[S]](struct: CacheKey, outputs: List[OutputResult[S]],
-                                        control: Control,
-                                        fut: Future[CacheValue])(implicit cursor: stm.Cursor[S])
+                                        control: Control, fut: Future[CacheValue],
+                                        useCache: Boolean)(implicit cursor: stm.Cursor[S])
     extends Rendering[S] with ObservableImpl[S, GenView.State] {
 
     private[this] val _disposed = Ref(false)
@@ -274,7 +297,7 @@ object RenderingImpl {
 
     def dispose()(implicit tx: S#Tx): Unit =    // XXX TODO --- should cancel processor
       if (!_disposed.swap(true)(tx.peer)) {
-        RenderingImpl.release[S](struct)
+        if (useCache) RenderingImpl.release[S](struct)
         cancel()
       }
   }
@@ -297,7 +320,7 @@ object RenderingImpl {
 
   // FScape does not provide outputs, nothing to do
   private final class EmptyImpl[S <: Sys[S]] extends DummyImpl[S] {
-    def result(implicit tx: S#Tx): Option[Try[Unit]] = None
+    def result(implicit tx: S#Tx): Option[Try[Unit]] = Some(Success(()))
 
     def outputResult(output: OutputGenView[S])(implicit tx: S#Tx): Option[Try[Obj[S]]] = None
   }

@@ -80,7 +80,7 @@ object FScapeImpl {
     def apply[S <: Sys[S]](output: Output[S])(implicit tx: S#Tx, context: GenContext[S]): GenView[S] = {
       val _fscape = output.fscape
       val fscView = context.acquire[Rendering[S]](_fscape) {
-        RenderingImpl(_fscape, config)
+        RenderingImpl(_fscape, config, force = false)
       }
       OutputGenView(config, output, fscView)
     }
