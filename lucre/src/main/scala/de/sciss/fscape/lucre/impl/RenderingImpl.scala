@@ -59,8 +59,7 @@ object RenderingImpl {
                        (implicit tx: S#Tx, context: GenContext[S]): Rendering[S] = {
     import context.{cursor, workspaceHandle}
     implicit val control: Control = Control(config)
-    val ugbCtx = new UGenGraphBuilderContextImpl.Default(fscape)
-    val uState = UGenGraphBuilder.build(ugbCtx, fscape)
+    val uState = UGenGraphBuilder.build(ugbContext, fscape)
     uState match {
       case res: UGenGraphBuilder.Complete[S] =>
         val isEmpty = res.outputs.isEmpty
