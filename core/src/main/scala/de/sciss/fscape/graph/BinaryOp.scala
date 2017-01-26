@@ -37,9 +37,9 @@ object BinaryOp {
       case Geq      .id => Geq
       case Min      .id => Min
       case Max      .id => Max
-      //      case BitAnd   .id => BitAnd
-      //      case BitOr    .id => BitOr
-      //      case BitXor   .id => BitXor
+      case BitAnd   .id => BitAnd
+      case BitOr    .id => BitOr
+      case BitXor   .id => BitXor
       case RoundTo  .id => RoundTo
       case RoundUpTo.id => RoundUpTo
       case Trunc    .id => Trunc
