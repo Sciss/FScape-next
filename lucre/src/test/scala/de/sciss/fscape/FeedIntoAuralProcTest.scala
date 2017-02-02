@@ -44,11 +44,13 @@ object FeedIntoAuralProcTest extends App {
       import synth.{ugen, proc, doubleNumberWrapper}
       import proc.graph._
       import Ops._
-      import ugen._
-      val b   = Buffer("noise")
+      import ugen.{DiskIn => _, _}
+//      val b   = Buffer("noise")
       val mx  = "max".kr
       mx.poll(0, "maximum")
-      val sig = PlayBuf.ar(1, b) / mx * -0.2.dbamp
+//      val in = PlayBuf.ar(1, b)
+      val in = DiskIn.ar("noise", loop = 1)
+      val sig = in / mx * -0.2.dbamp
       Out.ar(0, Pan2.ar(sig))
     }
     p.graph() = gP
