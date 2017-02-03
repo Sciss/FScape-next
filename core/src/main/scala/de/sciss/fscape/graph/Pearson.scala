@@ -14,6 +14,7 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -27,7 +28,7 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   */
 final case class Pearson(x: GE, y: GE, size: GE) extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
-    unwrap(Vector(x.expand, y.expand, size.expand))
+    unwrap(this, Vector(x.expand, y.expand, size.expand))
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
     UGen.SingleOut(this, args)

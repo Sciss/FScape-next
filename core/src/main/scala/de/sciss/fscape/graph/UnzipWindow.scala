@@ -15,6 +15,7 @@ package de.sciss.fscape
 package graph
 
 import de.sciss.fscape.UGen.Aux
+import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -39,7 +40,7 @@ final case class UnzipWindow(in: GE, size: GE = 1) extends GE.Lazy {
 
 final case class UnzipWindowN(numOutputs: Int, in: GE, size: GE = 1) extends UGenSource.MultiOut {
   protected def makeUGens(implicit builder: UGenGraph.Builder): UGenInLike =
-    unwrap(Vector(in.expand, size.expand))
+    unwrap(this, Vector(in.expand, size.expand))
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
     UGen.MultiOut(this, args, numOutputs = numOutputs, aux = Aux.Int(numOutputs) :: Nil)

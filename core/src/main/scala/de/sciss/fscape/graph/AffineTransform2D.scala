@@ -14,6 +14,7 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -114,7 +115,7 @@ final case class AffineTransform2D(in: GE, widthIn: GE, heightIn: GE, widthOut: 
   extends UGenSource.SingleOut {
 
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
-    unwrap(Vector(in.expand, widthIn.expand, heightIn.expand, widthOut.expand, heightOut.expand,
+    unwrap(this, Vector(in.expand, widthIn.expand, heightIn.expand, widthOut.expand, heightOut.expand,
       m00.expand, m10.expand, m01.expand, m11.expand, m02.expand, m12.expand, wrap.expand,
       rollOff.expand, kaiserBeta.expand, zeroCrossings.expand))
 

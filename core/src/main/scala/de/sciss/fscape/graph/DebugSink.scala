@@ -14,6 +14,7 @@
 package de.sciss.fscape.graph
 
 import akka.stream.scaladsl.{GraphDSL, Sink}
+import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.StreamIn
 import de.sciss.fscape.{GE, UGen, UGenGraph, UGenIn, UGenSource, stream}
 
@@ -28,7 +29,7 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   */
 case class DebugSink(in: GE) extends UGenSource.ZeroOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): Unit =
-    unwrap(Vector(in.expand))
+    unwrap(this, Vector(in.expand))
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit =
     UGen.ZeroOut(this, inputs = args)

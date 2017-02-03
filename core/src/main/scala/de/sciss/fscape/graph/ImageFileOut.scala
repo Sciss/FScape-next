@@ -16,12 +16,13 @@ package graph
 
 import de.sciss.file.File
 import de.sciss.fscape.UGen.Aux
+import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.StreamIn
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
 final case class ImageFileOut(file: File, spec: ImageFile.Spec, in: GE) extends UGenSource.ZeroOut {
-  protected def makeUGens(implicit b: UGenGraph.Builder): Unit = unwrap(in.expand.outputs)
+  protected def makeUGens(implicit b: UGenGraph.Builder): Unit = unwrap(this, in.expand.outputs)
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit =
     UGen.ZeroOut(this, inputs = args, aux = Aux.FileOut(file) :: Aux.ImageFileSpec(spec) :: Nil, isIndividual = true)

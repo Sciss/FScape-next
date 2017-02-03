@@ -14,6 +14,7 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{OutD, OutI, StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -26,7 +27,7 @@ sealed trait FFT2FullUGen extends UGenSource.SingleOut {
   protected def apply(in: OutD, rows: OutI, columns: OutI)(implicit b: stream.Builder): OutD
 
   protected final def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
-    unwrap(Vector(in.expand, rows.expand, columns.expand))
+    unwrap(this, Vector(in.expand, rows.expand, columns.expand))
 
   protected final def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
     UGen.SingleOut(this, args)
@@ -46,7 +47,7 @@ sealed trait FFT2HalfUGen extends UGenSource.SingleOut {
   protected def apply(in: OutD, rows: OutI, columns: OutI, mode: OutI)(implicit b: stream.Builder): OutD
 
   protected final def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
-    unwrap(Vector(in.expand, rows.expand, columns.expand, mode.expand))
+    unwrap(this, Vector(in.expand, rows.expand, columns.expand, mode.expand))
 
   protected final def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
     UGen.SingleOut(this, args)

@@ -14,6 +14,7 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.StreamIn
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -27,7 +28,7 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * @param in     the signal to write.
   */
 final case class DebugOut(in: GE) extends UGenSource.ZeroOut {
-  protected def makeUGens(implicit b: UGenGraph.Builder): Unit = unwrap(Vector(in.expand))
+  protected def makeUGens(implicit b: UGenGraph.Builder): Unit = unwrap(this, Vector(in.expand))
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit =
     UGen.ZeroOut(this, inputs = args, isIndividual = true)

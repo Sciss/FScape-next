@@ -14,6 +14,7 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -22,7 +23,7 @@ final case class Bleach(in: GE, filterLen: GE = 256, feedback: GE = 0.001, filte
   extends UGenSource.SingleOut {
 
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
-    unwrap(Vector(in.expand, filterLen.expand, feedback.expand, filterClip.expand))
+    unwrap(this, Vector(in.expand, filterLen.expand, feedback.expand, filterClip.expand))
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
     UGen.SingleOut(this, args)

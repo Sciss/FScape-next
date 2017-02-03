@@ -15,6 +15,7 @@ package de.sciss.fscape
 package graph
 
 import de.sciss.fscape.UGenGraph.Builder
+import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -41,7 +42,7 @@ final case class PeakCentroid2D(in: GE, width: GE, height: GE, thresh1: GE = 0.5
   def peak      : GE = ChannelProxy(this, 2)
 
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
-    unwrap(Vector(in.expand, width.expand, height.expand, thresh1.expand, thresh2.expand, radius.expand))
+    unwrap(this, Vector(in.expand, width.expand, height.expand, thresh1.expand, thresh2.expand, radius.expand))
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
     UGen.MultiOut(this, inputs = args, numOutputs = 3)

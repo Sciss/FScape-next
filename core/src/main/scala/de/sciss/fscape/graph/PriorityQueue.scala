@@ -15,6 +15,7 @@ package de.sciss.fscape
 package graph
 
 import akka.stream.Outlet
+import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{BufElem, Builder, OutI, StreamIn, StreamInElem, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -32,7 +33,7 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   */
 final case class PriorityQueue(keys: GE, values: GE, size: GE) extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
-    unwrap(Vector(keys.expand, values.expand, size.expand))
+    unwrap(this, Vector(keys.expand, values.expand, size.expand))
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
     UGen.SingleOut(this, args)

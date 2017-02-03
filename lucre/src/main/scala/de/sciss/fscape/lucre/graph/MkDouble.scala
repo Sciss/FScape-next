@@ -16,6 +16,7 @@ package lucre
 package graph
 
 import de.sciss.fscape.UGen.Aux
+import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.lucre.FScape.Output
 import de.sciss.fscape.lucre.UGenGraphBuilder.OutputRef
 import de.sciss.fscape.stream
@@ -30,7 +31,7 @@ object MkDouble {
   final case class WithRef(peer: MkDouble, ref: OutputRef) extends UGenSource.ZeroOut {
 
     protected def makeUGens(implicit b: UGenGraph.Builder): Unit =
-      unwrap(Vector(peer.in.expand))
+      unwrap(this, Vector(peer.in.expand))
 
     protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit =
       UGen.ZeroOut(this, args, aux = Aux.String(ref.key) :: Nil)

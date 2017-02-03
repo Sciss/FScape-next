@@ -14,12 +14,13 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
 final case class WhiteNoise(mul: GE = 1.0) extends UGenSource.SingleOut {
-  protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = unwrap(Vector(mul.expand))
+  protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = unwrap(this, Vector(mul.expand))
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike = {
     val noiseUGen = UGen.SingleOut(this, Vector.empty)

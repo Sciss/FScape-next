@@ -14,13 +14,14 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
 final case class ZipWindow(a: GE, b: GE, size: GE = 1) extends UGenSource.SingleOut {
   protected def makeUGens(implicit builder: UGenGraph.Builder): UGenInLike =
-    unwrap(Vector(a.expand, b.expand, size.expand))
+    unwrap(this, Vector(a.expand, b.expand, size.expand))
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
     UGen.SingleOut(this, args)

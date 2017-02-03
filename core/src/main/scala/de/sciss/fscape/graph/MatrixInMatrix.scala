@@ -13,6 +13,8 @@
 
 package de.sciss.fscape
 package graph
+
+import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -23,7 +25,7 @@ final case class MatrixInMatrix(in: GE, rowsOuter: GE, columnsOuter: GE, rowsInn
   extends UGenSource.SingleOut {
 
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
-    unwrap(Vector(in.expand, rowsOuter.expand, columnsOuter.expand, rowsInner.expand, columnsInner.expand, 
+    unwrap(this, Vector(in.expand, rowsOuter.expand, columnsOuter.expand, rowsInner.expand, columnsInner.expand,
       rowStep.expand, columnStep.expand, mode.expand))
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =

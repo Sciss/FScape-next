@@ -14,6 +14,7 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -21,7 +22,7 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 /** Creates a constant infinite signal. */
 final case class Concat(a: GE, b: GE) extends UGenSource.SingleOut {
   protected def makeUGens(implicit builder: UGenGraph.Builder): UGenInLike =
-    unwrap(Vector(a.expand, b.expand))
+    unwrap(this, Vector(a.expand, b.expand))
 
   protected def makeUGen(args: Vec[UGenIn])(implicit builder: UGenGraph.Builder): UGenInLike =
     UGen.SingleOut(this, args)

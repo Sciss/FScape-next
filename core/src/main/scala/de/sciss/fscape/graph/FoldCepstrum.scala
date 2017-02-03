@@ -14,6 +14,7 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -23,7 +24,7 @@ final case class FoldCepstrum(in: GE, size: GE,
             ccr: GE, cci: GE, car: GE, cai: GE) extends UGenSource.SingleOut {
 
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
-    unwrap(Vector(in.expand, size.expand,
+    unwrap(this, Vector(in.expand, size.expand,
       crr.expand, cri.expand, clr.expand, cli.expand, ccr.expand, cci.expand, car.expand, cai.expand))
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =

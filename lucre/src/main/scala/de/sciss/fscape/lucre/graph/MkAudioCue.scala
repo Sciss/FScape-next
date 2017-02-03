@@ -16,6 +16,7 @@ package lucre
 package graph
 
 import de.sciss.fscape.UGen.Aux
+import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.graph.Constant
 import de.sciss.fscape.lucre.FScape.Output
 import de.sciss.fscape.lucre.UGenGraphBuilder.OutputRef
@@ -45,7 +46,7 @@ object MkAudioCue {
   final case class WithRef(spec: AudioFileSpec, in: GE, ref: OutputRef) extends UGenSource.SingleOut {
 
     protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
-      unwrap(Vector(in.expand))
+      unwrap(this, Vector(in.expand))
 
     protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
       UGen.SingleOut(this, args, aux = Aux.String(ref.key) :: Nil, hasSideEffect = true)

@@ -15,6 +15,7 @@ package de.sciss.fscape
 package graph
 
 import de.sciss.fscape.UGen.Aux
+import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.StreamIn
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -33,7 +34,7 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   */
 final case class Poll(in: GE, trig: GE, label: String = "poll") extends UGenSource.ZeroOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): Unit =
-    unwrap(Vector(in.expand, trig.expand))
+    unwrap(this, Vector(in.expand, trig.expand))
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit =
     UGen.ZeroOut(this, inputs = args, aux = Aux.String(label) :: Nil)

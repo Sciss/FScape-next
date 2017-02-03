@@ -15,6 +15,7 @@ package de.sciss.fscape
 package lucre.graph
 
 import de.sciss.fscape.UGen.Aux
+import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.lucre.UGenGraphBuilder
 import de.sciss.fscape.lucre.UGenGraphBuilder.Input
 import de.sciss.fscape.stream.StreamIn
@@ -25,7 +26,7 @@ object Action {
   final case class WithRef(action: Action, ref: Input.Action.Value) extends UGenSource.ZeroOut {
 
     protected def makeUGens(implicit b: UGenGraph.Builder): Unit =
-      unwrap(Vector(action.trig.expand))
+      unwrap(this, Vector(action.trig.expand))
 
     protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit =
       UGen.ZeroOut(this, args, aux = Aux.String(ref.key) :: Nil)

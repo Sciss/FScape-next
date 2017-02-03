@@ -16,6 +16,7 @@ package graph
 
 import de.sciss.file.File
 import de.sciss.fscape.UGen.Aux
+import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 import de.sciss.synth.io.AudioFileSpec
 
@@ -32,7 +33,7 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * @param in     the signal to write.
   */
 final case class AudioFileOut(file: File, spec: AudioFileSpec, in: GE) extends UGenSource.SingleOut {
-  protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = unwrap(in.expand.outputs)
+  protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = unwrap(this, in.expand.outputs)
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
     UGen.SingleOut(this, inputs = args,

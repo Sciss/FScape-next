@@ -19,34 +19,14 @@ import de.sciss.fscape.stream.{StreamIn, StreamOut}
 import scala.collection.immutable.{IndexedSeq => Vec}
 
 object UGenSource {
-  trait ZeroOut extends UGenSource[Unit, Unit] {
-    final protected def rewrap(args: Vec[UGenInLike], exp: Int)(implicit b: UGenGraph.Builder): Unit = {
-      var i = 0
-      while (i < exp) {
-        unwrap(args.map(_.unwrap(i)))
-        i += 1
-      }
-    }
-  }
-
+  trait ZeroOut   extends UGenSource[Unit, Unit]
   trait SingleOut extends SomeOut[StreamOut]
   trait MultiOut  extends SomeOut[Vec[StreamOut]]
 
-  protected sealed trait SomeOut[S] extends UGenSource[UGenInLike, S] with GE.Lazy {
-    final protected def rewrap(args: Vec[UGenInLike], exp: Int)(implicit b: UGenGraph.Builder): UGenInLike =
-      UGenInGroup(Vec.tabulate(exp)(i => unwrap(args.map(_.unwrap(i)))))
-  }
-}
+  protected sealed trait SomeOut[S] extends UGenSource[UGenInLike, S] with GE.Lazy
 
-sealed trait UGenSource[U, S] extends Lazy.Expander[U] {
-  protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): U
-
-  final def name: String = productPrefix
-
-  private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): S
-
-  final protected def unwrap(args: Vec[UGenInLike])(implicit b: UGenGraph.Builder): U = {
-    var uIns    = Vec.empty[UGenIn]
+  def unwrap[S](source: UGenSource.SomeOut[S], args: Vec[UGenInLike])(implicit b: UGenGraph.Builder): UGenInLike = {
+    var uIns    = Vector.empty: Vec[UGenIn]
     var uInsOk  = true
     var exp     = 0
     args.foreach(_.unbubble match {
@@ -57,11 +37,68 @@ sealed trait UGenSource[U, S] extends Lazy.Expander[U] {
     })
     if (uInsOk) {
       // aka uIns.size == args.size
-      makeUGen(uIns)
+      source.makeUGen(uIns)
     } else {
-      rewrap(args, exp)
+      // rewrap(args, exp)
+      UGenInGroup(Vector.tabulate(exp)(i => unwrap(source, args.map(_.unwrap(i)))))
     }
   }
 
-  protected def rewrap(args: Vec[UGenInLike], exp: Int)(implicit b: UGenGraph.Builder): U
+  def unwrap(source: UGenSource.ZeroOut, args: Vec[UGenInLike])(implicit b: UGenGraph.Builder): Unit = {
+    var uIns    = Vector.empty: Vec[UGenIn]
+    var uInsOk  = true
+    var exp     = 0
+    args.foreach(_.unbubble match {
+      case u: UGenIn => if (uInsOk) uIns :+= u
+      case g: UGenInGroup =>
+        exp     = math.max(exp, g.numOutputs)
+        uInsOk  = false // don't bother adding further UGenIns to uIns
+    })
+    if (uInsOk) {
+      // aka uIns.size == args.size
+      source.makeUGen(uIns)
+    } else {
+      // rewrap(args, exp)
+      var i = 0
+      while (i < exp) {
+        unwrap(source, args.map(_.unwrap(i)))
+        i += 1
+      }
+    }
+  }
+
+  /** Simple forwarder to `in.expand` that can be used to access
+    * the otherwise package-private method.
+    */
+  def expand(in: GE)(implicit b: UGenGraph.Builder): UGenInLike = in.expand
+
+  /** Simple forwarder to `in.outputs` that can be used to access
+    * the otherwise package-private method.
+    */
+  def outputs(in: UGenInLike): Vec[UGenInLike] = in.outputs
+
+  /** Simple forwarder to `in.flatOutputs` that can be used to access
+    * the otherwise package-private method.
+    */
+  def flatOutputs(in: UGenInLike): Vec[UGenIn] = in.flatOutputs
+
+  /** Simple forwarder to `in.unbubble` that can be used to access
+    * the otherwise package-private method.
+    */
+  def unbubble(in: UGenInLike): UGenInLike = in.unbubble
+
+  /** Simple forwarder to `in.unwrap` that can be used to access
+    * the otherwise package-private method.
+    */
+  def unwrapAt(in: UGenInLike, index: Int): UGenInLike = in.unwrap(index)
+}
+
+sealed trait UGenSource[U, S] extends Lazy.Expander[U] {
+  protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): U
+
+  final def name: String = productPrefix
+
+  private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): S
+
+  final protected def rewrap(args: Vec[UGenInLike], exp: Int)(implicit b: UGenGraph.Builder): U = ???
 }
