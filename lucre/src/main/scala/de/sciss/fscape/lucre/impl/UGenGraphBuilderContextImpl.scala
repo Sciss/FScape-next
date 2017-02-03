@@ -15,7 +15,8 @@ package de.sciss.fscape
 package lucre
 package impl
 
-import de.sciss.fscape.lucre.UGenGraphBuilder.{IO, Input, MissingIn}
+import de.sciss.fscape.lucre.UGenGraphBuilder.MissingIn
+import de.sciss.fscape.lucre.{UGenGraphBuilder => UGB}
 import de.sciss.lucre.expr.Expr
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.Sys
@@ -36,22 +37,26 @@ trait UGenGraphBuilderContextImpl[S <: Sys[S]] extends UGenGraphBuilder.Context[
   protected implicit def cursor   : stm.Cursor[S]
   protected implicit def workspace: WorkspaceHandle[S]
 
-  def requestInput[Res](req: Input {type Value = Res}, io: IO[S])(implicit tx: S#Tx): Res = req match {
-    case Input.Attribute(aKey) =>
-      val f = fscape
-      val peer = f.attr.get(aKey) collect {
-        case x: Expr[S, _]  => x.value
-        case other          => other
+  def requestInput[Res](in: UGB.Input { type Value = Res }, io: UGB.IO[S])(implicit tx: S#Tx): Res = in match {
+    case i: UGB.Input.Attribute =>
+      val aKey  = i.name
+      val f     = fscape
+      // WARNING: Scala compiler bug, cannot use `collect` with
+      // `PartialFunction` here, only total function works.
+      val peer: Option[Any] = f.attr.get(aKey).flatMap {
+        case x: Expr[S, _]  => Some(x.value)
+        case other          => None
       }
-      Input.Attribute.Value(peer)
+      UGB.Input.Attribute.Value(peer)
 
-    case Input.Action(aKey) =>
-      val f = fscape
-      val res = f.attr.$[proc.Action](aKey).map { a =>
+    case i: UGB.Input.Action =>
+      val aKey  = i.name
+      val f     = fscape
+      val res   = f.attr.$[proc.Action](aKey).map { a =>
         new ActionRefImpl(aKey, tx.newHandle(f), tx.newHandle(a))
       }
       res.getOrElse(throw MissingIn(aKey))
 
-    case _ => throw new IllegalStateException(s"Unsupported input request $req")
+    case i => throw new IllegalStateException(s"Unsupported input request $i")
   }
 }

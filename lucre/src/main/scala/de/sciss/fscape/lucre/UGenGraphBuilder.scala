@@ -62,7 +62,11 @@ object UGenGraphBuilder {
 //    def async: Boolean
   }
 
+  case object Unit extends Value
+  type Unit = Unit.type
+
   object Input {
+
     object Attribute {
       final case class Value(peer: Option[Any]) extends UGenGraphBuilder.Value {
 //        def async = false
@@ -90,7 +94,7 @@ object UGenGraphBuilder {
       /** An "untyped" action reference, i.e. without system type and transactions revealed */
       trait Value extends UGenGraphBuilder.Value {
         def key: String
-        def execute(value: Any): Unit
+        def execute(value: Any): scala.Unit
       }
     }
     /** Specifies access to an action.
@@ -153,7 +157,7 @@ object UGenGraphBuilder {
 
   // ---- resolve ----
 
-  def canResolve(in: GE): Either[String, Unit] = {
+  def canResolve(in: GE): Either[String, scala.Unit] = {
     in match {
       case _: Constant        => Right(())
       case _: Attribute       => Right(())
@@ -218,7 +222,7 @@ object UGenGraphBuilder {
       * the node has completed and the passed `Output.Provider` is ready
       * to receive the `mkValue` call.
       */
-    def complete(w: Output.Writer): Unit
+    def complete(w: Output.Writer): scala.Unit
   }
   /** An extended references as returned by the completed UGB. */
   trait OutputResult[S <: Sys[S]] extends OutputRef {
@@ -234,7 +238,7 @@ object UGenGraphBuilder {
     /** Issues the underlying `Output` implementation to replace its
       * value with the new updated value.
       */
-    def updateValue(in: DataInput)(implicit tx: S#Tx): Unit
+    def updateValue(in: DataInput)(implicit tx: S#Tx): scala.Unit
 
     /** A list of cache files created during rendering for this key,
       * created via `createCacheFile()`, or `Nil` if this output did not
@@ -368,7 +372,7 @@ object UGenGraphBuilder {
 
     def key: String = reader.key
 
-    def complete(w: Output.Writer): Unit = _writer = w
+    def complete(w: Output.Writer): scala.Unit = _writer = w
 
     def hasWriter: Boolean = _writer != null
 
@@ -377,7 +381,7 @@ object UGenGraphBuilder {
       _writer
     }
 
-    def updateValue(in: DataInput)(implicit tx: S#Tx): Unit = {
+    def updateValue(in: DataInput)(implicit tx: S#Tx): scala.Unit = {
       val value     = reader.readOutput[S](in)
       val output    = outputH()
       output.value_=(Some(value))
