@@ -36,7 +36,7 @@ object Action {
       lucre.stream.Action(trig = trig.toInt, ref = ref)
     }
 
-    override def productPrefix: String = classOf[WithRef].getName
+    override def productPrefix: String = s"Action$$WithRef"
   }
 }
 /** A graph element that executes an action upon receiving a trigger.

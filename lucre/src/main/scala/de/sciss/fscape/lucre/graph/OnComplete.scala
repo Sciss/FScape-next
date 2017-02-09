@@ -33,7 +33,7 @@ object OnComplete {
     private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit =
       lucre.stream.OnComplete(ref)
 
-    override def productPrefix: String = classOf[WithRef].getName
+    override def productPrefix: String = s"OnComplete$$WithRef"
   }
 }
 /** A UGen that invokes an action once the surrounding graph has completed.

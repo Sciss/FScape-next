@@ -45,7 +45,7 @@ class SerializationSpec extends fixture.FlatSpec with Matchers {
       val f = fH()
       val g = f.graph.value
       assert(g.sources.size === numSources)
-      val outputs = f.outputs.iterator.toList
+      val outputs = f.outputs.iterator.toList.sortBy(_.key)
       assert(outputs.size === 2)
       val out1 :: out2 :: Nil = outputs
       assert(out1.key       === "out-1")

@@ -61,6 +61,7 @@ object UnaryOp {
       //      case Softclip   .id => Softclip
       //      case Ramp       .id => Ramp
       //      case Scurve     .id => Scurve
+      case IsNaN      .id => IsNaN
     }
   }
 
@@ -333,6 +334,11 @@ object UnaryOp {
   //    final val id = 53
   //    def apply(a: Double): Double = rd2.scurve(a)
   //  }
+
+  case object IsNaN extends Op {
+    final val id = 100
+    def apply(a: Double): Double = if (java.lang.Double.isNaN(a)) 1.0 else 0.0
+  }
 }
 final case class UnaryOp(op: Int, in: GE) extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =

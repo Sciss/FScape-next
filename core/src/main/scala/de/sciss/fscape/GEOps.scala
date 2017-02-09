@@ -90,6 +90,8 @@ final class GEOps1(val `this`: GE) extends AnyVal { me =>
   // def rho : GE               = UnOp.make( 'rho, this )
   // def theta : GE             = UnOp.make( 'theta, this )
 
+  def isNaN: GE = unOp(IsNaN)
+
   def elastic(n: GE = 1): GE = Elastic(g, n)
 
   /** Takes at most `len` elements of this signal, then terminates. */

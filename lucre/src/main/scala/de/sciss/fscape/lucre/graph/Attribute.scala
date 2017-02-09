@@ -57,7 +57,7 @@ object Attribute {
     }
 
     // serialization!
-    override def productPrefix: String = classOf[Scalar].getName // "Attribute$Scalar"
+    override def productPrefix: String = s"Attribute$$Scalar"
   }
 
   final case class Vector(values: Vec[Constant]) extends Default {
@@ -73,7 +73,7 @@ object Attribute {
     }
 
     // serialization!
-    override def productPrefix: String = classOf[Vector].getName // "Attribute$Vector"
+    override def productPrefix: String = s"Attribute$$Vector"
   }
 
   def apply(key: String): Attribute =

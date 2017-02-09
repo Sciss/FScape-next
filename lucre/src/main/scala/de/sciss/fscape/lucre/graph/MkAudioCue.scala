@@ -57,7 +57,7 @@ object MkAudioCue {
       lucre.stream.MkAudioCue(file = file, spec = spec, in = in, ref = ref)
     }
 
-    override def productPrefix: String = classOf[WithRef].getName
+    override def productPrefix: String = s"MkAudioCue$$WithRef"
   }
 }
 /** A graph element that creates a UGen writing to an audio file

@@ -46,7 +46,7 @@ object GraphObj extends expr.impl.ExprTypeImpl[Graph, GraphObj] {
   private final class _Var[S <: Sys[S]](val targets: Targets[S], val ref: S#Var[Ex[S]])
     extends VarImpl[S] with GraphObj[S]
 
-  /** A serializer for synth graphs. */
+  /** A serializer for graphs. */
   object valueSerializer extends ImmutableSerializer[Graph] {
     private final val SER_VERSION = 0x5347
 
@@ -70,7 +70,7 @@ object GraphObj extends expr.impl.ExprTypeImpl[Graph, GraphObj] {
       out.writeByte('P')
       val pck     = p.getClass.getPackage.getName
       val prefix  = p.productPrefix
-      val name    = if (pck == "de.sciss.synth.ugen") prefix else s"$pck.$prefix"
+      val name    = if (pck == "de.sciss.fscape.graph") prefix else s"$pck.$prefix"
       out.writeUTF(name)
       out.writeShort(p.productArity)
       p.productIterator.foreach(writeElem(_, out, ref))
@@ -151,7 +151,7 @@ object GraphObj extends expr.impl.ExprTypeImpl[Graph, GraphObj] {
     private def readIdentifiedProduct(in: DataInput, ref: RefMapIn): Product = {
       val prefix    = in.readUTF()
       val arity     = in.readShort()
-      val className = if (Character.isUpperCase(prefix.charAt(0))) s"de.sciss.synth.ugen.$prefix" else prefix
+      val className = if (Character.isUpperCase(prefix.charAt(0))) s"de.sciss.fscape.graph.$prefix" else prefix
 
       val res = try {
         if (arity == 0 && className.charAt(className.length - 1) == '$') {

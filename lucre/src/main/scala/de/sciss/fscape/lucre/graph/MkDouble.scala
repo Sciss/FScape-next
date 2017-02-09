@@ -41,7 +41,7 @@ object MkDouble {
       lucre.stream.MkDouble(in = in.toDouble, ref = ref)
     }
 
-    override def productPrefix: String = classOf[WithRef].getName
+    override def productPrefix: String = s"MkDouble$$WithRef"
   }
 }
 final case class MkDouble(key: String, in: GE) extends Lazy.Expander[Unit] with Output.Reader {

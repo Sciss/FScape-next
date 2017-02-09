@@ -41,7 +41,7 @@ object MkInt {
       lucre.stream.MkInt(in = in.toInt, ref = ref)
     }
 
-    override def productPrefix: String = classOf[WithRef].getName
+    override def productPrefix: String = s"MkInt$$WithRef"
   }
 }
 final case class MkInt(key: String, in: GE) extends Lazy.Expander[Unit] with Output.Reader {
