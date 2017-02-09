@@ -20,20 +20,25 @@ lazy val commonSettings = Seq(
 
 // ---- core dependencies ----
 
-lazy val dspVersion            = "1.2.3"
-lazy val numbersVersion        = "0.1.3"
-lazy val audioFileVersion      = "1.4.6"
-lazy val fileUtilVersion       = "1.1.2"
-lazy val swingPlusVersion      = "0.2.2"
-lazy val optionalVersion       = "1.0.0"
-lazy val scalaChartVersion     = "0.5.1"
+lazy val dspVersion             = "1.2.3"
+lazy val numbersVersion         = "0.1.3"
+lazy val audioFileVersion       = "1.4.6"
+lazy val fileUtilVersion        = "1.1.2"
+lazy val swingPlusVersion       = "0.2.2"
+lazy val optionalVersion        = "1.0.0"
+lazy val scalaChartVersion      = "0.5.1"
 
-lazy val akkaVersion           = "2.4.16"
+lazy val akkaVersion            = "2.4.16"
 
 // ---- lucre dependencies ----
 
-lazy val soundProcessesVersion = "3.11.0-SNAPSHOT"
-lazy val fileCacheVersion      = "0.3.4"
+lazy val soundProcessesVersion  = "3.11.0-SNAPSHOT"
+lazy val lucreVersion           = "3.3.2"
+lazy val fileCacheVersion       = "0.3.4"
+
+// ---- test dependencies ----
+
+lazy val scalaTestVersion      = "3.0.1"
 
 // ---- projects ----
 
@@ -79,8 +84,10 @@ lazy val lucre = Project(id = s"$baseNameL-lucre", base = file("lucre"))
   .settings(
     description := "Bridge from FScape to SoundProcesses",
     libraryDependencies ++= Seq(
-      "de.sciss" %% "soundprocesses-core" % soundProcessesVersion,
-      "de.sciss" %% "filecache-txn"       % fileCacheVersion
+      "de.sciss"      %% "soundprocesses-core" % soundProcessesVersion,
+      "de.sciss"      %% "filecache-txn"       % fileCacheVersion,
+      "org.scalatest" %% "scalatest"           % scalaTestVersion % "test",
+      "de.sciss"      %% "lucre-bdb"           % lucreVersion     % "test"
     ),
     mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-lucre" % mimaVersion)
   )

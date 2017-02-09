@@ -19,7 +19,6 @@ import de.sciss.fscape.lucre.FScape.Output
 import de.sciss.lucre.event.impl.ConstObjImpl
 import de.sciss.lucre.stm.impl.ObjSerializer
 import de.sciss.lucre.stm.{Copy, Elem, NoSys, Obj, Sys}
-import de.sciss.lucre.{event => evt}
 import de.sciss.serial.{DataInput, DataOutput, Serializer}
 
 object OutputImpl {
@@ -50,6 +49,9 @@ object OutputImpl {
   }
 
   def readIdentifiedObj[S <: Sys[S]](in: DataInput, access: S#Acc)(implicit tx: S#Tx): Output[S] = {
+    val constCookie = in.readByte()
+    if (constCookie != 3)
+      sys.error(s"Unexpected cookie (found $constCookie, expected 3)")
 //    val tgt     = evt.Targets.read(in, access)
 //    val id = tgt.id
     val id = tx.readID(in, access)
