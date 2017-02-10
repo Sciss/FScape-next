@@ -21,7 +21,7 @@ import de.sciss.lucre.stm.{Disposable, Obj, Sys}
 import de.sciss.serial.{DataInput, Serializer}
 import de.sciss.synth.proc
 import de.sciss.synth.proc.impl.CodeImpl
-import de.sciss.synth.proc.{Gen, GenContext, GenView}
+import de.sciss.synth.proc.{Gen, GenContext, GenView, WorkspaceHandle}
 import de.sciss.{fscape, model}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -168,7 +168,7 @@ object FScape extends Obj.Type {
       def key: String
       def tpe: Obj.Type
 
-      def readOutput[S <: Sys[S]](in: DataInput)(implicit tx: S#Tx): Obj[S]
+      def readOutput[S <: Sys[S]](in: DataInput)(implicit tx: S#Tx, workspace: WorkspaceHandle[S]): Obj[S]
     }
 
     type Writer = de.sciss.serial.Writable

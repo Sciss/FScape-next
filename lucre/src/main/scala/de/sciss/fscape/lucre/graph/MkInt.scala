@@ -24,6 +24,7 @@ import de.sciss.fscape.stream.StreamIn
 import de.sciss.lucre.expr.IntObj
 import de.sciss.lucre.stm.{Obj, Sys}
 import de.sciss.serial.{DataInput, ImmutableSerializer}
+import de.sciss.synth.proc.WorkspaceHandle
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
@@ -48,7 +49,7 @@ final case class MkInt(key: String, in: GE) extends Lazy.Expander[Unit] with Out
 
   def tpe: Obj.Type = IntObj
 
-  def readOutput[S <: Sys[S]](in: DataInput)(implicit tx: S#Tx): Obj[S] = {
+  def readOutput[S <: Sys[S]](in: DataInput)(implicit tx: S#Tx, workspace: WorkspaceHandle[S]): Obj[S] = {
     val flat = ImmutableSerializer.Int.read(in)
     IntObj.newConst(flat)
   }

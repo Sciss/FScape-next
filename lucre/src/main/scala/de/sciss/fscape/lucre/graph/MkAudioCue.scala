@@ -24,7 +24,7 @@ import de.sciss.fscape.stream.{StreamIn, StreamOut, Builder => SBuilder}
 import de.sciss.lucre.stm.{Obj, Sys}
 import de.sciss.serial.DataInput
 import de.sciss.synth.io.{AudioFileSpec, AudioFileType, SampleFormat}
-import de.sciss.synth.proc.AudioCue
+import de.sciss.synth.proc.{AudioCue, WorkspaceHandle}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
@@ -90,7 +90,7 @@ final case class MkAudioCue(key: String, in: GE, fileType: GE = 0, sampleFormat:
 
   def tpe: Obj.Type = AudioCue.Obj
 
-  def readOutput[S <: Sys[S]](in: DataInput)(implicit tx: S#Tx): Obj[S] = {
+  def readOutput[S <: Sys[S]](in: DataInput)(implicit tx: S#Tx, workspace: WorkspaceHandle[S]): Obj[S] = {
     val flat = AudioCue.serializer.read(in)
     AudioCue.Obj.newConst(flat)
   }
