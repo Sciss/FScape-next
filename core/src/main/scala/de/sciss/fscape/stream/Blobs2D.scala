@@ -14,6 +14,8 @@
 package de.sciss.fscape
 package stream
 
+import java.util
+
 import akka.stream.stage.OutHandler
 import akka.stream.{Attributes, Outlet}
 import de.sciss.fscape.stream.impl.{AuxInHandlerImpl, FilterLogicImpl, FullInOutImpl, In4Out5Shape, NodeImpl, ProcessInHandlerImpl, StageImpl}
@@ -52,7 +54,22 @@ object Blobs2D {
     def createLogic(attr: Attributes) = new Logic(shape)
   }
 
-  private final class Blob
+  private final class Blob {
+    var xMin      = 0.0
+    var xMax      = 0.0
+    var yMin      = 0.0
+    var yMax      = 0.0
+    var numLines  = 0
+    val line      = new Array[Int](MaxNumLines) // stack of index
+
+//    def reset(): Unit = {
+//      xMin      = 0.0
+//      xMax      = 0.0
+//      yMin      = 0.0
+//      yMax      = 0.0
+//      numLines  = 0
+//    }
+  }
 
   private final class Logic(shape: Shape)(implicit ctrl: Control)
     extends NodeImpl(name, shape)
@@ -183,6 +200,10 @@ object Blobs2D {
       winBuf      = null
       blobs       = null
       gridVisited = null
+      linesToDraw = null
+      voxels      = null
+      edgeVrtX    = null
+      edgeVrtY    = null
 
       freeInputBuffers()
       freeOutputBuffers()
@@ -295,7 +316,7 @@ object Blobs2D {
       }
 
       detectBlobs()
-      blobs.length
+      numBlobs
     }
 
     @inline
@@ -416,17 +437,202 @@ object Blobs2D {
       inputsEnded && writeToWinOff == 0 && !readNumBlobsRemain && readBlobBoundsRemain == 0
 
     // ---- the fun part ----
+    // this is basically a Scala translation of Gachadoat's algorithm
 
     private[this] var gridVisited: Array[Boolean] = _
+    private[this] var stepX      : Double         = _
+    private[this] var stepY      : Double         = _
+    private[this] var linesToDraw: Array[Int]     = _
+    private[this] var voxels     : Array[Int]     = _
+    private[this] var edgeVrtX   : Array[Double]  = _
+    private[this] var edgeVrtY   : Array[Double]  = _
+    private[this] var numLinesToDraw  = 0
+    private[this] var numBlobs        = 0
 
     private def updateSize(): Unit = {
-      winBuf      = new Array[Double ](winSize)
-      gridVisited = new Array[Boolean](winSize)
+      val _winSize  = winSize
+      val winSz2    = _winSize * 2
+      winBuf        = new Array[Double ](_winSize)
+      gridVisited   = new Array[Boolean](_winSize)
+      linesToDraw   = new Array[Int    ]( winSz2 )
+      voxels        = new Array[Int    ](_winSize)
+      edgeVrtX      = new Array[Double ]( winSz2 )
+      edgeVrtY      = new Array[Double ]( winSz2 )
+      blobs         = Array.fill(MaxNumBlobs)(new Blob)
+      stepX         = 1.0 / math.max(1, width  - 1)
+      stepY         = 1.0 / math.max(1, height - 1)
     }
 
     private def detectBlobs(): Unit = {
-      val nbGridValue = winSize
-      ???
+      val _visited  = gridVisited
+      util.Arrays.fill(_visited, false)
+      numLinesToDraw  = 0
+
+      var _numBlobs = 0
+      val _blobs    = blobs
+      val _stepX    = stepX
+      val _stepY    = stepY
+      val _width    = width
+      val _widthM   = _width - 1
+      val _height   = height
+      val _heightM  = _height - 1
+
+      var vx        = 0.0
+      var x         = 0
+      while (x < _widthM) {
+        var vy = 0.0
+        var y  = 0
+        while (y < _heightM) {
+          // > offset in the grid
+          val offset = x + _width * y
+          // > if we were already there, just go the next square!
+          if (!_visited(offset)) {
+            val sqrIdx = getSquareIndex(x, y)
+            if (sqrIdx > 0 && sqrIdx < 15) {
+              if (_numBlobs < MaxNumBlobs) {
+                val blob  = _blobs(_numBlobs)
+                val valid = findBlob(blob, x, y)
+                if (valid) _numBlobs += 1
+              }
+            }
+          }
+          vy += _stepY
+          y  += 1
+        }
+        vx += _stepX
+        x  += 1
+      }
+      numLinesToDraw /= 2
+      numBlobs        = _numBlobs
+    }
+
+    private def findBlob(blob: Blob, x: Int, y: Int): Boolean = {
+      // Reset Blob values
+      blob.xMin     = Double.PositiveInfinity
+      blob.xMax     = Double.NegativeInfinity
+      blob.yMin     = Double.PositiveInfinity
+      blob.yMax     = Double.NegativeInfinity
+      blob.numLines = 0
+
+      computeEdgeVertex(blob, x, y)
+
+      val valid = blob.xMin <= blob.xMax && blob.yMin <= blob.yMax
+      if (valid) {
+        blob.numLines /= 2    // XXX TODO --- why is this? looks wrong
+      }
+      valid
+    }
+
+    private def computeEdgeVertex(blob: Blob, x: Int, y: Int): Unit = {
+      val _width  = width
+      val _height = height
+      val offset  = x + _width * y
+
+      val _visited = gridVisited
+      if (_visited(offset)) return
+      _visited(offset) = true
+
+      val sqrIdx  = getSquareIndex(x, y)
+      val _stepX  = stepX
+      val _stepY  = stepY
+      val vx      = x * _stepX
+      val vy      = y * _stepY
+
+      var n       = 0
+      var iEdge   = edgeCuts(sqrIdx)(n)
+      while (iEdge != -1 && blob.numLines < MaxNumLines) {
+        val edgeOffInf  = edgeOffsetInfo(iEdge)
+        val offX        = edgeOffInf(0)
+        val offY        = edgeOffInf(1)
+        val offAB       = edgeOffInf(2)
+        val v           = voxels((x + offX) + _width * (y + offY)) + offAB
+
+        linesToDraw(numLinesToDraw) = v
+        numLinesToDraw += 1
+
+        blob.line(blob.numLines) = v
+        blob.numLines    += 1
+
+        n    += 1
+        iEdge = edgeCuts(sqrIdx)(n)
+      }
+
+      val toCompute = edgesToCompute(sqrIdx)
+
+      if (toCompute > 0) {
+        if ((toCompute & 1) > 0) { // Edge 0
+          val _buf  = winBuf
+          val t     = (thresh - _buf(offset)) / (_buf(offset + 1) - _buf(offset))
+          val value = vx * (1.0 - t) + t * (vx + _stepX)
+          edgeVrtX(voxels(offset))          = value
+          if (value < blob.xMin) blob.xMin  = value
+          if (value > blob.xMax) blob.xMax  = value
+        }
+        if ((toCompute & 2) > 0) { // Edge 3
+          val _buf  = winBuf
+          val t     = (thresh - _buf(offset)) / (_buf(offset + width) - _buf(offset))
+          val value = vy * (1.0 - t) + t * (vy + _stepY)
+          edgeVrtY(voxels(offset) + 1)      = value
+          if (value < blob.yMin) blob.yMin  = value
+          if (value > blob.yMax) blob.yMax  = value
+        }
+      }
+
+      // Propagate to neighbors
+      val neighVox = neighborVoxels(sqrIdx)
+      if (x < _width  - 2 && (neighVox & (1 << 0)) > 0) computeEdgeVertex(blob, x + 1, y    )
+      if (x > 0           && (neighVox & (1 << 1)) > 0) computeEdgeVertex(blob, x - 1, y    )
+      if (y < _height - 2 && (neighVox & (1 << 2)) > 0) computeEdgeVertex(blob, x    , y + 1)
+      if (y > 0           && (neighVox & (1 << 3)) > 0) computeEdgeVertex(blob, x    , y - 1)
+    }
+
+    private def getSquareIndex(x: Int, y: Int): Int = {
+      val _width  = width
+      val _buf    = winBuf
+      val _thresh = thresh
+
+      val offY    = _width * y
+      val offY1   = offY + _width
+      val x1      = x + 1
+
+      var res = 0
+      if (_buf(x  + offY ) > _thresh) res |= 1
+      if (_buf(x1 + offY ) > _thresh) res |= 2
+      if (_buf(x1 + offY1) > _thresh) res |= 4
+      if (_buf(x  + offY1) > _thresh) res |= 8
+
+      res
     }
   }
+
+  private final val edgeCuts = Array[Array[Int]](
+    Array(-1, -1, -1, -1, -1), //0
+    Array( 0,  3, -1, -1, -1), //3
+    Array( 0,  1, -1, -1, -1), //1
+    Array( 3,  1, -1, -1, -1), //2
+    Array( 1,  2, -1, -1, -1), //0
+    Array( 1,  2,  0,  3, -1), //3
+    Array( 0,  2, -1, -1, -1), //1
+    Array( 3,  2, -1, -1, -1), //2
+    Array( 3,  2, -1, -1, -1), //2
+    Array( 0,  2, -1, -1, -1), //1
+    Array( 1,  2,  0,  3, -1), //3
+    Array( 1,  2, -1, -1, -1), //0
+    Array( 3,  1, -1, -1, -1), //2
+    Array( 0,  1, -1, -1, -1), //1
+    Array( 0,  3, -1, -1, -1), //3
+    Array(-1, -1, -1, -1, -1)  //0)
+  )
+
+  private final val edgeOffsetInfo = Array[Array[Int]](
+    Array(0, 0, 0), Array(1, 0, 1), Array(0, 1, 0), Array(0, 0, 1))
+
+  private final val edgesToCompute = Array[Int](0, 3, 1, 2, 0, 3, 1, 2, 2, 1, 3, 0, 2, 1, 3, 0)
+  private final val neighborVoxels = Array[Int](0, 10, 9, 3, 5, 15, 12, 6, 6, 12, 12, 5, 3, 9, 10, 0)
+
+  // XXX TODO --- should be customizable
+  private final val MaxNumLines   = 4000
+
+  // XXX TODO --- should be customizable
+  private final val MaxNumBlobs   = 1000
 }
