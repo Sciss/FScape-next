@@ -348,6 +348,11 @@ trait StreamIn {
   implicit def tpe: StreamType[A, Buf]
 }
 
+object StreamType {
+  implicit def int   : StreamType[Int   , BufI] = StreamIn.IntType
+  implicit def double: StreamType[Double, BufD] = StreamIn.DoubleType
+  implicit def long  : StreamType[Long  , BufL] = StreamIn.LongType
+}
 trait StreamType[A, Buf >: Null <: BufElem[A]] {
   implicit val ordering: Ordering[A]
 

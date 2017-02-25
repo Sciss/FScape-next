@@ -20,15 +20,15 @@ import de.sciss.fscape.stream.impl.{FilterIn2DImpl, StageImpl, NodeImpl}
 
 object TakeRight {
   def last(in: OutD)(implicit b: Builder): OutD = {
-    val len = ConstantI(1).toInt
-    apply(in = in, len = len)
+    val length = ConstantI(1).toInt
+    apply(in = in, length = length)
   }
 
-  def apply(in: OutD, len: OutI)(implicit b: Builder): OutD = {
+  def apply(in: OutD, length: OutI)(implicit b: Builder): OutD = {
     val stage0  = new Stage
     val stage   = b.add(stage0)
-    b.connect(in , stage.in0)
-    b.connect(len, stage.in1)
+    b.connect(in    , stage.in0)
+    b.connect(length, stage.in1)
     stage.out
   }
 
@@ -38,9 +38,9 @@ object TakeRight {
 
   private final class Stage(implicit ctrl: Control) extends StageImpl[Shape](name) {
     val shape = new FanInShape2(
-      in0 = InD (s"$name.in" ),
-      in1 = InI (s"$name.len"),
-      out = OutD(s"$name.out")
+      in0 = InD (s"$name.in"    ),
+      in1 = InI (s"$name.length"),
+      out = OutD(s"$name.out"   )
     )
 
     def createLogic(attr: Attributes) = new Logic(shape)

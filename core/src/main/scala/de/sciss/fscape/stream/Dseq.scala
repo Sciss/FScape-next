@@ -1,5 +1,5 @@
 ///*
-// *  Dseq.scala
+// *  Demand.scala
 // *  (FScape)
 // *
 // *  Copyright (c) 2001-2017 Hanns Holger Rutz. All rights reserved.

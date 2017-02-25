@@ -20,12 +20,12 @@ import de.sciss.fscape.stream.impl.{GenIn3DImpl, StageImpl, NodeImpl}
 import scala.annotation.tailrec
 
 object Line {
-  def apply(start: OutD, end: OutD, len: OutL)(implicit b: Builder): OutD = {
+  def apply(start: OutD, end: OutD, length: OutL)(implicit b: Builder): OutD = {
     val stage0  = new Stage
     val stage   = b.add(stage0)
-    b.connect(start, stage.in0)
-    b.connect(end  , stage.in1)
-    b.connect(len  , stage.in2)
+    b.connect(start , stage.in0)
+    b.connect(end   , stage.in1)
+    b.connect(length, stage.in2)
     stage.out
   }
 
@@ -35,10 +35,10 @@ object Line {
 
   private final class Stage(implicit ctrl: Control) extends StageImpl[Shape](name) {
     val shape = new FanInShape3(
-      in0 = InD (s"$name.start"),
-      in1 = InD (s"$name.end"  ),
-      in2 = InL (s"$name.len"  ),
-      out = OutD(s"$name.out"  )
+      in0 = InD (s"$name.start" ),
+      in1 = InD (s"$name.end"   ),
+      in2 = InL (s"$name.length"),
+      out = OutD(s"$name.out"   )
     )
 
     def createLogic(attr: Attributes) = new Logic(shape)

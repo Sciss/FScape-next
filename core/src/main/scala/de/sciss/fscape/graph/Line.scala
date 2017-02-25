@@ -29,17 +29,17 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   *
   * @param start  starting value
   * @param end    ending value
-  * @param len    length of the segment in sample frames
+  * @param length length of the segment in sample frames
   */
-final case class Line(start: GE, end: GE, len: GE) extends UGenSource.SingleOut {
+final case class Line(start: GE, end: GE, length: GE) extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
-    unwrap(this, Vector(start.expand, end.expand, len.expand))
+    unwrap(this, Vector(start.expand, end.expand, length.expand))
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
     UGen.SingleOut(this, args)
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
-    val Vec(start, end, len) = args
-    stream.Line(start = start.toDouble, end = end.toDouble, len = len.toLong)
+    val Vec(start, end, length) = args
+    stream.Line(start = start.toDouble, end = end.toDouble, length = length.toLong)
   }
 }

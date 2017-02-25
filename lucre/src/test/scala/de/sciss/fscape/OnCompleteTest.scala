@@ -29,7 +29,7 @@ object OnCompleteTest extends App {
     val g = Graph {
       import graph.{AudioFileOut => _, _}
       import lucre.graph._
-      val sig = Line(0, 1, len = 100000000).sqrt
+      val sig = Line(0, 1, length = 100000000).sqrt
       sig.head.poll(0, "head")
       sig.last.poll(0, "last")
       OnComplete("action")

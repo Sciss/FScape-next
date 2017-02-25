@@ -19,6 +19,11 @@ import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+/** A UGen that cycles over a list of values.
+  *
+  * @param seq      sequence of values to be returned
+  * @param repeats  the number of repetitions of the sequence
+  */
 final case class Dseq(seq: GE, repeats: GE = 1) extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
     unwrap(this, repeats.expand +: seq.expand.outputs)
@@ -27,7 +32,28 @@ final case class Dseq(seq: GE, repeats: GE = 1) extends UGenSource.SingleOut {
     UGen.SingleOut(this, args)
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
-    val repeats :+ seq = args
-    ??? // stream.Dseq(seq = seq, repeats = repeats.toInt)
+    val repeats +: seq = args
+    ??? // stream.Dseq(seq = seq.map(_.toAny), repeats = repeats.toLong)
   }
 }
+
+///** A UGen that cycles over a list of values.
+//  *
+//  * As opposed to ScalaCollider, this is
+//  * called `Dcycle` instead of `Dseq`, because the latter name can
+//  * be confused with `ArithmSeq`.
+//  *
+//  * @param seq      sequence of values to be returned
+//  */
+//final case class Dcycle(seq: GE) extends UGenSource.SingleOut {
+//  protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
+//    unwrap(this, seq.expand.outputs)
+//
+//  protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
+//    UGen.SingleOut(this, args)
+//
+//  private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
+//    val seq = args
+//    ??? // stream.Dcycle(seq = seq.map(_.toAny))
+//  }
+//}

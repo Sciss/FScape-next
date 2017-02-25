@@ -94,26 +94,26 @@ final class GEOps1(val `this`: GE) extends AnyVal { me =>
 
   def elastic(n: GE = 1): GE = Elastic(g, n)
 
-  /** Takes at most `len` elements of this signal, then terminates. */
-  def take     (len: GE): GE = Take     (in = g, len = len)
+  /** Takes at most `length` elements of this signal, then terminates. */
+  def take(length: GE): GE = Take(in = g, length = length)
 
-  /** Takes at most the last `len` elements of this (finite) signal. */
-  def takeRight(len: GE): GE = TakeRight(in = g, len = len)
+  /** Takes at most the last `length` elements of this (finite) signal. */
+  def takeRight(length: GE): GE = TakeRight(in = g, length = length)
 
-  /** Drops the first `len` elements of this signal. */
-  def drop     (len: GE): GE = Drop     (in = g, len = len)
+  /** Drops the first `length` elements of this signal. */
+  def drop(length: GE): GE = Drop(in = g, length = length)
 
 //  /** Drops the last `len` elements of this (finite) signal. */
 //  def dropRight(len: GE): GE = ...
 //  def init: GE = DropRight(in = g, len = 1)
 
   /** Outputs the first element of this signal, then terminates. */
-  def head: GE = take     (1)
+  def head: GE = take(1)
 
   /** Outputs the last element of this (finite) signal, then terminates. */
   def last: GE = takeRight(1)
 
-  def tail: GE = Drop(in = g, len = 1)
+  def tail: GE = Drop(in = g, length = 1)
 
   /** Concatenates another signal to this (finite) signal. */
   def ++ (that: GE): GE = Concat(g, that)
@@ -124,7 +124,7 @@ final class GEOps1(val `this`: GE) extends AnyVal { me =>
   /** Prepends a single frame. */
   def +: (that: Constant): GE = Concat(that, g)
 
-  def zip (that: GE): GE = ZipWindow(g, that)
+  def zip(that: GE): GE = ZipWindow(g, that)
 }
 
 final class GEOps2(val `this`: GE) extends AnyVal { me =>
