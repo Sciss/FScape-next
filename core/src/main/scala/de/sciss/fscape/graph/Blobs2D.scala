@@ -54,6 +54,7 @@ final case class Blobs2D(in: GE, width: GE, height: GE, thresh: GE = 0.3 /*, min
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Vec[StreamOut] = {
     val Vec(in, width, height, thresh /* , minWidth, minHeight */) = args
-    ??? // stream.Blobs2D(in = in.toDouble, width = width.toInt, height = height.toInt, thresh = thresh.toDouble)
+    val outs = stream.Blobs2D(in = in.toDouble, width = width.toInt, height = height.toInt, thresh = thresh.toDouble)
+    outs
   }
 }

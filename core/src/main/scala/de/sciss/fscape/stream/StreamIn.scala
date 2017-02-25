@@ -367,6 +367,7 @@ object StreamOut {
   implicit def fromDouble   (peer:     OutD ):     StreamOut  = new StreamOutD(peer)
   implicit def fromDoubleVec(peer: Vec[OutD]): Vec[StreamOut] = peer.map(new StreamOutD(_))
   implicit def fromInt      (peer:     OutI ):     StreamOut  = new StreamOutI(peer)
+  implicit def fromIntVec   (peer: Vec[OutI]): Vec[StreamOut] = peer.map(new StreamOutI(_))
   implicit def fromLong     (peer:     OutL ):     StreamOut  = new StreamOutL(peer)
 
   private final class StreamOutD(peer: OutD) extends StreamOut {
