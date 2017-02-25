@@ -30,4 +30,7 @@ final case class TakeRight(in: GE, length: GE) extends UGenSource.SingleOut {
     val Vec(in, length) = args
     stream.TakeRight(in = in.toDouble, length = length.toInt)
   }
+
+  // XXX TODO --- remove in next major release
+  def len: GE = length
 }

@@ -30,4 +30,7 @@ final case class Take(in: GE, length: GE) extends UGenSource.SingleOut {
     val Vec(in, length) = args
     stream.Take(in = in.toDouble, length = length.toLong)
   }
+
+  // XXX TODO --- remove in next major release
+  def len: GE = length
 }

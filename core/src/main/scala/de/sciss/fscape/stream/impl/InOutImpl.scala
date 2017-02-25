@@ -71,7 +71,7 @@ trait FullInOutImpl[S <: Shape] extends InOutImpl[S] {
   /** Requests the update of the `canRead` status. */
   def updateCanRead(): Unit
 
-  protected def freeInputBuffers (): Unit
+  protected def freeInputBuffers(): Unit
 }
 
 trait DemandInOutImpl[S <: Shape] extends InOutImpl[S] {

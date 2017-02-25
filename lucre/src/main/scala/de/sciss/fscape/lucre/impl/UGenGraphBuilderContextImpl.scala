@@ -37,7 +37,8 @@ trait UGenGraphBuilderContextImpl[S <: Sys[S]] extends UGenGraphBuilder.Context[
   protected implicit def cursor   : stm.Cursor[S]
   protected implicit def workspace: WorkspaceHandle[S]
 
-  def requestInput[Res](in: UGB.Input { type Value = Res }, io: UGB.IO[S])(implicit tx: S#Tx): Res = in match {
+  def requestInput[Res](in: UGB.Input { type Value = Res }, io: UGB.IO[S] with UGenGraphBuilder)
+                       (implicit tx: S#Tx): Res = in match {
     case i: UGB.Input.Attribute =>
       val aKey  = i.name
       val f     = fscape

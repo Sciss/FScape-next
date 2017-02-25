@@ -17,7 +17,8 @@ package lucre
 import java.util
 
 import de.sciss.file.File
-import de.sciss.fscape.graph.{BinaryOp, Constant, ConstantD, ConstantI, ConstantL, UnaryOp}
+import de.sciss.fscape.graph.impl.GESeq
+import de.sciss.fscape.graph.{ArithmSeq, BinaryOp, Constant, ConstantD, ConstantI, ConstantL, GeomSeq, UnaryOp}
 import de.sciss.fscape.lucre.FScape.Output
 import de.sciss.fscape.lucre.UGenGraphBuilder.OutputRef
 import de.sciss.fscape.lucre.graph.Attribute
@@ -26,6 +27,7 @@ import de.sciss.fscape.stream.Control
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.Sys
 import de.sciss.serial.{DataInput, DataOutput}
+import de.sciss.synth.UGenSource.Vec
 import de.sciss.synth.proc.WorkspaceHandle
 
 import scala.concurrent.stm.Ref
@@ -120,7 +122,8 @@ object UGenGraphBuilder {
   trait Context[S <: Sys[S]] {
 //    def server: Server
 
-    def requestInput[Res](req: UGenGraphBuilder.Input { type Value = Res }, io: IO /* Requester */[S])(implicit tx: S#Tx): Res
+    def requestInput[Res](req: UGenGraphBuilder.Input { type Value = Res }, io: IO[S] with UGenGraphBuilder)
+                         (implicit tx: S#Tx): Res
   }
 
   trait IO[S <: Sys[S]] {
@@ -157,7 +160,7 @@ object UGenGraphBuilder {
 
   // ---- resolve ----
 
-  def canResolve(in: GE): Either[String, scala.Unit] = {
+  def canResolve(in: GE): Either[String, scala.Unit] =
     in match {
       case _: Constant        => Right(())
       case _: Attribute       => Right(())
@@ -171,9 +174,41 @@ object UGenGraphBuilder {
 //      case _: NumChannels         => Right(())
       case _                      => Left(s"Element: $in")
     }
-  }
 
-  def resolve(in: GE, builder: UGenGraphBuilder): Either[String, Constant] = {
+  def canResolveSeq(in: GE): Either[String, scala.Unit] =
+    in match {
+      case GESeq(elems) =>
+        def loop(seq: Vec[GE]): Either[String, scala.Unit] =
+          seq match {
+            case head +: tail =>
+              canResolve(head) match {
+                case Right(_) => loop(tail)
+                case not => not
+              }
+
+            case _ => Right(())
+          }
+
+        loop(elems)
+
+      case GeomSeq(start, grow, length) =>
+        for {
+          _ <- canResolve(start ).right
+          _ <- canResolve(grow  ).right
+          _ <- canResolve(length).right
+        } yield ()
+
+      case ArithmSeq(start, step, length) =>
+        for {
+          _ <- canResolve(start ).right
+          _ <- canResolve(step  ).right
+          _ <- canResolve(length).right
+        } yield ()
+
+      case _  => canResolve(in)
+    }
+
+  def resolve(in: GE, builder: UGenGraphBuilder): Either[String, Constant] =
     in match {
       case c: Constant => Right(c)
       case a: Attribute =>
@@ -205,9 +240,89 @@ object UGenGraphBuilder {
           bf <- resolve(b, builder).right
         } yield op0.apply(af, bf)
     }
-  }
 
-  /** An "untyped" output-setter reference */
+  def resolveSeq(in: GE, builder: UGenGraphBuilder): Either[String, Vec[Constant]] =
+    in match {
+      case GESeq(elems) =>
+        def loop(seq: Vec[GE], out: Vec[Constant]): Either[String, Vec[Constant]] =
+          seq match {
+            case head +: tail =>
+              resolve(head, builder) match {
+                case Right(c) => loop(tail, out :+ c)
+                case Left(x)  => Left(x)
+              }
+
+            case _ => Right(out)
+          }
+
+        loop(elems, Vector.empty)
+
+      case GeomSeq(start, grow, length) =>
+        for {
+          startC  <- resolve(start , builder).right
+          growC   <- resolve(grow  , builder).right
+          lengthC <- resolve(length, builder).right
+        } yield {
+          val b       = Vector.newBuilder[Constant]
+          val len     = lengthC.intValue
+          b.sizeHint(lengthC.intValue)
+          val isLong  = (startC.isInt || startC.isLong) && (growC.isInt || growC.isLong)
+          var i = 0
+          if (isLong) {
+            var n = startC.longValue
+            val g = growC .longValue
+            while (i < len) {
+              b += n
+              n *= g
+              i += 1
+            }
+          } else {
+            var n = startC.doubleValue
+            val g = growC .doubleValue
+            while (i < len) {
+              b += n
+              n *= g
+              i += 1
+            }
+          }
+          b.result()
+        }
+
+      case ArithmSeq(start, step, length) =>
+        for {
+          startC  <- resolve(start , builder).right
+          stepC   <- resolve(step  , builder).right
+          lengthC <- resolve(length, builder).right
+        } yield {
+          val b       = Vector.newBuilder[Constant]
+          val len     = lengthC.intValue
+          b.sizeHint(lengthC.intValue)
+          val isLong  = (startC.isInt || startC.isLong) && (stepC.isInt || stepC.isLong)
+          var i = 0
+          if (isLong) {
+            var n = startC.longValue
+            val g = stepC .longValue
+            while (i < len) {
+              b += n
+              n += g
+              i += 1
+            }
+          } else {
+            var n = startC.doubleValue
+            val g = stepC .doubleValue
+            while (i < len) {
+              b += n
+              n += g
+              i += 1
+            }
+          }
+          b.result()
+        }
+
+      case _  => resolve(in, builder).right.map(Vector(_))
+    }
+
+    /** An "untyped" output-setter reference */
   trait OutputRef {
     /** The key in the `FScape` objects `outputs` dictionary. */
     def key: String
@@ -251,8 +366,9 @@ object UGenGraphBuilder {
 
   // -----------------
 
-  private final class BuilderImpl[S <: Sys[S]](context: Context[S], f: FScape[S])(implicit tx: S#Tx, cursor: stm.Cursor[S],
-                                                             workspace: WorkspaceHandle[S])
+  private final class BuilderImpl[S <: Sys[S]](context: Context[S], f: FScape[S])
+                                              (implicit tx: S#Tx, cursor: stm.Cursor[S],
+                                               workspace: WorkspaceHandle[S])
     extends UGenGraph.BuilderLike with UGenGraphBuilder with IO[S] { builder =>
 
 //    private var acceptedInputs: Set[String]           = Set.empty

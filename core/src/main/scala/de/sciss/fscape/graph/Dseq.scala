@@ -19,7 +19,8 @@ import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-/** A UGen that cycles over a list of values.
+/** XXX TODO --- not implemented yet.
+  * A UGen that cycles over a list of values.
   *
   * @param seq      sequence of values to be returned
   * @param repeats  the number of repetitions of the sequence
