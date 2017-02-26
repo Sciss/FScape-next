@@ -89,7 +89,6 @@ object Blobs2D {
     private[this] var readBlobBoundsRemain      = 0
     private[this] var readBlobNumVerticesOff    = 0
     private[this] var readBlobNumVerticesRemain = 0
-    private[this] var readBlobVerticesOff       = 0
     private[this] var readBlobVerticesRemain    = 0
     private[this] var isNextWindow              = true
 
@@ -350,7 +349,7 @@ object Blobs2D {
       var i = 0
       while (i < _numBlobs) {
         val b = blobs(i)
-        vertexCount += (b.numLines + 1) * 2
+        vertexCount += b.numLines * 2
         i += 1
       }
 
@@ -360,7 +359,6 @@ object Blobs2D {
       outRemain3                = math.min(outRemain3, readBlobVerticesRemain)
       readBlobBoundsOff         = 0
       readBlobNumVerticesOff    = 0
-      readBlobVerticesOff       = 0
     }
 
     @inline
@@ -467,23 +465,28 @@ object Blobs2D {
       // ---- blob vertices ----
       if (readBlobVerticesRemain > 0 && outRemain3 > 0) {
         val chunk     = math.min(readBlobVerticesRemain, outRemain3)
-        var _offIn    = readBlobVerticesOff
         var _offOut   = outOff3
         val _blobs    = blobs
         val _buf      = bufOut3.buf
         val stop      = _offOut + chunk
         var _blobIdx  = readBlobVerticesBlobIdx
         var _vIdx     = readBlobVerticesVertexIdx
+        val _edgeX    = edgeVrtX
+        val _edgeY    = edgeVrtY
         while (_offOut < stop) {
           val blob      = _blobs(_blobIdx)
-          val vCount    = (blob.numLines + 1) * 2
-          val chunk     = math.min(stop - _offOut, vCount - _vIdx)
-          if (chunk > 0) {
-            val lineIdx = blob.line(_offIn & ~1)
-            val table   = if (_offIn % 2 == 0) edgeVrtX else edgeVrtY
-            _buf(_offOut) = table(lineIdx)
-            _offIn  += 1
-            _offOut += 1
+          val vCount    = blob.numLines * 2
+          val chunk2    = math.min(stop - _offOut, vCount - _vIdx)
+          if (chunk2 > 0) {
+            val stop2 = _vIdx + chunk2
+            while (_vIdx < stop2) {
+              val lineIdx = blob.line(_vIdx & ~1)
+              val table   = if (_vIdx % 2 == 0) _edgeX else _edgeY
+              val value   = table(lineIdx)
+              _buf(_offOut) = value
+              _vIdx   += 1
+              _offOut += 1
+            }
           } else {
             _blobIdx += 1
             _vIdx     = 0
@@ -492,7 +495,6 @@ object Blobs2D {
 
         readBlobVerticesBlobIdx   = _blobIdx
         readBlobVerticesVertexIdx = _vIdx
-        readBlobVerticesOff       = _offIn
         readBlobVerticesRemain   -= chunk
         outOff3                   = _offOut
         outRemain3               -= chunk
