@@ -339,10 +339,22 @@ object Blobs2D {
       }
 
       detectBlobs()
+      val _numBlobs             = numBlobs
       readNumBlobsRemain        = 1
-      readBlobBoundsRemain      = numBlobs * 4
-      readBlobNumVerticesRemain = numBlobs
-      readBlobVerticesRemain    = ???
+      readBlobBoundsRemain      = _numBlobs * 4
+      readBlobNumVerticesRemain = _numBlobs
+
+      readBlobVerticesBlobIdx   = 0
+      readBlobVerticesVertexIdx = 0
+      var vertexCount = 0
+      var i = 0
+      while (i < _numBlobs) {
+        val b = blobs(i)
+        vertexCount += (b.numLines + 1) * 2
+        i += 1
+      }
+
+      readBlobVerticesRemain    = vertexCount
       outRemain1                = math.min(outRemain1, readBlobBoundsRemain)
       outRemain2                = math.min(outRemain2, readBlobNumVerticesRemain)
       outRemain3                = math.min(outRemain3, readBlobVerticesRemain)
@@ -454,7 +466,37 @@ object Blobs2D {
 
       // ---- blob vertices ----
       if (readBlobVerticesRemain > 0 && outRemain3 > 0) {
-        ???
+        val chunk     = math.min(readBlobVerticesRemain, outRemain3)
+        var _offIn    = readBlobVerticesOff
+        var _offOut   = outOff3
+        val _blobs    = blobs
+        val _buf      = bufOut3.buf
+        val stop      = _offOut + chunk
+        var _blobIdx  = readBlobVerticesBlobIdx
+        var _vIdx     = readBlobVerticesVertexIdx
+        while (_offOut < stop) {
+          val blob      = _blobs(_blobIdx)
+          val vCount    = (blob.numLines + 1) * 2
+          val chunk     = math.min(stop - _offOut, vCount - _vIdx)
+          if (chunk > 0) {
+            val lineIdx = blob.line(_offIn & ~1)
+            val table   = if (_offIn % 2 == 0) edgeVrtX else edgeVrtY
+            _buf(_offOut) = table(lineIdx)
+            _offIn  += 1
+            _offOut += 1
+          } else {
+            _blobIdx += 1
+            _vIdx     = 0
+          }
+        }
+
+        readBlobVerticesBlobIdx   = _blobIdx
+        readBlobVerticesVertexIdx = _vIdx
+        readBlobVerticesOff       = _offIn
+        readBlobVerticesRemain   -= chunk
+        outOff3                   = _offOut
+        outRemain3               -= chunk
+        stateChange               = true
       }
 
       stateChange
