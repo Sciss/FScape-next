@@ -391,10 +391,10 @@ object Blobs2D {
         val stop      = _offOut + chunk
         while (_offOut < stop) {
           val blob  = _blobs(_offIn)
-          _bufMinX(_offOut) = math.floor(blob.xMin * width ).toInt
-          _bufMaxX(_offOut) = math.ceil (blob.xMax * width ).toInt
-          _bufMinY(_offOut) = math.floor(blob.yMin * height).toInt
-          _bufMaxY(_offOut) = math.ceil (blob.yMax * height).toInt
+          _bufMinX(_offOut) = math.floor(blob.xMin /* * (width - 1) */).toInt
+          _bufMaxX(_offOut) = math.ceil (blob.xMax /* * (width - 1) */).toInt
+          _bufMinY(_offOut) = math.floor(blob.yMin /* * (height - 1) */).toInt
+          _bufMaxY(_offOut) = math.ceil (blob.yMax /* * (height - 1) */).toInt
           _offIn  += 1
           _offOut += 1
         }
@@ -471,8 +471,8 @@ object Blobs2D {
     // this is basically a Scala translation of Gachadoat's algorithm
 
     private[this] var gridVisited: Array[Boolean] = _
-    private[this] var stepX      : Double         = _
-    private[this] var stepY      : Double         = _
+//    private[this] var stepX      : Double         = _
+//    private[this] var stepY      : Double         = _
     private[this] var linesToDraw: Array[Int]     = _
     private[this] var voxels     : Array[Int]     = _
 //    private[this] var edgeVrtX   : Array[Double]  = _
@@ -490,8 +490,15 @@ object Blobs2D {
 //      edgeVrtX      = new Array[Double ]( winSz2 )
 //      edgeVrtY      = new Array[Double ]( winSz2 )
       blobs         = Array.fill(MaxNumBlobs)(new Blob)
-      stepX         = 1.0 / math.max(1, width  - 1)
-      stepY         = 1.0 / math.max(1, height - 1)
+
+      // Note: using stepX in the coordinate calculation
+      // means that xMin, xMax, yMin, yMax are in the range
+      // of 0 to 1; when scaling back to image coordinates,
+      // one would have to multiply by width-1 and height-1,
+      // respectively.
+
+//      stepX         = 1.0 / math.max(1, width  - 1)
+//      stepY         = 1.0 / math.max(1, height - 1)
 
       // XXX TODO -- fill voxels, edgeVrtX, edgeVrtY
     }
@@ -587,9 +594,10 @@ object Blobs2D {
         if ((toCompute & 1) > 0) { // Edge 0
           val _buf    = winBuf
           val t       = (thresh - _buf(offset)) / (_buf(offset + 1) - _buf(offset))
-          val _stepX  = stepX
-          val vx      = x * _stepX
-          val value   = vx * (1.0 - t) + t * (vx + _stepX)
+//          val _stepX  = stepX
+//          val vx      = x * _stepX
+//          val value   = vx * (1.0 - t) + t * (vx + _stepX)
+          val value   = x * (1.0 - t) + t * (x + 1)
 //          edgeVrtX(voxels(offset))          = value
           if (value < blob.xMin) blob.xMin  = value
           if (value > blob.xMax) blob.xMax  = value
@@ -597,9 +605,10 @@ object Blobs2D {
         if ((toCompute & 2) > 0) { // Edge 3
           val _buf    = winBuf
           val t       = (thresh - _buf(offset)) / (_buf(offset + width) - _buf(offset))
-          val _stepY  = stepY
-          val vy      = y * _stepY
-          val value   = vy * (1.0 - t) + t * (vy + _stepY)
+//          val _stepY  = stepY
+//          val vy      = y * _stepY
+//          val vy      = y * _stepY
+          val value   = y * (1.0 - t) + t * (y + 1)
 //          edgeVrtY(voxels(offset) + 1)      = value
           if (value < blob.yMin) blob.yMin  = value
           if (value > blob.yMax) blob.yMax  = value
