@@ -211,9 +211,9 @@ object Blobs2D {
       blobs       = null
       gridVisited = null
       linesToDraw = null
-      voxels      = null
-//      edgeVrtX    = null
-//      edgeVrtY    = null
+//      voxels      = null
+      edgeVrtX    = null
+      edgeVrtY    = null
 
       freeInputBuffers()
       freeOutputBuffers()
@@ -474,9 +474,9 @@ object Blobs2D {
 //    private[this] var stepX      : Double         = _
 //    private[this] var stepY      : Double         = _
     private[this] var linesToDraw: Array[Int]     = _
-    private[this] var voxels     : Array[Int]     = _
-//    private[this] var edgeVrtX   : Array[Double]  = _
-//    private[this] var edgeVrtY   : Array[Double]  = _
+//    private[this] var voxels     : Array[Int]     = _
+    private[this] var edgeVrtX   : Array[Double]  = _
+    private[this] var edgeVrtY   : Array[Double]  = _
     private[this] var numLinesToDraw  = 0
     private[this] var numBlobs        = 0
 
@@ -486,9 +486,9 @@ object Blobs2D {
       winBuf        = new Array[Double ](_winSize)
       gridVisited   = new Array[Boolean](_winSize)
       linesToDraw   = new Array[Int    ]( winSz2 )
-      voxels        = new Array[Int    ](_winSize)
-//      edgeVrtX      = new Array[Double ]( winSz2 )
-//      edgeVrtY      = new Array[Double ]( winSz2 )
+//      voxels        = new Array[Int    ](_winSize)
+      edgeVrtX      = new Array[Double ]( winSz2 )
+      edgeVrtY      = new Array[Double ]( winSz2 )
       blobs         = Array.fill(MaxNumBlobs)(new Blob)
 
       // Note: using stepX in the coordinate calculation
@@ -500,13 +500,13 @@ object Blobs2D {
 //      stepX         = 1.0 / math.max(1, width  - 1)
 //      stepY         = 1.0 / math.max(1, height - 1)
 
-      // XXX TODO -- fill voxels, edgeVrtX, edgeVrtY
+      // XXX TODO -- fill edgeVrtX, edgeVrtY
     }
 
     private def detectBlobs(): Unit = {
       val _visited  = gridVisited
       util.Arrays.fill(_visited, false)
-      numLinesToDraw  = 0
+      numLinesToDraw = 0
 
       var _numBlobs = 0
       val _blobs    = blobs
@@ -515,9 +515,29 @@ object Blobs2D {
       val _height   = height
       val _heightM  = _height - 1
 
+      // reset edge coordinates
+      val _edgeX  = edgeVrtX
+      val _edgeY  = edgeVrtY
       var x = 0
+      var y = 0
+      var n = 0
+      while (x < _width) {
+        y = 0
+        while (y < _height) {
+          _edgeX(n) = x
+          _edgeY(n) = y
+          n += 1
+          _edgeX(n) = x
+          _edgeY(n) = y
+          n += 1
+          y += 1
+        }
+        x += 1
+      }
+
+      x = 0
       while (x < _widthM) {
-        var y = 0
+        y = 0
         while (y < _heightM) {
           // > offset in the grid
           val offset = x + _width * y
@@ -557,10 +577,20 @@ object Blobs2D {
       valid
     }
 
+//    private def voxel(offset: Int): Int =
+//      ((offset / width) + ((offset % width) * height)) * 2
+
+//    @inline
+//    private def voxel(x: Int, y: Int): Int =
+//      (y + (x * height)) * 2
+
     private def computeEdgeVertex(blob: Blob, x: Int, y: Int): Unit = {
       val _width  = width
       val _height = height
       val offset  = x + _width * y
+
+      @inline
+      def voxel(x: Int, y: Int): Int = (y + (x * _height)) * 2
 
       val _visited = gridVisited
       if (_visited(offset)) return
@@ -576,15 +606,16 @@ object Blobs2D {
         val offX        = edgeOffInf(0)
         val offY        = edgeOffInf(1)
         val offAB       = edgeOffInf(2)
-        val v           = voxels((x + offX) + _width * (y + offY)) + offAB
+//        val v           = voxels((x + offX) + _width * (y + offY)) + offAB
+        val v           = voxel(x + offX, y + offY) + offAB
 
         linesToDraw(numLinesToDraw) = v
         numLinesToDraw += 1
 
         blob.line(blob.numLines) = v
-        blob.numLines    += 1
+        blob.numLines += 1
 
-        n    += 1
+        n += 1
         iEdge = edgeCuts(sqrIdx)(n)
       }
 
@@ -598,7 +629,8 @@ object Blobs2D {
 //          val vx      = x * _stepX
 //          val value   = vx * (1.0 - t) + t * (vx + _stepX)
           val value   = x * (1.0 - t) + t * (x + 1)
-//          edgeVrtX(voxels(offset))          = value
+          val edgeIdx = voxel(x, y)
+          edgeVrtX(edgeIdx)                 = value
           if (value < blob.xMin) blob.xMin  = value
           if (value > blob.xMax) blob.xMax  = value
         }
@@ -609,7 +641,8 @@ object Blobs2D {
 //          val vy      = y * _stepY
 //          val vy      = y * _stepY
           val value   = y * (1.0 - t) + t * (y + 1)
-//          edgeVrtY(voxels(offset) + 1)      = value
+          val edgeIdx = voxel(x, y) + 1
+          edgeVrtY(edgeIdx)                 = value
           if (value < blob.yMin) blob.yMin  = value
           if (value > blob.yMax) blob.yMax  = value
         }
