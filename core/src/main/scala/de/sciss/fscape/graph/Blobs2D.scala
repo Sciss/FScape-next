@@ -22,15 +22,11 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 /** A blob detection UGen. It is based on the meta-balls algorithm by
   * Julien Gachadoat (http://www.v3ga.net/processing/BlobDetection/).
   *
-  * Currently, we output five channels:
+  * Currently, we output four channels:
   * - 0 - `numBlobs` - flushes for each window one element with the number of blobs detected
-  * - 1 - `xMin` - the minimum horizontal coordinates for each blob
-  * - 2 - `xMax` - the maximum horizontal coordinates for each blob
-  * - 3 - `yMin` - the minimum vertical coordinates for each blob
-  * - 4 - `yMax` - the maximum vertical coordinates for each blob
-  *
-  * A future version may output the contour coordinates as additional outputs,
-  * once we found a good solution for representing polygons.
+  * - 1 - `bounds` - quadruplets of `xMin`, `xMax`, `yMin`, `yMax` - for each blob
+  * - 2 - `numVertices` - the number of vertices (contour coordinates) for each blob
+  * - 3 - `vertices` - tuples of `x` and `y` for the vertices of each blob
   *
   * @param in         the image(s) to analyse
   * @param width      the width of the image
@@ -44,17 +40,22 @@ final case class Blobs2D(in: GE, width: GE, height: GE, thresh: GE = 0.3 /*, min
     unwrap(this, Vector(in.expand, width.expand, height.expand, thresh.expand /* , minWidth.expand, minHeight.expand */))
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
-    UGen.MultiOut(this, args, 5)
+    UGen.MultiOut(this, args, 4)
 
-  def numBlobs: GE = ChannelProxy(this, 0)
-  def xMin    : GE = ChannelProxy(this, 1)
-  def xMax    : GE = ChannelProxy(this, 2)
-  def yMin    : GE = ChannelProxy(this, 3)
-  def yMax    : GE = ChannelProxy(this, 4)
+  def numBlobs    : GE = ChannelProxy(this, 0)
+  def bounds      : GE = ChannelProxy(this, 1)
+  def numVertices : GE = ChannelProxy(this, 2)
+  def vertices    : GE = ChannelProxy(this, 3)
+
+  //  def xMin    : GE = ChannelProxy(this, 1)
+  //  def xMax    : GE = ChannelProxy(this, 2)
+  //  def yMin    : GE = ChannelProxy(this, 3)
+  //  def yMax    : GE = ChannelProxy(this, 4)
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Vec[StreamOut] = {
     val Vec(in, width, height, thresh /* , minWidth, minHeight */) = args
-    val outs = stream.Blobs2D(in = in.toDouble, width = width.toInt, height = height.toInt, thresh = thresh.toDouble)
-    outs
+    val (out0, out1, out2, out3) = stream.Blobs2D(in = in.toDouble, width = width.toInt, height = height.toInt,
+      thresh = thresh.toDouble)
+    Vector[StreamOut](out0, out1, out2, out3)
   }
 }

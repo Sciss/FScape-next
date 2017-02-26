@@ -18,37 +18,35 @@ import java.util
 
 import akka.stream.stage.OutHandler
 import akka.stream.{Attributes, Outlet}
-import de.sciss.fscape.stream.impl.{AuxInHandlerImpl, FilterLogicImpl, FullInOutImpl, In4Out5Shape, NodeImpl, ProcessInHandlerImpl, StageImpl}
+import de.sciss.fscape.stream.impl.{AuxInHandlerImpl, FilterLogicImpl, FullInOutImpl, In4Out4Shape, NodeImpl, ProcessInHandlerImpl, StageImpl}
 
 import scala.annotation.tailrec
-import scala.collection.immutable.{IndexedSeq => Vec}
 
 object Blobs2D {
-  def apply(in: OutD, width: OutI, height: OutI, thresh: OutD)(implicit b: Builder): Vec[OutI] = {
+  def apply(in: OutD, width: OutI, height: OutI, thresh: OutD)(implicit b: Builder): (OutI, OutD, OutI, OutD) = {
     val stage0  = new Stage
     val stage   = b.add(stage0)
     b.connect(in    , stage.in0)
     b.connect(width , stage.in1)
     b.connect(height, stage.in2)
     b.connect(thresh, stage.in3)
-    Vector(stage.out0, stage.out1, stage.out2, stage.out3, stage.out4)
+    (stage.out0, stage.out1, stage.out2, stage.out3)
   }
 
   private final val name = "Blobs2D"
 
-  private type Shape = In4Out5Shape[BufD, BufI, BufI, BufD, BufI, BufI, BufI, BufI, BufI]
+  private type Shape = In4Out4Shape[BufD, BufI, BufI, BufD,   BufI, BufD, BufI, BufD]
 
   private final class Stage(implicit ctrl: Control) extends StageImpl[Shape](name) {
-    val shape = In4Out5Shape(
-      in0  = InD (s"$name.in"      ),
-      in1  = InI (s"$name.width"   ),
-      in2  = InI (s"$name.height"  ),
-      in3  = InD (s"$name.thresh"  ),
-      out0 = OutI(s"$name.numBlobs"),
-      out1 = OutI(s"$name.xMin"    ),
-      out2 = OutI(s"$name.xMax"    ),
-      out3 = OutI(s"$name.yMin"    ),
-      out4 = OutI(s"$name.yMax"    )
+    val shape = In4Out4Shape(
+      in0  = InD (s"$name.in"         ),
+      in1  = InI (s"$name.width"      ),
+      in2  = InI (s"$name.height"     ),
+      in3  = InD (s"$name.thresh"     ),
+      out0 = OutI(s"$name.numBlobs"   ),
+      out1 = OutD(s"$name.bounds"     ),
+      out2 = OutI(s"$name.numVertices"),
+      out3 = OutD(s"$name.vertices"   )
     )
 
     def createLogic(attr: Attributes) = new Logic(shape)
@@ -96,10 +94,9 @@ object Blobs2D {
     private[this] var bufIn2 : BufI  = _
     private[this] var bufIn3 : BufD  = _
     private[this] var bufOut0: BufI = _
-    private[this] var bufOut1: BufI = _
+    private[this] var bufOut1: BufD = _
     private[this] var bufOut2: BufI = _
-    private[this] var bufOut3: BufI = _
-    private[this] var bufOut4: BufI = _
+    private[this] var bufOut3: BufD = _
 
     protected def in0: InD = shape.in0
 
@@ -146,7 +143,6 @@ object Blobs2D {
     new OutHandlerImpl       (shape.out1)
     new OutHandlerImpl       (shape.out2)
     new OutHandlerImpl       (shape.out3)
-    new OutHandlerImpl       (shape.out4)
 
     def canRead : Boolean = _canRead
     def inValid : Boolean = _inValid
@@ -179,21 +175,17 @@ object Blobs2D {
         bufOut1.size = outOff1
         bufOut2.size = outOff1
         bufOut3.size = outOff1
-        bufOut4.size = outOff1
         push(shape.out1, bufOut1)
         push(shape.out2, bufOut2)
         push(shape.out3, bufOut3)
-        push(shape.out4, bufOut4)
       } else {
         bufOut1.release()
         bufOut2.release()
         bufOut3.release()
-        bufOut4.release()
       }
       bufOut1 = null
       bufOut2 = null
       bufOut3 = null
-      bufOut4 = null
 
       _canWrite = false
     }
@@ -281,10 +273,6 @@ object Blobs2D {
       if (bufOut3 != null) {
         bufOut3.release()
         bufOut3 = null
-      }
-      if (bufOut4 != null) {
-        bufOut4.release()
-        bufOut4 = null
       }
     }
 
@@ -385,7 +373,7 @@ object Blobs2D {
         val _bufMinX  = bufOut1.buf
         val _bufMaxX  = bufOut2.buf
         val _bufMinY  = bufOut3.buf
-        val _bufMaxY  = bufOut4.buf
+//        val _bufMaxY  = bufOut4.buf
         val _width    = width
         val _height   = height
         val stop      = _offOut + chunk
@@ -394,7 +382,8 @@ object Blobs2D {
           _bufMinX(_offOut) = math.floor(blob.xMin /* * (width - 1) */).toInt
           _bufMaxX(_offOut) = math.ceil (blob.xMax /* * (width - 1) */).toInt
           _bufMinY(_offOut) = math.floor(blob.yMin /* * (height - 1) */).toInt
-          _bufMaxY(_offOut) = math.ceil (blob.yMax /* * (height - 1) */).toInt
+          ???
+//          _bufMaxY(_offOut) = math.ceil (blob.yMax /* * (height - 1) */).toInt
           _offIn  += 1
           _offOut += 1
         }
@@ -432,10 +421,9 @@ object Blobs2D {
       }
 
       if (outSent1) {
-        bufOut1       = ctrl.borrowBufI()
+        bufOut1       = ctrl.borrowBufD()
         bufOut2       = ctrl.borrowBufI()
-        bufOut3       = ctrl.borrowBufI()
-        bufOut4       = ctrl.borrowBufI()
+        bufOut3       = ctrl.borrowBufD()
         outRemain1    = bufOut1.size
         outOff1       = 0
         outSent1      = false

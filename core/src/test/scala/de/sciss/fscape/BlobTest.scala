@@ -24,12 +24,10 @@ object BlobTest extends App {
       sig.poll(0, label)
     }
 
-    printOne(blobs.numBlobs, "num-blobs")
-
-    printAll(blobs.xMin, "x-min")
-    printAll(blobs.xMax, "x-max")
-    printAll(blobs.yMin, "y-min")
-    printAll(blobs.yMax, "y-max")
+    printAll(blobs.numBlobs   , "num-blobs   ")
+    printAll(blobs.bounds     , "bounds      ")
+    printAll(blobs.numVertices, "num-vertices")
+    printAll(blobs.vertices   , "vertices    ")
 
 //    printOne(blobs.xMin, "x-min[0]")
 //    printOne(blobs.xMax, "x-max[0]")
