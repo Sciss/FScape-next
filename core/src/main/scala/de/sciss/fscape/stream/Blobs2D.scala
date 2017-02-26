@@ -20,7 +20,7 @@ import akka.stream.stage.OutHandler
 import akka.stream.{Attributes, Outlet}
 import de.sciss.fscape.stream.impl.{AuxInHandlerImpl, FilterLogicImpl, FullInOutImpl, In4Out4Shape, NodeImpl, ProcessInHandlerImpl, StageImpl}
 
-import scala.annotation.tailrec
+import scala.annotation.{switch, tailrec}
 
 object Blobs2D {
   def apply(in: OutD, width: OutI, height: OutI, thresh: OutD)(implicit b: Builder): (OutI, OutD, OutI, OutD) = {
@@ -82,12 +82,19 @@ object Blobs2D {
     private[this] var thresh    : Double        = _
     private[this] var winSize   : Int           = _
 
-    private[this] var writeToWinOff         = 0L
-    private[this] var writeToWinRemain      = 0L
-    private[this] var readNumBlobsRemain    = false
-    private[this] var readBlobBoundsOff     = 0
-    private[this] var readBlobBoundsRemain  = 0
-    private[this] var isNextWindow          = true
+    private[this] var writeToWinOff             = 0
+    private[this] var writeToWinRemain          = 0
+    private[this] var readNumBlobsRemain        = 0
+    private[this] var readBlobBoundsOff         = 0
+    private[this] var readBlobBoundsRemain      = 0
+    private[this] var readBlobNumVerticesOff    = 0
+    private[this] var readBlobNumVerticesRemain = 0
+    private[this] var readBlobVerticesOff       = 0
+    private[this] var readBlobVerticesRemain    = 0
+    private[this] var isNextWindow              = true
+
+    private[this] var readBlobVerticesBlobIdx   = 0   // sub-index during readBlobVerticesRemain > 0
+    private[this] var readBlobVerticesVertexIdx = 0   // sub-index during readBlobVerticesRemain > 0
 
     protected     var bufIn0 : BufD  = _
     private[this] var bufIn1 : BufI  = _
@@ -107,12 +114,18 @@ object Blobs2D {
     private[this] var inOff           = 0  // regarding `bufIn`
     protected     var inRemain        = 0
     private[this] var outOff0         = 0  // regarding `bufOut0`
-    private[this] var outOff1         = 0  // regarding `bufOut1` to `bufOut4`
+    private[this] var outOff1         = 0  // regarding `bufOut1`
+    private[this] var outOff2         = 0  // regarding `bufOut2`
+    private[this] var outOff3         = 0  // regarding `bufOut3`
     private[this] var outRemain0      = 0
     private[this] var outRemain1      = 0
+    private[this] var outRemain2      = 0
+    private[this] var outRemain3      = 0
 
     private[this] var outSent0        = true
     private[this] var outSent1        = true
+    private[this] var outSent2        = true
+    private[this] var outSent3        = true
 
     // result of blob analysis
     private[this] var blobs: Array[Blob] = _
@@ -173,20 +186,33 @@ object Blobs2D {
     private def writeOuts1(): Unit = {
       if (outOff1 > 0) {
         bufOut1.size = outOff1
-        bufOut2.size = outOff1
-        bufOut3.size = outOff1
         push(shape.out1, bufOut1)
-        push(shape.out2, bufOut2)
-        push(shape.out3, bufOut3)
       } else {
         bufOut1.release()
-        bufOut2.release()
-        bufOut3.release()
       }
       bufOut1 = null
-      bufOut2 = null
-      bufOut3 = null
+      _canWrite = false
+    }
 
+    private def writeOuts2(): Unit = {
+      if (outOff2 > 0) {
+        bufOut2.size = outOff2
+        push(shape.out2, bufOut2)
+      } else {
+        bufOut2.release()
+      }
+      bufOut2 = null
+      _canWrite = false
+    }
+
+    private def writeOuts3(): Unit = {
+      if (outOff3 > 0) {
+        bufOut3.size = outOff3
+        push(shape.out3, bufOut3)
+      } else {
+        bufOut3.release()
+      }
+      bufOut3 = null
       _canWrite = false
     }
 
@@ -284,7 +310,7 @@ object Blobs2D {
         ((isClosed(sh.in3) && _inValid) || isAvailable(sh.in3))
     }
 
-    private def startNextWindow(inOff: Int): Long = {
+    private def startNextWindow(inOff: Int): Int = {
       val oldSize = winSize
       if (bufIn1 != null && inOff < bufIn1.size) {
         width = math.max(1, bufIn1.buf(inOff))
@@ -305,20 +331,33 @@ object Blobs2D {
     private def copyInputToWindow(inOff: Int, writeToWinOff: Long, chunk: Int): Unit =
       Util.copy(bufIn0.buf, inOff, winBuf, writeToWinOff.toInt, chunk)
 
-    private def processWindow(writeToWinOff: Long): Int = {
+    private def processWindow(writeToWinOff: Int): Unit = {
       val a     = winBuf
       val size  = winSize
       if (writeToWinOff < size) {
-        val writeOffI = writeToWinOff.toInt
-        Util.clear(a, writeOffI, size - writeOffI)
+        Util.clear(a, writeToWinOff, size - writeToWinOff)
       }
 
       detectBlobs()
-      numBlobs
+      readNumBlobsRemain        = 1
+      readBlobBoundsRemain      = numBlobs * 4
+      readBlobNumVerticesRemain = numBlobs
+      readBlobVerticesRemain    = ???
+      outRemain1                = math.min(outRemain1, readBlobBoundsRemain)
+      outRemain2                = math.min(outRemain2, readBlobNumVerticesRemain)
+      outRemain3                = math.min(outRemain3, readBlobVerticesRemain)
+      readBlobBoundsOff         = 0
+      readBlobNumVerticesOff    = 0
+      readBlobVerticesOff       = 0
     }
 
     @inline
-    private[this] def canWriteToWindow = !readNumBlobsRemain && readBlobBoundsRemain == 0 && inValid
+    private[this] def canWriteToWindow =
+      inValid &&
+        readNumBlobsRemain        == 0 &&
+        readBlobBoundsRemain      == 0 &&
+        readBlobNumVerticesRemain == 0 &&
+        readBlobVerticesRemain    == 0
 
     private def processChunk(): Boolean = {
       var stateChange = false
@@ -332,7 +371,7 @@ object Blobs2D {
           // logStream(s"startNextWindow(); writeToWinRemain = $writeToWinRemain")
         }
 
-        val chunk     = math.min(writeToWinRemain, inRemain).toInt
+        val chunk     = math.min(writeToWinRemain, inRemain) // .toInt
         val flushIn   = flushIn0 && writeToWinOff > 0
         if (chunk > 0 || flushIn) {
           // logStream(s"writeToWindow(); inOff = $inOff, writeToWinOff = $writeToWinOff, chunk = $chunk")
@@ -346,11 +385,8 @@ object Blobs2D {
           }
 
           if (writeToWinRemain == 0 || flushIn) {
-            readBlobBoundsRemain  = processWindow(writeToWinOff = writeToWinOff) // , flush = flushIn)
-            outRemain1            = math.min(outRemain1, readBlobBoundsRemain)
-            readNumBlobsRemain    = true
+            processWindow(writeToWinOff = writeToWinOff) // , flush = flushIn)
             writeToWinOff         = 0
-            readBlobBoundsOff     = 0
             isNextWindow          = true
             stateChange           = true
             // logStream(s"processWindow(); readFromWinRemain = $readFromWinRemain")
@@ -358,32 +394,31 @@ object Blobs2D {
         }
       }
 
-      if (readNumBlobsRemain && outRemain0 > 0) {
+      if (readNumBlobsRemain > 0 && outRemain0 > 0) {
         bufOut0.buf(0)      = numBlobs
-        readNumBlobsRemain  = false
+        readNumBlobsRemain -= 1
         outOff0            += 1
         outRemain0         -= 1
       }
 
+      // ---- blob bounds ----
       if (readBlobBoundsRemain > 0 && outRemain1 > 0) {
         val chunk     = math.min(readBlobBoundsRemain, outRemain1)
         var _offIn    = readBlobBoundsOff
         var _offOut   = outOff1
         val _blobs    = blobs
-        val _bufMinX  = bufOut1.buf
-        val _bufMaxX  = bufOut2.buf
-        val _bufMinY  = bufOut3.buf
-//        val _bufMaxY  = bufOut4.buf
-        val _width    = width
-        val _height   = height
+        val _buf      = bufOut1.buf
         val stop      = _offOut + chunk
         while (_offOut < stop) {
-          val blob  = _blobs(_offIn)
-          _bufMinX(_offOut) = math.floor(blob.xMin /* * (width - 1) */).toInt
-          _bufMaxX(_offOut) = math.ceil (blob.xMax /* * (width - 1) */).toInt
-          _bufMinY(_offOut) = math.floor(blob.yMin /* * (height - 1) */).toInt
-          ???
-//          _bufMaxY(_offOut) = math.ceil (blob.yMax /* * (height - 1) */).toInt
+          val blobIdx = _offIn / 4
+          val blob    = _blobs(blobIdx)
+          val coord   = (_offIn % 4: @switch) match {
+            case 0 => blob.xMin
+            case 1 => blob.xMax
+            case 2 => blob.yMin
+            case 3 => blob.yMax
+          }
+          _buf(_offOut) = coord
           _offIn  += 1
           _offOut += 1
         }
@@ -393,6 +428,33 @@ object Blobs2D {
         outOff1               = _offOut
         outRemain1           -= chunk
         stateChange           = true
+      }
+
+      // ---- blob num-vertices ----
+      if (readBlobNumVerticesRemain > 0 && outRemain2 > 0) {
+        val chunk     = math.min(readBlobNumVerticesRemain, outRemain2)
+        var _offIn    = readBlobNumVerticesOff
+        var _offOut   = outOff2
+        val _blobs    = blobs
+        val _buf      = bufOut2.buf
+        val stop      = _offOut + chunk
+        while (_offOut < stop) {
+          val blob      = _blobs(_offIn)
+          _buf(_offOut) = blob.numLines
+          _offIn  += 1
+          _offOut += 1
+        }
+
+        readBlobNumVerticesOff     = _offIn
+        readBlobNumVerticesRemain -= chunk
+        outOff2                    = _offOut
+        outRemain2                -= chunk
+        stateChange                = true
+      }
+
+      // ---- blob vertices ----
+      if (readBlobVerticesRemain > 0 && outRemain3 > 0) {
+        ???
       }
 
       stateChange
@@ -422,11 +484,25 @@ object Blobs2D {
 
       if (outSent1) {
         bufOut1       = ctrl.borrowBufD()
-        bufOut2       = ctrl.borrowBufI()
-        bufOut3       = ctrl.borrowBufD()
         outRemain1    = bufOut1.size
         outOff1       = 0
         outSent1      = false
+        stateChange   = true
+      }
+      
+      if (outSent2) {
+        bufOut2       = ctrl.borrowBufI()
+        outRemain2    = bufOut2.size
+        outOff2       = 0
+        outSent2      = false
+        stateChange   = true
+      }
+
+      if (outSent3) {
+        bufOut3       = ctrl.borrowBufD()
+        outRemain3    = bufOut3.size
+        outOff3       = 0
+        outSent3      = false
         stateChange   = true
       }
 
@@ -444,8 +520,18 @@ object Blobs2D {
         outSent1    = true
         stateChange = true
       }
+      if (!outSent2 && (outRemain2 == 0 || flushOut) && cw) {
+        writeOuts2()
+        outSent2    = true
+        stateChange = true
+      }
+      if (!outSent3 && (outRemain3 == 0 || flushOut) && cw) {
+        writeOuts3()
+        outSent3    = true
+        stateChange = true
+      }
 
-      if (flushOut && outSent0 && outSent1) {
+      if (flushOut && outSent0 && outSent1 && outSent2) {
         logStream(s"completeStage() $this")
         completeStage()
       }
@@ -453,16 +539,17 @@ object Blobs2D {
     }
 
     private def shouldComplete(): Boolean =
-      inputsEnded && writeToWinOff == 0 && !readNumBlobsRemain && readBlobBoundsRemain == 0
+      inputsEnded && writeToWinOff == 0 &&
+        readNumBlobsRemain         == 0 &&
+        readBlobBoundsRemain       == 0 &&
+        readBlobNumVerticesRemain  == 0 &&
+        readBlobVerticesRemain     == 0
 
     // ---- the fun part ----
-    // this is basically a Scala translation of Gachadoat's algorithm
+    // this is an adaptation of Gachadoat's algorithm
 
     private[this] var gridVisited: Array[Boolean] = _
-//    private[this] var stepX      : Double         = _
-//    private[this] var stepY      : Double         = _
     private[this] var linesToDraw: Array[Int]     = _
-//    private[this] var voxels     : Array[Int]     = _
     private[this] var edgeVrtX   : Array[Double]  = _
     private[this] var edgeVrtY   : Array[Double]  = _
     private[this] var numLinesToDraw  = 0
@@ -474,7 +561,6 @@ object Blobs2D {
       winBuf        = new Array[Double ](_winSize)
       gridVisited   = new Array[Boolean](_winSize)
       linesToDraw   = new Array[Int    ]( winSz2 )
-//      voxels        = new Array[Int    ](_winSize)
       edgeVrtX      = new Array[Double ]( winSz2 )
       edgeVrtY      = new Array[Double ]( winSz2 )
       blobs         = Array.fill(MaxNumBlobs)(new Blob)
@@ -487,8 +573,6 @@ object Blobs2D {
 
 //      stepX         = 1.0 / math.max(1, width  - 1)
 //      stepY         = 1.0 / math.max(1, height - 1)
-
-      // XXX TODO -- fill edgeVrtX, edgeVrtY
     }
 
     private def detectBlobs(): Unit = {
@@ -565,13 +649,6 @@ object Blobs2D {
       valid
     }
 
-//    private def voxel(offset: Int): Int =
-//      ((offset / width) + ((offset % width) * height)) * 2
-
-//    @inline
-//    private def voxel(x: Int, y: Int): Int =
-//      (y + (x * height)) * 2
-
     private def computeEdgeVertex(blob: Blob, x: Int, y: Int): Unit = {
       val _width  = width
       val _height = height
@@ -587,14 +664,13 @@ object Blobs2D {
       val sqrIdx  = getSquareIndex(x, y)
       var n       = 0
       var iEdge   = edgeCuts(sqrIdx)(n)
-      while (iEdge != -1 /* && blob.numLines < MaxNumLines */) {
+      while (iEdge != -1) {
         if (blob.numLines == MaxNumLines) return
 
         val edgeOffInf  = edgeOffsetInfo(iEdge)
         val offX        = edgeOffInf(0)
         val offY        = edgeOffInf(1)
         val offAB       = edgeOffInf(2)
-//        val v           = voxels((x + offX) + _width * (y + offY)) + offAB
         val v           = voxel(x + offX, y + offY) + offAB
 
         linesToDraw(numLinesToDraw) = v
@@ -613,9 +689,6 @@ object Blobs2D {
         if ((toCompute & 1) > 0) { // Edge 0
           val _buf    = winBuf
           val t       = (thresh - _buf(offset)) / (_buf(offset + 1) - _buf(offset))
-//          val _stepX  = stepX
-//          val vx      = x * _stepX
-//          val value   = vx * (1.0 - t) + t * (vx + _stepX)
           val value   = x * (1.0 - t) + t * (x + 1)
           val edgeIdx = voxel(x, y)
           edgeVrtX(edgeIdx)                 = value
@@ -625,9 +698,6 @@ object Blobs2D {
         if ((toCompute & 2) > 0) { // Edge 3
           val _buf    = winBuf
           val t       = (thresh - _buf(offset)) / (_buf(offset + width) - _buf(offset))
-//          val _stepY  = stepY
-//          val vy      = y * _stepY
-//          val vy      = y * _stepY
           val value   = y * (1.0 - t) + t * (y + 1)
           val edgeIdx = voxel(x, y) + 1
           edgeVrtY(edgeIdx)                 = value
