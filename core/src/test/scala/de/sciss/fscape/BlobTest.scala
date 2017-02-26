@@ -26,20 +26,20 @@ object BlobTest extends App {
 
     printOne(blobs.numBlobs, "num-blobs")
 
-//    printAll(blobs.xMin, "x-min")
-//    printAll(blobs.xMax, "x-max")
-//    printAll(blobs.yMin, "y-min")
-//    printAll(blobs.yMax, "y-max")
+    printAll(blobs.xMin, "x-min")
+    printAll(blobs.xMax, "x-max")
+    printAll(blobs.yMin, "y-min")
+    printAll(blobs.yMax, "y-max")
 
-    printOne(blobs.xMin, "x-min[0]")
-    printOne(blobs.xMax, "x-max[0]")
-    printOne(blobs.yMin, "y-min[0]")
-    printOne(blobs.yMax, "y-max[0]")
-
-    printOne(blobs.xMin.drop(1), "x-min[1]")
-    printOne(blobs.xMax.drop(1), "x-max[1]")
-    printOne(blobs.yMin.drop(1), "y-min[1]")
-    printOne(blobs.yMax.drop(1), "y-max[1]")
+//    printOne(blobs.xMin, "x-min[0]")
+//    printOne(blobs.xMax, "x-max[0]")
+//    printOne(blobs.yMin, "y-min[0]")
+//    printOne(blobs.yMax, "y-max[0]")
+//
+//    printOne(blobs.xMin.drop(1), "x-min[1]")
+//    printOne(blobs.xMax.drop(1), "x-max[1]")
+//    printOne(blobs.yMin.drop(1), "y-min[1]")
+//    printOne(blobs.yMax.drop(1), "y-max[1]")
 
 //    Length(blobs.xMin).poll(0, "num-x-min")
   }

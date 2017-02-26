@@ -371,9 +371,10 @@ object Blobs2D {
       }
 
       if (readNumBlobsRemain && outRemain0 > 0) {
-        bufOut0.buf(0) = numBlobs
-        outOff0       += 1
-        outRemain0    -= 1
+        bufOut0.buf(0)      = numBlobs
+        readNumBlobsRemain  = false
+        outOff0            += 1
+        outRemain0         -= 1
       }
 
       if (readBlobBoundsRemain > 0 && outRemain1 > 0) {
@@ -399,8 +400,8 @@ object Blobs2D {
         }
         
         readBlobBoundsOff     = _offIn
-        outOff1               = _offOut
         readBlobBoundsRemain -= chunk
+        outOff1               = _offOut
         outRemain1           -= chunk
         stateChange           = true
       }
