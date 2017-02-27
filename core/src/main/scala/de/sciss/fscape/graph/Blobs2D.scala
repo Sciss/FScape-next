@@ -32,12 +32,15 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * @param width      the width of the image
   * @param height     the height of the image
   * @param thresh     the threshold for blob detection between zero and one
+  * @param pad        size of "border" to put around input matrices. If greater than
+  *                   zero, a border of that size is created internally, filled with
+  *                   the treshold value
   */
-final case class Blobs2D(in: GE, width: GE, height: GE, thresh: GE = 0.3 /*, minWidth: GE = 0, minHeight: GE = 0 */)
+final case class Blobs2D(in: GE, width: GE, height: GE, thresh: GE = 0.3, pad: GE = 0)
   extends UGenSource.MultiOut {
 
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
-    unwrap(this, Vector(in.expand, width.expand, height.expand, thresh.expand /* , minWidth.expand, minHeight.expand */))
+    unwrap(this, Vector(in.expand, width.expand, height.expand, thresh.expand, pad.expand))
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
     UGen.MultiOut(this, args, 4)
@@ -47,15 +50,10 @@ final case class Blobs2D(in: GE, width: GE, height: GE, thresh: GE = 0.3 /*, min
   def numVertices : GE = ChannelProxy(this, 2)
   def vertices    : GE = ChannelProxy(this, 3)
 
-  //  def xMin    : GE = ChannelProxy(this, 1)
-  //  def xMax    : GE = ChannelProxy(this, 2)
-  //  def yMin    : GE = ChannelProxy(this, 3)
-  //  def yMax    : GE = ChannelProxy(this, 4)
-
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Vec[StreamOut] = {
-    val Vec(in, width, height, thresh /* , minWidth, minHeight */) = args
+    val Vec(in, width, height, thresh, pad) = args
     val (out0, out1, out2, out3) = stream.Blobs2D(in = in.toDouble, width = width.toInt, height = height.toInt,
-      thresh = thresh.toDouble)
+      thresh = thresh.toDouble, pad = pad.toInt)
     Vector[StreamOut](out0, out1, out2, out3)
   }
 }
