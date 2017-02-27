@@ -26,7 +26,7 @@ object UnaryOp {
   object Op {
     def apply(id: Int): Op = (id: @switch) match {
       case Neg        .id => Neg
-      //      case Not        .id => Not
+      case Not        .id => Not
       case Abs        .id => Abs
       case Ceil       .id => Ceil
       case Floor      .id => Floor
@@ -103,10 +103,16 @@ object UnaryOp {
     }
   }
 
-  //  case object Not extends Op {
-  //    final val id = 1
-  //    def apply(a: Double): Double = rd2.not(a)
-  //  }
+  case object Not extends Op {
+    final val id = 1
+    def apply(a: Double): Double = if (a == 0.0) 1.0 else 0.0
+
+    override def apply(a: Constant): Constant = a match {
+      case ConstantD(d) => ConstantD(apply(d))
+      case ConstantI(i) => ConstantI(if (i == 0 ) 1  else 0 )
+      case ConstantL(n) => ConstantL(if (n == 0L) 1L else 0L)
+    }
+  }
 
   // case object IsNil       extends Op(  2 )
   // case object NotNil      extends Op(  3 )
