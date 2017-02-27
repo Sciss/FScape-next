@@ -326,7 +326,10 @@ object Blobs2D {
     }
 
     private def startNextWindow(inOff: Int): Int = {
-      val oldSizePad = winSizePad
+      val oldSizeIn   = winSizeIn
+      val oldSizePad  = winSizePad
+      val oldThresh   = thresh
+
       if (bufIn1 != null && inOff < bufIn1.size) {
         widthIn = math.max(1, bufIn1.buf(inOff))
       }
@@ -339,29 +342,67 @@ object Blobs2D {
       if (bufIn4 != null && inOff < bufIn4.size) {
         pad = math.max(0, bufIn4.buf(inOff))
       }
-      val pad2    = pad * 2
-      widthPad    = widthIn  + pad2
-      heightPad   = heightIn + pad2
-      winSizeIn   = widthIn  * heightIn
-      winSizePad  = widthPad * heightPad
-      if (winSizePad != oldSizePad) {
+      val pad2        = pad * 2
+      val _widthIn    = widthIn
+      val _heightIn   = heightIn
+
+      val _widthPad   = _widthIn  + pad2
+      val _heightPad  = _heightIn + pad2
+      val _winSizeIn  = _widthIn  * _heightIn
+      val _winSizePad = _widthPad * _heightPad
+
+      widthPad        = _widthPad
+      heightPad       = _heightPad
+      winSizeIn       = _winSizeIn
+      winSizePad      = _winSizePad
+
+      if (_winSizePad != oldSizePad || _winSizeIn != oldSizeIn) {
         updateSize()
+        if (thresh != 0.0) fillThresh()
+      } else if (thresh != oldThresh) {
+        fillThresh()
       }
-      winSizeIn
+
+      _winSizeIn
     }
 
-    private def copyInputToWindow(inOff: Int, writeToWinOff: Long, chunk: Int): Unit = {
-      Util.copy(bufIn0.buf, inOff, winBuf, writeToWinOff.toInt, chunk)
-      ???
+    private def copyInputToWindow(inOff: Int, writeToWinOff: Int, chunk: Int): Unit = {
+      val _pad    = pad
+      val _bufIn  = bufIn0.buf
+      val _bufOut = winBuf
+
+      if (_pad == 0) {
+        Util.copy(_bufIn, inOff, _bufOut, writeToWinOff, chunk)
+
+      } else {
+        var remain  = chunk
+        var _inOff  = inOff
+        var _outOff = writeToWinOff
+        val _width  = widthIn
+        val add     = _pad * (widthPad + 1)   // pad lines + pad columns
+        while (remain > 0) {
+          val x   = _outOff % _width
+          val y   = _outOff / _width
+          val num = _width - x
+          Util.copy(_bufIn, _inOff, _bufOut, _outOff + add, num)
+          _inOff  += num
+          _outOff += num
+          remain  -= num
+        }
+      }
     }
 
     private def processWindow(writeToWinOff: Int): Unit = {
-      val a     = winBuf
-      val size  = winSizePad
-      if (writeToWinOff < size) {
-        Util.clear(a, writeToWinOff, size - writeToWinOff)
-        ???
-      }
+//      val a     = winBuf
+//      val size  = winSizeIn
+//      val _pad = pad
+//      if (_pad == 0) {
+//        if (writeToWinOff < size) {
+//          Util.fill(a, writeToWinOff, size - writeToWinOff, thresh)
+//        }
+//      } else {
+//        ...
+//      }
 
       detectBlobs()
       val _numBlobs             = numBlobs
@@ -647,6 +688,9 @@ object Blobs2D {
 //      stepX         = 1.0 / math.max(1, width  - 1)
 //      stepY         = 1.0 / math.max(1, height - 1)
     }
+
+    private def fillThresh(): Unit =
+      Util.fill(winBuf, 0, winSizePad, thresh)
 
     private def detectBlobs(): Unit = {
       val _visited  = gridVisited
