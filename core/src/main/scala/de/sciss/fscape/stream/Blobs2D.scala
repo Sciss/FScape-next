@@ -230,6 +230,7 @@ object Blobs2D {
       pull(sh.in1)
       pull(sh.in2)
       pull(sh.in3)
+      pull(sh.in4)
     }
 
     override protected def stopped(): Unit = {
@@ -382,8 +383,8 @@ object Blobs2D {
         val add     = _pad * (widthPad + 1)   // pad lines + pad columns
         while (remain > 0) {
           val x   = _outOff % _width
-          val y   = _outOff / _width
-          val num = _width - x
+//          val y   = _outOff / _width
+          val num = math.min(_width - x, remain)
           Util.copy(_bufIn, _inOff, _bufOut, _outOff + add, num)
           _inOff  += num
           _outOff += num
