@@ -686,7 +686,7 @@ object Blobs2D {
 
       computeEdgeVertex(blob, x, y)
 
-      val valid = blob.xMin <= blob.xMax && blob.yMin <= blob.yMax
+      val valid = blob.xMin < /* <= */ blob.xMax && blob.yMin < /* <= */ blob.yMax
       if (valid) {
         blob.numLines /= 2    // XXX TODO --- why is this? looks wrong
       }
