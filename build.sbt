@@ -2,7 +2,7 @@ lazy val baseName   = "FScape"
 lazy val baseNameL  = baseName.toLowerCase
 lazy val githubRepo = "FScape-next"
 
-lazy val projectVersion = "2.6.1"
+lazy val projectVersion = "2.6.2-SNAPSHOT"
 lazy val mimaVersion    = "2.6.0"
 
 lazy val baseDescription = "An audio rendering library"
@@ -44,8 +44,8 @@ lazy val scalaTestVersion      = "3.0.1"
 // ---- projects ----
 
 lazy val root = Project(id = baseNameL, base = file("."))
-  .aggregate(core, lucre)
-  .dependsOn(core, lucre)
+  .aggregate(core, lucre, cdp)
+  .dependsOn(core, lucre, cdp)
   .settings(commonSettings)
   .settings(
     name := baseName,
@@ -91,6 +91,17 @@ lazy val lucre = Project(id = s"$baseNameL-lucre", base = file("lucre"))
       "de.sciss"      %% "lucre-bdb"           % lucreVersion     % "test"
     ),
     mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-lucre" % mimaVersion)
+  )
+
+lazy val cdp = Project(id = s"$baseNameL-cdp", base = file("cdp"))
+  .dependsOn(core)
+  .settings(commonSettings)
+  .settings(
+    description := "Bridge from FScape to Composers Desktop Project",
+    libraryDependencies ++= Seq(
+      "org.scalatest" %% "scalatest" % scalaTestVersion % "test"
+    )
+    // mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-cdp" % mimaVersion)
   )
 
 // ---- publishing ----

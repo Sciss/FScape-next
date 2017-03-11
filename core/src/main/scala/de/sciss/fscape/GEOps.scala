@@ -256,14 +256,19 @@ final class GEOps2(val `this`: GE) extends AnyVal { me =>
   def linexp(inLow: GE, inHigh: GE, outLow: GE, outHigh: GE): GE = {
     // XXX TODO
     // LinExp(g.rate, g, inLow, inHigh, outLow, outHigh) // should be highest rate of all inputs? XXX
-    (outHigh / outLow).pow((g - inLow) / (inHigh - inLow)) * outLow
+    val outRatio  = outHigh / outLow
+    val outRatioP = BinaryOp.SecondArg.make(g, outRatio)
+    outRatioP.pow((g - inLow) / (inHigh - inLow)) * outLow
   }
 
   def explin(inLow: GE, inHigh: GE, outLow: GE, outHigh: GE): GE =
     (g / inLow).log / (inHigh / inLow).log * (outHigh - outLow) + outLow
 
-  def expexp(inLow: GE, inHigh: GE, outLow: GE, outHigh: GE): GE =
-    (outHigh / outLow).pow((g / inLow).log / (inHigh / inLow).log) * outLow
+  def expexp(inLow: GE, inHigh: GE, outLow: GE, outHigh: GE): GE = {
+    val outRatio  = outHigh / outLow
+    val outRatioP = BinaryOp.SecondArg.make(g, outRatio)
+    outRatioP.pow((g / inLow).log / (inHigh / inLow).log) * outLow
+  }
 
   /** Enables operators for an assumed complex signal. */
   def complex: GEComplexOps = new GEComplexOps(g)
