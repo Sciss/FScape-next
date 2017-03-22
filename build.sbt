@@ -33,8 +33,8 @@ lazy val akkaVersion            = "2.4.17"
 
 // ---- lucre dependencies ----
 
-lazy val soundProcessesVersion  = "3.11.0"
-lazy val lucreVersion           = "3.3.2"
+lazy val soundProcessesVersion  = "3.11.1-SNAPSHOT"
+lazy val lucreVersion           = "3.3.3"
 lazy val fileCacheVersion       = "0.3.4"
 
 // ---- test dependencies ----

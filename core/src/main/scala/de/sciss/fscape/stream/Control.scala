@@ -238,7 +238,10 @@ object Control {
             // XXX TODO --- check for error other than `Cancelled` --- how?
             if (nodes.isEmpty) {
               statusP.tryComplete(Success(()))
-              context.stop(self)
+              sync.synchronized {
+                context.stop(self)
+                _actor = null
+              }
               if (config.terminateActors) config.actorSystem.terminate()
             }
           } else {
