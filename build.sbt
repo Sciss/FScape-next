@@ -2,7 +2,7 @@ lazy val baseName   = "FScape"
 lazy val baseNameL  = baseName.toLowerCase
 lazy val githubRepo = "FScape-next"
 
-lazy val projectVersion = "2.6.2"
+lazy val projectVersion = "2.6.3"
 lazy val mimaVersion    = "2.6.0"
 
 lazy val baseDescription = "An audio rendering library"

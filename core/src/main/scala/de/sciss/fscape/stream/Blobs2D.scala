@@ -376,19 +376,20 @@ object Blobs2D {
         Util.copy(_bufIn, inOff, _bufOut, writeToWinOff, chunk)
 
       } else {
-        var remain  = chunk
-        var _inOff  = inOff
-        var _outOff = writeToWinOff
-        val _width  = widthIn
-        val add     = _pad * (widthPad + 1)   // pad lines + pad columns
+        var remain    = chunk
+        var _inOff    = inOff
+        val _width    = widthIn
+        val _widthPad = widthPad
+        var x         = writeToWinOff % _width
+        val y         = writeToWinOff / _width
+        var _outOff   = (y + _pad) * _widthPad + _pad   // beginning of "inner line"
         while (remain > 0) {
-          val x   = _outOff % _width
-//          val y   = _outOff / _width
           val num = math.min(_width - x, remain)
-          Util.copy(_bufIn, _inOff, _bufOut, _outOff + add, num)
+          Util.copy(_bufIn, _inOff, _bufOut, _outOff + x, num)
           _inOff  += num
-          _outOff += num
           remain  -= num
+          x        = 0
+          _outOff += _widthPad
         }
       }
     }
@@ -700,8 +701,8 @@ object Blobs2D {
 
       var _numBlobs   = 0
       val _blobs      = blobs
-      val _pad        = pad
-      val _pad2       = _pad * 2
+//      val _pad        = pad
+//      val _pad2       = _pad * 2
       val _width      = widthPad
       val _widthM     = _width - 1
       val _height     = heightPad
