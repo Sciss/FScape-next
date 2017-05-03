@@ -96,9 +96,9 @@ object MorassTest extends App {
       //   /  \    /          \
       //  /    \  /            \
       //
-      val len  = (synthesizeWinAmt * inputWinSize + 0.5).toInt
-      val lenH = len >> 1
-      val arr = GenWindow(size = len, shape = synthesizeWinType)
+//      val len  = (synthesizeWinAmt * inputWinSize + 0.5).toInt
+//      val lenH = len >> 1
+//      val arr = GenWindow(size = len, shape = synthesizeWinType)
       // GenWindow.Rectangle.fill(arr, lenH, inputWinSize - len)
       ???
     }

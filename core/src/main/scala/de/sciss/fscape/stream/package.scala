@@ -17,8 +17,6 @@ import akka.NotUsed
 import akka.stream.scaladsl.{FlowOps, GraphDSL}
 import akka.stream.{Inlet, Outlet}
 
-import scala.language.implicitConversions
-
 package object stream {
   type Signal[A] = FlowOps[A, NotUsed]
 

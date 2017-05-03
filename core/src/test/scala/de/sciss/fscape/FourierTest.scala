@@ -67,7 +67,7 @@ object FourierTest extends App {
     val complex   = ZipWindow(in, DC(0.0))
     val fftSize   = sz // inSpec.numFrames.toInt
     val fourier   = Fourier(in = complex, size = fftSize)
-    val norm      = complexNormalize(fourier)
+    /* val norm = */ complexNormalize(fourier)
 //    val unzip     = UnzipWindow(in = norm)
 //    val re        = ChannelProxy(unzip, 0)
 //    val im        = ChannelProxy(unzip, 1)

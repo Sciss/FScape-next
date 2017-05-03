@@ -367,7 +367,7 @@ object UGenGraphBuilder {
   // -----------------
 
   private final class BuilderImpl[S <: Sys[S]](context: Context[S], f: FScape[S])
-                                              (implicit tx: S#Tx, cursor: stm.Cursor[S],
+                                              (implicit tx: S#Tx, // cursor: stm.Cursor[S],
                                                workspace: WorkspaceHandle[S])
     extends UGenGraph.BuilderLike with UGenGraphBuilder with IO[S] { builder =>
 
@@ -480,7 +480,7 @@ object UGenGraphBuilder {
 
   private final class OutputRefImpl[S <: Sys[S]](val reader: Output.Reader,
                                                  outputH: stm.Source[S#Tx, OutputImpl[S]])
-                                                (implicit cursor: stm.Cursor[S], workspace: WorkspaceHandle[S])
+                                                (implicit /* cursor: stm.Cursor[S], */ workspace: WorkspaceHandle[S])
     extends OutputResult[S] {
 
     @volatile private[this] var _writer: Output.Writer = _

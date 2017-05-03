@@ -15,11 +15,10 @@ package de.sciss.fscape
 package lucre
 
 import de.sciss.fscape.lucre.FScape.{Output, Rendering}
-import de.sciss.fscape.lucre.impl.RenderingImpl
+import de.sciss.fscape.lucre.impl.{OutputGenViewImpl => Impl}
 import de.sciss.fscape.stream.Control
 import de.sciss.lucre.stm.Sys
 import de.sciss.synth.proc.{GenContext, GenView}
-import impl.{OutputGenViewImpl => Impl}
 
 object OutputGenView {
   def apply[S <: Sys[S]](config: Control.Config, output: Output[S], rendering: Rendering[S])

@@ -7,7 +7,7 @@ import de.sciss.lucre.expr.IntObj
 import de.sciss.lucre.synth.InMemory
 import de.sciss.synth
 import de.sciss.synth.SynthGraph
-import de.sciss.synth.proc.{AudioCue, AuralSystem, GenContext, GenView, Proc, Transport, WorkspaceHandle}
+import de.sciss.synth.proc.{AudioCue, AuralSystem, GenView, Proc, Transport, WorkspaceHandle}
 
 object FeedIntoAuralProcTest extends App {
   implicit val cursor = InMemory()
@@ -37,11 +37,11 @@ object FeedIntoAuralProcTest extends App {
     f.graph() = gF
 
     import WorkspaceHandle.Implicits.dummy
-    implicit val genCtx = GenContext[S]
+//    implicit val genCtx = GenContext[S]
 
     val p = Proc[S]
     val gP = SynthGraph {
-      import synth.{ugen, proc, doubleNumberWrapper}
+      import synth.{doubleNumberWrapper, proc, ugen}
       import proc.graph._
       import Ops._
       import ugen.{DiskIn => _, _}

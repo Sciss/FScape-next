@@ -35,8 +35,8 @@ class SerializationSpec extends fixture.FlatSpec with Matchers {
         MkDouble("out-1", value)
         MkDouble("out-2", value + 1)
       }
-      val out1 = f.outputs.add("out-1", DoubleObj)
-      val out2 = f.outputs.add("out-2", DoubleObj)
+      /* val out1 = */ f.outputs.add("out-1", DoubleObj)
+      /* val out2 = */ f.outputs.add("out-2", DoubleObj)
       f.graph() = g
       tx.newHandle(f) -> g.sources.size
     }

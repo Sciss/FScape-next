@@ -61,8 +61,8 @@ object DoubleOutputTest extends App {
       view
     }
 
-    val view1 = mkView(out1, idx = 0)
-    val view2 = mkView(out2, idx = 1)
+    /* val view1 = */ mkView(out1, idx = 0)
+    /* val view2 = */ mkView(out2, idx = 1)
 
     new Thread {
       override def run(): Unit = Thread.sleep(Long.MaxValue)

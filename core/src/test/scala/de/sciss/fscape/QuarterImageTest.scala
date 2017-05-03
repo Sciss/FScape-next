@@ -14,7 +14,7 @@ object QuarterImageTest extends App {
     val baseDir   = userHome / "Documents" / "projects" / "Eisenerz" / "image_work6"
     val template  = "frame-%d.jpg"
     val idxRange  = (276 to 628) .take(12) // .map(x => x: GE)
-    val numInput  = idxRange.size
+//    val numInput  = idxRange.size
     val width     = 3280
     val height    = 2464
     val img       = ImageFileIn(file = baseDir / template.format(idxRange.head), numChannels = 3)

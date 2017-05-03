@@ -16,8 +16,8 @@ object AffineTest2 {
     import config._
     val dir       = userHome / "Documents" / "projects" / "Imperfect" / "scans" /"notebook2016"
     val fIn1      = dir / "universe-test1q.png"
-    val fIn2      = dir / "universe-test2q.png"
-    val fFltIn    = dir / s"hp5-fft2d-$kernel.aif"
+//    val fIn2      = dir / "universe-test2q.png"
+//    val fFltIn    = dir / s"hp5-fft2d-$kernel.aif"
     val fOut      = userHome / "Documents" / "temp" /"test.png"
 
 //    if (fOut.exists() && fOut.length() > 0) {
@@ -36,7 +36,7 @@ object AffineTest2 {
       val i1        = ChannelProxy(i10, 0)
 //      val i20       = ImageFileIn(fIn2, numChannels = 4)
 //      val i2        = ChannelProxy(i20, 0)
-      val frameSize = width * height
+//      val frameSize = width * height
 
 //      val fltIn     = AudioFileIn(fFltIn, numChannels = 1)  // already FFT'ed
 //      val kernelS   = kernel * kernel

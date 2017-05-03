@@ -19,23 +19,23 @@ object BinaryOpTest extends App {
     val height    = 2000
     val frameSize = width * height
 
-    def normalize(in: GE, headroom: GE = 1): GE = {
-      val max       = RunningMax(in.abs).last
-      val gain      = max.reciprocal * headroom
-      gain.ampdb.roundTo(0.01).poll(0, "gain [dB]")
-      // Plot1D(in, width * height)
-      // in.poll(1.0/32, label = "test")
-      val buf       = BufferDisk(in)
-      buf * gain
-    }
+//    def normalize(in: GE, headroom: GE = 1): GE = {
+//      val max       = RunningMax(in.abs).last
+//      val gain      = max.reciprocal * headroom
+//      gain.ampdb.roundTo(0.01).poll(0, "gain [dB]")
+//      // Plot1D(in, width * height)
+//      // in.poll(1.0/32, label = "test")
+//      val buf       = BufferDisk(in)
+//      buf * gain
+//    }
 
-    def extractBrightness(in: GE): GE = {
-      val r   = ChannelProxy(in, 0)
-      val g   = ChannelProxy(in, 1)
-      val b   = ChannelProxy(in, 2)
-      (0.299 * r.squared + 0.587 * g.squared + 0.114 * b.squared).sqrt
-      //        (r.squared * 0.299 + g.squared * 0.587 + b.squared * 0.114).sqrt
-    }
+//    def extractBrightness(in: GE): GE = {
+//      val r   = ChannelProxy(in, 0)
+//      val g   = ChannelProxy(in, 1)
+//      val b   = ChannelProxy(in, 2)
+//      (0.299 * r.squared + 0.587 * g.squared + 0.114 * b.squared).sqrt
+//      //        (r.squared * 0.299 + g.squared * 0.587 + b.squared * 0.114).sqrt
+//    }
 
 //    val in    = WhiteNoise(Seq.fill[GE](3)(0.5)) // .take(frameSize * 2)
 //    val bri   = ChannelProxy(in, 0) // extractBrightness(in)

@@ -31,3 +31,16 @@ final case class ZipWindow(a: GE, b: GE, size: GE = 1) extends UGenSource.Single
     stream.ZipWindow(a = a.toDouble, b = b.toDouble, size = size.toInt)
   }
 }
+
+final case class ZipWindowN(in: GE, size: GE = 1) extends UGenSource.SingleOut {
+  protected def makeUGens(implicit builder: UGenGraph.Builder): UGenInLike =
+    unwrap(this, size.expand +: in.expand.outputs)
+
+  protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
+    UGen.SingleOut(this, args)
+
+  private[fscape] def makeStream(args: Vec[StreamIn])(implicit builder: stream.Builder): StreamOut = {
+    val size +: in = args
+    stream.ZipWindowN(in = in.map(_.toDouble), size = size.toInt)
+  }
+}

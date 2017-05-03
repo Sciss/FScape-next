@@ -20,9 +20,9 @@ object BlobTest extends App {
       dup.poll(Metro(2), label)
     }
 
-    def printOne(sig: GE, label: String): Unit = {
-      sig.poll(0, label)
-    }
+//    def printOne(sig: GE, label: String): Unit = {
+//      sig.poll(0, label)
+//    }
 
     printAll(blobs.numBlobs   , "num-blobs   ")
     printAll(blobs.bounds     , "bounds      ")
