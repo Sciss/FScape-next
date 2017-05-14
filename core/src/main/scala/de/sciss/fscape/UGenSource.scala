@@ -99,6 +99,4 @@ sealed trait UGenSource[U, S] extends Lazy.Expander[U] {
   final def name: String = productPrefix
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): S
-
-  final protected def rewrap(args: Vec[UGenInLike], exp: Int)(implicit b: UGenGraph.Builder): U = ???
 }
