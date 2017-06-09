@@ -59,7 +59,7 @@ object EisenerzMedian {
       def blur(in: GE): GE = in // XXX TODO --- perhaps 2D-FFT-based convolution --- fltBlur.filter(in, null)
 
       // actually "negative delay"
-      def delayFrame(in: GE, n: Int = 1): GE = in.drop(frameSize * n)
+      def delayFrame(in: GE, n: Int): GE = in.drop(frameSize * n)
 
       def extractBrightness(in: GE): GE = {
         val r   = ChannelProxy(in, 0)

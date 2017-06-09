@@ -29,6 +29,13 @@ object Cache {
     res
   }
 
+  def createTempFile(): File = {
+    val c       = instance
+    val resExt0 = c.resourceExtension
+    val resExt  = if (resExt0.startsWith(".")) resExt0 else s".$resExt0"
+    java.io.File.createTempFile("fscape", resExt, c.folder)
+  }
+
   private[this] var _instance: Cache = _
 
   private[this] val sync = new AnyRef

@@ -41,9 +41,19 @@ object UGenGraphBuilder {
 
   def build[S <: Sys[S]](context: Context[S], f: FScape[S])(implicit tx: S#Tx, cursor: stm.Cursor[S],
                                                             workspace: WorkspaceHandle[S],
-                                                            ctrl: Control): State[S] = {
-    val b = new BuilderImpl(context, f)
-    var g0 = f.graph.value // graph
+                                                            ctrl: Control): State[S] =
+    buildOpt[S](context, Some(f), f.graph.value)
+
+  def build[S <: Sys[S]](context: Context[S], g: Graph)(implicit tx: S#Tx, cursor: stm.Cursor[S],
+                                                        workspace: WorkspaceHandle[S],
+                                                        ctrl: Control): State[S] =
+    buildOpt[S](context, None, g)
+
+  private def buildOpt[S <: Sys[S]](context: Context[S], fOpt: Option[FScape[S]], g: Graph)
+                                   (implicit tx: S#Tx, cursor: stm.Cursor[S], workspace: WorkspaceHandle[S],
+                                    ctrl: Control): State[S] = {
+    val b = new BuilderImpl(context, fOpt)
+    var g0 = g
     while (g0.nonEmpty) {
       g0 = Graph {
         g0.sources.foreach { source =>
@@ -366,7 +376,7 @@ object UGenGraphBuilder {
 
   // -----------------
 
-  private final class BuilderImpl[S <: Sys[S]](context: Context[S], f: FScape[S])
+  private final class BuilderImpl[S <: Sys[S]](context: Context[S], fOpt: Option[FScape[S]])
                                               (implicit tx: S#Tx, // cursor: stm.Cursor[S],
                                                workspace: WorkspaceHandle[S])
     extends UGenGraph.BuilderLike with UGenGraphBuilder with IO[S] { builder =>
@@ -391,7 +401,7 @@ object UGenGraphBuilder {
     }
 
     def requestOutput(reader: Output.Reader): Option[OutputRef] = {
-      val outOpt  = f.outputs.get(reader.key)
+      val outOpt  = fOpt.flatMap(_.outputs.get(reader.key))
       val res     = outOpt.collect {
         case out: OutputImpl[S] if out.valueType.typeID == reader.tpe.typeID =>
           val ref = new OutputRefImpl(reader, tx.newHandle(out))
@@ -504,9 +514,7 @@ object UGenGraphBuilder {
     }
 
     def createCacheFile(): File = {
-      val c       = Cache.instance
-      val resExt  = if (c.resourceExtension.startsWith(".")) c.resourceExtension else s".${c.resourceExtension}"
-      val res     = java.io.File.createTempFile("fscape", resExt, c.folder)
+      val res = Cache.createTempFile()
       cacheFilesRef.single.transform(res :: _)
       res
     }

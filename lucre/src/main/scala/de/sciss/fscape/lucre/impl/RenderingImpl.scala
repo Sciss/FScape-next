@@ -121,12 +121,9 @@ object RenderingImpl {
     }
   }
 
-  private type CacheKey = Long
+  type CacheKey = Long
 
-  private object CacheValue {
-//    private[this] val resourcesSer = ImmutableSerializer.list[File]
-//    private[this] val dataSer      = ImmutableSerializer.map[String, Array[Byte]]
-
+  object CacheValue {
     private[this] val COOKIE = 0x46734356   // "FsCV"
 
     implicit object serializer extends ImmutableSerializer[CacheValue] {
@@ -168,14 +165,14 @@ object RenderingImpl {
       }
     }
   }
-  private final class CacheValue(val resources: List[File], val data: Map[String, Array[Byte]])
+  final class CacheValue(val resources: List[File], val data: Map[String, Array[Byte]])
 
   private[this] lazy val producer: TxnProducer[CacheKey, CacheValue] = {
     val cacheCfg = filecache.Config[CacheKey, CacheValue]()
     val global   = Cache.instance
-    cacheCfg.accept           = { (key, value) => true }
-    cacheCfg.space            = { (key, value) => value.resources.map    (_.length()).sum }
-    cacheCfg.evict            = { (key, value) => value.resources.foreach(_.delete())     }
+    cacheCfg.accept           = { (_ /* key */, _ /* value */) => true }
+    cacheCfg.space            = { (_ /* key */, value) => value.resources.map    (_.length()).sum }
+    cacheCfg.evict            = { (_ /* key */, value) => value.resources.foreach(_.delete())     }
     cacheCfg.capacity         = global.capacity
     cacheCfg.executionContext = global.executionContext
     cacheCfg.extension        = global.extension
@@ -192,8 +189,8 @@ object RenderingImpl {
   private[this] val map = TMap.empty[CacheKey, Entry[CacheValue]]
 
   // mostly same as filecache.impl.TxnConsumerImpl.acquire
-  private def acquire[S <: Sys[S]](key: CacheKey)(source: => Future[CacheValue])
-                                  (implicit tx: S#Tx)      : Future[CacheValue] = {
+  def acquire[S <: Sys[S]](key: CacheKey)(source: => Future[CacheValue])
+                          (implicit tx: S#Tx)      : Future[CacheValue] = {
     import TxnLike.peer
     map.get(key).fold {
       val fut = producer.acquireWith(key)(source)
@@ -214,7 +211,7 @@ object RenderingImpl {
   }
 
   // mostly same as filecache.impl.TxnConsumerImpl.release
-  private def release[S <: Sys[S]](key: CacheKey)(implicit tx: S#Tx): Boolean = {
+  def release[S <: Sys[S]](key: CacheKey)(implicit tx: S#Tx): Boolean = {
     import TxnLike.peer
     val e0    = map.get(key).getOrElse(throw new IllegalStateException(s"Key $key was not in use"))
     val e1    = e0.dec
@@ -327,9 +324,3 @@ object RenderingImpl {
     private def nada: Option[Try[Nothing]] = Some(Failure(MissingIn(rejected.head)))
   }
 }
-//
-//trait FScapeView[S <: Sys[S]] extends Observable[S#Tx, GenView.State] with Disposable[S#Tx] {
-//  def state(implicit tx: S#Tx): GenView.State
-//
-//  def result(output: OutputGenView[S])(implicit tx: S#Tx): Option[Try[Obj[S]]]
-//}
