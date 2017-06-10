@@ -50,7 +50,7 @@ object UGenGraphBuilder {
     buildOpt[S](context, None, g)
 
   private def buildOpt[S <: Sys[S]](context: Context[S], fOpt: Option[FScape[S]], g: Graph)
-                                   (implicit tx: S#Tx, cursor: stm.Cursor[S], workspace: WorkspaceHandle[S],
+                                   (implicit tx: S#Tx, workspace: WorkspaceHandle[S],
                                     ctrl: Control): State[S] = {
     val b = new BuilderImpl(context, fOpt)
     var g0 = g

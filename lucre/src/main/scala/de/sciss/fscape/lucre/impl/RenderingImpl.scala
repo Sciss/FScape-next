@@ -34,7 +34,7 @@ import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
 object RenderingImpl {
-  /** Creates a view with the default `UGenGraphBuilder.Context`.
+  /** Creates a rendering with the default `UGenGraphBuilder.Context`.
     *
     * @param fscape     the fscape object whose graph is to be rendered
     * @param config     configuration for the stream control
@@ -47,12 +47,27 @@ object RenderingImpl {
     apply(fscape, ugbCtx, config, force = force)
   }
 
-  /** Creates a view with the custom `UGenGraphBuilder.Context`.
+  /** Creates a rendering with the custom `UGenGraphBuilder.Context`.
+    *
+    * @param g          the graph that is to be rendered
+    * @param ugbContext the graph builder context that responds to input requests
+    * @param config     configuration for the stream control
+    */
+  def apply[S <: Sys[S]](g: Graph, ugbContext: UGenGraphBuilder.Context[S], config: Control.Config)
+                        (implicit tx: S#Tx, context: GenContext[S]): Rendering[S] = {
+    import context.{cursor, workspaceHandle}
+    implicit val control: Control = Control(config)
+    val uState = UGenGraphBuilder.build(ugbContext, g)
+    withState(uState, force = true)
+  }
+
+  /** Creates a rendering with the custom `UGenGraphBuilder.Context`.
     *
     * @param fscape     the fscape object whose graph is to be rendered
     * @param ugbContext the graph builder context that responds to input requests
     * @param config     configuration for the stream control
     * @param force      if `true`, always renders even if there are no
+    *                   outputs.
     */
   def apply[S <: Sys[S]](fscape: FScape[S], ugbContext: UGenGraphBuilder.Context[S], config: Control.Config,
                          force: Boolean)
@@ -60,6 +75,11 @@ object RenderingImpl {
     import context.{cursor, workspaceHandle}
     implicit val control: Control = Control(config)
     val uState = UGenGraphBuilder.build(ugbContext, fscape)
+    withState(uState, force = force)
+  }
+
+  private def withState[S <: Sys[S]](uState: UGenGraphBuilder.State[S], force: Boolean)
+                                    (implicit tx: S#Tx, control: Control, cursor: stm.Cursor[S]): Rendering[S] =
     uState match {
       case res: UGenGraphBuilder.Complete[S] =>
         val isEmpty = res.outputs.isEmpty
@@ -119,7 +139,6 @@ object RenderingImpl {
       case res =>
         new FailedImpl[S](control, res.rejectedInputs)
     }
-  }
 
   type CacheKey = Long
 
