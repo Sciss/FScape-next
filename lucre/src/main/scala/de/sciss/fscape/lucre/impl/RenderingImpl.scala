@@ -232,16 +232,22 @@ object RenderingImpl {
   // mostly same as filecache.impl.TxnConsumerImpl.release
   def release[S <: Sys[S]](key: CacheKey)(implicit tx: S#Tx): Boolean = {
     import TxnLike.peer
-    val e0    = map.get(key).getOrElse(throw new IllegalStateException(s"Key $key was not in use"))
-    val e1    = e0.dec
-    val last  = e1.useCount == 0
-    if (last) {
-      map.remove(key)
-      producer.release(key)
-    } else {
-      map.put(key, e1)
+    map.get(key) match {
+      case Some(e0) =>
+        val e1    = e0.dec
+        val last  = e1.useCount == 0
+        if (last) {
+          map.remove(key)
+          producer.release(key)
+        } else {
+          map.put(key, e1)
+        }
+        last
+      case None =>
+        // throw new IllegalStateException(s"Key $key was not in use")
+        Console.err.println(s"Warning: fscape.Rendering: Key $key was not in use.")
+        false
     }
-    last
   }
 
   // FScape is rendering
