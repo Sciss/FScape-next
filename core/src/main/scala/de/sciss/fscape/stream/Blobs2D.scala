@@ -181,7 +181,7 @@ object Blobs2D {
     protected def writeOuts(ignore: Int): Unit = throw new UnsupportedOperationException
 
     private def writeOuts0(): Unit = {
-      if (outOff0 > 0) {
+      if (outOff0 > 0 && isAvailable(shape.out0)) {
         bufOut0.size = outOff0
         push(shape.out0, bufOut0)
       } else {
@@ -192,7 +192,7 @@ object Blobs2D {
     }
 
     private def writeOuts1(): Unit = {
-      if (outOff1 > 0) {
+      if (outOff1 > 0 && isAvailable(shape.out1)) {
         bufOut1.size = outOff1
         push(shape.out1, bufOut1)
       } else {
@@ -203,7 +203,7 @@ object Blobs2D {
     }
 
     private def writeOuts2(): Unit = {
-      if (outOff2 > 0) {
+      if (outOff2 > 0 && isAvailable(shape.out2)) {
         bufOut2.size = outOff2
         push(shape.out2, bufOut2)
       } else {
@@ -214,7 +214,7 @@ object Blobs2D {
     }
 
     private def writeOuts3(): Unit = {
-      if (outOff3 > 0) {
+      if (outOff3 > 0 && isAvailable(shape.out3)) {
         bufOut3.size = outOff3
         push(shape.out3, bufOut3)
       } else {

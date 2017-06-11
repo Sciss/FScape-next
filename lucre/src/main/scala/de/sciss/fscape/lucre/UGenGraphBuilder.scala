@@ -14,23 +14,21 @@
 package de.sciss.fscape
 package lucre
 
-import java.util
-
 import de.sciss.file.File
 import de.sciss.fscape.graph.impl.GESeq
 import de.sciss.fscape.graph.{ArithmSeq, BinaryOp, Constant, ConstantD, ConstantI, ConstantL, GeomSeq, UnaryOp}
 import de.sciss.fscape.lucre.FScape.Output
 import de.sciss.fscape.lucre.UGenGraphBuilder.OutputRef
 import de.sciss.fscape.lucre.graph.Attribute
-import de.sciss.fscape.lucre.impl.OutputImpl
+import de.sciss.fscape.lucre.impl.{AbstractOutputRef, AbstractUGenGraphBuilder, OutputImpl}
 import de.sciss.fscape.stream.Control
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.Sys
-import de.sciss.serial.{DataInput, DataOutput}
+import de.sciss.serial.DataInput
 import de.sciss.synth.UGenSource.Vec
 import de.sciss.synth.proc.WorkspaceHandle
 
-import scala.concurrent.stm.Ref
+import scala.collection.breakOut
 import scala.util.control.ControlThrowable
 
 object UGenGraphBuilder {
@@ -41,28 +39,23 @@ object UGenGraphBuilder {
 
   def build[S <: Sys[S]](context: Context[S], f: FScape[S])(implicit tx: S#Tx, cursor: stm.Cursor[S],
                                                             workspace: WorkspaceHandle[S],
-                                                            ctrl: Control): State[S] =
-    buildOpt[S](context, Some(f), f.graph.value)
-
-  def build[S <: Sys[S]](context: Context[S], g: Graph)(implicit tx: S#Tx, cursor: stm.Cursor[S],
-                                                        workspace: WorkspaceHandle[S],
-                                                        ctrl: Control): State[S] =
-    buildOpt[S](context, None, g)
-
-  private def buildOpt[S <: Sys[S]](context: Context[S], fOpt: Option[FScape[S]], g: Graph)
-                                   (implicit tx: S#Tx, workspace: WorkspaceHandle[S],
-                                    ctrl: Control): State[S] = {
-    val b = new BuilderImpl(context, fOpt)
-    var g0 = g
-    while (g0.nonEmpty) {
-      g0 = Graph {
-        g0.sources.foreach { source =>
-          source.force(b)
-        }
-      }
-    }
-    b.tryBuild()
+                                                            ctrl: Control): State[S] = {
+    val b = new BuilderImpl(context, f)
+    val g = f.graph.value
+    b.tryBuild(g)
   }
+
+//  def build[S <: Sys[S]](context: Context[S], g: Graph)(implicit tx: S#Tx, cursor: stm.Cursor[S],
+//                                                        workspace: WorkspaceHandle[S],
+//                                                        ctrl: Control): State[S] =
+//    buildOpt[S](context, None, g)
+//
+//  private def buildOpt[S <: Sys[S]](context: Context[S], fOpt: Option[FScape[S]], g: Graph)
+//                                   (implicit tx: S#Tx, workspace: WorkspaceHandle[S],
+//                                    ctrl: Control): State[S] = {
+//    val b = new BuilderImpl(context, fOpt)
+//    b.tryBuild(g)
+//  }
 
   /** A pure marker trait to rule out some type errors. */
   trait Key
@@ -150,6 +143,23 @@ object UGenGraphBuilder {
     def rejectedInputs: Set[String]
 
     def isComplete: Boolean
+
+    override def toString: String = {
+      val acceptedS = {
+        val keys: List[String] = acceptedInputs.keys.map(_.toString)(breakOut)
+        keys.sorted.mkString(s"accepted: [", ", ", "], ")
+      }
+      val rejectedS = if (isComplete) "" else {
+        val keys: List[String] = rejectedInputs.map(_.toString)(breakOut)
+        keys.sorted.mkString(s"rejected: [", ", ", "], ")
+      }
+      val outputsS = {
+        val keys = outputs.map(_.key).sorted
+        keys.mkString(s"outputs: [", ", ", "]")
+      }
+      val prefix = if (isComplete) "Complete" else "Incomplete"
+      s"$prefix($acceptedS$rejectedS$outputsS)"
+    }
   }
 
   trait Incomplete[S <: Sys[S]] extends State[S] {
@@ -376,150 +386,30 @@ object UGenGraphBuilder {
 
   // -----------------
 
-  private final class BuilderImpl[S <: Sys[S]](context: Context[S], fOpt: Option[FScape[S]])
+  private final class BuilderImpl[S <: Sys[S]](protected val context: Context[S], fscape: FScape[S])
                                               (implicit tx: S#Tx, // cursor: stm.Cursor[S],
                                                workspace: WorkspaceHandle[S])
-    extends UGenGraph.BuilderLike with UGenGraphBuilder with IO[S] { builder =>
+    extends AbstractUGenGraphBuilder[S] { builder =>
 
-//    private var acceptedInputs: Set[String]           = Set.empty
-    private[this] var _acceptedInputs   = Map.empty[Key, Map[Input, Input#Value]]
-    private[this] var _outputs          = List.empty[OutputResult[S]] // in reverse order here
-
-    def acceptedInputs: Map[Key, Map[Input, Input#Value]] = _acceptedInputs
-    def outputs       : List[OutputResult[S]]             = _outputs
-
-    def requestInput(req: Input): req.Value = {
-      // we pass in `this` and not `in`, because that way the context
-      // can find accepted inputs that have been added during the current build cycle!
-      val res   = context.requestInput[req.Value](req, this)(tx)  // IntelliJ highlight bug
-      val key   = req.key
-      val map0  = _acceptedInputs.getOrElse(key, Map.empty)
-      val map1  = map0 + (req -> res)
-      _acceptedInputs += key -> map1
-//      logAural(s"acceptedInputs += ${req.key} -> $res")
-      res
-    }
-
-    def requestOutput(reader: Output.Reader): Option[OutputRef] = {
-      val outOpt  = fOpt.flatMap(_.outputs.get(reader.key))
-      val res     = outOpt.collect {
+    protected def requestOutputImpl(reader: Output.Reader): Option[OutputResult[S]] = {
+      val outOpt = fscape.outputs.get(reader.key)
+      outOpt.collect {
         case out: OutputImpl[S] if out.valueType.typeID == reader.tpe.typeID =>
-          val ref = new OutputRefImpl(reader, tx.newHandle(out))
-          _outputs ::= ref
-          ref
+          new OutputRefImpl(reader, tx.newHandle(out))
       }
-      res
     }
-
-    def tryBuild()(implicit ctrl: Control): State[S] =
-      try {
-        val iUGens = UGenGraph.indexUGens(ugens)
-        new Complete[S] {
-          private def calcStructure(): Long = {
-            // val t1 = System.currentTimeMillis()
-            var idx = 0
-            val out = DataOutput()
-            out.writeInt(iUGens.size)
-            iUGens.foreach { iu =>
-              assert(iu.index == -1)
-              iu.index = idx
-              val ugen = iu.ugen
-              out.writeUTF(ugen.name)
-              val ins  = iu.inputIndices
-              out.writeShort(ugen.inputs.size)
-              ins.foreach {
-                // UGenIn = [UGenProxy = [UGen.SingleOut, UGenOutProxy], Constant = [ConstantI, ConstantD, ConstantL]]
-                case ci: UGenGraph.ConstantIndex =>
-                  ci.peer match {
-                    case ConstantI(v) =>
-                      out.writeByte(1)
-                      out.writeInt(v)
-                    case ConstantD(v) =>
-                      out.writeByte(2)
-                      out.writeDouble(v)
-                    case ConstantL(v) =>
-                      out.writeByte(3)
-                      out.writeLong(v)
-                  }
-
-                case pi: UGenGraph.UGenProxyIndex =>
-                  val refIdx = pi.iu.index
-                  assert(refIdx >= 0)
-                  out.writeByte(0)
-                  out.writeInt(refIdx)
-                  out.writeShort(pi.outIdx)
-              }
-
-              val aux = ugen.aux
-              if (aux.isEmpty) {
-                out.writeShort(0)
-              } else {
-                out.writeShort(aux.size)
-                aux.foreach(_.write(out))
-              }
-
-              idx += 1
-            }
-
-            val bytes = out.toByteArray
-            val res = util.Arrays.hashCode(bytes) & 0x00000000FFFFFFFFL // XXX TODO use real 64-bit or 128-bit hash
-            // val t2 = System.currentTimeMillis()
-            // println(s"calcStructure took ${t2 - t1}ms")
-            res
-          }
-
-          private def calcStream(): UGenGraph = {
-            val rg = UGenGraph.buildStream(iUGens)
-            UGenGraph(rg)
-          }
-
-          lazy val structure  : Long                              = calcStructure()
-          lazy val graph      : UGenGraph                         = calcStream()
-          val acceptedInputs  : Map[Key, Map[Input, Input#Value]] = builder._acceptedInputs
-          val outputs         : List[OutputResult[S]]             = builder._outputs.reverse
-        }
-      } catch {
-        case MissingIn(key) =>
-          new Incomplete[S] {
-            val rejectedInputs: Set[String]                       = Set(key)
-            val acceptedInputs: Map[Key, Map[Input, Input#Value]] = builder._acceptedInputs
-            val outputs       : List[OutputResult[S]]             = builder._outputs.reverse
-          }
-      }
   }
 
   private final class OutputRefImpl[S <: Sys[S]](val reader: Output.Reader,
                                                  outputH: stm.Source[S#Tx, OutputImpl[S]])
-                                                (implicit /* cursor: stm.Cursor[S], */ workspace: WorkspaceHandle[S])
-    extends OutputResult[S] {
-
-    @volatile private[this] var _writer: Output.Writer = _
-    private[this] val cacheFilesRef = Ref(List.empty[File]) // TMap.empty[String, File] // Ref(List.empty[File])
-
-    def key: String = reader.key
-
-    def complete(w: Output.Writer): scala.Unit = _writer = w
-
-    def hasWriter: Boolean = _writer != null
-
-    def writer: Output.Writer = {
-      if (_writer == null) throw new IllegalStateException("Output was not provided")
-      _writer
-    }
+                                                (implicit workspace: WorkspaceHandle[S])
+    extends AbstractOutputRef[S] {
 
     def updateValue(in: DataInput)(implicit tx: S#Tx): scala.Unit = {
       val value     = reader.readOutput[S](in)
       val output    = outputH()
       output.value_=(Some(value))
     }
-
-    def createCacheFile(): File = {
-      val res = Cache.createTempFile()
-      cacheFilesRef.single.transform(res :: _)
-      res
-    }
-
-    def cacheFiles: List[File] = cacheFilesRef.single.get
   }
 }
 trait UGenGraphBuilder extends UGenGraph.Builder {

@@ -47,19 +47,19 @@ object RenderingImpl {
     apply(fscape, ugbCtx, config, force = force)
   }
 
-  /** Creates a rendering with the custom `UGenGraphBuilder.Context`.
-    *
-    * @param g          the graph that is to be rendered
-    * @param ugbContext the graph builder context that responds to input requests
-    * @param config     configuration for the stream control
-    */
-  def apply[S <: Sys[S]](g: Graph, ugbContext: UGenGraphBuilder.Context[S], config: Control.Config)
-                        (implicit tx: S#Tx, context: GenContext[S]): Rendering[S] = {
-    import context.{cursor, workspaceHandle}
-    implicit val control: Control = Control(config)
-    val uState = UGenGraphBuilder.build(ugbContext, g)
-    withState(uState, force = true)
-  }
+//  /** Creates a rendering with the custom `UGenGraphBuilder.Context`.
+//    *
+//    * @param g          the graph that is to be rendered
+//    * @param ugbContext the graph builder context that responds to input requests
+//    * @param config     configuration for the stream control
+//    */
+//  def apply[S <: Sys[S]](g: Graph, ugbContext: UGenGraphBuilder.Context[S], config: Control.Config)
+//                        (implicit tx: S#Tx, context: GenContext[S]): Rendering[S] = {
+//    import context.{cursor, workspaceHandle}
+//    implicit val control: Control = Control(config)
+//    val uState = UGenGraphBuilder.build(ugbContext, g)
+//    withState(uState, force = true)
+//  }
 
   /** Creates a rendering with the custom `UGenGraphBuilder.Context`.
     *
@@ -78,8 +78,15 @@ object RenderingImpl {
     withState(uState, force = force)
   }
 
-  private def withState[S <: Sys[S]](uState: UGenGraphBuilder.State[S], force: Boolean)
-                                    (implicit tx: S#Tx, control: Control, cursor: stm.Cursor[S]): Rendering[S] =
+  /** Turns a built UGen graph into a rendering instance.
+    *
+    * @param uState   the result of building, either complete or incomplete
+    * @param force    if `true` forces rendering of graphs that do not produce outputs
+    *
+    * @return a rendering, either cached, or newly started, or directly aborted if the graph was incomplete
+    */
+  def withState[S <: Sys[S]](uState: UGenGraphBuilder.State[S], force: Boolean)
+                            (implicit tx: S#Tx, control: Control, cursor: stm.Cursor[S]): Rendering[S] =
     uState match {
       case res: UGenGraphBuilder.Complete[S] =>
         val isEmpty = res.outputs.isEmpty
