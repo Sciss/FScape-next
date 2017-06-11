@@ -78,6 +78,10 @@ object RenderingImpl {
     withState(uState, force = force)
   }
 
+  trait WithState[S <: Sys[S]] extends Rendering[S] {
+    def cacheResult(implicit tx: S#Tx): Option[Try[CacheValue]]
+  }
+
   /** Turns a built UGen graph into a rendering instance.
     *
     * @param uState   the result of building, either complete or incomplete
@@ -86,7 +90,7 @@ object RenderingImpl {
     * @return a rendering, either cached, or newly started, or directly aborted if the graph was incomplete
     */
   def withState[S <: Sys[S]](uState: UGenGraphBuilder.State[S], force: Boolean)
-                            (implicit tx: S#Tx, control: Control, cursor: stm.Cursor[S]): Rendering[S] =
+                            (implicit tx: S#Tx, control: Control, cursor: stm.Cursor[S]): WithState[S] =
     uState match {
       case res: UGenGraphBuilder.Complete[S] =>
         val isEmpty = res.outputs.isEmpty
@@ -252,7 +256,9 @@ object RenderingImpl {
         last
       case None =>
         // throw new IllegalStateException(s"Key $key was not in use")
-        Console.err.println(s"Warning: fscape.Rendering: Key $key was not in use.")
+        tx.afterCommit {
+          Console.err.println(s"Warning: fscape.Rendering: Key $key was not in use.")
+        }
         false
     }
   }
@@ -268,6 +274,8 @@ object RenderingImpl {
     private[this] val _result   = Ref[Option[Try[CacheValue]]](fut.value)
 
     def result(implicit tx: S#Tx): Option[Try[Unit]] = _result.get(tx.peer).map(_.map(_ => ()))
+
+    def cacheResult(implicit tx: S#Tx): Option[Try[CacheValue]] = _result.get(tx.peer)
 
     def outputResult(outputView: OutputGenView[S])(implicit tx: S#Tx): Option[Try[Obj[S]]] = {
       _result.get(tx.peer) match {
@@ -321,7 +329,7 @@ object RenderingImpl {
       }
   }
 
-  private sealed trait Basic[S <: Sys[S]] extends Rendering[S] {
+  private sealed trait Basic[S <: Sys[S]] extends WithState[S] {
     def reactNow(fun: S#Tx => State => Unit)(implicit tx: S#Tx): Disposable[S#Tx] = {
       val res = react(fun)
       fun(tx)(state)
@@ -345,6 +353,9 @@ object RenderingImpl {
     def result(implicit tx: S#Tx): Option[Try[Unit]] = Some(Success(()))
 
     def outputResult(output: OutputGenView[S])(implicit tx: S#Tx): Option[Try[Obj[S]]] = None
+
+    def cacheResult(implicit tx: S#Tx): Option[Try[CacheValue]] =
+      Some(Success(new CacheValue(Nil, Map.empty)))
   }
 
   // FScape failed early (e.g. graph inputs incomplete)
@@ -354,5 +365,7 @@ object RenderingImpl {
     def outputResult(output: OutputGenView[S])(implicit tx: S#Tx): Option[Try[Obj[S]]] = nada
 
     private def nada: Option[Try[Nothing]] = Some(Failure(MissingIn(rejected.head)))
+
+    def cacheResult(implicit tx: S#Tx): Option[Try[CacheValue]] = nada
   }
 }
