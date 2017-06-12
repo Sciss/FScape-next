@@ -206,7 +206,31 @@ object FScape extends Obj.Type {
     def remove(key: String)(implicit tx: S#Tx): Boolean
   }
 
-  def genViewFactory(config: Control.Config = Control.Config()): GenView.Factory = Impl.genViewFactory(config)
+  def genViewFactory(config: Control.Config = defaultConfig): GenView.Factory = Impl.genViewFactory(config)
+
+  @volatile
+  private[this] var _defaultConfig: Control.Config = _
+
+  private lazy val _lazyDefaultConfig: Control.Config = {
+    val b             = Control.Config()
+    b.useAsync        = false
+    b.terminateActors = false
+    // b.actorSystem = b.actorSystem
+    b
+  }
+
+  /** There is currently a problem with building `Config().build` multiple times,
+    * in that we create new actor systems and materializers that will not be shut down,
+    * unless an actual rendering is performed. As a work around, use this single
+    * instance which will reuse one and the same actor system.
+    */
+  def defaultConfig: Control.Config = {
+    if (_defaultConfig == null) _defaultConfig = _lazyDefaultConfig
+    _defaultConfig
+  }
+
+  def defaultConfig_=(value: Control.Config): Unit =
+    _defaultConfig = value
 }
 
 /** The `FScape` trait is the basic entity representing a sound process. */
@@ -216,6 +240,6 @@ trait FScape[S <: Sys[S]] extends Obj[S] with Publisher[S, FScape.Update[S]] {
 
   def outputs: FScape.Outputs[S]
 
-  def run(config: Control.Config = Control.Config())
+  def run(config: Control.Config = FScape.defaultConfig)
          (implicit tx: S#Tx, context: GenContext[S]): FScape.Rendering[S]
 }

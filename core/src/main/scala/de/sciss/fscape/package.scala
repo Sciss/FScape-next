@@ -29,22 +29,16 @@ package object fscape {
 
   private lazy val logHeader = new SimpleDateFormat("[d MMM yyyy, HH:mm''ss.SSS] 'fscape' - ", Locale.US)
 
-  var showGraphLog  = false
-  var showStreamLog = false
-
-//  @elidable(CONFIG) private[fscape] def logStream(what: => String): Unit =
-//    if (showStreamLog) Console.out.println(s"${logHeader.format(new Date())}stream $what")
+  var showGraphLog    = false
+  var showStreamLog   = false
+  var showControlLog  = false
 
   @elidable(CONFIG) private[fscape] def logStream(what: => String): Unit =
-    if (showStreamLog) {
-      val w = what
-      // if (w.contains("completeStage" /* onUpstreamFinish" */))
-      if (w.contains("completeStage() Take-L")) {
-        println("AQUI")
-      }
-      Console.out.println(s"${logHeader.format(new Date())}stream $w")
-    }
+    if (showStreamLog) Console.out.println(s"${logHeader.format(new Date())}stream $what")
 
   @elidable(CONFIG) private[fscape] def logGraph(what: => String): Unit =
     if (showGraphLog) Console.out.println(s"${logHeader.format(new Date())}graph $what")
+
+  @elidable(CONFIG) private[fscape] def logControl(what: => String): Unit =
+    if (showControlLog) Console.out.println(s"${logHeader.format(new Date())}control $what")
 }

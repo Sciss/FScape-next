@@ -16,7 +16,7 @@ package stream
 
 import java.util.concurrent.ConcurrentLinkedQueue
 
-import akka.actor.{Actor, ActorRef, ActorSystem, Props}
+import akka.actor.{Actor, ActorContext, ActorRef, ActorSystem, Props}
 import akka.stream.{ActorMaterializer, Materializer}
 import de.sciss.file.File
 
@@ -68,17 +68,34 @@ object Control {
     implicit def build(b: ConfigBuilder): Config = b.build
   }
 
-  final case class Config(blockSize: Int, nodeBufferSize: Int,
-                          useAsync: Boolean, seed: Long, actorSystem: ActorSystem,
-                          materializer0: Materializer,
-                          executionContext0: ExecutionContext,
-                          progressReporter: ProgressReporter,
-                          terminateActors: Boolean
+  final case class Config(blockSize         : Int,
+                          nodeBufferSize    : Int,
+                          useAsync          : Boolean,
+                          seed              : Long,
+                          actorSystem       : ActorSystem,
+                          materializer0     : Materializer,
+                          executionContext0 : ExecutionContext,
+                          progressReporter  : ProgressReporter,
+                          terminateActors   : Boolean
                          )
     extends ConfigLike {
 
     implicit def materializer    : Materializer     = materializer0
     implicit def executionContext: ExecutionContext = executionContext0
+
+    def toBuilder: ConfigBuilder = {
+      val b = new ConfigBuilder
+      b.blockSize         = blockSize
+      b.nodeBufferSize    = nodeBufferSize
+      b.useAsync          = useAsync
+      b.seed              = seed
+      b.actorSystem       = actorSystem
+      b.materializer      = materializer
+      b.executionContext  = executionContext
+      b.progressReporter  = progressReporter
+      b.terminateActors   = terminateActors
+      b
+    }
   }
 
   final class ConfigBuilder extends ConfigLike {
@@ -213,57 +230,67 @@ object Control {
       ugens
     }
 
+    private def actSetProgress(key: Int, frac: Double): Unit = {
+      val pf    = _progParts
+      val clip  = if (frac < 0.0) 0.0 else if (frac > 1.0) 1.0 else frac
+      if (pf(key) != clip) {
+        pf(key)     = clip
+        if (_progHasRep) {
+          var i     = 0
+          var total = 0.0
+          while (i < pf.length) {
+            total += pf(i)
+            i += 1
+          }
+          if (total > 1.0) total = 1.0
+          val report = ProgressReport(total = total, partLabel = _progLabels(key), part = clip)
+          config.progressReporter(report)
+        }
+      }
+    }
+
+    private def actRemoveNode(n: Node, context: ActorContext, self: ActorRef): Unit = {
+      if (nodes.remove(n)) {
+        // XXX TODO --- check for error other than `Cancelled` --- how?
+        if (nodes.isEmpty) {
+          logControl(s"${hashCode().toHexString} actRemoveNode complete")
+          statusP.tryComplete(Success(()))
+          sync.synchronized {
+            context.stop(self)
+            _actor = null
+          }
+          if (config.terminateActors) config.actorSystem.terminate()
+        }
+      } else {
+        Console.err.println(s"Warning: node $n was not registered with Control")
+      }
+    }
+
+    private def actCancel(): Unit = {
+      logControl(s"${hashCode().toHexString} actCancel")
+      val ex = Cancelled()
+      statusP.tryFailure(ex)
+      nodes.foreach { n =>
+        n.failAsync(ex)
+      }
+    }
+
     private final class ActorImpl extends Actor {
       def receive: Receive = {
-        case SetProgress(key, frac) =>
-          val pf    = _progParts
-          val clip  = if (frac < 0.0) 0.0 else if (frac > 1.0) 1.0 else frac
-          if (pf(key) != clip) {
-            pf(key)     = clip
-            if (_progHasRep) {
-              var i     = 0
-              var total = 0.0
-              while (i < pf.length) {
-                total += pf(i)
-                i += 1
-              }
-              if (total > 1.0) total = 1.0
-              val report = ProgressReport(total = total, partLabel = _progLabels(key), part = clip)
-              config.progressReporter(report)
-            }
-          }
-
-        case RemoveNode(n) =>
-          if (nodes.remove(n)) {
-            // XXX TODO --- check for error other than `Cancelled` --- how?
-            if (nodes.isEmpty) {
-              statusP.tryComplete(Success(()))
-              sync.synchronized {
-                context.stop(self)
-                _actor = null
-              }
-              if (config.terminateActors) config.actorSystem.terminate()
-            }
-          } else {
-            Console.err.println(s"Warning: node $n was not registered with Control")
-          }
-
-        case Cancel =>
-          val ex = Cancelled()
-          statusP.tryFailure(ex)
-          nodes.foreach { n =>
-            n.failAsync(ex)
-          }
+        case SetProgress(key, frac) => actSetProgress(key, frac)
+        case RemoveNode(n)          => actRemoveNode(n, context, self)
+        case Cancel                 => actCancel()
       }
     }
 
     private def mkActor(): Unit = sync.synchronized {
       require(_actor == null)
-      _actor          = config.actorSystem.actorOf(Props(new ActorImpl))
+      _actor = config.actorSystem.actorOf(Props(new ActorImpl))
     }
 
     final def runExpanded(ugens: UGenGraph): Unit = {
       val r = ugens.runnable
+      logControl(s"${hashCode().toHexString} runExpanded")
       mkActor()
       r.run()(config.materializer)
     }
