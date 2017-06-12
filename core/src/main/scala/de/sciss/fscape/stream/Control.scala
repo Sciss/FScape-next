@@ -190,7 +190,10 @@ object Control {
 
   final val NoReport: ProgressReporter = { _ => () }
 
-  final case class Stats(numBufD: Int, numBufI: Int, numBufL: Int, numNodes: Int)
+  final case class Stats(numBufD: Int, numBufI: Int, numBufL: Int, numNodes: Int) {
+    override def toString =
+      s"$productPrefix(numBufD = $numBufD, numBufI = $numBufI, numBufL = $numBufL, numNodes = $numNodes)"
+  }
 
   // ------------------------
 
@@ -254,7 +257,8 @@ object Control {
         // XXX TODO --- check for error other than `Cancelled` --- how?
         if (nodes.isEmpty) {
           logControl(s"${hashCode().toHexString} actRemoveNode complete")
-          statusP.tryComplete(Success(()))
+          /* val ok = */ statusP.tryComplete(Success(()))
+          // if (!ok) logControl(s"${hashCode().toHexString} promise already completed")
           sync.synchronized {
             context.stop(self)
             _actor = null

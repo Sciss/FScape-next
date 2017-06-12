@@ -29,11 +29,13 @@ import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer}
 import de.sciss.synth.proc.{GenContext, GenView}
 
 import scala.concurrent.{Future, Promise}
-import scala.concurrent.stm.{Ref, TMap, atomic}
+import scala.concurrent.stm.{Ref, TMap, Txn, atomic}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
 object RenderingImpl {
+  var DEBUG = false
+
   /** Creates a rendering with the default `UGenGraphBuilder.Context`.
     *
     * @param fscape     the fscape object whose graph is to be rendered
@@ -102,8 +104,8 @@ object RenderingImpl {
           val struct = res.structure
           import control.config.executionContext
 
-          def mkFuture(): Future[CacheValue] =
-            try {
+          def mkFuture(): Future[CacheValue] = {
+            val res0 = try {
               control.runExpanded(res.graph)
               val fut = control.status
               fut.map { _ =>
@@ -127,6 +129,11 @@ object RenderingImpl {
                 Future.failed(ex)
             }
 
+            // require(Txn.findCurrent.isEmpty, "IN TXN")
+            // if (DEBUG) res0.onComplete(x => println(s"Rendering future early observation: $x"))
+            res0
+          }
+
           val useCache = !isEmpty
           val fut: Future[CacheValue] = if (useCache) {
             // - check file cache for structure
@@ -141,8 +148,9 @@ object RenderingImpl {
           }
 
           val impl = new Impl[S](struct, res.outputs, control, fut, useCache = useCache)
-          fut.onComplete {
-            cvt => impl.completeWith(cvt)
+          fut.onComplete { cvt =>
+            if (DEBUG) println(s"$impl completeWith $cvt")
+            impl.completeWith(cvt)
           }
           impl
         }
@@ -268,6 +276,8 @@ object RenderingImpl {
                                         val control: Control, fut: Future[CacheValue],
                                         useCache: Boolean)(implicit cursor: stm.Cursor[S])
     extends Basic[S] with ObservableImpl[S, GenView.State] {
+
+    override def toString = s"Impl@${hashCode.toHexString} - ${fut.value}"
 
     private[this] val _disposed = Ref(false)
     private[this] val _state    = Ref[GenView.State](if (fut.isCompleted) GenView.Completed else GenView.Running(0.0))

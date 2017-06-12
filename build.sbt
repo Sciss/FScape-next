@@ -2,7 +2,7 @@ lazy val baseName   = "FScape"
 lazy val baseNameL  = baseName.toLowerCase
 lazy val githubRepo = "FScape-next"
 
-lazy val projectVersion = "2.7.1-SNAPSHOT"
+lazy val projectVersion = "2.7.1"
 lazy val mimaVersion    = "2.7.0"
 
 lazy val baseDescription = "An audio rendering library"
@@ -29,7 +29,7 @@ lazy val swingPlusVersion       = "0.2.2"
 lazy val optionalVersion        = "1.0.0"
 lazy val scalaChartVersion      = "0.5.1"
 
-lazy val akkaVersion            = "2.4.18" // N.B. "2.5.1" is latest, but they moved an impl class that we require (ActorMaterializerImpl)
+lazy val akkaVersion            = "2.4.19" // N.B. "2.5.1" is latest, but they moved an impl class that we require (ActorMaterializerImpl)
 
 // ---- lucre dependencies ----
 
