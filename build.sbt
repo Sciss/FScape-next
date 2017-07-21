@@ -2,7 +2,7 @@ lazy val baseName   = "FScape"
 lazy val baseNameL  = baseName.toLowerCase
 lazy val githubRepo = "FScape-next"
 
-lazy val projectVersion = "2.7.1"
+lazy val projectVersion = "2.8.0-SNAPSHOT"
 lazy val mimaVersion    = "2.7.0"
 
 lazy val baseDescription = "An audio rendering library"
@@ -25,7 +25,7 @@ lazy val dspVersion             = "1.2.3"
 lazy val numbersVersion         = "0.1.3"
 lazy val audioFileVersion       = "1.4.6"
 lazy val fileUtilVersion        = "1.1.2"
-lazy val swingPlusVersion       = "0.2.2"
+lazy val swingPlusVersion       = "0.2.3"
 lazy val optionalVersion        = "1.0.0"
 lazy val scalaChartVersion      = "0.5.1"
 
@@ -33,8 +33,8 @@ lazy val akkaVersion            = "2.4.19" // N.B. "2.5.1" is latest, but they m
 
 // ---- lucre dependencies ----
 
-lazy val soundProcessesVersion  = "3.12.2"
-lazy val lucreVersion           = "3.4.0"
+lazy val soundProcessesVersion  = "3.13.0-SNAPSHOT"
+lazy val lucreVersion           = "3.4.1"
 lazy val fileCacheVersion       = "0.3.4"
 
 // ---- test dependencies ----

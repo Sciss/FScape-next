@@ -34,7 +34,7 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * @param thresh     the threshold for blob detection between zero and one
   * @param pad        size of "border" to put around input matrices. If greater than
   *                   zero, a border of that size is created internally, filled with
-  *                   the treshold value
+  *                   the threshold value
   */
 final case class Blobs2D(in: GE, width: GE, height: GE, thresh: GE = 0.3, pad: GE = 0)
   extends UGenSource.MultiOut {
