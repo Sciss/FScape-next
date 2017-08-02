@@ -16,7 +16,7 @@ package de.sciss.fscape.lucre.graph
 import scala.language.implicitConversions
 
 object Ops {
-  /** Allows the construction of attribute controls, for example via `"freq".kr`. */
+  /** Allows the construction of attribute controls, for example via `"freq".attr`. */
   implicit def stringToControl(name: String): Attribute.Factory =
   new Attribute.Factory(name)
 }

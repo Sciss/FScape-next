@@ -2,7 +2,7 @@ lazy val baseName   = "FScape"
 lazy val baseNameL  = baseName.toLowerCase
 lazy val githubRepo = "FScape-next"
 
-lazy val projectVersion = "2.8.0"
+lazy val projectVersion = "2.8.1-SNAPSHOT"
 lazy val mimaVersion    = "2.8.0"
 
 lazy val baseDescription = "An audio rendering library"
@@ -11,8 +11,8 @@ lazy val commonSettings = Seq(
   organization       := "de.sciss",
   description        := baseDescription,
   version            := projectVersion,
-  scalaVersion       := "2.12.2",
-  crossScalaVersions := Seq("2.12.2", "2.11.11" /* , "2.10.6" */),  // Akka does not support Scala 2.10
+  scalaVersion       := "2.12.3",
+  crossScalaVersions := Seq("2.12.3", "2.11.11" /* , "2.10.6" */),  // Akka does not support Scala 2.10
   licenses           := Seq("GPL v2+" -> url("http://www.gnu.org/licenses/gpl-2.0.txt")),
   homepage           := Some(url(s"https://github.com/Sciss/$githubRepo")),
   scalacOptions     ++= Seq("-deprecation", "-unchecked", "-feature", "-encoding", "utf8", "-Xfuture", "-Xlint"),
