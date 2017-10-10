@@ -29,7 +29,7 @@ import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer}
 import de.sciss.synth.proc.{GenContext, GenView}
 
 import scala.concurrent.{Future, Promise}
-import scala.concurrent.stm.{Ref, TMap, Txn, atomic}
+import scala.concurrent.stm.{Ref, TMap, atomic}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 

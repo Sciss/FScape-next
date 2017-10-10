@@ -1,5 +1,5 @@
 /*
- *  Gate.scala
+ *  Latch.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2017 Hanns Holger Rutz. All rights reserved.
@@ -19,8 +19,10 @@ import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-/** A UGen that passes through its input while the gate is open, and outputs zero while the gate is closed. */
-final case class Gate(in: GE, gate: GE) extends UGenSource.SingleOut {
+/** A sample-and-hold UGen. It passes through its input while the gate is open,
+  * and outputs the last held value while the gate is closed.
+  */
+final case class Latch(in: GE, gate: GE) extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
     unwrap(this, Vector(in.expand, gate.expand))
 
@@ -29,6 +31,6 @@ final case class Gate(in: GE, gate: GE) extends UGenSource.SingleOut {
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
     val Vec(in, gate) = args
-    stream.Gate(in = in.toDouble, gate = gate.toInt)
+    stream.Latch(in = in.toDouble, gate = gate.toInt)
   }
 }

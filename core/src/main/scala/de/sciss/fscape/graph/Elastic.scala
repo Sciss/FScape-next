@@ -19,7 +19,7 @@ import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-/** Insert a buffer into the stream of `num` blocks. */
+/** Inserts a buffer into the stream of `num` blocks. */
 final case class Elastic(in: GE, num: GE = 1) extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
     unwrap(this, Vector(in.expand, num.expand))

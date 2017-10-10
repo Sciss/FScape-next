@@ -1,5 +1,5 @@
 /*
- *  Gate.scala
+ *  FilterSeq.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2017 Hanns Holger Rutz. All rights reserved.
@@ -14,13 +14,20 @@
 package de.sciss.fscape
 package graph
 
+import akka.stream.Outlet
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-/** A UGen that passes through its input while the gate is open, and outputs zero while the gate is closed. */
-final case class Gate(in: GE, gate: GE) extends UGenSource.SingleOut {
+/** A UGen that filters its input, retaining only those elements in the output sequence
+  * for which the predicate `gate` holds.
+  *
+  * You can think of it as `Gate` but instead of
+  * outputting zeroes when the gate is closed, no values are output at all. Consequently,
+  * the length of the output stream will differ from the length of the input stream.
+  */
+final case class FilterSeq(in: GE, gate: GE) extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
     unwrap(this, Vector(in.expand, gate.expand))
 
@@ -29,6 +36,8 @@ final case class Gate(in: GE, gate: GE) extends UGenSource.SingleOut {
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
     val Vec(in, gate) = args
-    stream.Gate(in = in.toDouble, gate = gate.toInt)
+    import in.tpe
+    val out: Outlet[in.Buf] = stream.FilterSeq[in.A, in.Buf](in = in.toElem, gate = gate.toInt)
+    tpe.mkStreamOut(out)
   }
 }

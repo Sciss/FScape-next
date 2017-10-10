@@ -7,7 +7,7 @@ import de.sciss.synth.io.{AudioFile, AudioFileSpec}
 import scala.swing.Swing
 
 object MFCCTest extends App {
-  val dir     = userHome / "Music" / "work"
+  val dir     = file("/") / "data" / "temp"
   val fOut    = dir / "_killme.aif"
   val fOut2   = dir / "_killme2.aif"
   val fOut3   = dir / "_killme3.aif"
@@ -24,7 +24,11 @@ object MFCCTest extends App {
   val setTube = Settings(dir / "TubewayArmy-DisconnectFromYouEdit-L.aif", spaceDur = 3)
   val setAne  = Settings(userHome/"Documents"/"projects"/"Anemone"/"rec"/"BURNED"/"Anemone_xCoAx_160707_21h27.aif",
     spaceDur = 0.3, fadeDur = 0.3, stepDiv = 8)
-  val set     = setAne
+  val setLC   = Settings(
+    file("/data/IEM/SoSe2017/DigitaleVerfahren2017/support/Session02_170315/beyond_the_wall_of_sleep_s1.aif"),
+    spaceDur = 0.3, fadeDur = 0.3, stepDiv = 8
+  )
+  val set     = setLC
 
   lazy val g = Graph {
     import graph._

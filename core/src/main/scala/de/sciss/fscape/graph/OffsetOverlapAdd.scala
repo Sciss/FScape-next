@@ -19,6 +19,7 @@ import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+/** Overlapping window summation with offset (fuzziness) that can be modulated. */
 final case class OffsetOverlapAdd(in: GE, size: GE, step: GE, offset: GE, minOffset: GE)
   extends UGenSource.SingleOut {
 

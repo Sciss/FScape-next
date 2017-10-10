@@ -19,6 +19,14 @@ import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+/** A UGen that produces a sliding window over its input.
+  *
+  * @param in     the input to be repacked into windows
+  * @param size   the window size
+  * @param step   the stepping factor in the input, between windows
+  *
+  * @see [[OverlapAdd]]
+  */
 final case class Sliding(in: GE, size: GE, step: GE) extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
     unwrap(this, Vector(in.expand, size.expand, step.expand))

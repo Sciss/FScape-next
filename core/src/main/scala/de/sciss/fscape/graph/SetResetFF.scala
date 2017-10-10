@@ -1,5 +1,5 @@
 /*
- *  Gate.scala
+ *  SetResetFF.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2017 Hanns Holger Rutz. All rights reserved.
@@ -19,16 +19,19 @@ import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-/** A UGen that passes through its input while the gate is open, and outputs zero while the gate is closed. */
-final case class Gate(in: GE, gate: GE) extends UGenSource.SingleOut {
+/** A flip-flop UGen with two inputs, one (set) triggering an output of 1, the other (reset)
+  * triggering an output of 0. Subsequent triggers happening within the same input slot have
+  * no effect. If both inputs receive a trigger at the same time, the reset input takes precedence.
+  */
+final case class SetResetFF(trig: GE, reset: GE = 0) extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
-    unwrap(this, Vector(in.expand, gate.expand))
+    unwrap(this, Vector(trig.expand, reset.expand))
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
     UGen.SingleOut(this, args)
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
-    val Vec(in, gate) = args
-    stream.Gate(in = in.toDouble, gate = gate.toInt)
+    val Vec(trig, reset) = args
+    stream.SetResetFF(trig = trig.toInt, reset = reset.toInt)
   }
 }

@@ -15,7 +15,7 @@ package de.sciss.fscape
 
 import de.sciss.fscape.graph.BinaryOp._
 import de.sciss.fscape.graph.UnaryOp._
-import de.sciss.fscape.graph.{BinaryOp, ChannelProxy, ComplexBinaryOp, ComplexUnaryOp, Concat, Constant, Drop, Elastic, Metro, Poll, Take, TakeRight, UnaryOp, UnzipWindow, ZipWindow}
+import de.sciss.fscape.graph.{BinaryOp, ChannelProxy, ComplexBinaryOp, ComplexUnaryOp, Concat, Constant, Drop, Elastic, FilterSeq, Metro, Poll, SetResetFF, Take, TakeRight, UnaryOp, UnzipWindow, ZipWindow}
 import de.sciss.optional.Optional
 
 final class GEOps1(val `this`: GE) extends AnyVal { me =>
@@ -104,7 +104,21 @@ final class GEOps1(val `this`: GE) extends AnyVal { me =>
   /** Drops the first `length` elements of this signal. */
   def drop(length: GE): GE = Drop(in = g, length = length)
 
-//  /** Drops the last `len` elements of this (finite) signal. */
+  /** XXX TODO --- this doesn't have a dedicated UGen yet. Callers must assume an extra block of delay */
+  def dropWhile(gate: GE): GE = {
+    val off = !gate
+    val p   = SetResetFF(trig = off)
+    FilterSeq(g.elastic(), p)
+  }
+
+  /** XXX TODO --- this doesn't have a dedicated UGen yet. Callers must assume an extra block of delay */
+  def takeWhile(gate: GE): GE = {
+    val off = !gate
+    val p   = -SetResetFF(trig = off) + 1
+    FilterSeq(g.elastic(), p)
+  }
+
+  //  /** Drops the last `len` elements of this (finite) signal. */
 //  def dropRight(len: GE): GE = ...
 //  def init: GE = DropRight(in = g, len = 1)
 

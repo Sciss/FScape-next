@@ -26,6 +26,8 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * @param size   the window size in the input
   * @param step   the step between successive windows in the output.
   *               when smaller than `size`, the overlapping portions are summed together.
+  *
+  * @see [[Sliding]]
   */
 final case class OverlapAdd(in: GE, size: GE, step: GE) extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =

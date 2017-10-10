@@ -18,7 +18,7 @@ object AudioOutTest extends App {
 
   val config = stream.Control.Config()
   config.useAsync   = false
-  implicit val ctrl = stream.Control(config)
+  val ctrl = stream.Control(config)
 //  showStreamLog = true
   ctrl.run(g)
 
