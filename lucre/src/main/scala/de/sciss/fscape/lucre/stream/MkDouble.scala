@@ -34,7 +34,7 @@ object MkDouble {
 
   private final class Stage(ref: OutputRef)(implicit ctrl: Control) extends StageImpl[Shape](name) {
     val shape = new SinkShape(
-      in = InD(s"$name.trig")
+      in = InD(s"$name.in")
     )
 
     def createLogic(attr: Attributes) = new Logic(shape, ref)

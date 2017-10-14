@@ -2,6 +2,7 @@ package de.sciss.fscape
 
 import de.sciss.file._
 import de.sciss.fscape.gui.SimpleGUI
+import de.sciss.fscape.stream.Control
 import de.sciss.numbers.Implicits._
 import de.sciss.synth.io.{AudioFile, AudioFileSpec}
 
@@ -31,11 +32,11 @@ object BleachTest extends App {
     Progress(out / specIn.numFrames.toDouble, Metro(44100))
   }
 
-  val config = stream.Control.Config()
+  val config = Control.Config()
   config.useAsync = false
   var gui: SimpleGUI = _
   config.progressReporter = rep => Swing.onEDT(gui.progress = rep.total)
-  implicit val ctrl = stream.Control(config)
+  implicit val ctrl: Control = Control(config)
 
   Swing.onEDT {
     gui = SimpleGUI(ctrl)

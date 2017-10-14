@@ -12,8 +12,8 @@ import scala.concurrent.stm.Ref
 import scala.util.{Failure, Success}
 
 object DoubleOutputTest extends App {
-  implicit val cursor = InMemory()
-  type S              = InMemory
+  type S                  = InMemory
+  implicit val cursor: S  = InMemory()
 
   FScape.init()
   GenView.addFactory(FScape.genViewFactory())
@@ -38,7 +38,7 @@ object DoubleOutputTest extends App {
     val count = Ref(0)
 
     import WorkspaceHandle.Implicits.dummy
-    implicit val genCtx = GenContext[S]
+    implicit val genCtx: GenContext[S] = GenContext[S]
 
     def mkView(out: Output[S], idx: Int): GenView[S] = {
       val view = GenView(out)
