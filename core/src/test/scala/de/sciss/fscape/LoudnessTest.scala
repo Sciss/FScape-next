@@ -16,7 +16,7 @@ object LoudnessTest extends App {
 //    val name    = "19178_beesLoop.aif"
 //    val fIn     = file("/data/projects/Schwaermen/audio_work/for_pi/loops/") / name
 
-    val fIn     = file("/data/projects/Wr_t_ngM_ch_n_/database1/db000031.aif")
+    val fIn     = file("/data/projects/Wr_t_ngM_ch_n_/database1/db000055.aif")
 
     val specIn  = AudioFile.readSpec(fIn)
     import specIn.{numChannels, sampleRate}
@@ -24,6 +24,8 @@ object LoudnessTest extends App {
     val inMono  = if (numChannels == 1) in else ChannelProxy(in, 0) + ChannelProxy(in, 1)
     val winSize = sampleRate.toInt
     val inSlid  = Sliding(inMono, size = winSize, step = winSize/2)
+//    val inSlid  = DC(0).take(specIn.numFrames)
+//    val inSlid  = WhiteNoise(0.001).take(specIn.numFrames)
     val loud    = Loudness(in = inSlid, sampleRate = sampleRate, size = winSize)
     val sum     = RunningSum(loud)
     val num     = Length(sum)
