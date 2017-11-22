@@ -2,8 +2,8 @@ lazy val baseName   = "FScape"
 lazy val baseNameL  = baseName.toLowerCase
 lazy val githubRepo = "FScape-next"
 
-lazy val projectVersion = "2.10.0"
-lazy val mimaVersion    = "2.10.0"
+lazy val projectVersion = "2.11.0"
+lazy val mimaVersion    = "2.11.0"
 
 lazy val baseDescription = "An audio rendering library"
 
@@ -12,7 +12,7 @@ lazy val commonSettings = Seq(
   description        := baseDescription,
   version            := projectVersion,
   scalaVersion       := "2.12.4",
-  crossScalaVersions := Seq("2.12.4", "2.11.11"),
+  crossScalaVersions := Seq("2.12.4", "2.11.12"),
   licenses           := Seq("GPL v2+" -> url("http://www.gnu.org/licenses/gpl-2.0.txt")),
   homepage           := Some(url(s"https://github.com/Sciss/$githubRepo")),
   scalacOptions     ++= Seq("-deprecation", "-unchecked", "-feature", "-encoding", "utf8", "-Xfuture", "-Xlint"),
@@ -21,21 +21,21 @@ lazy val commonSettings = Seq(
 
 // ---- core dependencies ----
 
-lazy val dspVersion             = "1.2.3"
-lazy val numbersVersion         = "0.1.3"
 lazy val audioFileVersion       = "1.4.6"
+lazy val dspVersion             = "1.2.3"
 lazy val fileUtilVersion        = "1.1.3"
-lazy val swingPlusVersion       = "0.2.4"
+lazy val numbersVersion         = "0.1.3"
 lazy val optionalVersion        = "1.0.0"
 lazy val scalaChartVersion      = "0.5.1"
+lazy val swingPlusVersion       = "0.2.4"
 
 lazy val akkaVersion            = "2.4.20" // N.B. "2.5.1" is latest, but they moved an impl class that we require (ActorMaterializerImpl)
 
 // ---- lucre dependencies ----
 
-lazy val soundProcessesVersion  = "3.15.0"
-lazy val lucreVersion           = "3.5.0"
 lazy val fileCacheVersion       = "0.3.4"
+lazy val lucreVersion           = "3.5.0"
+lazy val soundProcessesVersion  = "3.16.1"
 
 // ---- test dependencies ----
 

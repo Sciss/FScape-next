@@ -81,7 +81,7 @@ object UGenGraph {
     // empty graphs are not supported by Akka
     if (ugens.isEmpty) throw new IllegalStateException("Graph is empty")
     val _graph = GraphDSL.create() { implicit dsl =>
-      implicit val sb = stream.Builder()
+      implicit val sb: stream.Builder = stream.Builder()
 
       var ugenOutMap = Map.empty[IndexedUGenBuilder, Array[StreamIn]]
 

@@ -17,9 +17,6 @@ To contact the author, send an email to `contact at sciss.de`.
 ## building
 
 FScape 2 builds with sbt and Scala 2.12, 2.11. It requires Java 8.
-Support for Scala 2.10 and Java 6 is currently missing due to the dependency on Akka,
-a project developed by a commercial company that unfortunately decided to axe Scala 2.10 / Java 6 for their Java clientele.
-We are still evaluating the constraints imposed by using Akka instead of other open source streaming frameworks.
 
 ## linking
 
@@ -27,7 +24,7 @@ The following dependency is necessary:
 
     "de.sciss" %% "fscape" % v
 
-The current version `v` is `"2.10.0"`.
+The current version `v` is `"2.11.0"`.
 
 The following sub modules are available:
 
