@@ -718,7 +718,8 @@ object AffineTransform2D {
       var y           = imgOutOff / _widthOut
 
       // updated by `matrixChanged`
-      var _m00, _m10, _m01, _m11, _m02, _m12, xFltIncr, yFltIncr, xGain, yGain = 0.0
+      var _m00, _m10, _m01, _m11, _m02, _m12  = 0.0
+      var xFltIncr, yFltIncr, xGain, yGain    = 0.0
 
       def matrixChanged(): Unit = {
         _m00 = m00
