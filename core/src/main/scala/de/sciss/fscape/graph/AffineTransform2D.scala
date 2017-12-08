@@ -108,6 +108,8 @@ object AffineTransform2D {
   * @param kaiserBeta     the FIR windowing function's parameter
   * @param zeroCrossings  the number of zero-crossings in the truncated and windowed sinc FIR.
   *                       If zero, algorithm uses bicubic interpolation instead.
+  *
+  * @see [[ScanImage]]
   */
 final case class AffineTransform2D(in: GE, widthIn: GE, heightIn: GE, widthOut: GE = 0, heightOut: GE = 0,
                                    m00: GE, m10: GE, m01: GE, m11: GE, m02: GE, m12: GE, wrap: GE = 1,

@@ -1,5 +1,5 @@
 /*
- *  ImageScanImpl.scala
+ *  ScanImageImpl.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2017 Hanns Holger Rutz. All rights reserved.
@@ -23,7 +23,7 @@ import scala.math.{abs, max, min}
   * Assumes that the UGen provides inputs for width/height
   * and interpolation parameters (zero-crossings for sinc etc.)
   */
-trait ImageScanImpl {
+trait ScanImageImpl {
 
   // ---- abstract ----
 
@@ -47,7 +47,7 @@ trait ImageScanImpl {
   private[this] var sx            = 1.0
   private[this] var sy            = 1.0
 
-  private[this] var winBuf      : Array[Double] = _
+  protected final var winBuf    : Array[Double] = _
   private[this] var widthIn     : Int           = _
   private[this] var heightIn    : Int           = _
 
