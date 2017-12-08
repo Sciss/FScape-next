@@ -43,6 +43,7 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   *                       If zero, algorithm uses bicubic interpolation instead.
   *
   * @see [[AffineTransform2D]]
+  * @see [[Slices]]
   */
 final case class ScanImage(in: GE, width: GE, height: GE, x: GE = 0, y: GE = 0, next: GE = 0, wrap: GE = 1,
                            rollOff: GE = 0.86, kaiserBeta: GE = 7.5, zeroCrossings: GE = 15)

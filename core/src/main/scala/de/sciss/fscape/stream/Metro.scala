@@ -17,6 +17,7 @@ package stream
 import akka.stream.{Attributes, FanInShape2}
 import de.sciss.fscape.stream.impl.{GenChunkImpl, GenIn2IImpl, StageImpl, NodeImpl}
 
+// XXX TODO --- should probably poll `period` values only at period boundaries
 object Metro {
   def apply(period: OutL, phase: OutL)(implicit b: Builder): OutI = {
     val stage0  = new Stage

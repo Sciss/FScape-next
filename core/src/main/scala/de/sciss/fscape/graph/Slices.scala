@@ -37,6 +37,8 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   *               input signal (exclusive). If a
   *               start position is greater than a stop
   *               position, the span is output in reversed order.
+  *
+  * @see [[ScanImage]]
   */
 final case class Slices(in: GE, spans: GE) extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
