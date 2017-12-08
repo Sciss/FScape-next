@@ -59,7 +59,7 @@ final case class ScanImage(in: GE, width: GE, height: GE, x: GE = 0, y: GE = 0, 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
     val Vec(in, width, height, x, y, next, wrap, rollOff, kaiserBeta, zeroCrossings) = args
     stream.ScanImage(in = in.toDouble, width = width.toInt, height = height.toInt,
-      x = x.toInt, y = y.toInt, next = next.toInt, wrap = wrap.toInt,
+      x = x.toDouble, y = y.toDouble, next = next.toInt, wrap = wrap.toInt,
       rollOff = rollOff.toDouble, kaiserBeta = kaiserBeta.toDouble, zeroCrossings = zeroCrossings.toInt)
   }
 }
