@@ -114,6 +114,8 @@ trait ScanImageImpl {
   protected final def pullInterpParams(off: Int): Unit = {
     var newTable = false
 
+//    println(s"pullInterpParams($off)")
+
     val _bufWrap = bufWrap
     if (_bufWrap != null && off < _bufWrap.size) {
       wrapBounds = _bufWrap.buf(off) != 0
@@ -122,6 +124,7 @@ trait ScanImageImpl {
     val _bufRollOff = bufRollOff
     if (_bufRollOff != null && off < _bufRollOff.size) {
       val newRollOff = max(0.0, min(1.0, _bufRollOff.buf(off)))
+      // println(s"newRollOff = $newRollOff")
       if (rollOff != newRollOff) {
         rollOff   = newRollOff
         newTable  = true
@@ -131,6 +134,7 @@ trait ScanImageImpl {
     val _bufKaiserBeta = bufKaiserBeta
     if (_bufKaiserBeta != null && off < _bufKaiserBeta.size) {
       val newKaiserBeta = max(0.0, _bufKaiserBeta.buf(off))
+      // println(s"newKaiserBeta = $newKaiserBeta")
       if (kaiserBeta != newKaiserBeta) {
         kaiserBeta  = newKaiserBeta
         newTable    = true
@@ -142,6 +146,7 @@ trait ScanImageImpl {
       // a value of zero indicates bicubic interpolation,
       // a value greater than zero indicates band-limited sinc interpolation
       val newZeroCrossings = max(0, _bufZeroCrossings.buf(off))
+      // println(s"newZeroCrossings = $newZeroCrossings")
       if (zeroCrossings != newZeroCrossings) {
         zeroCrossings = newZeroCrossings
         newTable      = true
@@ -151,12 +156,15 @@ trait ScanImageImpl {
     if (newTable) {
       // calculates low-pass filter kernel
       fltLenH = ((fltSmpPerCrossing * zeroCrossings) / rollOff + 0.5).toInt
+      // println(s"newTable; fltLenH = $fltLenH")
       fltBuf  = new Array[Double](fltLenH)
       fltBufD = new Array[Double](fltLenH)
-      fltGain = Filter.createAntiAliasFilter(
-        fltBuf, fltBufD, halfWinSize = fltLenH, samplesPerCrossing = fltSmpPerCrossing, rollOff = rollOff,
-        kaiserBeta = kaiserBeta)
-      setScale(sx, sy)
+      if (zeroCrossings > 0) {
+        fltGain = Filter.createAntiAliasFilter(
+          fltBuf, fltBufD, halfWinSize = fltLenH, samplesPerCrossing = fltSmpPerCrossing, rollOff = rollOff,
+          kaiserBeta = kaiserBeta)
+        setScale(sx, sy)
+      }
     }
   }
 

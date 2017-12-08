@@ -16,7 +16,7 @@ package stream
 
 import akka.stream.stage.InHandler
 import akka.stream.{Attributes, FanInShape10}
-import de.sciss.fscape.stream.impl.{DemandFilterLogic, NodeImpl, Out1DoubleImpl, Out1LogicImpl, ProcessOutHandlerImpl, ScanImageImpl, StageImpl}
+import de.sciss.fscape.stream.impl.{NodeImpl, Out1DoubleImpl, Out1LogicImpl, ProcessOutHandlerImpl, ScanImageImpl, StageImpl}
 
 import scala.annotation.tailrec
 import scala.math.{max, min}
@@ -63,7 +63,6 @@ object ScanImage {
 
   private final class Logic(shape: Shape)(implicit ctrl: Control)
     extends NodeImpl(name, shape)
-      with DemandFilterLogic[BufD, Shape]
       with Out1LogicImpl[BufD, Shape]
       with Out1DoubleImpl[Shape]
       with ScanImageImpl {
@@ -95,9 +94,8 @@ object ScanImage {
 
     private[this] var writeToWinOff     = 0
     private[this] var writeToWinRemain  = 0
-    private[this] var readFromWinOff    = 0
-    private[this] var readFromWinRemain = 0
     private[this] var isNextWindow      = true
+    private[this] var wasNextWindow     = false
 
     protected def mainInRemain: Int = _mainInRemain
 
@@ -170,6 +168,9 @@ object ScanImage {
     }
 
     // `in` is regular hot input
+    // XXX TODO --- this is not true;
+    // must change onUpstreamFinish;
+    // this is rather the case for x/y
     setHandler(shape.in0, new InHandler {
       def onPush(): Unit = {
         logStream(s"onPush(${shape.in0})")
@@ -181,12 +182,9 @@ object ScanImage {
         logStream(s"onUpstreamFinish(${shape.in0})")
         if (inValid) {
           process()
-        } // may lead to `flushOut`
-        else {
-          if (!isAvailable(shape.in0)) {
-            println(s"Invalid process ${shape.in0}")
-            completeStage()
-          }
+        } else if (!isAvailable(shape.in0)) {
+          println(s"Invalid process ${shape.in0}")
+          completeStage()
         }
       }
     })
@@ -267,25 +265,25 @@ object ScanImage {
 
     private[this] var _aux2InValid  = false
     private[this] var _aux2CanRead  = false
-    private[this] var _aux2Ended    = false
+    private[this] var _xyEnded      = false
 
     private def updateAux2CanRead(): Unit = {
       val sh = shape
       _aux2CanRead =
-        ((isClosed(sh.in3) && _aux2InValid) || isAvailable(sh.in3)) &&
-        ((isClosed(sh.in4) && _aux2InValid) || isAvailable(sh.in4)) &&
+        isAvailable(sh.in3) &&
+        isAvailable(sh.in4) &&
         ((isClosed(sh.in5) && _aux2InValid) || isAvailable(sh.in5)) &&
         ((isClosed(sh.in6) && _aux2InValid) || isAvailable(sh.in6)) &&
         ((isClosed(sh.in7) && _aux2InValid) || isAvailable(sh.in7)) &&
         ((isClosed(sh.in8) && _aux2InValid) || isAvailable(sh.in8)) &&
         ((isClosed(sh.in9) && _aux2InValid) || isAvailable(sh.in9))
+
+      // println(s"updateAux2CanRead(): ${_aux2CanRead}")
     }
 
-    private def updateAux2Ended(): Unit = {
+    private def updateXYEnded(): Unit = {
       val sh = shape
-      _aux2Ended =
-        isClosed(sh.in3) && isClosed(sh.in4) && isClosed(sh.in5) && isClosed(sh.in6) &&
-        isClosed(sh.in7) && isClosed(sh.in8) && isClosed(sh.in9)
+      _xyEnded = isClosed(sh.in3) && isClosed(sh.in4)
     }
 
     private def freeAux2InBuffers(): Unit = {
@@ -320,41 +318,49 @@ object ScanImage {
     }
 
     private def readAux2Ins(): Int = {
+      // println(s"readAux2Ins(); valid? ${_aux2InValid}; canRead? ${_aux2CanRead}")
       freeAux2InBuffers()
       val sh    = shape
       var sz    = 0
 
       if (isAvailable(sh.in3)) {
+        // println("...hasX")
         bufX    = grab(sh.in3)
         sz      = bufX.size
         tryPull(sh.in3)
       }
       if (isAvailable(sh.in4)) {
+        // println("...hasY")
         bufY    = grab(sh.in4)
         sz      = max(sz, bufY.size)
         tryPull(sh.in4)
       }
       if (isAvailable(sh.in5)) {
+        // println("...hasNext")
         bufNext = grab(sh.in5)
         sz      = max(sz, bufNext.size)
-        tryPull(sh.in7)
+        tryPull(sh.in5)
       }
       if (isAvailable(sh.in6)) {
+        // println("...hasWrap")
         bufWrap = grab(sh.in6)
         sz      = max(sz, bufWrap.size)
         tryPull(sh.in6)
       }
       if (isAvailable(sh.in7)) {
+        // println("...hasRollOff")
         bufRollOff  = grab(sh.in7)
         sz          = max(sz, bufRollOff.size)
         tryPull(sh.in7)
       }
       if (isAvailable(sh.in8)) {
+        // println("...hasKaiserBeta")
         bufKaiserBeta = grab(sh.in8)
         sz            = max(sz, bufKaiserBeta.size)
         tryPull(sh.in8)
       }
       if (isAvailable(sh.in9)) {
+        // println("...hasZeroCrossings")
         bufZeroCrossings  = grab(sh.in9)
         sz                = max(sz, bufZeroCrossings.size)
         tryPull(sh.in9)
@@ -363,6 +369,7 @@ object ScanImage {
       if (!_aux2InValid) {
         _aux2InValid  = true
         _inValid      = _mainInValid && _aux1InValid
+        // println(s"...`_aux2InValid` became true; `inValid` = ${_inValid}")
       }
 
       _aux2CanRead = false
@@ -383,8 +390,8 @@ object ScanImage {
           logStream(s"onUpstreamFinish($in)")
           if (_aux2InValid || isAvailable(in)) {
             updateAux2CanRead()
-            updateAux2Ended()
-            if (_aux2CanRead) process()
+            updateXYEnded()
+            if (_aux2CanRead || _xyEnded) process()  // may lead to `flushOut`
           } else {
             println(s"Invalid aux $in")
             completeStage()
@@ -416,7 +423,7 @@ object ScanImage {
     private[this] def aux2ShouldRead = aux2InRemain == 0 && _aux2CanRead
 
     @inline
-    private[this] def shouldComplete = inputsEnded && writeToWinOff == 0 && readFromWinRemain == 0
+    private[this] def shouldComplete: Boolean = _xyEnded && !isAvailable(shape.in3) && !isAvailable(shape.in4)
 
     @tailrec
     def process(): Unit = {
@@ -464,85 +471,63 @@ object ScanImage {
       else if (stateChange) process()
     }
 
-    @inline
-    private[this] def canWriteToWindow  = readFromWinRemain == 0 && inValid
+    // either fill image buffer (`true`) or scan buffer (`false`)
+    private[this] var modeWrite = true
 
     @inline
-    private[this] def canReadFromWindow = readFromWinRemain > 0
+    private[this] def canWriteToWindow = modeWrite && inValid //  = readFromWinRemain == 0 && inValid
+
+    @inline
+    private[this] def canReadFromWindow = !modeWrite && !isNextWindow // = readFromWinRemain > 0
 
     private def processChunk(): Boolean = {
       var stateChange = false
 
       if (canWriteToWindow) {
-        val flushIn0 = inputsEnded // inRemain == 0 && shouldComplete()
-        if (isNextWindow && !flushIn0) {
-          writeToWinRemain  = pullWindowParams(aux1InOff) // startNextWindow()
+        if (isNextWindow) {
+          writeToWinRemain  = pullWindowParams(aux1InOff)
           isNextWindow      = false
           stateChange       = true
           aux1InOff        += 1
           aux1InRemain     -= 1
-          // logStream(s"startNextWindow(); writeToWinRemain = $writeToWinRemain")
         }
 
-        val chunk     = min(writeToWinRemain, _mainInRemain)
-        val flushIn   = flushIn0 && writeToWinOff > 0
-        if (chunk > 0 || flushIn) {
-          // logStream(s"writeToWindow(); inOff = $inOff, writeToWinOff = $writeToWinOff, chunk = $chunk")
-          if (chunk > 0) {
-            copyInputToWindow(writeToWinOff = writeToWinOff, chunk = chunk, isFlush = flushIn)
-            mainInOff        += chunk
-            _mainInRemain    -= chunk
-            writeToWinOff    += chunk
-            writeToWinRemain -= chunk
-            stateChange       = true
-          }
+        val chunk = min(writeToWinRemain, _mainInRemain)
+        if (chunk > 0) {
+          copyInputToWindow(writeToWinOff = writeToWinOff, chunk = chunk)
+          mainInOff        += chunk
+          _mainInRemain    -= chunk
+          writeToWinOff    += chunk
+          writeToWinRemain -= chunk
+          stateChange       = true
 
-          if (writeToWinRemain == 0 || flushIn) {
-            // readFromWinRemain = processWindow(writeToWinOff = writeToWinOff)
-            readFromWinRemain = ??? // widthOut * heightOut
-            writeToWinOff     = 0
-            readFromWinOff    = 0
-            // isNextWindow      = true
-            stateChange       = true
-            // auxInOff         += 1
-            // auxInRemain      -= 1
-            // logStream(s"processWindow(); readFromWinRemain = $readFromWinRemain")
+          if (writeToWinRemain == 0) {
+            writeToWinOff = 0
+            stateChange   = true
+            modeWrite     = false
           }
         }
       }
 
       if (canReadFromWindow) {
-        val chunk0  = min(readFromWinRemain, outRemain)
-        val chunk1  = min(chunk0, aux2InRemain)
-        val chunk   = if (_aux2Ended) chunk0 else chunk1
+        val chunk = min(outRemain, aux2InRemain)
         if (chunk > 0) {
-          // logStream(s"readFromWindow(); readFromWinOff = $readFromWinOff, outOff = $outOff, chunk = $chunk")
-          processWindowToOutput(imgOutOff = readFromWinOff, outOff = outOff, chunk = chunk)
-          readFromWinOff    += chunk
-          readFromWinRemain -= chunk
-          outOff            += chunk
-          outRemain         -= chunk
-          aux2InOff         += chunk1
-          aux2InRemain      -= chunk1
-          if (readFromWinRemain == 0) {
-            isNextWindow     = true
-          }
-          stateChange        = true
+          val chunkOut  = processWindowToOutput(outOff = outOff, chunk = chunk)
+          outOff       += chunkOut
+          outRemain    -= chunkOut
+          aux2InOff    += chunkOut
+          aux2InRemain -= chunkOut
+          stateChange   = true
         }
       }
 
       stateChange
     }
 
-    private def copyInputToWindow(writeToWinOff: Int, chunk: Int, isFlush: Boolean): Unit = {
+    private def copyInputToWindow(writeToWinOff: Int, chunk: Int): Unit =
       Util.copy(bufIn0.buf, mainInOff, winBuf, writeToWinOff, chunk)
-      if (isFlush) {
-        val off1 = writeToWinOff + chunk
-        Util.clear(winBuf, off1, winBuf.length - off1)
-      }
-    }
 
-    private def processWindowToOutput(imgOutOff: Int, outOff: Int, chunk: Int): Unit = {
+    private def processWindowToOutput(outOff: Int, chunk: Int): Int = {
       var outOffI     = outOff
       val outStop     = outOffI + chunk
       val out         = bufOut0.buf
@@ -551,6 +536,29 @@ object ScanImage {
       var _y          = y
 
       while (outOffI < outStop) {
+        // the `next` input is polled with the other
+        // aux1 inputs, such as `x`, `y`. If next is triggered,
+        // we need to abort `processWindowToOutput` even before `chunk`
+        // is exhausted. The buffer offset for aux1 therefore must
+        // not be advanced (`outOffI += 1` is avoided). In order
+        // for `processWindowToOutput` to be able to resume, we must
+        // then "skip" the next-input for one sample; we do that
+        // by looking at the `wasNextWindow` flag
+        if (bufNext != null && _aux2InOff < bufNext.size) {
+          if (wasNextWindow) {
+            wasNextWindow = false
+          } else {
+            val next: Int = bufNext.buf(_aux2InOff)
+            if (next != 0) {
+              isNextWindow  = true
+              wasNextWindow = true
+              modeWrite     = true
+              x = _x
+              y = _y
+              return outOffI - outOff
+            }
+          }
+        }
         if (bufX != null && _aux2InOff < bufX.size) {
           _x = bufX.buf(_aux2InOff)
         }
@@ -567,6 +575,7 @@ object ScanImage {
 
       x = _x
       y = _y
+      chunk
     }
   }
 }

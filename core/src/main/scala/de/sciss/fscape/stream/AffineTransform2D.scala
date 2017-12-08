@@ -22,6 +22,7 @@ import de.sciss.numbers.IntFunctions
 import scala.annotation.tailrec
 import math.{max, min, abs, sqrt}
 
+// XXX TODO --- should use ScanImageImpl
 object AffineTransform2D {
   def apply(in: OutD, widthIn: OutI, heightIn: OutI, widthOut: OutI, heightOut: OutI,
             m00: OutD, m10: OutD, m01: OutD, m11: OutD, m02: OutD, m12: OutD, wrap: OutI,
