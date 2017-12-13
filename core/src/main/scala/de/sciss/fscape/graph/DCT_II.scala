@@ -25,7 +25,7 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * @param size       input signal window size
   * @param numCoeffs  number of coefficients output
   * @param zero       if zero (default), the zero'th coefficient is
-  *                   _not_ skipped in the output, if
+  *                   _skipped_ in the output, if
   *                   non-zero, the zero'th coefficient is
   *                   included. In any case, the output
   *                   window size is `numCoeffs`.
