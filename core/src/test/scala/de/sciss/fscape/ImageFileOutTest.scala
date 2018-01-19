@@ -9,6 +9,8 @@ object ImageFileOutTest extends App {
   val width   = 1024
   val height  = 768
 
+  val fOut    = args.headOption.fold(userHome / "test.jpg")(file)
+
   val g = Graph {
     import graph._
     val xSin  = SinOsc(Seq[GE](0.5/width, 1.0/width, 1.5/width)).abs
@@ -17,16 +19,13 @@ object ImageFileOutTest extends App {
     val spec  = ImageFile.Spec(width = width, height = height, numChannels = 3 /* 1 */,
       fileType = ImageFile.Type.JPG, sampleFormat = ImageFile.SampleFormat.Int8,
       quality = 100)
-    val f     = userHome / "Documents" / "temp" / "test.jpg"
-    ImageFileOut(file = f, spec = spec, in = amp)
+    ImageFileOut(file = fOut, spec = spec, in = amp)
   }
 
   val config = stream.Control.Config()
   config.blockSize  = 599   // a prime number unrelated to `width` and `height`, for testing
   config.useAsync   = false // for debugging
   val ctrl  = stream.Control(config)
-
-//  showStreamLog = true
 
   ctrl.run(g)
 
