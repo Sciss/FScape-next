@@ -9,7 +9,7 @@
 A laboratory project for developing the next major revision of [FScape](https://github.com/Sciss/FScape),
 an experimental music and sound signal processing workbench.
 
-FScape(-next) is (C)opyright 2001&ndash;2017 by Hanns Holger Rutz. All rights reserved.
+FScape(-next) is (C)opyright 2001&ndash;2018 by Hanns Holger Rutz. All rights reserved.
 This program is free software; you can redistribute it and/or modify it under the terms 
 of the [GNU General Public License](http://github.com/Sciss/FScape-next/blob/master/LICENSE) v2+.
 To contact the author, send an email to `contact at sciss.de`.

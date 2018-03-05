@@ -1,5 +1,5 @@
 /*
- *  PriorityQueue.scala
+ *  SortWindow.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2018 Hanns Holger Rutz. All rights reserved.
@@ -20,18 +20,15 @@ import de.sciss.fscape.stream.{BufElem, Builder, OutI, StreamIn, StreamInElem, S
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-/** A sorting UGen that can be thought of as a bounded priority queue.
-  * It keeps all data in memory but limits the size to the
-  * top `size` items. By its nature, the UGen only starts outputting
-  * values once the input signal (`keys`) has finished.
+/** A UGen that sorts the input data window by window.
   *
-  * @param keys   the sorting keys; higher values mean higher priority
+  * @param keys   the sorting keys; output will be in ascending order
   * @param values the values corresponding with the keys and eventually
   *               output by the UGen. It is well possible to use the
   *               same signal both for `keys` and `values`.
-  * @param size   the maximum size of the priority queue.
+  * @param size   the window size.
   */
-final case class PriorityQueue(keys: GE, values: GE, size: GE) extends UGenSource.SingleOut {
+final case class SortWindow(keys: GE, values: GE, size: GE) extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
     unwrap(this, Vector(keys.expand, values.expand, size.expand))
 
@@ -48,7 +45,7 @@ final case class PriorityQueue(keys: GE, values: GE, size: GE) extends UGenSourc
                                                                               (implicit b: Builder): StreamOut = {
     import keys  .{tpe => kTpe}  // IntelliJ doesn't get it
     import values.{tpe => vTpe}
-    val out: Outlet[V] = stream.PriorityQueue[A, K, B, V](keys = keys.toElem, values = values.toElem, size = size)
+    val out: Outlet[V] = stream.SortWindow[A, K, B, V](keys = keys.toElem, values = values.toElem, size = size)
     vTpe.mkStreamOut(out) // IntelliJ doesn't get it
   }
 }
