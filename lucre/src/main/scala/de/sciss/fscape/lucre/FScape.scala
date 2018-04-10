@@ -29,7 +29,7 @@ import scala.concurrent.Future
 import scala.util.Try
 
 object FScape extends Obj.Type {
-  final val typeID = 0x1000B
+  final val typeId = 0x1000B
 
   // ---- implementation forwards ----
 
@@ -156,7 +156,7 @@ object FScape extends Obj.Type {
   }
 
   object Output extends Obj.Type {
-    final val typeID = 0x1000D
+    final val typeId = 0x1000D
 
     def read[S <: Sys[S]](in: DataInput, access: S#Acc)(implicit tx: S#Tx): Output[S] = OutputImpl.read (in, access)
 

@@ -394,7 +394,7 @@ object UGenGraphBuilder {
     protected def requestOutputImpl(reader: Output.Reader): Option[OutputResult[S]] = {
       val outOpt = fscape.outputs.get(reader.key)
       outOpt.collect {
-        case out: OutputImpl[S] if out.valueType.typeID == reader.tpe.typeID =>
+        case out: OutputImpl[S] if out.valueType.typeId == reader.tpe.typeId =>
           new OutputRefImpl(reader, tx.newHandle(out))
       }
     }

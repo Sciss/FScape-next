@@ -17,14 +17,14 @@ package stream
 import java.awt.Color
 
 import akka.stream.Attributes
-import de.sciss.fscape.stream.impl.{FilterLogicImpl, Sink2Impl, SinkShape2, StageImpl, NodeImpl}
+import de.sciss.chart.module.Charting
+import de.sciss.fscape.stream.impl.{FilterLogicImpl, NodeImpl, Sink2Impl, SinkShape2, StageImpl}
 import org.jfree.chart.axis.NumberAxis
 import org.jfree.chart.plot.{PlotOrientation, XYPlot}
 import org.jfree.chart.{ChartFactory, ChartPanel}
 import org.jfree.data.xy.{XYSeries, XYSeriesCollection}
 
 import scala.swing.{Component, Frame, Swing}
-import scalax.chart.module.Charting
 
 object Plot1D {
   def apply(in: OutD, size: OutI, label: String)(implicit b: Builder): Unit = {

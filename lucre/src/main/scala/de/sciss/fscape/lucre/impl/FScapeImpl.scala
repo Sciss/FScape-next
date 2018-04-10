@@ -73,7 +73,7 @@ object FScapeImpl {
   def genViewFactory(config: Control.Config): GenView.Factory = new OutputGenViewFactory(config)
 
   private final class OutputGenViewFactory(config: Control.Config) extends GenView.Factory {
-    def typeID: Int = Output.typeID
+    def typeId: Int = Output.typeId
 
     type Repr[~ <: Sys[~]] = Output[~]
 

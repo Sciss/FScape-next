@@ -42,7 +42,7 @@ object OutputGenViewImpl {
 
     private[this] var observer: Disposable[S#Tx] = _
 
-    def typeID: Int = Output.typeID
+    def typeId: Int = Output.typeId
 
     def state(implicit tx: S#Tx): GenView.State = rendering.state
 

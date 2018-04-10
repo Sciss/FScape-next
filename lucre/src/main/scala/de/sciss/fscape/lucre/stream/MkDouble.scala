@@ -19,7 +19,7 @@ import de.sciss.fscape.lucre.FScape.Output
 import de.sciss.fscape.lucre.UGenGraphBuilder.OutputRef
 import de.sciss.fscape.stream.impl.{NodeImpl, Sink1Impl, StageImpl}
 import de.sciss.fscape.stream.{BufD, Builder, Control, _}
-import de.sciss.serial.{DataOutput, ImmutableSerializer}
+import de.sciss.serial.{DataOutput, Serializer}
 
 object MkDouble {
   def apply(in: OutD, ref: OutputRef)(implicit b: Builder): Unit = {
@@ -61,7 +61,7 @@ object MkDouble {
         val res = b0(0)
         ref.complete(new Output.Writer {
           def write(out: DataOutput): Unit =
-            ImmutableSerializer.Double.write(res, out)
+            Serializer.Double.write(res, out)
         })
         completeStage()
       }

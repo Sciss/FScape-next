@@ -28,9 +28,9 @@ import scala.annotation.switch
 import scala.util.control.NonFatal
 
 object GraphObj extends expr.impl.ExprTypeImpl[Graph, GraphObj] {
-  final val typeID = 100
+  final val typeId = 100
 
-  protected def mkConst[S <: Sys[S]](id: S#ID, value: A)(implicit tx: S#Tx): Const[S] =
+  protected def mkConst[S <: Sys[S]](id: S#Id, value: A)(implicit tx: S#Tx): Const[S] =
     new _Const[S](id, value)
 
   protected def mkVar[S <: Sys[S]](targets: Targets[S], vr: S#Var[Ex[S]], connect: Boolean)
@@ -40,7 +40,7 @@ object GraphObj extends expr.impl.ExprTypeImpl[Graph, GraphObj] {
     res
   }
 
-  private final class _Const[S <: Sys[S]](val id: S#ID, val constValue: A)
+  private final class _Const[S <: Sys[S]](val id: S#Id, val constValue: A)
     extends ConstImpl[S] with GraphObj[S]
 
   private final class _Var[S <: Sys[S]](val targets: Targets[S], val ref: S#Var[Ex[S]])
@@ -251,7 +251,7 @@ object GraphObj extends expr.impl.ExprTypeImpl[Graph, GraphObj] {
   override protected def readCookie[S <: Sys[S]](in: DataInput, access: S#Acc, cookie: Byte)(implicit tx: S#Tx): Ex[S] =
     cookie match {
       case `emptyCookie` =>
-        val id = tx.readID(in, access)
+        val id = tx.readId(in, access)
         new Predefined(id, cookie)
       case _ => super.readCookie(in, access, cookie)
     }
@@ -261,11 +261,11 @@ object GraphObj extends expr.impl.ExprTypeImpl[Graph, GraphObj] {
   def empty[S <: Sys[S]](implicit tx: S#Tx): Ex[S] = apply(emptyCookie  )
 
   private def apply[S <: Sys[S]](cookie: Int)(implicit tx: S#Tx): Ex[S] = {
-    val id = tx.newID()
+    val id = tx.newId()
     new Predefined(id, cookie)
   }
 
-  private final class Predefined[S <: Sys[S]](val id: S#ID, cookie: Int)
+  private final class Predefined[S <: Sys[S]](val id: S#Id, cookie: Int)
     extends GraphObj[S] with Expr.Const[S, Graph] {
 
     def event(slot: Int): Event[S, Any] = throw new UnsupportedOperationException
@@ -273,10 +273,10 @@ object GraphObj extends expr.impl.ExprTypeImpl[Graph, GraphObj] {
     def tpe: Obj.Type = GraphObj
 
     def copy[Out <: Sys[Out]]()(implicit tx: S#Tx, txOut: Out#Tx, context: Copy[S, Out]): Elem[Out] =
-      new Predefined(txOut.newID(), cookie) // .connect()
+      new Predefined(txOut.newId(), cookie) // .connect()
 
     def write(out: DataOutput): Unit = {
-      out.writeInt(tpe.typeID)
+      out.writeInt(tpe.typeId)
       out.writeByte(cookie)
       id.write(out)
     }

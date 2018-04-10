@@ -29,7 +29,7 @@ object OutputImpl {
   def apply[S <: Sys[S]](fscape: FScape[S], key: String, tpe: Obj.Type)(implicit tx: S#Tx): OutputImpl[S] = {
 //    val tgt = evt.Targets[S]
 //    val id = tgt.id
-    val id  = tx.newID()
+    val id  = tx.newId()
     val vr  = tx.newVar[Option[Obj[S]]](id, None)
     new Impl[S](id, fscape, key, tpe, vr).connect()
   }
@@ -54,23 +54,23 @@ object OutputImpl {
       sys.error(s"Unexpected cookie (found $constCookie, expected 3)")
 //    val tgt     = evt.Targets.read(in, access)
 //    val id = tgt.id
-    val id = tx.readID(in, access)
+    val id = tx.readId(in, access)
 //    val cookie  = in.readByte()
 //    if (cookie != 3) sys.error(s"Unexpected cookie, expected 3 found $cookie")
-//    val id      = tx.readID(in, access)
+//    val id      = tx.readId(in, access)
     val serVer  = in.readShort()
     if (serVer != SER_VERSION)
       sys.error(s"Incompatible serialized version (found ${serVer.toInt.toHexString}, required ${SER_VERSION.toHexString})")
 
     val fscape  = FScape.read(in, access)
     val key     = in.readUTF()
-    val tpeID   = in.readInt()
-    val tpe     = Obj.getType(tpeID)
+    val tpeId   = in.readInt()
+    val tpe     = Obj.getType(tpeId)
     val vr      = tx.readVar[Option[Obj[S]]](id, in)
     new Impl[S](id /* tgt */, fscape, key, tpe, vr)
   }
 
-  private final class Impl[S <: Sys[S]](val id: S#ID /* protected val targets: evt.Targets[S] */,
+  private final class Impl[S <: Sys[S]](val id: S#Id /* protected val targets: evt.Targets[S] */,
                                         val fscape: FScape[S], val key: String, val valueType: Obj.Type,
                                         valueVr: S#Var[Option[Obj[S]]])
     extends OutputImpl[S] with ConstObjImpl[S, Any] /* evt.impl.SingleNode[S, Output.Update[S]] */ { self =>
@@ -114,9 +114,9 @@ object OutputImpl {
 //    }
 
     def copy[Out <: Sys[Out]]()(implicit tx: S#Tx, txOut: Out#Tx, context: Copy[S, Out]): Elem[Out] = {
-//      val tgtOut  = evt.Targets[Out] // txOut.newID()
+//      val tgtOut  = evt.Targets[Out] // txOut.newId()
 //      val idOut   = tgtOut.id
-      val idOut   = txOut.newID()
+      val idOut   = txOut.newId()
       val fscOut  = context(fscape)
       val vrOut   = txOut.newVar[Option[Obj[Out]]](idOut, None)  // correct to drop cache?
       val out     = new Impl[Out](idOut, fscOut, key, valueType, vrOut)
@@ -127,7 +127,7 @@ object OutputImpl {
       out.writeShort(SER_VERSION)
       fscape.write(out)
       out.writeUTF(key)
-      out.writeInt(valueType.typeID)
+      out.writeInt(valueType.typeId)
       valueVr.write(out)
     }
 

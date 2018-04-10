@@ -23,7 +23,7 @@ import de.sciss.fscape.stream
 import de.sciss.fscape.stream.StreamIn
 import de.sciss.lucre.expr.LongObj
 import de.sciss.lucre.stm.{Obj, Sys}
-import de.sciss.serial.{DataInput, ImmutableSerializer}
+import de.sciss.serial.{DataInput, Serializer}
 import de.sciss.synth.proc.WorkspaceHandle
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -50,7 +50,7 @@ final case class MkLong(key: String, in: GE) extends Lazy.Expander[Unit] with Ou
   def tpe: Obj.Type = LongObj
 
   def readOutput[S <: Sys[S]](in: DataInput)(implicit tx: S#Tx, workspace: WorkspaceHandle[S]): Obj[S] = {
-    val flat = ImmutableSerializer.Long.read(in)
+    val flat = Serializer.Long.read(in)
     LongObj.newConst(flat)
   }
 
