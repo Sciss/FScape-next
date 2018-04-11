@@ -21,17 +21,17 @@ lazy val commonSettings = Seq(
 
 lazy val deps = new {
   val main = new {
-    val audioFile       = "1.5.0-SNAPSHOT"
-    val dsp             = "1.3.0-SNAPSHOT"
+    val audioFile       = "1.5.0"
+    val dsp             = "1.3.0"
     val fileUtil        = "1.1.3"
     val numbers         = "0.1.5"
     val optional        = "1.0.0"
     val scalaChart      = "0.6.0"
-    val swingPlus       = "0.3.0-SNAPSHOT"
+    val swingPlus       = "0.3.0"
     val akka            = "2.4.20" // N.B. "2.5.1" is latest, but they moved an impl class that we require (ActorMaterializerImpl)
   }
   val lucre = new {
-    val fileCache       = "0.4.0-SNAPSHOT"
+    val fileCache       = "0.4.0"
     val soundProcesses  = "3.18.0-SNAPSHOT"
   }
   val test = new {
@@ -67,7 +67,7 @@ lazy val core = Project(id = s"$baseNameL-core", base = file("core"))
     libraryDependencies ++= Seq(
       "de.sciss"                  %% "scissdsp"             % deps.main.dsp,
       "de.sciss"                  %% "numbers"              % deps.main.numbers,
-      "de.sciss"                  %% "scalaaudiofile"       % deps.main.audioFile,
+      "de.sciss"                  %% "audiofile"            % deps.main.audioFile,
       "de.sciss"                  %% "fileutil"             % deps.main.fileUtil,
       "de.sciss"                  %% "swingplus"            % deps.main.swingPlus,
       "de.sciss"                  %% "optional"             % deps.main.optional,
