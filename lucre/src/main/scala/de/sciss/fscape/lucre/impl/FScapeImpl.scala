@@ -60,8 +60,8 @@ object FScapeImpl {
   // ---- Code ----
 
   implicit object CodeWrapper extends CodeImpl.Wrapper[Unit, Graph, FScape.Code] {
-    def id: Int = FScape.Code.id
-    def binding = None
+    def id      : Int             = FScape.Code.id
+    def binding : Option[String]  = None
 
     def wrap(in: Unit)(fun: => Any): Graph = Graph(fun)
 
@@ -278,7 +278,7 @@ object FScapeImpl {
                       out: SkipList.Map[Out, String, Output[Out]]): Unit =
             in.iterator.foreach { case (key, eIn) =>
               val eOut = context(eIn)
-              out.add(key -> eOut)
+              out.put(key, eOut)
             }
 
           // copyMap(proc.scanInMap , out.scanInMap)
@@ -350,7 +350,7 @@ object FScapeImpl {
       }
 
       private def add(key: String, value: Output[S])(implicit tx: S#Tx): Unit = {
-        val optRemoved = outputsMap.add(key -> value)
+        val optRemoved = outputsMap.put(key, value)
         fire(added = Some(value), removed = optRemoved)
       }
 
