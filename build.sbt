@@ -2,8 +2,8 @@ lazy val baseName   = "FScape"
 lazy val baseNameL  = baseName.toLowerCase
 lazy val githubRepo = "FScape-next"
 
-lazy val projectVersion = "2.13.0"
-lazy val mimaVersion    = "2.13.0"
+lazy val projectVersion = "2.14.0"
+lazy val mimaVersion    = "2.14.0"
 
 lazy val baseDescription = "An audio rendering library"
 
@@ -11,8 +11,8 @@ lazy val commonSettings = Seq(
   organization       := "de.sciss",
   description        := baseDescription,
   version            := projectVersion,
-  scalaVersion       := "2.12.5",
-  crossScalaVersions := Seq("2.12.5", "2.11.12"),
+  scalaVersion       := "2.12.6",
+  crossScalaVersions := Seq("2.12.6", "2.11.12"),
   licenses           := Seq("GPL v2+" -> url("http://www.gnu.org/licenses/gpl-2.0.txt")),
   homepage           := Some(url(s"https://github.com/Sciss/$githubRepo")),
   scalacOptions     ++= Seq("-deprecation", "-unchecked", "-feature", "-encoding", "utf8", "-Xfuture", "-Xlint"),
@@ -32,10 +32,10 @@ lazy val deps = new {
   }
   val lucre = new {
     val fileCache       = "0.4.0"
-    val soundProcesses  = "3.18.0"
+    val soundProcesses  = "3.19.0"
   }
   val test = new {
-    val lucre           = "3.6.0"
+    val lucre           = "3.7.0"
     val scalaTest       = "3.0.5"
   }
 }
