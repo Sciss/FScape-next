@@ -59,7 +59,7 @@ trait DualAuxWindowedLogic[S <: Shape] extends DualAuxChunkImpl[S] {
     */
   protected def processWindow(writeToWinOff: Long /* , flush: Boolean */): Long
 
-  protected def processAux2(): Unit
+  protected def processAux2(): Boolean
 
   protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit
 
@@ -99,9 +99,9 @@ trait DualAuxWindowedLogic[S <: Shape] extends DualAuxChunkImpl[S] {
           stateChange       = true
         }
 
-        processAux2()
+        val aux2Ok = processAux2()
 
-        if (aux2InRemain == 0 && (writeToWinRemain == 0 || flushIn)) {
+        if (aux2Ok && (writeToWinRemain == 0 || flushIn)) {
           readFromWinRemain = processWindow(writeToWinOff = writeToWinOff)
           writeToWinOff     = 0
           readFromWinOff    = 0

@@ -14,8 +14,14 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.{Attributes, FanInShape8}
+import java.util
+
+import akka.stream.stage.InHandler
+import akka.stream.{Attributes, FanInShape8, Inlet}
 import de.sciss.fscape.stream.impl.{DemandFilterLogic, DualAuxWindowedLogic, NodeImpl, Out1DoubleImpl, Out1LogicImpl, ProcessOutHandlerImpl, StageImpl}
+import de.sciss.numbers.IntFunctions
+
+import scala.util.Random
 
 object GimpSlur {
   def apply(in: OutD, width: OutI, height: OutI, kernel: OutD, kernelWidth: OutI, kernelHeight: OutI,
@@ -55,10 +61,12 @@ object GimpSlur {
 
   private final class Logic(shape: Shape)(implicit ctrl: Control)
     extends NodeImpl(name, shape)
-      with DualAuxWindowedLogic[Shape]
+      with DualAuxWindowedLogic   [Shape]
       with DemandFilterLogic[BufD, Shape]
-      with Out1LogicImpl[BufD, Shape]
-      with Out1DoubleImpl[Shape] {
+      with Out1LogicImpl    [BufD, Shape]
+      with Out1DoubleImpl         [Shape] {
+
+    logic =>
 
     private[this] var width       : Int     = _
     private[this] var height      : Int     = _
@@ -69,8 +77,28 @@ object GimpSlur {
     private[this] var kernelSize  : Int     = _
 
     private[this] var imageSize = 0
-    private[this] var winBuf    : Array[Double] = _
+    private[this] var winBuf1   : Array[Double] = _
+    private[this] var winBuf2   : Array[Double] = _
     private[this] var kernelBuf : Array[Double] = _
+
+    private[this] val rnd: Random = ctrl.mkRandom()
+
+    // ---- DemandWindowedLogic adaptation ----
+
+    private[this] var hasKernel         = false
+    private[this] var kernelRemain      = 0
+
+    // ---- bla ----
+
+    protected     var bufIn0 : BufD = _
+    private[this] var bufIn1 : BufI = _
+    private[this] var bufIn2 : BufI = _
+    private[this] var bufIn3 : BufD = _
+    private[this] var bufIn4 : BufI = _
+    private[this] var bufIn5 : BufI = _
+    private[this] var bufIn6 : BufI = _
+    private[this] var bufIn7 : BufI = _
+    protected     var bufOut0: BufD = _
 
     protected def startNextWindow(): Long = {
       val inOff       = aux1InOff
@@ -95,127 +123,115 @@ object GimpSlur {
         wrap = bufIn7.buf(inOff) != 0
       }
 
-      if (kernelWidth != oldKernelW || kernelHeight != oldKernelH) {
+      val needsKernel = if (kernelWidth != oldKernelW || kernelHeight != oldKernelH) {
         kernelSize    = kernelWidth * kernelHeight
         kernelBuf     = new Array[Double](kernelSize)
         hasKernel     = false
-        kernelRemain  = kernelSize
-//
-////      } else if (isInAvailable(in3) || !isClosed(in3)) {
-//      } else if (bufIn3 != null && inOff < bufIn3.size) {
-//        kernelRemain  = kernelSize
+        true
+
+//      } else if (isInAvailable(in3) || !isClosed(in3)) {
+      } else {
+        !hasKernel ||
+          (bufIn3 != null && aux2InOff < bufIn3.size) ||
+          (isClosed(shape.in3) && isAvailable(shape.in3)) || !isClosed(shape.in3)
       }
+
+      kernelRemain = if (needsKernel) kernelSize else 0
 
       val newSizeOuter = width * height
       if (newSizeOuter != imageSize) {
-        imageSize = newSizeOuter
-        winBuf    = new Array(newSizeOuter)
+        imageSize   = newSizeOuter
+        winBuf1     = new Array(newSizeOuter)
+        winBuf2     = new Array(newSizeOuter)
       }
 
       imageSize
     }
 
-    protected def processAux2(): Unit = ???
+    protected def processAux2(): Boolean = {
+      if (kernelRemain > 0) {
+        if (bufIn3 != null && aux2InOff < bufIn3.size) {
+          val chunk = math.min(kernelRemain, aux2InRemain)
+          Util.copy(bufIn3.buf, aux2InOff, kernelBuf, kernelSize - kernelRemain, chunk)
+          aux2InOff    += chunk
+          aux2InRemain -= chunk
+          kernelRemain -= chunk
+          if (kernelRemain == 0) hasKernel = true
+        }
+        if (aux2InRemain == 0 && isClosed(shape.in3) && !isAvailable(shape.in3)) {
+          Util.fill(kernelBuf, kernelSize - kernelRemain, kernelRemain, Double.MaxValue)
+          kernelRemain  = 0
+          hasKernel     = true
+        }
+      }
+
+      kernelRemain == 0
+    }
 
     protected def copyInputToWindow(writeToWinOff: Long, chunk: Int): Unit =
-      Util.copy(bufIn0.buf, mainInOff, winBuf, writeToWinOff.toInt, chunk)
+      Util.copy(bufIn0.buf, mainInOff, winBuf1, writeToWinOff.toInt, chunk)
 
     protected def processWindow(writeToWinOff: Long): Long = {
-//      val steps   = numColSteps.toLong * numRowSteps
-//      val frames  = steps * kernelSize
-//      if (frames > 0x7FFFFFFF) sys.error(s"Matrix too large - $frames frames is larger than 32bit")
-//      frames.toInt
-      ???
+      val w       = width
+      val h       = height
+      val wk      = kernelWidth
+      val hk      = kernelHeight
+      val cx      = wk >>> 1
+      val cy      = hk >>> 1
+      val szKern  = kernelSize
+      var bIn     = winBuf1
+      var bOut    = winBuf2
+      val bKern   = kernelBuf
+      val _wrap   = wrap
+
+      var r = repeat
+      while (r > 0) {
+        var off = 0
+        var y = 0
+        while (y < h) {
+          var x = 0
+          while (x < w) {
+            val n   = rnd.nextDouble()
+            val i   = util.Arrays.binarySearch(bKern, 0, szKern, n)
+            val j   = if (i >= 0) i else math.min(szKern - 1, -(i + 1))
+            var xi  = (j % wk) - cx + x
+            var yi  = (j / wk) - cy + y
+
+            if (xi < 0 || xi >= w) {
+              xi = if (_wrap) IntFunctions.wrap(xi, 0, w - 1) else IntFunctions.clip(xi, 0, w - 1)
+            }
+            if (yi < 0 || yi >= h) {
+              yi = if (_wrap) IntFunctions.wrap(yi, 0, h - 1) else IntFunctions.clip(yi, 0, h - 1)
+            }
+            val value = bIn(yi * w + xi)
+            bOut(off) = value
+
+            off += 1
+            x   += 1
+          }
+          y += 1
+        }
+
+        val tmp = bIn
+        bIn     = bOut
+        bOut    = tmp
+        r -= 1
+      }
+      imageSize
     }
 
     protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit = {
-      ???
+      val b = if (repeat % 2 == 1) winBuf2 else winBuf1
+      Util.copy(b, readFromWinOff.toInt, bufOut0.buf, outOff, chunk)
     }
 
-    // ---- DemandWindowedLogic adaptation ----
-
-    private[this] var writeToWinOff     = 0L
-    private[this] var writeToWinRemain  = 0L
-    private[this] var readFromWinOff    = 0L
-    private[this] var readFromWinRemain = 0L
-    private[this] var isNextWindow      = true
-    private[this] var hasKernel         = false
-    private[this] var kernelRemain      = 0
-
-    @inline
-    private[this] def canWriteToWindow  = readFromWinRemain == 0 && inValid
-
-//    protected def processChunk(): Boolean = {
-//      var stateChange = false
-//
-//      if (canWriteToWindow) {
-//        val flushIn0 = inputsEnded // inRemain == 0 && shouldComplete()
-//        if (isNextWindow && !flushIn0) {
-//          writeToWinRemain  = startNextWindow()
-//          isNextWindow      = false
-//          stateChange       = true
-//          // logStream(s"startNextWindow(); writeToWinRemain = $writeToWinRemain")
-//        }
-//
-//        if (kernelRemain > 0 && ) {
-//
-//        }
-//
-//        val chunk     = math.min(writeToWinRemain, mainInRemain).toInt
-//        val flushIn   = flushIn0 && writeToWinOff > 0
-//        if (chunk > 0 || flushIn) {
-//          // logStream(s"writeToWindow(); inOff = $inOff, writeToWinOff = $writeToWinOff, chunk = $chunk")
-//          if (chunk > 0) {
-//            copyInputToWindow(writeToWinOff = writeToWinOff, chunk = chunk)
-//            mainInOff        += chunk
-//            mainInRemain     -= chunk
-//            writeToWinOff    += chunk
-//            writeToWinRemain -= chunk
-//            stateChange       = true
-//          }
-//
-//          if ((writeToWinRemain == 0 || flushIn) && kernelRemain == 0) {
-//            readFromWinRemain = processWindow(writeToWinOff = writeToWinOff) // , flush = flushIn)
-//            writeToWinOff     = 0
-//            readFromWinOff    = 0
-//            isNextWindow      = true
-//            stateChange       = true
-//            auxInOff         += 1
-//            auxInRemain      -= 1
-//            // logStream(s"processWindow(); readFromWinRemain = $readFromWinRemain")
-//          }
-//        }
-//      }
-//
-//      if (readFromWinRemain > 0) {
-//        val chunk = math.min(readFromWinRemain, outRemain).toInt
-//        if (chunk > 0) {
-//          // logStream(s"readFromWindow(); readFromWinOff = $readFromWinOff, outOff = $outOff, chunk = $chunk")
-//          copyWindowToOutput(readFromWinOff = readFromWinOff, outOff = outOff, chunk = chunk)
-//          readFromWinOff    += chunk
-//          readFromWinRemain -= chunk
-//          outOff            += chunk
-//          outRemain         -= chunk
-//          stateChange        = true
-//        }
-//      }
-//
-//      stateChange
-//    }
-
-//    protected def shouldComplete(): Boolean = inputsEnded && writeToWinOff == 0 && readFromWinRemain == 0
-
-    // ---- bla ----
-
-    protected     var bufIn0 : BufD = _
-    private[this] var bufIn1 : BufI = _
-    private[this] var bufIn2 : BufI = _
-    private[this] var bufIn3 : BufD = _
-    private[this] var bufIn4 : BufI = _
-    private[this] var bufIn5 : BufI = _
-    private[this] var bufIn6 : BufI = _
-    private[this] var bufIn7 : BufI = _
-    protected     var bufOut0: BufD = _
+    private[this] var _mainCanRead  = false
+    private[this] var _aux1CanRead  = false
+    private[this] var _aux2CanRead  = false
+    private[this] var _mainInValid  = false
+    private[this] var _aux1InValid  = false
+    private[this] var _aux2InValid  = false
+    private[this] var _inValid      = false
 
     protected def in0: InD = shape.in0
     protected def in1: InI = shape.in1
@@ -225,14 +241,6 @@ object GimpSlur {
     protected def in5: InI = shape.in5
     protected def in6: InI = shape.in6
     protected def in7: InI = shape.in7
-
-    private[this] var _mainCanRead  = false
-    private[this] var _aux1CanRead  = false
-    private[this] var _aux2CanRead  = false
-    private[this] var _mainInValid  = false
-    private[this] var _aux1InValid  = false
-    private[this] var _aux2InValid  = false
-    private[this] var _inValid      = false
 
     protected def out0: OutD = shape.out
 
@@ -259,7 +267,8 @@ object GimpSlur {
     override protected def stopped(): Unit = {
       freeInputBuffers()
       freeOutputBuffers()
-      winBuf    = null
+      winBuf1   = null
+      winBuf2   = null
       kernelBuf = null
     }
 
@@ -416,15 +425,95 @@ object GimpSlur {
       _aux2CanRead = (isClosed(sh.in3) && _aux2InValid) || isAvailable(sh.in3)
     }
 
-    ???
-//    new DemandProcessInHandler(shape.in0, this)
-//    new DemandAuxInHandler    (shape.in1, this)
-//    new DemandAuxInHandler    (shape.in2, this)
-//    new DemandAuxInHandler    (shape.in3, this)
-//    new DemandAuxInHandler    (shape.in4, this)
-//    new DemandAuxInHandler    (shape.in5, this)
-//    new DemandAuxInHandler    (shape.in6, this)
-//    new DemandAuxInHandler    (shape.in7, this)
+    final class Aux1InHandler[A](in: Inlet[A])
+      extends InHandler {
+
+      def onPush(): Unit = {
+        logStream(s"onPush($in)")
+        testRead()
+      }
+
+      private[this] def testRead(): Unit = {
+        logic.updateAux1CanRead()
+        if (logic.aux1CanRead) logic.process()
+      }
+
+      override def onUpstreamFinish(): Unit = {
+        logStream(s"onUpstreamFinish($in)")
+        if (logic.aux1InValid || logic.isInAvailable(in)) {
+          testRead()
+        } else {
+          println(s"Invalid aux $in")
+          logic.completeStage()
+        }
+      }
+
+      logic.setInHandler(in, this)
+    }
+
+
+    final class Aux2InHandler[A](in: Inlet[A])
+      extends InHandler {
+
+      def onPush(): Unit = {
+        logStream(s"onPush($in)")
+        testRead()
+      }
+
+      private[this] def testRead(): Unit = {
+        logic.updateAux2CanRead()
+        if (logic.aux2CanRead) logic.process()
+      }
+
+      override def onUpstreamFinish(): Unit = {
+        logStream(s"onUpstreamFinish($in)")
+        val hasMore = logic.isInAvailable(in)
+        if (logic.aux2InValid || hasMore) {
+          if (!hasMore && aux2InRemain == 0) kernelRemain = 0   // keep going with previous
+          testRead()
+        } else {
+          println(s"Invalid aux $in")
+          logic.completeStage()
+        }
+      }
+
+      logic.setInHandler(in, this)
+    }
+
+    final class ProcessInHandler[A](in: Inlet[A])
+      extends InHandler {
+      def onPush(): Unit = {
+        logStream(s"onPush($in)")
+        logic.updateMainCanRead()
+        if (logic.mainCanRead) logic.process()
+      }
+
+      override def onUpstreamFinish(): Unit = {
+        logStream(s"onUpstreamFinish($in)")
+        if (logic.mainInValid) {
+          // logic.updateCanRead()
+          logic.process()
+        } // may lead to `flushOut`
+        else {
+          if (!logic.isInAvailable(in)) {
+            println(s"Invalid process $in")
+            logic.completeStage()
+          }
+        }
+      }
+
+      logic.setInHandler(in, this)
+    }
+
+    new ProcessInHandler(shape.in0)
+    new Aux1InHandler(shape.in1)
+    new Aux1InHandler(shape.in2)
+    new Aux2InHandler(shape.in3)
+    new Aux1InHandler(shape.in4)
+    new Aux1InHandler(shape.in5)
+    new Aux1InHandler(shape.in6)
+    new Aux1InHandler(shape.in7)
+
     new ProcessOutHandlerImpl (shape.out, this)
   }
 }

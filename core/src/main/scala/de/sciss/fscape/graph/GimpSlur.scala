@@ -21,6 +21,9 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 
 /** A UGen similar to GIMP's Slur image filter. Instead of a hard-coded kernel,
   * the probability table must be provided as a separate input.
+  * The kernel width and height should be odd, so that the kernel is considered to be
+  * symmetric around each input image's pixel. If they are odd, the centre corresponds to
+  * integer divisions `kernelWidth/2` and `kernelHeight/2`.
   *
   * @param in             image input
   * @param width          image width

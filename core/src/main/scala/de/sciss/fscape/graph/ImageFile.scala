@@ -14,7 +14,9 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.file.File
 import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer}
+import javax.imageio.ImageIO
 
 import scala.annotation.switch
 
@@ -80,4 +82,31 @@ object ImageFile {
                         height       : Int,
                         numChannels  : Int,
                         quality      : Int = 80)
+
+  def readSpec(path: String): Spec = readSpec(new File(path))
+
+  /** Determines the spec of an image file.
+    * A bit of guess work is involved (not tested for float format).
+    * JPEG quality is currently _not_ determined.
+    */
+  def readSpec(f: File): Spec = {
+    val in      = ImageIO.createImageInputStream(f)
+    val reader  = ImageIO.getImageReaders(in).next()
+    try {
+      reader.setInput(in)
+      val fmt = reader.getFormatName
+      val w   = reader.getWidth (0)
+      val h   = reader.getHeight(0)
+      val s   = reader.getImageTypes(0).next()
+      val nc  = s.getNumComponents
+      val nb  = s.getColorModel.getPixelSize / nc
+      // Ok, that's a guess, LOL
+      val st  = if (nb == 8) SampleFormat.Int8 else if (nb == 16) SampleFormat.Int8 else SampleFormat.Float
+      val tpe = if (fmt.toLowerCase == "png") Type.PNG else Type.JPG
+      Spec(fileType = tpe, sampleFormat = st, width = w, height = h, numChannels = nc)
+
+    } finally {
+      reader.dispose()    // XXX TODO --- do we also need to call `in.close()` ?
+    }
+  }
 }

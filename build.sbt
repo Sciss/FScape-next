@@ -2,7 +2,7 @@ lazy val baseName   = "FScape"
 lazy val baseNameL  = baseName.toLowerCase
 lazy val githubRepo = "FScape-next"
 
-lazy val projectVersion = "2.14.2-SNAPSHOT"
+lazy val projectVersion = "2.14.2"
 lazy val mimaVersion    = "2.14.0"
 
 lazy val baseDescription = "An audio rendering library"
@@ -35,8 +35,10 @@ lazy val deps = new {
     val soundProcesses  = "3.19.0"
   }
   val test = new {
+    val kollFlitz       = "0.2.2"
     val lucre           = "3.7.0"
     val scalaTest       = "3.0.5"
+    val scopt           = "3.7.0"
   }
 }
 
@@ -73,7 +75,9 @@ lazy val core = Project(id = s"$baseNameL-core", base = file("core"))
       "de.sciss"                  %% "optional"             % deps.main.optional,
       "de.sciss"                  %% "scala-chart"          % deps.main.scalaChart,
       "com.typesafe.akka"         %% "akka-stream"          % deps.main.akka,
-      "com.typesafe.akka"         %% "akka-stream-testkit"  % deps.main.akka
+      "com.typesafe.akka"         %% "akka-stream-testkit"  % deps.main.akka,
+      "com.github.scopt"          %% "scopt"                % deps.test.scopt     % Test,
+      "de.sciss"                  %% "kollflitz"            % deps.test.kollFlitz % Test
     ),
     mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-core" % mimaVersion)
   )
@@ -86,8 +90,8 @@ lazy val lucre = Project(id = s"$baseNameL-lucre", base = file("lucre"))
     libraryDependencies ++= Seq(
       "de.sciss"      %% "soundprocesses-core" % deps.lucre.soundProcesses,
       "de.sciss"      %% "filecache-txn"       % deps.lucre.fileCache,
-      "org.scalatest" %% "scalatest"           % deps.test.scalaTest % "test",
-      "de.sciss"      %% "lucre-bdb"           % deps.test.lucre     % "test"
+      "org.scalatest" %% "scalatest"           % deps.test.scalaTest % Test,
+      "de.sciss"      %% "lucre-bdb"           % deps.test.lucre     % Test
     ),
     mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-lucre" % mimaVersion)
   )
@@ -98,7 +102,7 @@ lazy val cdp = Project(id = s"$baseNameL-cdp", base = file("cdp"))
   .settings(
     description := "Bridge from FScape to Composers Desktop Project",
     libraryDependencies ++= Seq(
-      "org.scalatest" %% "scalatest" % deps.test.scalaTest % "test"
+      "org.scalatest" %% "scalatest" % deps.test.scalaTest % Test
     )
     // mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-cdp" % mimaVersion)
   )
