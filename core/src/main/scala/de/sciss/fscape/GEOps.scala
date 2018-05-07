@@ -15,7 +15,7 @@ package de.sciss.fscape
 
 import de.sciss.fscape.graph.BinaryOp._
 import de.sciss.fscape.graph.UnaryOp._
-import de.sciss.fscape.graph.{BinaryOp, ChannelProxy, ComplexBinaryOp, ComplexUnaryOp, Concat, Constant, Drop, Elastic, FilterSeq, Metro, Poll, SetResetFF, Take, TakeRight, UnaryOp, UnzipWindow, ZipWindow}
+import de.sciss.fscape.graph.{BinaryOp, ChannelProxy, Clip, ComplexBinaryOp, ComplexUnaryOp, Concat, Constant, Drop, Elastic, FilterSeq, Fold, Metro, Poll, SetResetFF, Take, TakeRight, UnaryOp, UnzipWindow, Wrap, ZipWindow}
 import de.sciss.optional.Optional
 
 final class GEOps1(val `this`: GE) extends AnyVal { me =>
@@ -249,17 +249,9 @@ final class GEOps2(val `this`: GE) extends AnyVal { me =>
   // def rrand(b: GE): GE    = ...
   // def exprrand(b: GE): GE = ...
 
-//  def clip(low: GE, high: GE): GE = {
-//    Clip(r, g, low, high)
-//  }
-//
-//  def fold(low: GE, high: GE): GE = {
-//    Fold(r, g, low, high)
-//  }
-//
-//  def wrap(low: GE, high: GE): GE = {
-//    Wrap(r, g, low, high)
-//  }
+  def clip(low: GE = 0.0, high: GE = 1.0): GE = Clip(g, low, high)
+  def fold(low: GE = 0.0, high: GE = 1.0): GE = Fold(g, low, high)
+  def wrap(low: GE = 0.0, high: GE = 1.0): GE = Wrap(g, low, high)
 
   def linlin(inLow: GE, inHigh: GE, outLow: GE, outHigh: GE): GE = {
     // XXX TODO
