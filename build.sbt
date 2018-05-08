@@ -2,7 +2,7 @@ lazy val baseName   = "FScape"
 lazy val baseNameL  = baseName.toLowerCase
 lazy val githubRepo = "FScape-next"
 
-lazy val projectVersion = "2.14.2"
+lazy val projectVersion = "2.14.3-SNAPSHOT"
 lazy val mimaVersion    = "2.14.0"
 
 lazy val baseDescription = "An audio rendering library"
@@ -44,7 +44,7 @@ lazy val deps = new {
 
 // ---- projects ----
 
-lazy val root = Project(id = baseNameL, base = file("."))
+lazy val root = project.withId(baseNameL).in(file("."))
   .aggregate(core, lucre, cdp)
   .dependsOn(core, lucre, cdp)
   .settings(commonSettings)
@@ -57,7 +57,7 @@ lazy val root = Project(id = baseNameL, base = file("."))
     autoScalaLibrary := false
   )
 
-lazy val core = Project(id = s"$baseNameL-core", base = file("core"))
+lazy val core = project.withId(s"$baseNameL-core").in(file("core"))
   .enablePlugins(BuildInfoPlugin)
   .settings(commonSettings)
   .settings(
@@ -82,7 +82,7 @@ lazy val core = Project(id = s"$baseNameL-core", base = file("core"))
     mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-core" % mimaVersion)
   )
 
-lazy val lucre = Project(id = s"$baseNameL-lucre", base = file("lucre"))
+lazy val lucre = project.withId(s"$baseNameL-lucre").in(file("lucre"))
   .dependsOn(core)
   .settings(commonSettings)
   .settings(
@@ -96,7 +96,7 @@ lazy val lucre = Project(id = s"$baseNameL-lucre", base = file("lucre"))
     mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-lucre" % mimaVersion)
   )
 
-lazy val cdp = Project(id = s"$baseNameL-cdp", base = file("cdp"))
+lazy val cdp = project.withId(s"$baseNameL-cdp").in(file("cdp"))
   .dependsOn(core)
   .settings(commonSettings)
   .settings(

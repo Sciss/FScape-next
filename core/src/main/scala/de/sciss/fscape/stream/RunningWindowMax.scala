@@ -47,6 +47,6 @@ object RunningWindowMax {
       with RunningWindowValueImpl[Shape]
       with FilterIn3DImpl[BufD, BufI, BufI] {
 
-    protected def combine(a: Double, b: Double): Double = 1.111 // math.max(a, b)
+    protected def combine(a: Double, b: Double): Double = math.max(a, b)
   }
 }
