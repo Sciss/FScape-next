@@ -12,7 +12,7 @@ object CdpTest extends App {
     val sr    = 44100.0
     val lenIn = sr * 10
     val ln    = Line(0, 1, length = lenIn)
-    val freq  = ln.linexp(0, 1, 200, 4000)
+    val freq  = ln.linExp(0, 1, 200, 4000)
     val sig   = SinOsc(freq/sr).take(lenIn) * 0.5
     val rvs   = cdp.Modify.Radical.Reverse(sig)
     val fOut  = file("/data") / "audio_work" / "reverse.aif"

@@ -10,8 +10,8 @@ import de.sciss.synth.SynthGraph
 import de.sciss.synth.proc.{AudioCue, AuralSystem, GenView, Proc, Transport, WorkspaceHandle}
 
 object FeedIntoAuralProcTest extends App {
-  implicit val cursor = InMemory()
-  type S              = InMemory
+  type S                  = InMemory
+  implicit val cursor: S  = InMemory()
 
   FScape.init()
   GenView.addFactory(FScape.genViewFactory())
@@ -50,7 +50,7 @@ object FeedIntoAuralProcTest extends App {
       mx.poll(0, "maximum")
 //      val in = PlayBuf.ar(1, b)
       val in = DiskIn.ar("noise", loop = 1)
-      val sig = in / mx * -0.2.dbamp
+      val sig = in / mx * -0.2.dbAmp
       Out.ar(0, Pan2.ar(sig))
     }
     p.graph() = gP
@@ -64,7 +64,7 @@ object FeedIntoAuralProcTest extends App {
   }
 
   cursor.step { implicit tx =>
-    as.whenStarted { s =>
+    as.whenStarted { _ =>
       cursor.step { implicit tx =>
         println("Run.")
         run()

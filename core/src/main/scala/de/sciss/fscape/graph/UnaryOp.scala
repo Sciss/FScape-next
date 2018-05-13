@@ -208,42 +208,42 @@ object UnaryOp {
 
   case object Midicps extends Op {
     final val id = 17
-    def apply(a: Double): Double = rd.midicps(a)
+    def apply(a: Double): Double = rd.midiCps(a)
   }
 
   case object Cpsmidi extends Op {
     final val id = 18
-    def apply(a: Double): Double = rd.cpsmidi(a)
+    def apply(a: Double): Double = rd.cpsMidi(a)
   }
 
   case object Midiratio extends Op {
     final val id = 19
-    def apply(a: Double): Double = rd.midiratio(a)
+    def apply(a: Double): Double = rd.midiRatio(a)
   }
 
   case object Ratiomidi extends Op {
     final val id = 20
-    def apply(a: Double): Double = rd.ratiomidi(a)
+    def apply(a: Double): Double = rd.ratioMidi(a)
   }
 
   case object Dbamp extends Op {
     final val id = 21
-    def apply(a: Double): Double = rd.dbamp(a)
+    def apply(a: Double): Double = rd.dbAmp(a)
   }
 
   case object Ampdb extends Op {
     final val id = 22
-    def apply(a: Double): Double = rd.ampdb(a)
+    def apply(a: Double): Double = rd.ampDb(a)
   }
 
   case object Octcps extends Op {
     final val id = 23
-    def apply(a: Double): Double = rd.octcps(a)
+    def apply(a: Double): Double = rd.octCps(a)
   }
 
   case object Cpsoct extends Op {
     final val id = 24
-    def apply(a: Double): Double = rd.cpsoct(a)
+    def apply(a: Double): Double = rd.cpsOct(a)
   }
 
   case object Log extends Op {
@@ -319,7 +319,7 @@ object UnaryOp {
   //
   //  case object Softclip extends Op {
   //    final val id = 43
-  //    def apply(a: Double): Double = rd2.softclip(a)
+  //    def apply(a: Double): Double = rd2.softClip(a)
   //  }
 
   // class Coin              extends Op( 44 )
@@ -338,7 +338,7 @@ object UnaryOp {
   //
   //  case object Scurve extends Op {
   //    final val id = 53
-  //    def apply(a: Double): Double = rd2.scurve(a)
+  //    def apply(a: Double): Double = rd2.sCurve(a)
   //  }
 
   case object IsNaN extends Op {

@@ -31,7 +31,7 @@ object NormalizeTest extends App {
     /* val max = */ RunningMax(in.abs) // .last
     val trig  = Metro(44100)
     in /* max */     . poll(trig, "max [Lin]")
-    in /* max */.ampdb.poll(trig, "max [dB ]")
+    in /* max */.ampDb.poll(trig, "max [dB ]")
   }
 
   lazy val gFORK = Graph {
@@ -43,7 +43,7 @@ object NormalizeTest extends App {
 
   lazy val gConst = Graph {
     val trig = 1 // Impulse(1.0/44100)
-    Poll(in = (-0.0940551906824112: GE).abs.ampdb, trig = trig, label = "max")
+    Poll(in = (-0.0940551906824112: GE).abs.ampDb, trig = trig, label = "max")
   }
 
   lazy val g = Graph {
@@ -53,8 +53,8 @@ object NormalizeTest extends App {
 
     val in        = mkIn()
     val max       = RunningMax(in.abs).last
-    max.ampdb.poll(0, "max [dB]")
-    val headroom  = -0.2.dbamp
+    max.ampDb.poll(0, "max [dB]")
+    val headroom  = -0.2.dbAmp
     val gain      = max.reciprocal * headroom
     val buf       = mkIn() // BufferAll(in)
     val sig       = buf * gain
@@ -64,8 +64,8 @@ object NormalizeTest extends App {
   lazy val gBuf = Graph {
     val in        = AudioFileIn(file = fIn3, numChannels = 1)
     val max       = RunningMax(in.abs).last
-    max.ampdb.poll(0, "max [dB]")
-    val headroom  = -0.2.dbamp
+    max.ampDb.poll(0, "max [dB]")
+    val headroom  = -0.2.dbAmp
     val gain      = max.reciprocal * headroom
     val buf       = BufferDisk(in)
     val sig       = buf * gain
@@ -77,15 +77,15 @@ object NormalizeTest extends App {
 
     val in        = mkIn()
     val max       = RunningMax(in.abs).last
-    max.ampdb.poll(0, "max [dB]")
-    val headroom  = -0.2.dbamp
+    max.ampDb.poll(0, "max [dB]")
+    val headroom  = -0.2.dbAmp
     val gain      = max.reciprocal * headroom
     val buf       = mkIn() // BufferAll(in)
     val sig       = buf * gain
     AudioFileOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig)
   }
 
-  implicit val ctrl = stream.Control()
+  implicit val ctrl: stream.Control = stream.Control()
   ctrl.run(g)
 
   Swing.onEDT {

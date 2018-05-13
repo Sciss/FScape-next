@@ -58,7 +58,7 @@ object AffineDebug {
 
       import numbers.Implicits._
       //      val scale1l   = (env1Mat * 8 - 4).atan.linlin(-4.0.atan: GE, 4.0.atan: GE, 0.5/kernel: GE, 1: GE)
-      val scale1l   = (env1Mat * 2 - 1).atan.linlin(-1.0.atan: GE, 1.0.atan: GE, 0.5/kernel: GE, 1: GE)
+      val scale1l   = (env1Mat * 2 - 1).atan.linLin(-1.0.atan: GE, 1.0.atan: GE, 0.5/kernel: GE, 1: GE)
 
       val ampMat1l  = env1Mat // .pow(1.0/8)
       val ampMat1   = RepeatWindow(ampMat1l, size = 1, num = kernelS)
@@ -68,7 +68,7 @@ object AffineDebug {
 
       val m1ab      = m1a // BufferDisk(m1a)
 
-      (m1ab \ 0).poll(Metro(kernelS), "ping")
+      (m1ab out 0).poll(Metro(kernelS), "ping")
       val sig             = m1ab // ResizeWindow(m1ab, size = kernelS * frameSize, stop = -(kernelS * (frameSize - 1)))
       val specOut         = ImageFile.Spec(width = kernel, height = kernel, numChannels = 3)
       val tempOutRangeGE0 = Frames(DC(0).take(kernelS * 100))

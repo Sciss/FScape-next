@@ -63,8 +63,8 @@ object NormalizeTest2 extends App {
       ChannelProxy(run, 0).poll(Metro(44100), "run-max")
       Length(run).poll(0, "run-len")
       val max       = run.last
-      max.ampdb.poll(0, "max [dB]")
-      val headroom  = -0.2.dbamp
+      max.ampDb.poll(0, "max [dB]")
+      val headroom  = -0.2.dbAmp
       val gain      = max.reciprocal * headroom
       val buf       = BufferDisk(in)
       val sig       = buf * gain
@@ -83,7 +83,7 @@ object NormalizeTest2 extends App {
 
   val config = Control.Config()
   config.useAsync = false
-  implicit val ctrl = Control(config)
+  implicit val ctrl: Control = Control(config)
   ctrl.run(g)
 
   Swing.onEDT {

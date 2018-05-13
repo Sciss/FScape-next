@@ -28,7 +28,7 @@ object ResampleTest extends App {
     val in0   = SinOsc(441/sr)
     //    val in0   = WhiteNoise()
     val in    = in0.take(sr.toLong * 10)
-    val factor = SinOsc(1.0/32).linexp(-1.0, 1.0, 0.5, 2.0)
+    val factor = SinOsc(1.0/32).linExp(-1.0, 1.0, 0.5, 2.0)
     val sig   = Resample(in = in, factor = factor, minFactor = 0.5)
     val fOut  = userHome / "Documents" / "temp" / "resample_mod.aif"
     AudioFileOut(file = fOut, spec = AudioFileSpec(sampleRate = sr, numChannels = 1), in = sig)
@@ -56,7 +56,7 @@ object ResampleTest extends App {
 
     def resample(in: GE, x: Double): GE = {
       val sin     = SinOsc(freqN = 1.0/50, phase = Seq[GE](0.0, math.Pi * 1/3, math.Pi * 2/3))
-      val factor  = (sin * SinOsc(10.0 / (w * h))).linexp(-1, 1, 1.0/x, x) + 1
+      val factor  = (sin * SinOsc(10.0 / (w * h))).linExp(-1, 1, 1.0/x, x) + 1
       val sig0    = Resample(in = in, factor = factor, minFactor = 1.0/x) // .elastic()
       sig0.take(w * h)
     }

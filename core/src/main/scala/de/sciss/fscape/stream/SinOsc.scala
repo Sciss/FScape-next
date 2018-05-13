@@ -15,7 +15,8 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape2}
-import de.sciss.fscape.stream.impl.{GenChunkImpl, GenIn2DImpl, StageImpl, NodeImpl}
+import de.sciss.fscape.stream.impl.{GenChunkImpl, GenIn2DImpl, NodeImpl, StageImpl}
+import de.sciss.numbers.TwoPi
 
 object SinOsc {
   def apply(freqN: OutD, phase: OutD)(implicit b: Builder): OutD = {
@@ -52,8 +53,6 @@ object SinOsc {
     private[this] var phase   : Double = _  // internal state; does not include `phaseOff`
     private[this] var init = true
 
-    import Util.Pi2
-
     protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Unit = {
       // println(s"SinOsc.processChunk($bufIn0, $chunk)")
 
@@ -71,8 +70,8 @@ object SinOsc {
       var phaseV    = phase
 
       if (init) {
-        incrV     = b0(inOffI) * Pi2
-        phaseOffV = b1(inOffI) % Pi2
+        incrV     = b0(inOffI) * TwoPi
+        phaseOffV = b1(inOffI) % TwoPi
         phaseV    = -incrV
         init      = false
 
@@ -80,9 +79,9 @@ object SinOsc {
       }
 
       while (inOffI < stop) {
-        if (inOffI < stop0) incrV     = b0(inOffI) * Pi2
-        if (inOffI < stop1) phaseOffV = b1(inOffI) % Pi2
-        val phaseVNew = (phaseV + incrV) % Pi2
+        if (inOffI < stop0) incrV     = b0(inOffI) * TwoPi
+        if (inOffI < stop1) phaseOffV = b1(inOffI) % TwoPi
+        val phaseVNew = (phaseV + incrV) % TwoPi
         val x         = phaseVNew + phaseOffV
         out(outOffI)  = math.sin(x)
         phaseV        = phaseVNew

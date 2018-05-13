@@ -27,7 +27,7 @@ final class GEOps1(val `this`: GE) extends AnyVal { me =>
     *               to the number of outputs are wrapped around.
     * @return a monophonic element that represents the given channel of the receiver
     */
-  def `\\`(index: Int)      : GE = ChannelProxy(g, index)
+  def out(index: Int): GE = ChannelProxy(g, index)
 
   @inline private def unOp(op: UnaryOp.Op): GE = op.make(g)
 
@@ -47,14 +47,14 @@ final class GEOps1(val `this`: GE) extends AnyVal { me =>
   def sqrt      : GE  = unOp(Sqrt      )
   def exp       : GE  = unOp(Exp       )
   def reciprocal: GE  = unOp(Reciprocal)
-  def midicps   : GE  = unOp(Midicps   )
-  def cpsmidi   : GE  = unOp(Cpsmidi   )
-  def midiratio : GE  = unOp(Midiratio )
-  def ratiomidi : GE  = unOp(Ratiomidi )
-  def dbamp     : GE  = unOp(Dbamp     )
-  def ampdb     : GE  = unOp(Ampdb     )
-  def octcps    : GE  = unOp(Octcps    )
-  def cpsoct    : GE  = unOp(Cpsoct    )
+  def midiCps   : GE  = unOp(Midicps   )
+  def cpsMidi   : GE  = unOp(Cpsmidi   )
+  def midiRatio : GE  = unOp(Midiratio )
+  def ratioMidi : GE  = unOp(Ratiomidi )
+  def dbAmp     : GE  = unOp(Dbamp     )
+  def ampDb     : GE  = unOp(Ampdb     )
+  def octCps    : GE  = unOp(Octcps    )
+  def cpsOct    : GE  = unOp(Cpsoct    )
   def log       : GE  = unOp(Log       )
   def log2      : GE  = unOp(Log2      )
   def log10     : GE  = unOp(Log10     )
@@ -69,21 +69,21 @@ final class GEOps1(val `this`: GE) extends AnyVal { me =>
   def tanh      : GE  = unOp(Tanh      )
   // def rand : GE              = UnOp.make( 'rand, this )
   // def rand2 : GE             = UnOp.make( 'rand2, this )
-  // def linrand : GE           = UnOp.make( 'linrand, this )
-  // def bilinrand : GE         = UnOp.make( 'bilinrand, this )
-  // def sum3rand : GE          = UnOp.make( 'sum3rand, this )
+  // def linRand : GE           = UnOp.make( 'linrand, this )
+  // def bilinRand : GE         = UnOp.make( 'bilinrand, this )
+  // def sum3Rand : GE          = UnOp.make( 'sum3rand, this )
   //  def distort   : GE  = unOp(Distort   )
-  //  def softclip  : GE  = unOp(Softclip  )
+  //  def softClip  : GE  = unOp(Softclip  )
 
   // def coin : GE              = UnOp.make( 'coin, this )
   // def even : GE              = UnOp.make( 'even, this )
   // def odd : GE               = UnOp.make( 'odd, this )
   // def rectWindow : GE        = UnOp.make( 'rectWindow, this )
-  // def hanWindow : GE         = UnOp.make( 'hanWindow, this )
-  // def welWindow : GE         = UnOp.make( 'sum3rand, this )
+  // def hannWindow : GE         = UnOp.make( 'hanWindow, this )
+  // def welchWindow : GE         = UnOp.make( 'sum3rand, this )
   // def triWindow : GE         = UnOp.make( 'triWindow, this )
   //  def ramp      : GE  = unOp(Ramp      )
-  //  def scurve    : GE  = unOp(Scurve    )
+  //  def sCurve    : GE  = unOp(Scurve    )
 
   // def isPositive : GE        = UnOp.make( 'isPositive, this )
   // def isNegative : GE        = UnOp.make( 'isNegative, this )
@@ -207,7 +207,7 @@ final class GEOps2(val `this`: GE) extends AnyVal { me =>
   def trunc   (b: GE): GE = binOp(Trunc   , b)
   def atan2   (b: GE): GE = binOp(Atan2   , b)
   def hypot   (b: GE): GE = binOp(Hypot   , b)
-  def hypotx  (b: GE): GE = binOp(Hypotx  , b)
+  def hypotApx(b: GE): GE = binOp(Hypotx  , b)
 
   /** '''Warning:''' Unlike a normal power operation, the signum of the
     * left operand is always preserved. I.e. `DC.kr(-0.5).pow(2)` will
@@ -226,19 +226,19 @@ final class GEOps2(val `this`: GE) extends AnyVal { me =>
   def ring2   (b: GE): GE = binOp(Ring2   , b)
   def ring3   (b: GE): GE = binOp(Ring3   , b)
   def ring4   (b: GE): GE = binOp(Ring4   , b)
-  def difsqr  (b: GE): GE = binOp(Difsqr  , b)
-  def sumsqr  (b: GE): GE = binOp(Sumsqr  , b)
-  def sqrsum  (b: GE): GE = binOp(Sqrsum  , b)
-  def sqrdif  (b: GE): GE = binOp(Sqrdif  , b)
-  def absdif  (b: GE): GE = binOp(Absdif  , b)
+  def difSqr  (b: GE): GE = binOp(Difsqr  , b)
+  def sumSqr  (b: GE): GE = binOp(Sumsqr  , b)
+  def sqrSum  (b: GE): GE = binOp(Sqrsum  , b)
+  def sqrDif  (b: GE): GE = binOp(Sqrdif  , b)
+  def absDif  (b: GE): GE = binOp(Absdif  , b)
   def thresh  (b: GE): GE = binOp(Thresh  , b)
-  def amclip  (b: GE): GE = binOp(Amclip  , b)
-  def scaleneg(b: GE): GE = binOp(Scaleneg, b)
+  def amClip  (b: GE): GE = binOp(Amclip  , b)
+  def scaleNeg(b: GE): GE = binOp(Scaleneg, b)
   def clip2   (b: GE): GE = binOp(Clip2   , b)
   def excess  (b: GE): GE = binOp(Excess  , b)
   def fold2   (b: GE): GE = binOp(Fold2   , b)
   def wrap2   (b: GE): GE = binOp(Wrap2   , b)
-//  def firstarg(b: GE): GE = binOp(Firstarg, b)
+//  def firstArg(b: GE): GE = binOp(Firstarg, b)
 
   /** Truncates or extends the first operand to
     * match the length of `b`. This uses
@@ -253,13 +253,13 @@ final class GEOps2(val `this`: GE) extends AnyVal { me =>
   def fold(low: GE = 0.0, high: GE = 1.0): GE = Fold(g, low, high)
   def wrap(low: GE = 0.0, high: GE = 1.0): GE = Wrap(g, low, high)
 
-  def linlin(inLow: GE, inHigh: GE, outLow: GE, outHigh: GE): GE = {
+  def linLin(inLow: GE, inHigh: GE, outLow: GE, outHigh: GE): GE = {
     // XXX TODO
     // LinLin(/* rate, */ g, inLow, inHigh, outLow, outHigh)
     (g - inLow) / (inHigh - inLow) * (outHigh - outLow) + outLow
   }
 
-  def linexp(inLow: GE, inHigh: GE, outLow: GE, outHigh: GE): GE = {
+  def linExp(inLow: GE, inHigh: GE, outLow: GE, outHigh: GE): GE = {
     // XXX TODO
     // LinExp(g.rate, g, inLow, inHigh, outLow, outHigh) // should be highest rate of all inputs? XXX
     val outRatio  = outHigh / outLow
@@ -267,10 +267,10 @@ final class GEOps2(val `this`: GE) extends AnyVal { me =>
     outRatioP.pow((g - inLow) / (inHigh - inLow)) * outLow
   }
 
-  def explin(inLow: GE, inHigh: GE, outLow: GE, outHigh: GE): GE =
+  def expLin(inLow: GE, inHigh: GE, outLow: GE, outHigh: GE): GE =
     (g / inLow).log / (inHigh / inLow).log * (outHigh - outLow) + outLow
 
-  def expexp(inLow: GE, inHigh: GE, outLow: GE, outHigh: GE): GE = {
+  def expExp(inLow: GE, inHigh: GE, outLow: GE, outHigh: GE): GE = {
     val outRatio  = outHigh / outLow
     val outRatioP = BinaryOp.SecondArg.make(g, outRatio)
     outRatioP.pow((g / inLow).log / (inHigh / inLow).log) * outLow

@@ -14,8 +14,6 @@
 package de.sciss.fscape
 
 object Util {
-  final val Pi2: Double = math.Pi * 2
-
   // ---- multi-channel ----
 
   def copy(in: Array[Array[Float]], inOff: Int, out: Array[Array[Double]], outOff: Int, len: Int): Unit = {

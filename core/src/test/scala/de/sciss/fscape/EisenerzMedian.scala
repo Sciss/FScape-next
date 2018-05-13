@@ -78,7 +78,7 @@ object EisenerzMedian {
       def normalize(in: GE, headroom: GE = 1): GE = {
         val max       = RunningMax(in.abs).last
         val gain      = max.reciprocal * headroom
-        gain.ampdb.roundTo(0.01).poll(0, "gain [dB]")
+        gain.ampDb.roundTo(0.01).poll(0, "gain [dB]")
         // Plot1D(in, width * height)
         // in.poll(1.0/32, label = "test")
         val buf       = BufferDisk(in)
@@ -137,7 +137,7 @@ object EisenerzMedian {
       val maskIf    = (max - min > thresh) * ((comp sig_== min) max (comp sig_== max))
       val mask      = maskIf * {
         val med = mean // medianArr(sideLen)
-        comp absdif med
+        comp absDif med
       }
       val maskBlur  = blur(mask)
 

@@ -16,13 +16,13 @@ package graph
 
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
+import de.sciss.numbers.TwoPi
 
 import scala.annotation.switch
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.language.implicitConversions
 
 object GenWindow {
-  import Util.Pi2
 
   object Shape {
     def apply(id: Int): Shape = (id: @switch) match {
@@ -49,7 +49,7 @@ object GenWindow {
     final val id = 0
 
     def fill(winSize: Long, winOff: Long, buf: Array[Double], bufOff: Int, len: Int, param: Double): Unit = {
-      val norm  = Pi2 / winSize
+      val norm  = TwoPi / winSize
       var i     = winOff
       val stop  = i + len
       var j     = bufOff
@@ -65,7 +65,7 @@ object GenWindow {
     final val id = 1
 
     def fill(winSize: Long, winOff: Long, buf: Array[Double], bufOff: Int, len: Int, param: Double): Unit = {
-      val norm  = Pi2 / winSize
+      val norm  = TwoPi / winSize
       var i     = winOff
       val stop  = i + len
       var j     = bufOff
@@ -140,7 +140,7 @@ object GenWindow {
     final val id = 4
 
     def fill(winSize: Long, winOff: Long, buf: Array[Double], bufOff: Int, len: Int, param: Double): Unit = {
-      val norm  = Pi2 / winSize
+      val norm  = TwoPi / winSize
       var i     = winOff
       val stop  = i + len
       var j     = bufOff

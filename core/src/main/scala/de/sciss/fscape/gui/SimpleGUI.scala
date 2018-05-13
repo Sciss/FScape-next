@@ -77,7 +77,7 @@ object SimpleGUI {
     def progress_=(value: Double): Unit = if (_prog != value) {
       _prog = value
       import numbers.Implicits._
-      ggProg.value = value.linlin(0, 1, 0, 250).toInt
+      ggProg.value = value.linLin(0, 1, 0, 250).toInt
     }
   }
 }

@@ -237,7 +237,7 @@ object Loudness {
       }
       // Returns normalized amplitudes (0 dB corresponds to mid-amp)
       import de.sciss.numbers.Implicits._
-      LT(passCounter) = (pkMaxMid - pkMinMid).ampdb
+      LT(passCounter) = (pkMaxMid - pkMinMid).ampDb
 
       passCounter += 1
     }

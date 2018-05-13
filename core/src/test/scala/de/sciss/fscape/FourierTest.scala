@@ -46,7 +46,7 @@ object FourierTest extends App {
 
     val mag       = ChannelProxy(UnzipWindow(fourier), 0)
     val max       = RunningMax(mag).last
-    max.ampdb.poll(0, "max [dB]")
+    max.ampDb.poll(0, "max [dB]")
     val gain      = max.reciprocal
 
     gain.poll
@@ -107,8 +107,8 @@ object FourierTest extends App {
     val abs       = in.complex.abs // ComplexUnaryOp(ComplexUnaryOp.Abs.id, in = in)
     val mag       = ChannelProxy(UnzipWindow(abs), 0)
     val max       = RunningMax(mag).last
-    max.ampdb.poll(0, "max [dB]")
-    val headroom  = -0.2.dbamp
+    max.ampDb.poll(0, "max [dB]")
+    val headroom  = -0.2.dbAmp
     val gain      = max.reciprocal * headroom
     val buf       = BufferDisk(in)
 //    buf.poll(Metro(44100), "buf")
@@ -121,7 +121,7 @@ object FourierTest extends App {
   val config = Control.Config()
   var gui: SimpleGUI = _
   config.progressReporter = rep => Swing.onEDT(gui.progress = rep.total)
-  implicit val ctrl = Control(config)
+  implicit val ctrl: Control = Control(config)
 
   Swing.onEDT {
     gui = SimpleGUI(ctrl)

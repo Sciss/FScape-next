@@ -20,8 +20,8 @@ object ZipWindowTest extends App {
   println(s"fftSizeA = $fftSizeA, fftSizeB = $fftSizeB")
 
   object Gain {
-    val immediate  = Gain( 0.0.dbamp, normalized = false)
-    val normalized = Gain(-0.2.dbamp, normalized = true )
+    val immediate  = Gain( 0.0.dbAmp, normalized = false)
+    val normalized = Gain(-0.2.dbAmp, normalized = true )
   }
 
   object OutputSpec {

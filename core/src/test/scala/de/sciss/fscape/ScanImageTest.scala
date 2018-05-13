@@ -25,8 +25,8 @@ object ScanImageTest extends App {
 //    val y           = SinOsc(freqN, phase = 0.0)       * ry + cy
 
     // we rotate the image by 180 degrees; shift by half a pixel to see the interpolation
-    val x           = LFSaw(-1.0/width)           .linlin(-1, 1, 0, width ).roundTo(1) + 0.5
-    val y           = LFSaw(-1.0/(width * height)).linlin(-1, 1, 0, height).roundTo(1) + 0.5
+    val x           = LFSaw(-1.0/width)           .linLin(-1, 1, 0, width ).roundTo(1) + 0.5
+    val y           = LFSaw(-1.0/(width * height)).linLin(-1, 1, 0, height).roundTo(1) + 0.5
     val sig         = ScanImage(in, width = width, height = height, x = x, y = y, zeroCrossings = 0).max(0).min(1)
     val spec        = ImageFile.Spec(width = width, height = height, numChannels = 3,
       fileType = ImageFile.Type.PNG, sampleFormat = ImageFile.SampleFormat.Int8)

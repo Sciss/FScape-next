@@ -17,8 +17,8 @@ object BleachTest extends App {
 //    val numChannels = 1
     val fOut      = userHome / "Documents" / "temp" / "test.aif"
     val fltLen    = 441
-    val feedback  = -50.0.dbamp // -60.0.dbamp
-    val clip      =  18.0.dbamp
+    val feedback  = -50.0.dbAmp // -60.0.dbamp
+    val clip      =  18.0.dbAmp
     val twoWays   = false
     val inverse   = false
 

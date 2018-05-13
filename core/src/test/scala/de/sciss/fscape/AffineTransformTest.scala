@@ -16,7 +16,7 @@ object AffineTransformTest {
     val rgb   = if (hasAlpha) Seq.tabulate(3)(ch => ChannelProxy(in, ch)): GE else in
     val low   = lo / 255.0
     val high  = hi / 255.0
-    val p2    = rgb.linlin(low, high, 0, 1)
+    val p2    = rgb.linLin(low, high, 0, 1)
     val flt   = p2 .max(0).min(1) // .elastic(10)
     val out   = if (hasAlpha) {
       val clipE = flt.elastic(5)

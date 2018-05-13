@@ -422,7 +422,7 @@ object BinaryOp {
 
   case object Hypotx extends Op {
     final val id = 24
-    def apply(a: Double, b: Double): Double = rd.hypotx(a, b)
+    def apply(a: Double, b: Double): Double = rd.hypotApx(a, b)
   }
 
   /** '''Warning:''' Unlike a normal power operation, the signum of the
@@ -462,27 +462,27 @@ object BinaryOp {
 
   case object Difsqr extends Op {
     final val id = 34
-    def apply(a: Double, b: Double): Double = rd.difsqr(a, b)
+    def apply(a: Double, b: Double): Double = rd.difSqr(a, b)
   }
 
   case object Sumsqr extends Op {
     final val id = 35
-    def apply(a: Double, b: Double): Double = rd.sumsqr(a, b)
+    def apply(a: Double, b: Double): Double = rd.sumSqr(a, b)
   }
 
   case object Sqrsum extends Op {
     final val id = 36
-    def apply(a: Double, b: Double): Double = rd.sqrsum(a, b)
+    def apply(a: Double, b: Double): Double = rd.sqrSum(a, b)
   }
 
   case object Sqrdif extends Op {
     final val id = 37
-    def apply(a: Double, b: Double): Double = rd.sqrdif(a, b)
+    def apply(a: Double, b: Double): Double = rd.sqrDif(a, b)
   }
 
   case object Absdif extends Op {
     final val id = 38
-    def apply(a: Double, b: Double): Double = rd.absdif(a, b)
+    def apply(a: Double, b: Double): Double = rd.absDif(a, b)
 
     override def apply(a: Constant, b: Constant): Constant = UnaryOp.Abs(Minus(a, b))
   }
@@ -494,12 +494,12 @@ object BinaryOp {
 
   case object Amclip extends Op {
     final val id = 40
-    def apply(a: Double, b: Double): Double = rd2.amclip(a, b)
+    def apply(a: Double, b: Double): Double = rd2.amClip(a, b)
   }
 
   case object Scaleneg extends Op {
     final val id = 41
-    def apply(a: Double, b: Double): Double = rd2.scaleneg(a, b)
+    def apply(a: Double, b: Double): Double = rd2.scaleNeg(a, b)
   }
 
   // XXX TODO --- refined apply

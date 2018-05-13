@@ -161,7 +161,7 @@ object MorassTest extends App {
     val prod      = PeakCentroid1D(in = iFFT, size = fftSize, radius = radiusI)
     val shiftX    = prod.translate
 //    RepeatWindow(shiftX).poll(0.5, "shift-x")
-    val amp       = (ampModulation: GE).linlin(0, 1, 1.0, prod.peak)
+    val amp       = (ampModulation: GE).linLin(0, 1, 1.0, prod.peak)
     val ampPad    = RepeatWindow(in = amp   , num = inputWinSize /* winSize */)
     val shiftXPad = RepeatWindow(in = shiftX, num = inputWinSize /* winSize */)
 
@@ -181,8 +181,8 @@ object MorassTest extends App {
   import numbers.Implicits._
 
   object Gain {
-    val immediate  = Gain( 0.0.dbamp, normalized = false)
-    val normalized = Gain(-0.2.dbamp, normalized = true )
+    val immediate  = Gain( 0.0.dbAmp, normalized = false)
+    val normalized = Gain(-0.2.dbAmp, normalized = true )
   }
 
   object OutputSpec {
@@ -242,8 +242,8 @@ object MorassTest extends App {
 
         val fftAZ0 = UnzipWindow(fftA).elastic(1024) // treat Re and Im as two channels
         val fftBZ0 = UnzipWindow(fftB).elastic(1024) // treat Re and Im as two channels
-        val fftAZ   = if (TEST_RE) fftAZ0 \ 0 else fftAZ0
-        val fftBZ   = if (TEST_RE) fftBZ0 \ 0 else fftBZ0
+        val fftAZ   = if (TEST_RE) fftAZ0 out 0 else fftAZ0
+        val fftBZ   = if (TEST_RE) fftBZ0 out 0 else fftBZ0
 
         //        val fftAZ = SinOsc(1.0/64).take(44100 * 10)
 //        val fftBZ = SinOsc(1.0/64).take(44100 * 10)

@@ -47,8 +47,8 @@ object PercussionTest extends App {
 
   def normalize(in: GE): GE = {
     val max       = RunningMax(in.abs).last
-    max.ampdb.poll(0, "max [dB]")
-    val headroom  = -0.2.dbamp
+    max.ampDb.poll(0, "max [dB]")
+    val headroom  = -0.2.dbAmp
     val gain      = max.reciprocal * headroom
     val buf       = BufferDisk(in)
     val sig       = buf * gain
@@ -57,7 +57,7 @@ object PercussionTest extends App {
 
   val config = stream.Control.Config()
   config.useAsync = false
-  implicit val ctrl = stream.Control(config)
+  implicit val ctrl: stream.Control = stream.Control(config)
   ctrl.run(g)
 
   Swing.onEDT {
