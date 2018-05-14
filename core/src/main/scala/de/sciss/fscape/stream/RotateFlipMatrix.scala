@@ -79,10 +79,12 @@ object RotateFlipMatrix {
         // logically remove cw + ccw here
         if ((_mode & 12) == 12) _mode &= ~12
         // reduce number of steps
-        if      (_mode == (Rot90CW | FlipX) || _mode == (Rot90CCW | FlipY)) _mode = Transpose
-        else if (_mode == (Rot90CW | FlipY) || _mode == (Rot90CCW | FlipX)) _mode = Transpose | Rot180
+        if (isSquare) {
+          if      (_mode == (FlipX | Rot90CCW) || _mode == (FlipY | Rot90CW)) _mode = Transpose
+          else if (_mode == (FlipY | Rot90CCW) || _mode == (FlipX | Rot90CW)) _mode = Transpose | Rot180
+        }
 
-        mode      = _mode
+        mode = _mode
       }
       needsDoubleBuf  = !isSquare && (mode & 12) != 0
       winSize         = rows * columns
@@ -217,7 +219,23 @@ object RotateFlipMatrix {
     }
 
     private def rot90CCW(): Unit = {
-      ???
+      val a     = inBuf
+      val b     = outBuf
+      val _cols = columns
+      val _rows = rows
+      var i     = 0
+      var j     = _rows * (_cols - 1)
+      val stop  = winSize
+      while (i < stop) {
+        val iNext = i + _cols
+        val jNext = j + 1
+        while (i < iNext) {
+          b(j) = a(i)
+          i += 1
+          j -= _rows
+        }
+        j = jNext
+      }
     }
 
     protected def processWindow(writeToWinOff: Long): Long = {

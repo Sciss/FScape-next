@@ -29,8 +29,8 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * @param columns  the number of columns in the input
   * @param mode     0: pass, 1: flip horizontally, 2: flip vertically, 3: rotate 180 degrees,
   *                 4: rotate clockwise, 8: rotate anti-clockwise. See the companion object
-  *                 for constants. If you combine flipping and rotation, rotation is performed first,
-  *                 so a mode of 5 means rotate clockwise, followed by flip horizontally.
+  *                 for constants. If you combine flipping and rotation, flipping is performed first,
+  *                 so a mode of 5 means flip horizontally, followed by rotate clockwise.
   */
 final case class RotateFlipMatrix(in: GE, rows: GE, columns: GE, mode: GE) extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =

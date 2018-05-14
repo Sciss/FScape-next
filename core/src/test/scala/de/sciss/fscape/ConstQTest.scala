@@ -12,8 +12,8 @@ object ConstQTest extends App {
   val winStep   = math.min(fftSize, (timeResMS / 1000 * specIn.sampleRate + 0.5).toInt)
   val numWin    = ((specIn.numFrames - fftSize + winStep - 1) / winStep).toInt
   val numBands  = 432
-  val dbMin     = -72.0
-  val dbMax     = -12.0
+  val dbMin     = -78.0
+  val dbMax     = -18.0
 
   val g = Graph {
     import graph._
