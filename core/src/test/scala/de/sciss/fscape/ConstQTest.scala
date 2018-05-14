@@ -21,7 +21,7 @@ object ConstQTest extends App {
     val slid      = Sliding(in, fftSize, winStep)
     val winFun    = GenWindow(size = fftSize, shape = GenWindow.Hann)
     val windowed  = slid * winFun
-    val rotWin    = windowed  // XXX TODO: RotateWindow
+    val rotWin    = RotateWindow(windowed, size = fftSize, amount = fftSize/2)
     val fft       = Real1FFT(rotWin, size = fftSize)
     val constQ    = ConstQ(fft, fftSize = fftSize, numBands = numBands)
     val norm      = constQ.ampDb.linLin(dbMin * 2, dbMax * 2, 0.0, 1.0).clip()
@@ -33,10 +33,8 @@ object ConstQTest extends App {
   val ctrl  = stream.Control()
 
   ctrl.run(g)
-  println("Running.")
   import ctrl.config.executionContext
   ctrl.status.foreach { _ =>
-    println("Done.")
     sys.exit()
   }
 }
