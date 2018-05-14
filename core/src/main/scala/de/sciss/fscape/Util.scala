@@ -110,6 +110,18 @@ object Util {
     }
   }
 
+  def reverse[A <: AnyRef](buf: Array[A], off: Int, len: Int): Unit = {
+    var i = off
+    var j = i + len - 1
+    while (i < j) {
+      val tmp = buf(i)
+      buf(i) = buf(j)
+      buf(j) = tmp
+      i += 1
+      j -= 1
+    }
+  }
+
   /** Multiplies buffer with a scalar. */
   def mul(buf: Array[Double], off: Int, len: Int, value: Double): Unit = {
     var i     = off
@@ -142,5 +154,29 @@ object Util {
       i += 1
       j += 1
     }
+  }
+
+  def max(in: Array[Double], off: Int, len: Int): Double = {
+    var res   = Double.NegativeInfinity
+    var i     = off
+    val stop  = i + len
+    while (i < stop) {
+      val d = in(i)
+      if (d > res) res = d
+      i += 1
+    }
+    res
+  }
+
+  def min(in: Array[Double], off: Int, len: Int): Double = {
+    var res   = Double.PositiveInfinity
+    var i     = off
+    val stop  = i + len
+    while (i < stop) {
+      val d = in(i)
+      if (d < res) res = d
+      i += 1
+    }
+    res
   }
 }

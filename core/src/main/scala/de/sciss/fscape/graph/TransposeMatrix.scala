@@ -28,6 +28,10 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * so the first samples constitute the first row,
   * the next samples constitute the second row, etc.
   *
+  * ''Note:'' This is an in-place process which uses
+  * less memory but possibly more time. A faster variant
+  * would be to use `RotateMirrorMatrix`
+  *
   * The output matrix is transposed (rows and columns
   * exchanged). So an input of `(a, b, c, d, e, f)`
   * with `rows = 2` and `columns = 3` is interpreted
