@@ -26,7 +26,7 @@ object ConstQTest extends App {
     val constQ    = ConstQ(fft, fftSize = fftSize, numBands = numBands)
     val norm      = constQ.ampDb.linLin(dbMin * 2, dbMax * 2, 0.0, 1.0).clip()
     val rotImg    = RotateFlipMatrix(norm, rows = numWin, columns = numBands, mode = RotateFlipMatrix.Rot90CCW)
-    val specOut   = ImageFile.Spec(width = numWin, height = numBands, numChannels = 1, fileType = ImageFile.Type.PNG)
+    val specOut   = ImageFile.Spec(width = numWin, height = numBands, numChannels = 1)
     ImageFileOut(file = fOut, spec = specOut, in = rotImg)
   }
 
