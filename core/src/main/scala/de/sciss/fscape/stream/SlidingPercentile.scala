@@ -17,6 +17,8 @@ package stream
 import akka.stream.{Attributes, FanInShape4}
 import de.sciss.fscape.stream.impl.{ChunkImpl, FilterIn4DImpl, NodeImpl, StageImpl}
 
+import scala.collection.mutable
+
 /*
 
   TODO --- check out this: http://arxiv.org/abs/cs/0610046
@@ -52,6 +54,10 @@ object SlidingPercentile {
     def createLogic(attr: Attributes) = new Logic(shape)
   }
 
+//  private object InvertedDoubleOrdering extends DoubleOrdering {
+//    override def compare(x: Double, y: Double): Int = java.lang.Double.compare(y, x)
+//  }
+
   private final class Logic(shape: Shape)(implicit ctrl: Control)
     extends NodeImpl(name, shape)
       with ChunkImpl[Shape]
@@ -61,7 +67,10 @@ object SlidingPercentile {
     private[this] var frac  : Double  = -1d
     private[this] var interp: Boolean = _
 
-//    private[this] val pqLow
+    // we follow the typical approach with two priority queues,
+    // split at the percentile
+    private[this] val pqLo  = new mutable.PriorityQueueWithRemove[Double]
+    private[this] val pqHi  = new mutable.PriorityQueueWithRemove[Double]
 
     protected def shouldComplete(): Boolean =
       inRemain == 0 && isClosed(in0) && !isAvailable(in0)
@@ -73,8 +82,8 @@ object SlidingPercentile {
         processChunk(inOff = inOff, outOff = outOff, chunk = chunk)
         inOff       += chunk
         inRemain    -= chunk
-        ???; outOff      += chunk
-        ???; outRemain   -= chunk
+        outOff      += chunk
+        outRemain   -= chunk
       }
       res
     }
@@ -94,8 +103,11 @@ object SlidingPercentile {
       var _size   = size
       var _frac   = frac
       var _interp = interp
+      val _pqLo   = pqLo
+      val _pqHi   = pqHi
+
       while (inOffI < stop0) {
-        val x0 = b0(inOffI)
+        val valueIn = b0(inOffI)
         var needsUpdate = false
         if (inOffI < stop1) {
           val newSize = math.max(1, b1(inOffI))
@@ -116,10 +128,39 @@ object SlidingPercentile {
         }
 
         if (needsUpdate) {
-          ???
+          println("SlidingPercentile - needsUpdate - TODO")
         }
 
-        out(outOffI) = ??? : Double
+        val pqIns     = if (_pqLo.isEmpty || valueIn < _pqLo.max) _pqLo else _pqHi
+        pqIns.add(valueIn)
+        val szTot     = _pqLo.size + _pqHi.size
+//        val idxTgt    = (_frac * szTot + 0.5).toInt
+        val idxTgtD   =_frac * szTot
+        val idxTgt    = {
+          val tmp = idxTgtD.toInt
+          if (tmp == szTot) tmp - 1 else tmp    // this can happen for frac == 1
+        }
+        val idxInDif  = _pqLo.size - idxTgt
+        if (idxInDif <= 0) {
+          _pqLo.add(_pqHi.removeMin())
+        } else if (idxInDif > 1) {
+          _pqHi.add(_pqLo.removeMax())
+        }
+        val idxOutDif = _pqLo.size - idxTgt
+
+        val valueOut = if (_interp) {
+          val idxTgtM = idxTgtD % 1.0
+          ???
+        } else {
+          if      (idxOutDif == 1) _pqLo.max
+          else if (idxOutDif == 0) {
+            println("WOW")
+            _pqHi.min
+          }
+          else ???
+        }
+
+        out(outOffI) = valueOut
         inOffI  += 1
         outOffI += 1
       }
