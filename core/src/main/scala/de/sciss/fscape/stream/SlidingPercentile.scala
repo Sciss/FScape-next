@@ -40,7 +40,8 @@ object SlidingPercentile {
 
   private type Shape = FanInShape4[BufD, BufI, BufD, BufI, BufD]
 
-  private final val lessThanOne = java.lang.Double.longBitsToDouble(0x3fefffffffffffffL)
+//  private final val lessThanOne = java.lang.Double.longBitsToDouble(0x3fefffffffffffffL)
+  private final val lessThanOne = java.lang.Math.nextDown(1.0)
 
   private final class Stage(implicit ctrl: Control) extends StageImpl[Shape](name) {
     val shape = new FanInShape4(
@@ -53,10 +54,6 @@ object SlidingPercentile {
 
     def createLogic(attr: Attributes) = new Logic(shape)
   }
-
-//  private object InvertedDoubleOrdering extends DoubleOrdering {
-//    override def compare(x: Double, y: Double): Int = java.lang.Double.compare(y, x)
-//  }
 
   private final class Logic(shape: Shape)(implicit ctrl: Control)
     extends NodeImpl(name, shape)

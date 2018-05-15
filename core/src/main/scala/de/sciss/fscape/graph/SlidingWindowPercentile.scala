@@ -23,14 +23,14 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * of a window'ed input (such as an image).
   *
   * The UGen starts outputting values immediately, even if the `medianLen`
-  * is not yet reached. This is because `medianLen` can be modulated.
+  * is not yet reached. This is because `medianLen` can be modulated (per input window).
   * If one wants to discard the initial values, use a `drop`, for example
   * for `medianLen/2 * winSize` frames.
   *
   * Note that for an even median length and no interpolation, the reported median
   * may be either the value at index `medianLen/2` or `medianLen/2 + 1` in the sorted window.
   *
-  * All arguments are polled at the same rate. Changing the `frac` value
+  * All arguments but `in` are polled per input window. Changing the `frac` value
   * may cause an internal table rebuild and can thus be expensive.
   *
   * @param in         the window'ed input to analyze
@@ -52,8 +52,7 @@ final case class SlidingWindowPercentile(in: GE, winSize: GE, medianLen: GE = 3,
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
     val Vec(in, winSize, medianLen, frac, interp) = args
-    ???
-//    stream.SlidingWindowPercentile(in = in.toDouble, winSize = winSize.toInt, medianLen = medianLen.toInt,
-//      frac = frac.toDouble, interp = interp.toInt)
+    stream.SlidingWindowPercentile(in = in.toDouble, winSize = winSize.toInt, medianLen = medianLen.toInt,
+      frac = frac.toDouble, interp = interp.toInt)
   }
 }
