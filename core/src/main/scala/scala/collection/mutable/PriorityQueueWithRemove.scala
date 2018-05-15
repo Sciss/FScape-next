@@ -4,9 +4,14 @@ package scala.collection.mutable
 import scala.collection.mutable.{RedBlackTree => RB}
 
 final class PriorityQueueWithRemove[A](implicit ord: Ordering[A]) {
-  
+
   private[this] val tree  = RB.Tree.empty[A, Int]
-  private[this] var _size = 0 
+  private[this] var _size = 0
+
+  def clear(): Unit = {
+    RB.clear(tree)
+    _size = 0
+  }
 
   def add(d: A): Boolean = {
     _size += 1

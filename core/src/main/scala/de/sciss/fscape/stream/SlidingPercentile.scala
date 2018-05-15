@@ -61,6 +61,8 @@ object SlidingPercentile {
     private[this] var frac  : Double  = -1d
     private[this] var interp: Boolean = _
 
+//    private[this] val pqLow
+
     protected def shouldComplete(): Boolean =
       inRemain == 0 && isClosed(in0) && !isAvailable(in0)
 
