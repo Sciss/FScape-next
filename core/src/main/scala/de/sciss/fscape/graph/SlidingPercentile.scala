@@ -24,13 +24,17 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * is not yet reached. This is because `size` can be modulated.
   * If one wants to discard the initial values, use a `drop`.
   *
+  * Note that for an even window size and no interpolation, the reported median
+  * may be either the value at index `size/2` or `size/2 + 1` in the sorted window.
+  *
   * All arguments are polled at the same rate. Changing the `frac` value
   * may cause an internal table rebuild and can thus be expensive.
   *
   * @param in     the input to analyze
   * @param size   the size of the sliding window
   * @param frac   the percentile from zero to one. The default of 0.5 produces the median.
-  * @param interp if zero (default), uses nearest-rank, otherwise uses linear interpolation
+  * @param interp if zero (default), uses nearest-rank, otherwise uses linear interpolation.
+  *               '''Note:''' currently not implemented, must be zero
   */
 final case class SlidingPercentile(in: GE, size: GE, frac: GE = 0.5, interp: GE = 0)
   extends UGenSource.SingleOut {

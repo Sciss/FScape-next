@@ -15,16 +15,14 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape4}
-import de.sciss.fscape.stream.impl.{ChunkImpl, FilterIn4DImpl, NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.{FilterIn4DImpl, NodeImpl, SameChunkImpl, StageImpl}
 
+import scala.annotation.tailrec
 import scala.collection.mutable
 
 /*
 
-  TODO --- check out this: http://arxiv.org/abs/cs/0610046
-
-  (I haven't read it, but obviously if the window is sorted,
-  we can drop, insert or query an element in O(log N)).
+  XXX TODO: modulating window size and frac has not been tested
 
  */
 object SlidingPercentile {
@@ -41,6 +39,8 @@ object SlidingPercentile {
   private final val name = "SlidingPercentile"
 
   private type Shape = FanInShape4[BufD, BufI, BufD, BufI, BufD]
+
+  private final val lessThanOne = java.lang.Double.longBitsToDouble(0x3fefffffffffffffL)
 
   private final class Stage(implicit ctrl: Control) extends StageImpl[Shape](name) {
     val shape = new FanInShape4(
@@ -60,12 +60,15 @@ object SlidingPercentile {
 
   private final class Logic(shape: Shape)(implicit ctrl: Control)
     extends NodeImpl(name, shape)
-      with ChunkImpl[Shape]
+      with SameChunkImpl[Shape]
       with FilterIn4DImpl[BufD, BufI, BufD, BufI] {
     
     private[this] var size  : Int     = 0
     private[this] var frac  : Double  = -1d
     private[this] var interp: Boolean = _
+
+    private[this] var winBuf: Array[Double] = _
+    private[this] var winIdx: Int     = 0
 
     // we follow the typical approach with two priority queues,
     // split at the percentile
@@ -75,20 +78,12 @@ object SlidingPercentile {
     protected def shouldComplete(): Boolean =
       inRemain == 0 && isClosed(in0) && !isAvailable(in0)
 
-    protected def processChunk(): Boolean = {
-      val chunk = math.min(inRemain, outRemain)
-      val res   = chunk > 0
-      if (res) {
-        processChunk(inOff = inOff, outOff = outOff, chunk = chunk)
-        inOff       += chunk
-        inRemain    -= chunk
-        outOff      += chunk
-        outRemain   -= chunk
-      }
-      res
+    override protected def stopped(): Unit = {
+      super.stopped()
+      winBuf = null
     }
 
-    private def processChunk(inOff: Int, outOff: Int, chunk: Int): Unit = {
+    protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Unit = {
       var inOffI  = inOff
       var outOffI = outOff
       val stop0   = inOffI + chunk
@@ -105,8 +100,37 @@ object SlidingPercentile {
       var _interp = interp
       val _pqLo   = pqLo
       val _pqHi   = pqHi
+      var _winBuf = winBuf
+      var _winIdx = winIdx
 
       while (inOffI < stop0) {
+        @inline
+        def calcTotSize(): Int = _pqLo.size + _pqHi.size
+
+        @inline
+        def calcTarget(szTot: Int): Int = {
+          val idxTgtD   =_frac * szTot
+          idxTgtD.toInt
+        }
+
+        // tot-size must be > 0
+        @tailrec
+        def balance(tgt: Int): Unit = {
+          val idxInDif = _pqLo.size - tgt
+          if (idxInDif <= 0) {
+            _pqLo.add(_pqHi.removeMin())
+            if (idxInDif < 0) balance(tgt)
+          } else if (idxInDif >= 2) {
+            _pqHi.add(_pqLo.removeMax())
+            if (idxInDif > 2) balance(tgt)
+          }
+        }
+
+        def remove(d: Double): Unit = {
+          val pqRem = if (_pqLo.nonEmpty && _pqLo.max >= d) _pqLo else _pqHi
+          assert(pqRem.remove(d))
+        }
+
         val valueIn = b0(inOffI)
         var needsUpdate = false
         if (inOffI < stop1) {
@@ -117,7 +141,8 @@ object SlidingPercentile {
           }
         }
         if (inOffI < stop2) {
-          val newFrac = math.max(0d, math.min(1d, b2(inOffI)))
+          // such that `(frac * n).toInt < n` holds
+          val newFrac = math.max(0d, math.min(lessThanOne, b2(inOffI)))
           if (_frac != newFrac) {
             _frac = newFrac
             needsUpdate = true
@@ -128,36 +153,75 @@ object SlidingPercentile {
         }
 
         if (needsUpdate) {
-          println("SlidingPercentile - needsUpdate - TODO")
+          val oldSize = calcTotSize()
+          var shrink  = oldSize - _size
+          val newSize = shrink != 0
+          if (newSize) {
+            val newBuf    = new Array[Double](_size)
+            val oldWinIdx = _winIdx
+            val chunk     = math.min(_size, oldSize)
+            if (chunk > 0) {  // since _size must be > 0, it implies that oldSize > 0
+              val oldBuf    = _winBuf
+              val off1      = (oldWinIdx - chunk + oldBuf.length) % oldBuf.length // begin of most recent entries
+              val num1      = math.min(chunk, oldBuf.length - off1)
+              System.arraycopy(oldBuf, off1, newBuf, 0, num1)
+              if (num1 < chunk) {
+                System.arraycopy(oldBuf, 0, newBuf, num1, chunk - num1)
+              }
+
+              var off2 = (oldWinIdx - oldSize + oldBuf.length) % oldBuf.length // begin of oldest entries
+              while (shrink > 0) {
+                val valueRem = oldBuf(off2)
+                remove(valueRem)
+                shrink -= 1
+                off2   += 1
+                if (off2 == oldBuf.length) off2 = 0
+              }
+            }
+            _winIdx = chunk % newBuf.length
+            _winBuf = newBuf
+          }
+          val tmpTot = calcTotSize()
+          if (tmpTot > 0) {
+            val tmpTgt  = calcTarget(tmpTot)
+            balance(tmpTgt)
+          }
         }
 
-        val pqIns     = if (_pqLo.isEmpty || valueIn < _pqLo.max) _pqLo else _pqHi
+        val pqIns         = if (_pqLo.isEmpty || valueIn < _pqLo.max) _pqLo else _pqHi
+        val valueOld      = _winBuf(_winIdx)
+        _winBuf(_winIdx)  = valueIn
+        _winIdx += 1
+        if (_winIdx == _winBuf.length) _winIdx = 0
+
         pqIns.add(valueIn)
-        val szTot     = _pqLo.size + _pqHi.size
-//        val idxTgt    = (_frac * szTot + 0.5).toInt
-        val idxTgtD   =_frac * szTot
-        val idxTgt    = {
-          val tmp = idxTgtD.toInt
-          if (tmp == szTot) tmp - 1 else tmp    // this can happen for frac == 1
+        val szTot = {
+          val tmp = calcTotSize()
+          if (tmp > _size) {
+            remove(valueOld)
+            tmp - 1
+          } else {
+            tmp
+          }
         }
-        val idxInDif  = _pqLo.size - idxTgt
-        if (idxInDif <= 0) {
-          _pqLo.add(_pqHi.removeMin())
-        } else if (idxInDif > 1) {
-          _pqHi.add(_pqLo.removeMax())
-        }
+        val idxTgt = calcTarget(szTot)
+        balance(idxTgt)
+
         val idxOutDif = _pqLo.size - idxTgt
 
         val valueOut = if (_interp) {
-          val idxTgtM = idxTgtD % 1.0
+          // val idxTgtM = idxTgtD % 1.0
           ???
         } else {
-          if      (idxOutDif == 1) _pqLo.max
-          else if (idxOutDif == 0) {
-            println("WOW")
-            _pqHi.min
-          }
-          else ???
+          assert (idxOutDif == 1)
+          _pqLo.max
+
+//          if      (idxOutDif == 1) _pqLo.max
+//          else if (idxOutDif == 0) {
+//            println("SlidingPercentile - idxOutDif == 0, oops, assertion failed")
+//            _pqHi.min
+//          }
+//          else ...
         }
 
         out(outOffI) = valueOut
@@ -167,6 +231,8 @@ object SlidingPercentile {
       size    = _size
       frac    = _frac
       interp  = _interp
+      winBuf  = _winBuf
+      winIdx  = _winIdx
     }
   }
 }
