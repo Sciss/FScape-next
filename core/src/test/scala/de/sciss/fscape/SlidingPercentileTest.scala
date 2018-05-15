@@ -5,7 +5,7 @@ object SlidingPercentileTest extends App {
     import graph._
 
     /*
-        size = 3
+        len = 3
 
                      frac = 0.5        |  frac = 0.0   |  frac = 1.0
 
@@ -35,7 +35,7 @@ object SlidingPercentileTest extends App {
     val in = ValueIntSeq(5, 10, 12, 9, 12, 16, 25, 12, 20, 15, 11, 12, 13, 24, 28, 24, 4, 18, 6, 0)
 
     /*
-       size = 5
+       len = 5
 
                               frac = 0.5        |  frac = 0.0   |  frac = 1.0
 
@@ -62,7 +62,7 @@ object SlidingPercentileTest extends App {
 
  */
 
-    val m  = SlidingPercentile(in, size = 5, frac = 0.5)
+    val m  = SlidingPercentile(in, len = 5, frac = 0.5)
     RepeatWindow(m).poll(Metro(2), "out")
   }
 

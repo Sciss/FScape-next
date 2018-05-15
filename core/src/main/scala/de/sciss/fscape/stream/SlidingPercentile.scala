@@ -26,11 +26,11 @@ import scala.collection.mutable
 
  */
 object SlidingPercentile {
-  def apply(in: OutD, size: OutI, frac: OutD, interp: OutI)(implicit b: Builder): OutD = {
+  def apply(in: OutD, len: OutI, frac: OutD, interp: OutI)(implicit b: Builder): OutD = {
     val stage0  = new Stage
     val stage   = b.add(stage0)
     b.connect(in    , stage.in0)
-    b.connect(size  , stage.in1)
+    b.connect(len   , stage.in1)
     b.connect(frac  , stage.in2)
     b.connect(interp, stage.in3)
     stage.out
@@ -45,7 +45,7 @@ object SlidingPercentile {
   private final class Stage(implicit ctrl: Control) extends StageImpl[Shape](name) {
     val shape = new FanInShape4(
       in0 = InD (s"$name.in"    ),
-      in1 = InI (s"$name.size"  ),
+      in1 = InI (s"$name.len"   ),
       in2 = InD (s"$name.frac"  ),
       in3 = InI (s"$name.interp"),
       out = OutD(s"$name.out"   )
@@ -63,12 +63,12 @@ object SlidingPercentile {
       with SameChunkImpl[Shape]
       with FilterIn4DImpl[BufD, BufI, BufD, BufI] {
     
-    private[this] var size  : Int     = 0
-    private[this] var frac  : Double  = -1d
-    private[this] var interp: Boolean = _
+    private[this] var medianLen   : Int     = 0
+    private[this] var frac        : Double  = -1d
+    private[this] var interp      : Boolean = _
 
-    private[this] var winBuf: Array[Double] = _
-    private[this] var winIdx: Int     = 0
+    private[this] var medianBuf   : Array[Double] = _
+    private[this] var medianBufIdx: Int     = 0
 
     // we follow the typical approach with two priority queues,
     // split at the percentile
@@ -80,7 +80,7 @@ object SlidingPercentile {
 
     override protected def stopped(): Unit = {
       super.stopped()
-      winBuf = null
+      medianBuf = null
     }
 
     protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Unit = {
@@ -95,13 +95,13 @@ object SlidingPercentile {
       val stop2   = if (b2      == null) 0    else bufIn2.size
       val b3      = if (bufIn3  == null) null else bufIn3.buf
       val stop3   = if (b3      == null) 0    else bufIn3.size
-      var _size   = size
+      var _medLen = medianLen
       var _frac   = frac
       var _interp = interp
       val _pqLo   = pqLo
       val _pqHi   = pqHi
-      var _winBuf = winBuf
-      var _winIdx = winIdx
+      var _medBuf = medianBuf
+      var _medIdx = medianBufIdx
 
       while (inOffI < stop0) {
         @inline
@@ -134,9 +134,9 @@ object SlidingPercentile {
         val valueIn = b0(inOffI)
         var needsUpdate = false
         if (inOffI < stop1) {
-          val newSize = math.max(1, b1(inOffI))
-          if (_size != newSize) {
-            _size = newSize
+          val newMedLen = math.max(1, b1(inOffI))
+          if (_medLen != newMedLen) {
+            _medLen = newMedLen
             needsUpdate = true
           }
         }
@@ -154,22 +154,22 @@ object SlidingPercentile {
 
         if (needsUpdate) {
           val oldSize = calcTotSize()
-          var shrink  = oldSize - _size
+          var shrink  = oldSize - _medLen
           val newSize = shrink != 0
           if (newSize) {
-            val newBuf    = new Array[Double](_size)
-            val oldWinIdx = _winIdx
-            val chunk     = math.min(_size, oldSize)
+            val newBuf    = new Array[Double](_medLen)
+            val oldMedIdx = _medIdx
+            val chunk     = math.min(_medLen, oldSize)
             if (chunk > 0) {  // since _size must be > 0, it implies that oldSize > 0
-              val oldBuf    = _winBuf
-              val off1      = (oldWinIdx - chunk + oldBuf.length) % oldBuf.length // begin of most recent entries
+              val oldBuf    = _medBuf
+              val off1      = (oldMedIdx - chunk + oldBuf.length) % oldBuf.length // begin of most recent entries
               val num1      = math.min(chunk, oldBuf.length - off1)
               System.arraycopy(oldBuf, off1, newBuf, 0, num1)
               if (num1 < chunk) {
                 System.arraycopy(oldBuf, 0, newBuf, num1, chunk - num1)
               }
 
-              var off2 = (oldWinIdx - oldSize + oldBuf.length) % oldBuf.length // begin of oldest entries
+              var off2 = (oldMedIdx - oldSize + oldBuf.length) % oldBuf.length // begin of oldest entries
               while (shrink > 0) {
                 val valueRem = oldBuf(off2)
                 remove(valueRem)
@@ -178,8 +178,8 @@ object SlidingPercentile {
                 if (off2 == oldBuf.length) off2 = 0
               }
             }
-            _winIdx = chunk % newBuf.length
-            _winBuf = newBuf
+            _medIdx = chunk % newBuf.length
+            _medBuf = newBuf
           }
           val tmpTot = calcTotSize()
           if (tmpTot > 0) {
@@ -189,15 +189,15 @@ object SlidingPercentile {
         }
 
         val pqIns         = if (_pqLo.isEmpty || valueIn < _pqLo.max) _pqLo else _pqHi
-        val valueOld      = _winBuf(_winIdx)
-        _winBuf(_winIdx)  = valueIn
-        _winIdx += 1
-        if (_winIdx == _winBuf.length) _winIdx = 0
+        val valueOld      = _medBuf(_medIdx)
+        _medBuf(_medIdx)  = valueIn
+        _medIdx += 1
+        if (_medIdx == _medBuf.length) _medIdx = 0
 
         pqIns.add(valueIn)
         val szTot = {
           val tmp = calcTotSize()
-          if (tmp > _size) {
+          if (tmp > _medLen) {
             remove(valueOld)
             tmp - 1
           } else {
@@ -228,11 +228,11 @@ object SlidingPercentile {
         inOffI  += 1
         outOffI += 1
       }
-      size    = _size
-      frac    = _frac
-      interp  = _interp
-      winBuf  = _winBuf
-      winIdx  = _winIdx
+      medianLen     = _medLen
+      frac          = _frac
+      interp        = _interp
+      medianBuf     = _medBuf
+      medianBufIdx  = _medIdx
     }
   }
 }
