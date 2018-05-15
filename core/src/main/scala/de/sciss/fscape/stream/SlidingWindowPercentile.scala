@@ -88,7 +88,7 @@ object SlidingWindowPercentile {
 
     protected def startNextWindow(inOff: Int): Long = {
       var _needsUpdate = false
-      if (inOff < bufIn1.size) {
+      if (bufIn1 != null && inOff < bufIn1.size) {
         val newWinSize = math.max(1, bufIn1.buf(inOff))
         if (winSize != newWinSize) {
           winSize     = newWinSize
@@ -103,14 +103,14 @@ object SlidingWindowPercentile {
           _needsUpdate  = true
         }
       }
-      if (inOff < bufIn2.size) {
+      if (bufIn2 != null && inOff < bufIn2.size) {
         val newMedLen = math.max(1, bufIn2.buf(inOff))
         if (medianLen != newMedLen) {
           medianLen = newMedLen
           _needsUpdate = true
         }
       }
-      if (inOff < bufIn3.size) {
+      if (bufIn3 != null && inOff < bufIn3.size) {
         // such that `(frac * n).toInt < n` holds
         val newFrac = math.max(0d, math.min(lessThanOne, bufIn3.buf(inOff)))
         if (frac != newFrac) {
@@ -118,7 +118,7 @@ object SlidingWindowPercentile {
           _needsUpdate = true
         }
       }
-      if (inOff < bufIn4.size) {
+      if (bufIn4 != null && inOff < bufIn4.size) {
         interp = bufIn4.buf(inOff) != 0
       }
 
