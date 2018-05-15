@@ -20,6 +20,9 @@ import de.sciss.fscape.stream.{StreamIn, StreamOut}
 import scala.collection.immutable.{IndexedSeq => Vec}
 
 /** A UGen that reports a percentile of a sliding window across its input.
+  * The UGen starts outputting values immediately, even if the window `size`
+  * is not yet reached. This is because `size` can be modulated.
+  * If one wants to discard the initial values, use a `drop`.
   *
   * All arguments are polled at the same rate. Changing the `frac` value
   * may cause an internal table rebuild and can thus be expensive.
