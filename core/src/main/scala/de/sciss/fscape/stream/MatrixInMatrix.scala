@@ -122,15 +122,14 @@ object MatrixInMatrix {
     protected def processWindow(writeToWinOff: Long): Long = {
       val steps   = numColSteps.toLong * numRowSteps
       val frames  = steps * sizeInner
-      if (frames > 0x7FFFFFFF) sys.error(s"Matrix too large - $frames frames is larger than 32bit")
-      frames.toInt
+      if (steps > 0x7FFFFFFF) sys.error(s"Matrix too large - $steps steps is larger than 32bit")
+      frames
     }
 
     @tailrec
     protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit = {
-      val readOffI    = readFromWinOff.toInt
-      val step        = readOffI / sizeInner
-      val stepOff     = readOffI % sizeInner
+      val step        = (readFromWinOff / sizeInner).toInt
+      val stepOff     = (readFromWinOff % sizeInner).toInt
       val _rowsIn     = rowsInner
       val _colsIn     = columnsInner
       val _rowsOut    = rowsOuter

@@ -30,10 +30,8 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * @param in             the image to scan
   * @param width          the width (number of columns) of the input matrix
   * @param height         the height (number of rows) of the input matrix
-  * @param x              the width (number of columns) of the output matrix.
-  *                       the special value zero (default) means it is the same as `widthIn`.
-  * @param y              the height (number of rows) of the output matrix.
-  *                       the special value zero (default) means it is the same as `heightIn`.
+  * @param x              horizontal position of the dynamic scanning signal
+  * @param y              vertical position of the dynamic scanning signal
   * @param next           a trigger that causes the UGen to read in a new image from `in`.
   * @param wrap           if non-zero, wraps coordinates around the input images boundaries.
   *                       __TODO:__ currently `wrap = 0` is broken if using sinc interpolation!

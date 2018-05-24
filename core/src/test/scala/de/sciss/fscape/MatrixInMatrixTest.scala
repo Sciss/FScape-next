@@ -12,11 +12,16 @@ object MatrixInMatrixTest extends App {
   cfg.useAsync  = false
   cfg.progressReporter = p => Swing.onEDT(gui.progress = p.total)
 
+  val baseDir = {
+    val tmp = file("/data")
+    if (tmp.isDirectory) tmp else userHome / "Documents"
+  }
+
   val g = Graph {
     import graph._
-    val fIn1    = userHome / "Documents" / "projects" / "Imperfect" / "scans" / "notebook2016" / "universe-test1q.png"
-    val fIn2    = userHome / "Documents" / "projects" / "Imperfect" / "scans" / "notebook2016" / "universe-test2q.png"
-    val fOut    = userHome / "Documents" / "temp" / "test.png"
+    val fIn1    = baseDir / "projects" / "Imperfect" / "scans" / "notebook2016" / "universe-test1q.png"
+    val fIn2    = baseDir / "projects" / "Imperfect" / "scans" / "notebook2016" / "universe-test2q.png"
+    val fOut    = baseDir / "temp" / "test.png"
     val i1      = ImageFileIn(fIn1, numChannels = 3)
     val i2      = ImageFileIn(fIn2, numChannels = 3)
     val width   = 512
@@ -57,7 +62,7 @@ object MatrixInMatrixTest extends App {
 
     Progress(Frames(i4) / (2 * frameSize), Metro(width))
 
-    val sig     = i4
+    val sig     = i4.clip(0.0, 1.0)
     val specOut = ImageFile.Spec(width = width, height = height, numChannels = 3)
     ImageFileOut(fOut, specOut, in = sig)
   }
