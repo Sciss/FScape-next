@@ -2,7 +2,7 @@ lazy val baseName   = "FScape"
 lazy val baseNameL  = baseName.toLowerCase
 lazy val githubRepo = "FScape-next"
 
-lazy val projectVersion = "2.15.2"
+lazy val projectVersion = "2.15.3-SNAPSHOT"
 lazy val mimaVersion    = "2.15.0"
 
 lazy val baseDescription = "An audio rendering library"
@@ -45,8 +45,8 @@ lazy val deps = new {
 // ---- projects ----
 
 lazy val root = project.withId(baseNameL).in(file("."))
-  .aggregate(core, lucre, cdp)
-  .dependsOn(core, lucre, cdp)
+  .aggregate(core, lucre, macros, cdp)
+  .dependsOn(core, lucre, macros, cdp)
   .settings(commonSettings)
   .settings(
     name := baseName,
@@ -86,7 +86,7 @@ lazy val lucre = project.withId(s"$baseNameL-lucre").in(file("lucre"))
   .dependsOn(core)
   .settings(commonSettings)
   .settings(
-    description := "Bridge from FScape to SoundProcesses",
+    description := s"Bridge from $baseName to SoundProcesses",
     libraryDependencies ++= Seq(
       "de.sciss"      %% "soundprocesses-core" % deps.lucre.soundProcesses,
       "de.sciss"      %% "filecache-txn"       % deps.lucre.fileCache,
@@ -96,11 +96,23 @@ lazy val lucre = project.withId(s"$baseNameL-lucre").in(file("lucre"))
     mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-lucre" % mimaVersion)
   )
 
+lazy val macros = project.withId(s"$baseNameL-macros").in(file("macros"))
+  .dependsOn(lucre)
+  .settings(commonSettings)
+  .settings(
+    description := s"Macro support for $baseName",
+    scalacOptions += "-Yrangepos",  // this is needed to extract source code
+    libraryDependencies ++= Seq(
+      "de.sciss" %% "soundprocesses-compiler" % deps.lucre.soundProcesses
+    ),
+    mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-macros" % mimaVersion)
+  )
+
 lazy val cdp = project.withId(s"$baseNameL-cdp").in(file("cdp"))
   .dependsOn(core)
   .settings(commonSettings)
   .settings(
-    description := "Bridge from FScape to Composers Desktop Project",
+    description := s"Bridge from $baseName to Composers Desktop Project",
     libraryDependencies ++= Seq(
       "org.scalatest" %% "scalatest" % deps.test.scalaTest % Test
     )
