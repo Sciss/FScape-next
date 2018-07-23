@@ -142,12 +142,12 @@ object FScape extends Obj.Type {
 
     def compileBody()(implicit compiler: proc.Code.Compiler): Future[Unit] = {
       import Impl.CodeWrapper
-      CodeImpl.compileBody[In, Out, Code](this)
+      CodeImpl.compileBody[In, Out, Unit, Code](this)
     }
 
     def execute(in: In)(implicit compiler: proc.Code.Compiler): Out = {
       import Impl.CodeWrapper
-      CodeImpl.execute[In, Out, Code](this, in)
+      CodeImpl.execute[In, Out, Unit, Code](this, in)
     }
 
     def contextName: String = Code.name
@@ -173,18 +173,6 @@ object FScape extends Obj.Type {
     }
 
     type Writer = de.sciss.serial.Writable
-
-//    trait Writer {
-//      // def mkValue[S <: Sys[S]](implicit tx: S#Tx): Obj[S]
-//
-//      def writeOutput(out: DataOutput): Unit
-//    }
-
-//    final case class Update[S <: Sys[S]](output: Output[S], value: Option[Obj[S]])
-//      extends Gen.Update[S] {
-//
-//      def gen: Output[S] = output
-//    }
   }
   trait Output[S <: Sys[S]] extends Gen[S] /* with Publisher[S, Output.Update[S]] */ {
     def fscape: FScape[S]

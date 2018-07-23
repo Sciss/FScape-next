@@ -59,11 +59,11 @@ object FScapeImpl {
 
   // ---- Code ----
 
-  implicit object CodeWrapper extends CodeImpl.Wrapper[Unit, Graph, FScape.Code] {
+  implicit object CodeWrapper extends CodeImpl.Wrapper[Unit, Graph, Unit, FScape.Code] {
     def id      : Int             = FScape.Code.id
     def binding : Option[String]  = None
 
-    def wrap(in: Unit)(fun: => Any): Graph = Graph(fun)
+    def wrap(in: Unit)(fun: => Unit): Graph = Graph(fun)
 
     def blockTag = "Unit"
   }

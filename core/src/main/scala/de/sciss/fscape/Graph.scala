@@ -23,8 +23,8 @@ object Graph {
   /** This is analogous to `SynthGraph.Builder` in ScalaCollider. */
   def builder: Builder  = builderRef.get()
 
-  private[this] val builderRef = new ThreadLocal[Builder] {
-    override protected def initialValue = BuilderDummy
+  private[this] val builderRef: ThreadLocal[Builder] = new ThreadLocal[Builder] {
+    override protected def initialValue: Builder = BuilderDummy
   }
 
   private[this] object BuilderDummy extends Builder {

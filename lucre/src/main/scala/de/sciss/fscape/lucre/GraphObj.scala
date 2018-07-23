@@ -33,7 +33,7 @@ object GraphObj extends expr.impl.ExprTypeImpl[Graph, GraphObj] {
   protected def mkConst[S <: Sys[S]](id: S#Id, value: A)(implicit tx: S#Tx): Const[S] =
     new _Const[S](id, value)
 
-  protected def mkVar[S <: Sys[S]](targets: Targets[S], vr: S#Var[Ex[S]], connect: Boolean)
+  protected def mkVar[S <: Sys[S]](targets: Targets[S], vr: S#Var[_Ex[S]], connect: Boolean)
                                   (implicit tx: S#Tx): Var[S] = {
     val res = new _Var[S](targets, vr)
     if (connect) res.connect()
@@ -43,7 +43,7 @@ object GraphObj extends expr.impl.ExprTypeImpl[Graph, GraphObj] {
   private final class _Const[S <: Sys[S]](val id: S#Id, val constValue: A)
     extends ConstImpl[S] with GraphObj[S]
 
-  private final class _Var[S <: Sys[S]](val targets: Targets[S], val ref: S#Var[Ex[S]])
+  private final class _Var[S <: Sys[S]](val targets: Targets[S], val ref: S#Var[_Ex[S]])
     extends VarImpl[S] with GraphObj[S]
 
   /** A serializer for graphs. */
@@ -248,7 +248,8 @@ object GraphObj extends expr.impl.ExprTypeImpl[Graph, GraphObj] {
 
   private final val emptyCookie = 4
 
-  override protected def readCookie[S <: Sys[S]](in: DataInput, access: S#Acc, cookie: Byte)(implicit tx: S#Tx): Ex[S] =
+  override protected def readCookie[S <: Sys[S]](in: DataInput, access: S#Acc, cookie: Byte)
+                                                (implicit tx: S#Tx): _Ex[S] =
     cookie match {
       case `emptyCookie` =>
         val id = tx.readId(in, access)
@@ -258,9 +259,9 @@ object GraphObj extends expr.impl.ExprTypeImpl[Graph, GraphObj] {
 
   private val emptyGraph = Graph {}
 
-  def empty[S <: Sys[S]](implicit tx: S#Tx): Ex[S] = apply(emptyCookie  )
+  def empty[S <: Sys[S]](implicit tx: S#Tx): _Ex[S] = apply(emptyCookie  )
 
-  private def apply[S <: Sys[S]](cookie: Int)(implicit tx: S#Tx): Ex[S] = {
+  private def apply[S <: Sys[S]](cookie: Int)(implicit tx: S#Tx): _Ex[S] = {
     val id = tx.newId()
     new Predefined(id, cookie)
   }
