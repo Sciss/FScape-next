@@ -22,8 +22,16 @@ import scala.annotation.switch
 
 object ImageFile {
   object Type {
-    case object PNG extends Type { final val id = 0 }
-    case object JPG extends Type { final val id = 1 }
+    case object PNG extends Type {
+      override def productPrefix = s"ImageFile$$Type$$PNG$$"    // serialization
+
+      final val id = 0
+    }
+    case object JPG extends Type {
+      override def productPrefix = s"ImageFile$$Type$$JPG$$"    // serialization
+
+      final val id = 1
+    }
 
     def apply(id: Int): Type = id match {
       case PNG.id => PNG
@@ -35,11 +43,23 @@ object ImageFile {
   }
 
   object SampleFormat {
-    case object Int8  extends SampleFormat { final val id = 0 }
-    case object Int16 extends SampleFormat { final val id = 1 }
+    case object Int8 extends SampleFormat {
+      override def productPrefix = s"ImageFile$$SampleFormat$$Int8$$"   // serialization
+
+      final val id = 0
+    }
+    case object Int16 extends SampleFormat {
+      override def productPrefix = s"ImageFile$$SampleFormat$$Int16$$"  // serialization
+
+      final val id = 1
+    }
 
     /** Currently not supported (ImageIO) */
-    case object Float extends SampleFormat { final val id = 2 }
+    case object Float extends SampleFormat {
+      override def productPrefix = s"ImageFile$$SampleFormat$$Float$$"  // serialization
+
+      final val id = 2
+    }
 
     def apply(id: Int): SampleFormat = (id: @switch) match {
       case Int8  .id => Int8
@@ -81,7 +101,10 @@ object ImageFile {
                         width        : Int,
                         height       : Int,
                         numChannels  : Int,
-                        quality      : Int = 80)
+                        quality      : Int = 80) {
+
+    override def productPrefix = s"ImageFile$$Spec"  // serialization
+  }
 
   def readSpec(path: String): Spec = readSpec(new File(path))
 

@@ -14,7 +14,7 @@
 package de.sciss.fscape
 package lucre
 
-import de.sciss.fscape.lucre.impl.{OutputImpl, UGenGraphBuilderContextImpl, FScapeImpl => Impl}
+import de.sciss.fscape.lucre.impl.{FScapeRunnerImpl, OutputImpl, UGenGraphBuilderContextImpl, FScapeImpl => Impl}
 import de.sciss.fscape.stream.Control
 import de.sciss.lucre.event.{Observable, Publisher}
 import de.sciss.lucre.stm.{Disposable, Obj, Sys, WorkspaceHandle}
@@ -41,6 +41,8 @@ object FScape extends Obj.Type {
     Output  .init()
     GraphObj.init()
     Code    .init()
+
+    FScapeRunnerImpl.init()
   }
 
   def apply[S <: Sys[S]](implicit tx: S#Tx): FScape[S] = Impl[S]
@@ -76,13 +78,13 @@ object FScape extends Obj.Type {
   // ----
 
   object Rendering {
-    type State      = GenView.State
-    val  Completed  = GenView.Completed
-    val  Running    = GenView.Running
-    type Running    = GenView.Running
+    type State                                    = GenView.State
+    val  Completed: GenView.Completed       .type = GenView.Completed
+    val  Running  : GenView.Running         .type = GenView.Running
+    type Running                                  = GenView.Running
 
-    val  Cancelled = fscape.stream.Cancelled
-    type Cancelled = fscape.stream.Cancelled
+    val  Cancelled: fscape.stream.Cancelled .type = fscape.stream.Cancelled
+    type Cancelled                                = fscape.stream.Cancelled
 
     /** Creates a view with the default `UGenGraphBuilder.Context`. */
     def apply[S <: Sys[S]](peer: FScape[S], config: Control.Config)

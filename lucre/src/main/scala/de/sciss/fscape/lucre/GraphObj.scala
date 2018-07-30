@@ -16,6 +16,7 @@ package lucre
 
 import java.util
 
+import de.sciss.file.File
 import de.sciss.fscape.graph.{Constant, ConstantD, ConstantI, ConstantL}
 import de.sciss.lucre.event.{Dummy, Event, EventLike, Targets}
 import de.sciss.lucre.expr
@@ -125,6 +126,9 @@ object GraphObj extends expr.impl.ExprTypeImpl[Graph, GraphObj] {
         case d: Double =>
           out.writeByte('D')
           out.writeDouble(d)
+        case f: File =>
+          out.writeByte('f')
+          out.writeUTF(f.getPath)
       }
 
     def write(v: Graph, out: DataOutput): Unit = {
@@ -215,6 +219,7 @@ object GraphObj extends expr.impl.ExprTypeImpl[Graph, GraphObj] {
         case 'B' => in.readBoolean()
         case 'F' => in.readFloat()
         case 'D' => in.readDouble()
+        case 'f' => new File(in.readUTF())
       }
     }
 
