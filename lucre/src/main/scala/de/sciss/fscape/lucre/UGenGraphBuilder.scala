@@ -23,10 +23,9 @@ import de.sciss.fscape.lucre.graph.Attribute
 import de.sciss.fscape.lucre.impl.{AbstractOutputRef, AbstractUGenGraphBuilder, OutputImpl}
 import de.sciss.fscape.stream.Control
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.Sys
+import de.sciss.lucre.stm.{Sys, WorkspaceHandle}
 import de.sciss.serial.DataInput
 import de.sciss.synth.UGenSource.Vec
-import de.sciss.synth.proc.WorkspaceHandle
 
 import scala.collection.breakOut
 import scala.util.control.ControlThrowable

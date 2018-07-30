@@ -22,9 +22,8 @@ import de.sciss.fscape.lucre.UGenGraphBuilder.OutputRef
 import de.sciss.fscape.stream
 import de.sciss.fscape.stream.StreamIn
 import de.sciss.lucre.expr.DoubleObj
-import de.sciss.lucre.stm.{Obj, Sys}
+import de.sciss.lucre.stm.{Obj, Sys, WorkspaceHandle}
 import de.sciss.serial.{DataInput, Serializer}
-import de.sciss.synth.proc.WorkspaceHandle
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 

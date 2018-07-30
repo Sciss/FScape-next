@@ -19,16 +19,16 @@ import de.sciss.fscape.lucre.UGenGraphBuilder.MissingIn
 import de.sciss.fscape.lucre.{UGenGraphBuilder => UGB}
 import de.sciss.lucre.expr.Expr
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.Sys
+import de.sciss.lucre.stm.{Sys, WorkspaceHandle}
 import de.sciss.synth.proc
-import de.sciss.synth.proc.{GenContext, WorkspaceHandle}
+import de.sciss.synth.proc.GenContext
 
 object UGenGraphBuilderContextImpl {
   final class Default[S <: Sys[S]](protected val fscape: FScape[S])(implicit context: GenContext[S])
     extends UGenGraphBuilderContextImpl[S] {
 
     protected def cursor    : stm.Cursor[S]       = context.cursor
-    protected def workspace : WorkspaceHandle[S]  = context.workspaceHandle
+    protected def workspace : WorkspaceHandle[S]  = context.workspace
   }
 }
 trait UGenGraphBuilderContextImpl[S <: Sys[S]] extends UGenGraphBuilder.Context[S] {

@@ -7,7 +7,7 @@ import de.sciss.lucre.expr.IntObj
 import de.sciss.lucre.synth.InMemory
 import de.sciss.synth
 import de.sciss.synth.SynthGraph
-import de.sciss.synth.proc.{AudioCue, AuralSystem, GenView, Proc, Transport, WorkspaceHandle}
+import de.sciss.synth.proc.{AudioCue, AuralSystem, GenView, Proc, Transport}
 
 object FeedIntoAuralProcTest extends App {
   type S                  = InMemory
@@ -36,7 +36,7 @@ object FeedIntoAuralProcTest extends App {
     val outMax    = f.outputs.add("max"  , IntObj)
     f.graph() = gF
 
-    import WorkspaceHandle.Implicits.dummy
+    import de.sciss.lucre.stm.WorkspaceHandle.Implicits.dummy
 //    implicit val genCtx = GenContext[S]
 
     val p = Proc[S]

@@ -21,10 +21,10 @@ import de.sciss.fscape.graph.Constant
 import de.sciss.fscape.lucre.FScape.Output
 import de.sciss.fscape.lucre.UGenGraphBuilder.OutputRef
 import de.sciss.fscape.stream.{StreamIn, StreamOut, Builder => SBuilder}
-import de.sciss.lucre.stm.{Obj, Sys}
+import de.sciss.lucre.stm.{Obj, Sys, WorkspaceHandle}
 import de.sciss.serial.DataInput
 import de.sciss.synth.io.{AudioFileSpec, AudioFileType, SampleFormat}
-import de.sciss.synth.proc.{AudioCue, WorkspaceHandle}
+import de.sciss.synth.proc.AudioCue
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 

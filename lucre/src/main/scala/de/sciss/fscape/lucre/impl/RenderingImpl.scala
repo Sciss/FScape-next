@@ -74,7 +74,7 @@ object RenderingImpl {
   def apply[S <: Sys[S]](fscape: FScape[S], ugbContext: UGenGraphBuilder.Context[S], config: Control.Config,
                          force: Boolean)
                        (implicit tx: S#Tx, context: GenContext[S]): Rendering[S] = {
-    import context.{cursor, workspaceHandle}
+    import context.{cursor, workspace}
     implicit val control: Control = Control(config)
     val uState = UGenGraphBuilder.build(ugbContext, fscape)
     withState(uState, force = force)

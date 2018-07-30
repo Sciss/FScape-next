@@ -17,11 +17,11 @@ package lucre
 import de.sciss.fscape.lucre.impl.{OutputImpl, UGenGraphBuilderContextImpl, FScapeImpl => Impl}
 import de.sciss.fscape.stream.Control
 import de.sciss.lucre.event.{Observable, Publisher}
-import de.sciss.lucre.stm.{Disposable, Obj, Sys}
+import de.sciss.lucre.stm.{Disposable, Obj, Sys, WorkspaceHandle}
 import de.sciss.serial.{DataInput, Serializer}
 import de.sciss.synth.proc
 import de.sciss.synth.proc.impl.CodeImpl
-import de.sciss.synth.proc.{Gen, GenContext, GenView, WorkspaceHandle}
+import de.sciss.synth.proc.{Gen, GenContext, GenView}
 import de.sciss.{fscape, model}
 
 import scala.collection.immutable.{IndexedSeq => Vec}

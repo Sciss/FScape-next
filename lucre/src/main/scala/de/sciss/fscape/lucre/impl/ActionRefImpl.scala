@@ -17,9 +17,9 @@ package impl
 
 import de.sciss.fscape.lucre.UGenGraphBuilder.Input
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.Sys
+import de.sciss.lucre.stm.{Sys, WorkspaceHandle}
 import de.sciss.synth.proc
-import de.sciss.synth.proc.{SoundProcesses, WorkspaceHandle}
+import de.sciss.synth.proc.SoundProcesses
 
 final class ActionRefImpl[S <: Sys[S]](val key: String,
                                        fH: stm.Source[S#Tx, FScape[S]], aH: stm.Source[S#Tx, proc.Action[S]])

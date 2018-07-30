@@ -6,13 +6,13 @@ import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.synth.InMemory
 import de.sciss.synth.proc
 import de.sciss.synth.proc.Action.Universe
-import de.sciss.synth.proc.{GenContext, WorkspaceHandle}
+import de.sciss.synth.proc.GenContext
 
 import scala.util.{Failure, Success}
 
 object ActionTest extends App {
-  implicit val cursor = InMemory()
-  type S              = InMemory
+  type S                  = InMemory
+  implicit val cursor: S  = InMemory()
 
   var r: FScape.Rendering[S] = _
 
@@ -41,7 +41,7 @@ object ActionTest extends App {
     tx.newHandle(f)
   }
 
-  import WorkspaceHandle.Implicits.dummy
+  import de.sciss.lucre.stm.WorkspaceHandle.Implicits.dummy
 
   cursor.step { implicit tx =>
     val f = fH()

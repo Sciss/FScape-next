@@ -7,7 +7,7 @@ import de.sciss.lucre.artifact.{Artifact, ArtifactLocation}
 import de.sciss.lucre.expr.IntObj
 import de.sciss.lucre.synth.InMemory
 import de.sciss.synth.io.AudioFile
-import de.sciss.synth.proc.{GenContext, WorkspaceHandle}
+import de.sciss.synth.proc.GenContext
 
 import scala.util.{Failure, Success}
 
@@ -43,7 +43,7 @@ object Test extends App {
     tx.newHandle(f)
   }
 
-  import WorkspaceHandle.Implicits.dummy
+  import de.sciss.lucre.stm.WorkspaceHandle.Implicits.dummy
 
   cursor.step { implicit tx =>
     val f = fH()

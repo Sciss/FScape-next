@@ -6,7 +6,7 @@ import de.sciss.fscape.lucre.{Cache, FScape}
 import de.sciss.fscape.lucre.FScape.Output
 import de.sciss.lucre.expr.IntObj
 import de.sciss.lucre.synth.InMemory
-import de.sciss.synth.proc.{AudioCue, GenContext, GenView, WorkspaceHandle}
+import de.sciss.synth.proc.{AudioCue, GenContext, GenView}
 
 import scala.concurrent.stm.Ref
 import scala.util.{Failure, Success}
@@ -38,7 +38,7 @@ object AudioCueOutputTest extends App {
 
     val count = Ref(0)
 
-    import WorkspaceHandle.Implicits.dummy
+    import de.sciss.lucre.stm.WorkspaceHandle.Implicits.dummy
     implicit val genCtx = GenContext[S]
 
     def mkView(out: Output[S], idx: Int): GenView[S] = {
