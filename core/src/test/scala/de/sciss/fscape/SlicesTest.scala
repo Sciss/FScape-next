@@ -34,8 +34,8 @@ object SlicesTest extends App {
     val reverse   = Slices(in, spans)
 
     val sig       = reverse
-    val out       = AudioFileOut(fOut , AudioFileSpec(numChannels = numChannels, sampleRate = sampleRate), in = sig)
-    /* val out2 = */AudioFileOut(fOut2, AudioFileSpec(numChannels = numChannels, sampleRate = sampleRate), in = in )
+    val out       = AudioFileOut(file = fOut , spec = AudioFileSpec(numChannels = numChannels, sampleRate = sampleRate), in = sig)
+    /* val out2 = */AudioFileOut(file = fOut2, spec = AudioFileSpec(numChannels = numChannels, sampleRate = sampleRate), in = in )
     Progress(out / numFrames.toDouble, Metro(44100))
   }
 

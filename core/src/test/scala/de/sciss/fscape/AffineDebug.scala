@@ -76,7 +76,7 @@ object AffineDebug {
       val dirOut          = userHome / "Documents" / "temp" / "affine_debug"
       dirOut.mkdirs()
       val tempOut2        = dirOut / "frame-%d.png"
-      ImageFileSeqOut(tempOut2, spec = specOut, in = sig, indices = tempOutRangeGE)
+      ImageFileSeqOut(template = tempOut2, spec = specOut, in = sig, indices = tempOutRangeGE)
     }
 
     val ctl = Control(cfg)

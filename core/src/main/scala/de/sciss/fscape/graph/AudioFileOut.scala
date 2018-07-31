@@ -28,11 +28,11 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * end of the writing process. The UGen keeps running until
   * the `in` signal ends.
   *
+  * @param in     the signal to write.
   * @param file   the file to write to
   * @param spec   the spec for the audio file, including numbers of channels and sample-rate
-  * @param in     the signal to write.
   */
-final case class AudioFileOut(file: File, spec: AudioFileSpec, in: GE) extends UGenSource.SingleOut {
+final case class AudioFileOut(in: GE, file: File, spec: AudioFileSpec) extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = unwrap(this, in.expand.outputs)
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =

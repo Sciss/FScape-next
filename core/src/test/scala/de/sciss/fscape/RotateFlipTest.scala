@@ -39,7 +39,7 @@ object RotateFlipTest extends App {
           width  = if (isRot) height else width,
           height = if (isRot) width  else height
         )
-        ImageFileOut(dir / s"test-$pre-$name.png", spec, in = sig)
+        ImageFileOut(file = dir / s"test-$pre-$name.png", spec = spec, in = sig)
       }
 
       mk("control"    , Through         )

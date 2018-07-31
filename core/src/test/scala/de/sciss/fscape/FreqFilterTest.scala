@@ -16,8 +16,8 @@ object FreqFilterTest extends App {
     val len   = 65536
     val sig1  = HPF(in, freqN).take(len)
     val sig2  = LPF(in, freqN).take(len)
-    AudioFileOut(userHome / "hpf-test.aif", AudioFileSpec(numChannels = 1, sampleRate = sr), in = sig1)
-    AudioFileOut(userHome / "lpf-test.aif", AudioFileSpec(numChannels = 1, sampleRate = sr), in = sig2)
+    AudioFileOut(file = userHome / "hpf-test.aif", spec = AudioFileSpec(numChannels = 1, sampleRate = sr), in = sig1)
+    AudioFileOut(file = userHome / "lpf-test.aif", spec = AudioFileSpec(numChannels = 1, sampleRate = sr), in = sig2)
   }
 
   val ctl = stream.Control()

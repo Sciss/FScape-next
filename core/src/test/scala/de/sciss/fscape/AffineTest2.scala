@@ -74,7 +74,7 @@ object AffineTest2 {
 //      val sig       = i4
       val sig = m1a
       val specOut   = ImageFile.Spec(width = width, height = height, numChannels = 1)
-      ImageFileOut(fOut, specOut, in = sig)
+      ImageFileOut(file = fOut, spec = specOut, in = sig)
 //      Progress(Frames(sig) / (2 * frameSize), Metro(frameSize), label = "write")
     }
 

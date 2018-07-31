@@ -28,7 +28,7 @@ object BleachTest extends App {
     val sig       = if (inverse) sig0 else in.elastic() - sig0
     require(!twoWays, "twoWays - not yet implemented")
 
-    val out     = AudioFileOut(fOut, AudioFileSpec(numChannels = numChannels, sampleRate = sampleRate), in = sig)
+    val out     = AudioFileOut(file = fOut, spec = AudioFileSpec(numChannels = numChannels, sampleRate = sampleRate), in = sig)
     Progress(out / specIn.numFrames.toDouble, Metro(44100))
   }
 

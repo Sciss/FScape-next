@@ -21,7 +21,7 @@ import de.sciss.fscape.stream.StreamIn
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-final case class ImageFileOut(file: File, spec: ImageFile.Spec, in: GE) extends UGenSource.ZeroOut {
+final case class ImageFileOut(in: GE, file: File, spec: ImageFile.Spec) extends UGenSource.ZeroOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): Unit = unwrap(this, in.expand.outputs)
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit =

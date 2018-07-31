@@ -67,7 +67,7 @@ object ResampleTest extends App {
     val sig0    = TransposeMatrix(r2, w, h)
     val sig     = sig0 // .take(w * h)
     val fOut    = userHome / "Documents" / "temp" / "naya-freq-mode.jpg"
-    ImageFileOut(fOut, ImageFile.Spec(ImageFile.Type.JPG, width = w, height = h, numChannels = 3), in = sig)
+    ImageFileOut(file = fOut, spec = ImageFile.Spec(ImageFile.Type.JPG, width = w, height = h, numChannels = 3), in = sig)
   }
 
   val config = stream.Control.Config()

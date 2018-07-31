@@ -89,7 +89,7 @@ object MFCCTest extends App {
     val slicesLap   = OverlapAdd(slicesWin, size = spanLenAsc, step = spanLenAsc - fadeFrames)
 
     val sig         = slicesLap
-    val out         = AudioFileOut(fOut, AudioFileSpec(numChannels = numChannels, sampleRate = sampleRate), in = sig)
+    val out         = AudioFileOut(file = fOut, spec = AudioFileSpec(numChannels = numChannels, sampleRate = sampleRate), in = sig)
     Progress(out / (2 * numFrames), Metro(sampleRate), label = "write")
   }
 

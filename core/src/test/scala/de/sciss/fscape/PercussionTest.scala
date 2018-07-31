@@ -42,7 +42,7 @@ object PercussionTest extends App {
     val lap         = OverlapAdd(in = winOut, size = fftSize, step = winStep)
 
     val sig = normalize(lap)
-    AudioFileOut(fOut, AudioFileSpec(numChannels = coefs.size, sampleRate = 44100), in = sig)
+    AudioFileOut(file = fOut, spec = AudioFileSpec(numChannels = coefs.size, sampleRate = 44100), in = sig)
   }
 
   def normalize(in: GE): GE = {

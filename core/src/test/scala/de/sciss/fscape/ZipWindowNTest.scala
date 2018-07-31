@@ -56,7 +56,7 @@ object ZipWindowNTest extends App {
 
     val specOut = ImageFile.Spec(ImageFile.Type.JPG, width = totalWidth, height = totalHeight, numChannels = 3)
     val sigOut = tr.max(0).min(1)
-    ImageFileOut(fOut, specOut, in = sigOut)
+    ImageFileOut(file = fOut, spec = specOut, in = sigOut)
   }
 
   val cfg = Control.Config()
