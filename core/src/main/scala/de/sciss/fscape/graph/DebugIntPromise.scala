@@ -1,5 +1,5 @@
 /*
- *  DebugAudioFileOut.scala
+ *  DebugPromise.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2018 Hanns Holger Rutz. All rights reserved.
@@ -11,27 +11,28 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape
-package graph
+package de.sciss.fscape.graph
 
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.StreamIn
+import de.sciss.fscape.{GE, UGen, UGenGraph, UGenIn, UGenSource, stream}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
+import scala.concurrent.Promise
 
-/** A UGen that simply consumes a signal and keeps running until
-  * the `in` signal ends.
+/** A debugging UGen that completes a promise with the input values it sees.
   *
-  * @param in     the signal to keep 'alive'.
+  * @param in   the signal to monitor
   */
-final case class DebugOut(in: GE) extends UGenSource.ZeroOut {
-  protected def makeUGens(implicit b: UGenGraph.Builder): Unit = unwrap(this, Vector(in.expand))
+case class DebugIntPromise(in: GE, p: Promise[Vec[Int]]) extends UGenSource.ZeroOut {
+  protected def makeUGens(implicit b: UGenGraph.Builder): Unit =
+    unwrap(this, Vector(in.expand))
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit =
-    UGen.ZeroOut(this, inputs = args, isIndividual = true)
+    UGen.ZeroOut(this, inputs = args)
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit = {
     val Vec(in) = args
-    stream.DebugOut(in = in.toDouble)
+    stream.DebugIntPromise(in.toInt, p)
   }
 }

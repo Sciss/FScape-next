@@ -67,17 +67,18 @@ lazy val core = project.withId(s"$baseNameL-core").in(file("core"))
     ),
     buildInfoPackage := "de.sciss.fscape",
     libraryDependencies ++= Seq(
-      "de.sciss"                  %% "scissdsp"             % deps.main.dsp,
-      "de.sciss"                  %% "numbers"              % deps.main.numbers,
-      "de.sciss"                  %% "audiofile"            % deps.main.audioFile,
-      "de.sciss"                  %% "fileutil"             % deps.main.fileUtil,
-      "de.sciss"                  %% "swingplus"            % deps.main.swingPlus,
-      "de.sciss"                  %% "optional"             % deps.main.optional,
-      "de.sciss"                  %% "scala-chart"          % deps.main.scalaChart,
-      "com.typesafe.akka"         %% "akka-stream"          % deps.main.akka,
-      "com.typesafe.akka"         %% "akka-stream-testkit"  % deps.main.akka,
-      "com.github.scopt"          %% "scopt"                % deps.test.scopt     % Test,
-      "de.sciss"                  %% "kollflitz"            % deps.test.kollFlitz % Test
+      "de.sciss"          %% "scissdsp"             % deps.main.dsp,
+      "de.sciss"          %% "numbers"              % deps.main.numbers,
+      "de.sciss"          %% "audiofile"            % deps.main.audioFile,
+      "de.sciss"          %% "fileutil"             % deps.main.fileUtil,
+      "de.sciss"          %% "swingplus"            % deps.main.swingPlus,
+      "de.sciss"          %% "optional"             % deps.main.optional,
+      "de.sciss"          %% "scala-chart"          % deps.main.scalaChart,
+      "com.typesafe.akka" %% "akka-stream"          % deps.main.akka,
+      "com.typesafe.akka" %% "akka-stream-testkit"  % deps.main.akka,
+      "com.github.scopt"  %% "scopt"                % deps.test.scopt     % Test,
+      "de.sciss"          %% "kollflitz"            % deps.test.kollFlitz % Test,
+      "org.scalatest"     %% "scalatest"            % deps.test.scalaTest % Test
     ),
     mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-core" % mimaVersion)
   )
