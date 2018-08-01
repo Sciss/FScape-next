@@ -12,13 +12,14 @@ class OverlapAddSpec extends FlatSpec with Matchers {
     val n           = 1000
     val win         = 100
     val step        = 10
-    val numWin      = (n + step - 1) / step
+    val numWin      = (n + win - 1) / win
     val penUlt      = numWin - 2
     val penUltOff   = penUlt * step
     val penUltStop  = penUltOff + win
-    val ultLen      = n - ((numWin - 1) * step)
+    val ultLen      = n - ((numWin - 1) * win)
     val ultOff      = penUltOff + step
     val ultStop     = ultOff + ultLen
+//    println(s"numWin $numWin, penUlt $penUlt, penUltSOff $penUltOff, penUltStop $penUltStop, ultLen $ultLen, ultOff $ultOff, ultStop $ultStop")
     val expected    = math.max(penUltStop, ultStop)
     val p           = Promise[Vec[Int]]()
 

@@ -2,7 +2,7 @@ lazy val baseName   = "FScape"
 lazy val baseNameL  = baseName.toLowerCase
 lazy val githubRepo = "FScape-next"
 
-lazy val projectVersion = "2.16.0-SNAPSHOT"
+lazy val projectVersion = "2.16.0"
 lazy val mimaVersion    = "2.16.0"
 
 lazy val baseDescription = "An audio rendering library"
@@ -27,16 +27,16 @@ lazy val deps = new {
     val numbers         = "0.2.0"
     val optional        = "1.0.0"
     val scalaChart      = "0.6.0"
-    val swingPlus       = "0.3.0"
+    val swingPlus       = "0.3.1"
     val akka            = "2.4.20" // N.B. "2.5.1" is latest, but they moved an impl class that we require (ActorMaterializerImpl)
   }
   val lucre = new {
     val fileCache       = "0.4.0"
-    val soundProcesses  = "3.21.0-SNAPSHOT"
+    val soundProcesses  = "3.21.0"
   }
   val test = new {
     val kollFlitz       = "0.2.2"
-    val lucre           = "3.9.0-SNAPSHOT"
+    val lucre           = "3.9.0"
     val scalaTest       = "3.0.5"
     val scopt           = "3.7.0"
   }
