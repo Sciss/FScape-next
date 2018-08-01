@@ -19,7 +19,7 @@ import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-/** Creates a constant infinite signal. */
+/** Concatenates two signals. */
 final case class Concat(a: GE, b: GE) extends UGenSource.SingleOut {
   protected def makeUGens(implicit builder: UGenGraph.Builder): UGenInLike =
     unwrap(this, Vector(a.expand, b.expand))

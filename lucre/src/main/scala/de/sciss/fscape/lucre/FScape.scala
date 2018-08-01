@@ -123,7 +123,7 @@ object FScape extends Obj.Type {
         "de.sciss.numbers.Implicits._",
 //        "de.sciss.fscape.GE",
         "de.sciss.fscape._",
-        "de.sciss.fscape.graph.{AudioFileIn => _, AudioFileOut => _, _}",
+        "de.sciss.fscape.graph.{AudioFileIn => _, AudioFileOut => _, ImageFileIn => _, ImageFileOut => _, _}",
         "de.sciss.fscape.lucre.graph._",
         "de.sciss.fscape.lucre.graph.Ops._"
       ))
