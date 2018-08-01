@@ -16,13 +16,16 @@ package lucre
 package graph
 
 import de.sciss.file.File
-import de.sciss.fscape
-import de.sciss.fscape.graph.Constant
+import de.sciss.fscape.UGen.Aux
+import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.lucre.UGenGraphBuilder.Input
-import de.sciss.synth.io.{AudioFileSpec, AudioFileType, SampleFormat}
+import de.sciss.fscape.stream
+import de.sciss.fscape.stream.{StreamIn, StreamOut}
+import de.sciss.synth.io.{AudioFileType, SampleFormat}
 import de.sciss.synth.proc.AudioCue
 
 import scala.annotation.switch
+import scala.collection.immutable.{IndexedSeq => Vec}
 
 object AudioFileOut {
   /** Converts an audio file type to a unique id that can be parsed by the UGen. */
@@ -35,7 +38,7 @@ object AudioFileOut {
     case other => sys.error(s"Unexpected audio file type $other")
   }
 
-  /** Converts a sample forat to a unique id that can be parsed by the UGen. */
+  /** Converts a sample format to a unique id that can be parsed by the UGen. */
   def id(in: SampleFormat): Int = in match {
     case SampleFormat.Int16    => 0
     case SampleFormat.Int24    => 1
@@ -68,6 +71,26 @@ object AudioFileOut {
     case 6 => SampleFormat.Int8
     case other => sys.error(s"Unexpected sample format id $other")
   }
+
+  final case class WithFile(file: File, in: GE, fileType: GE,
+                            sampleFormat: GE, sampleRate: GE)
+    extends UGenSource.SingleOut {
+
+    protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
+      unwrap(this, sampleRate.expand +: sampleFormat.expand +: fileType.expand +: in.expand.outputs)
+
+    protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
+      UGen.SingleOut(this, args, aux = Aux.FileOut(file) :: Nil, isIndividual = true, hasSideEffect = true)
+
+    private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
+      val sampleRate +: sampleFormat +: fileType +: in = args
+      lucre.stream.AudioFileOut(file = file, in = in.map(_.toDouble),
+        fileType = fileType.toInt, sampleFormat = sampleFormat.toInt,
+        sampleRate = sampleRate.toDouble)
+    }
+
+    override def productPrefix: String = s"AudioFileOut$$WithFile"
+  }
 }
 /** A graph element that creates a UGen writing to a file
   * designated by an object attribute with a given `key` and the
@@ -86,49 +109,29 @@ object AudioFileOut {
   * @param in           the signal to write
   * @param fileType     a file type id as given by `AudioFileOut.id()`. The default
   *                     is `0` (AIFF).
-  *                     Must be resolvable at init time.
   * @param sampleFormat a sample format id as given by `AudioFileOut.id()`. The default
   *                     is `2` (32-bit Float).
-  *                     Must be resolvable at init time.
   * @param sampleRate   the nominal sample-rate of the file. The default is `44100`.
-  *                     Must be resolvable at init time.
   */
 final case class AudioFileOut(key: String, in: GE, fileType: GE = 0, sampleFormat: GE = 2, sampleRate: GE = 44100.0)
   extends GE.Lazy {
 
-  import UGenGraphBuilder.{canResolve, resolve}
-
-  private def fail(arg: String, detail: String): Nothing =
-    throw new IllegalArgumentException(s"$productPrefix.$arg cannot be resolved at initialization time: $detail")
-
-  canResolve(fileType    ).left.foreach(fail("fileType"    , _))
-  canResolve(sampleFormat).left.foreach(fail("sampleFormat", _))
-  canResolve(sampleRate  ).left.foreach(fail("sampleRate"  , _))
-
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = {
     val ub = UGenGraphBuilder.get(b)
-    val (f, numChannels, specOpt) = ub.requestInput(Input.Attribute(key)).peer.fold[(File, Int, Option[AudioFileSpec])] {
+    ub.requestInput(Input.Attribute(key)).peer.fold[UGenInLike] {
       sys.error(s"Missing Attribute $key")
     } {
       case a: AudioCue =>
-        (a.artifact, a.numChannels, Some(a.spec))
+        val spec = a.spec
+        AudioFileOut.WithFile(file = a.artifact, in = in, fileType = AudioFileOut.id(spec.fileType),
+          sampleFormat = AudioFileOut.id(spec.sampleFormat), sampleRate = spec.sampleRate)
 
       case f: File =>
-        val inExp       = in.expand(b)
-        val numChannels = inExp.outputs.size
-        (f, numChannels, None)
+        AudioFileOut.WithFile(file = f, in = in, fileType = fileType,
+          sampleFormat = sampleFormat, sampleRate = sampleRate)
 
-      case other => sys.error(s"$this - requires AudioCue or Artifact value, found $other")
+      case other =>
+        sys.error(s"$this - requires AudioCue or Artifact value, found $other")
     }
-    val spec = specOpt.getOrElse {
-      val fileTypeId  = resolve(fileType    , ub).fold[Constant](fail("fileType"    , _), identity).intValue
-      val sampleFmtId = resolve(sampleFormat, ub).fold[Constant](fail("sampleFormat", _), identity).intValue
-      val sampleRateT = resolve(sampleRate  , ub).fold[Constant](fail("sampleRate"  , _), identity).doubleValue
-      val fileTypeT   = AudioFileOut.fileType    (fileTypeId )
-      val sampleFmtT  = AudioFileOut.sampleFormat(sampleFmtId)
-      AudioFileSpec(fileTypeT, sampleFmtT, numChannels = numChannels, sampleRate = sampleRateT)
-    }
-
-    fscape.graph.AudioFileOut(file = f, spec = spec, in = in)
   }
 }

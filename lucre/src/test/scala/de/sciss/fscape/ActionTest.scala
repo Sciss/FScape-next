@@ -16,7 +16,7 @@ object ActionTest extends App {
 
   var r: FScape.Rendering[S] = _
 
-  val body = new proc.Action.Body {
+  val body: proc.Action.Body = new proc.Action.Body {
     def apply[T <: Sys[T]](universe: Universe[T])(implicit tx: T#Tx): Unit = {
       tx.afterCommit(println("Bang!"))
       assert(tx.system == cursor)
@@ -45,7 +45,7 @@ object ActionTest extends App {
 
   cursor.step { implicit tx =>
     val f = fH()
-    implicit val ctx = GenContext[S]
+    implicit val ctx: GenContext[S] = GenContext.apply
     r = f.run()
     r.reactNow { implicit tx => state =>
       println(s"Rendering: $state")

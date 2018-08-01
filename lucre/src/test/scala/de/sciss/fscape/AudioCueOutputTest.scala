@@ -12,8 +12,8 @@ import scala.concurrent.stm.Ref
 import scala.util.{Failure, Success}
 
 object AudioCueOutputTest extends App {
-  implicit val cursor = InMemory()
-  type S              = InMemory
+  type                  S = InMemory
+  implicit val cursor:  S = InMemory()
 
   FScape.init()
   GenView.addFactory(FScape.genViewFactory())
@@ -39,7 +39,7 @@ object AudioCueOutputTest extends App {
     val count = Ref(0)
 
     import de.sciss.lucre.stm.WorkspaceHandle.Implicits.dummy
-    implicit val genCtx = GenContext[S]
+    implicit val genCtx: GenContext[S] = GenContext[S]
 
     def mkView(out: Output[S], idx: Int): GenView[S] = {
       val view = GenView(out)

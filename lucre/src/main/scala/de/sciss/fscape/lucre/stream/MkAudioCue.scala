@@ -20,7 +20,7 @@ import de.sciss.file._
 import de.sciss.fscape.lucre.FScape.Output
 import de.sciss.fscape.lucre.UGenGraphBuilder.OutputRef
 import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeImpl}
-import de.sciss.fscape.stream.{AudioFileOut, BufD, BufL, Builder, Control, InD, OutD, OutL}
+import de.sciss.fscape.stream.{AudioFileOut => _AudioFileOut, BufD, BufL, Builder, Control, InD, OutD, OutL}
 import de.sciss.serial.DataOutput
 import de.sciss.synth.io
 import de.sciss.synth.io.AudioFileSpec
@@ -56,7 +56,7 @@ object MkAudioCue {
 
   private final class Logic(shape: Shape, ref: OutputRef, protected val file: File, protected val spec: io.AudioFileSpec)
                            (implicit ctrl: Control)
-    extends NodeImpl(s"$name(${file.name})", shape) with AudioFileOut.AbstractLogic {
+    extends NodeImpl(s"$name(${file.name})", shape) with _AudioFileOut.AbstractLogic {
 
     override protected def stopped(): Unit = {
       super.stopped()
