@@ -21,6 +21,8 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 
 /** A sample-and-hold UGen. It passes through its input while the gate is open,
   * and outputs the last held value while the gate is closed.
+  *
+  * @see [[Gate]]
   */
 final case class Latch(in: GE, gate: GE) extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =

@@ -60,11 +60,11 @@ object Done {
       if (isClosed(shape.in) /* && !isAvailable(shape.in) */) flush()
     }
 
-    private var NUM = 0L
+//    private var NUM = 0L
 
     def onPush(): Unit = {
       val buf = grab(shape.in)
-      NUM += buf.size
+//      NUM += buf.size
       buf.release()
       pull(shape.in)
     }
@@ -74,7 +74,7 @@ object Done {
       buf.buf(0) = 1
       buf.size   = 1
       push(shape.out, buf)
-      println(s"NUM = $NUM")
+//      println(s"NUM = $NUM")
       logStream(s"completeStage() $this")
       completeStage()
     }

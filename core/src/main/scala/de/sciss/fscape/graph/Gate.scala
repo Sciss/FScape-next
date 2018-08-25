@@ -19,7 +19,11 @@ import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-/** A UGen that passes through its input while the gate is open, and outputs zero while the gate is closed. */
+/** A UGen that passes through its input while the gate is open, and outputs zero while the gate is closed.
+  *
+  * @see [[FilterSeq]]
+  * @see [[Latch]]
+  */
 final case class Gate(in: GE, gate: GE) extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
     unwrap(this, Vector(in.expand, gate.expand))
