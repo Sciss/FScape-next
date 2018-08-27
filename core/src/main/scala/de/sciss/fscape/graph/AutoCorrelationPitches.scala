@@ -43,9 +43,12 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * @param thresh     the "voicing" threshold for considered for local maxima within `minLag` `maxLag`.
   *                   Note that internally, half of this value is used; this is so that you can normally
   *                   use the same threshold for `AutoCorrelationPitches` and `VibertiPitchPath`.
-  * @param octaveCost a ratio for favouring higher frequencies
+  * @param octaveCost a factor for favouring higher frequencies. use zero to turn off this feature.
   * @param n          number of candidate periods output. This is clipped to be at least 2,
   *                   where one candidate (the last in the list) always refers to the unvoiced condition.
+  *
+  * see [[PitchesToViterbi]]
+  * see [[Viterbi]]
   */
 final case class AutoCorrelationPitches(ac: GE, size: GE, minLag: GE, maxLag: GE, thresh: GE = 0.45,
                                         octaveCost: GE = 0.01, n: GE = 15)

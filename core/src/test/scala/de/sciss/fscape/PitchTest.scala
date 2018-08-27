@@ -2,7 +2,7 @@ package de.sciss.fscape
 
 import de.sciss.file._
 import de.sciss.numbers.Implicits._
-import de.sciss.synth.io.{AudioFile, AudioFileSpec, SampleFormat}
+import de.sciss.synth.io.AudioFile
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
@@ -98,27 +98,38 @@ object PitchTest extends App {
       thresh = VoicedUnvoicedCost, octaveCost = OctaveCost, n = NumCandidates)
 
     val lags      = paths.lags
-    val freqsN    = lags.reciprocal
-    val freqs     = freqsN * sampleRate
     val strengths = paths.strengths
-//    paths.lags.poll(Metro(NumCandidates), "lags")
-    freqs     .poll(Metro(NumCandidates), "freqs")
-    strengths .poll(Metro(NumCandidates), "strengths")
+    //    val freqsN    = lags.reciprocal
+    //    val freqs     = freqsN * sampleRate
+    //    paths.lags.poll(Metro(NumCandidates), "lags")
+    //    freqs     .poll(Metro(NumCandidates), "freqs")
+    //    strengths .poll(Metro(NumCandidates), "strengths")
 
-    val osc = Vector.tabulate(NumCandidates) { i =>
-      val lag       = WindowApply(lags, NumCandidates, i)
-      val hasFreq   = lag > 0
-      val freqN0    = RepeatWindow(Latch(lag.max(1).reciprocal, hasFreq), num = stepSize)
-      val freqN     = OnePole(freqN0, 0.95)
-      val strength  = WindowApply(strengths, NumCandidates, i)
-      val amp0      = RepeatWindow(strength * hasFreq, num = stepSize)
-      val amp       = OnePole(amp0, 0.95)
-      (SinOsc(freqN) + SinOsc(freqN * 2) * 0.5 + SinOsc(freqN * 3) * 0.25).take(numFrames) * amp
-    }
+    val timeStepCorr        = 0.01 * sampleRate / stepSize
+    val octaveJumpCostC     = OctaveJumpCost      * timeStepCorr
+    val voicedUnvoicedCostC = VoicedUnvoicedCost  * timeStepCorr
 
-    val mix = osc.reduce(_ + _) / NumCandidates
-    AudioFileOut(mix, fOut, AudioFileSpec(numChannels = 1, sampleRate = sampleRate,
-      sampleFormat = SampleFormat.Int24))
+    val vitIn     = PitchesToViterbi(lags = lags, strengths = strengths, n = NumCandidates,
+      voicingThresh = VoicingThreshold, silenceThresh = SilenceThreshold, octaveCost = OctaveCost,
+      octaveJumpCost = octaveJumpCostC, voicedUnvoicedCost = voicedUnvoicedCostC)
+    val states    = Viterbi(add = vitIn, numStates = NumCandidates)
+
+    states.poll()
+
+//    val osc = Vector.tabulate(NumCandidates) { i =>
+//      val lag       = WindowApply(lags, NumCandidates, i)
+//      val hasFreq   = lag > 0
+//      val freqN0    = RepeatWindow(Latch(lag.max(1).reciprocal, hasFreq), num = stepSize)
+//      val freqN     = OnePole(freqN0, 0.95)
+//      val strength  = WindowApply(strengths, NumCandidates, i)
+//      val amp0      = RepeatWindow(strength * hasFreq, num = stepSize)
+//      val amp       = OnePole(amp0, 0.95)
+//      (SinOsc(freqN) + SinOsc(freqN * 2) * 0.5 + SinOsc(freqN * 3) * 0.25).take(numFrames) * amp
+//    }
+//
+//    val mix = osc.reduce(_ + _) / NumCandidates
+//    AudioFileOut(mix, fOut, AudioFileSpec(numChannels = 1, sampleRate = sampleRate,
+//      sampleFormat = SampleFormat.Int24))
   }
 
   val config = stream.Control.Config()

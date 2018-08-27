@@ -26,8 +26,8 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * also orthonormal.
 
   * @param in       the input matrices
-  * @param rows     the number of rows of the _input_
-  * @param columns  the number of columns of the _input_
+  * @param rows     the number of rows of the ''input''
+  * @param columns  the number of columns of the ''input''
   */
 final case class GramSchmidtMatrix(in: GE, rows: GE, columns: GE, normalize: GE = 0)
   extends UGenSource.SingleOut {
