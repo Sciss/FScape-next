@@ -4,7 +4,7 @@
  *
  *  Copyright (c) 2001-2018 Hanns Holger Rutz. All rights reserved.
  *
- *  This software is published under the GNU General Public License v2+
+ *  This software is published under the GNU Affero General Public License v3+
  *
  *
  *  For further information, please contact Hanns Holger Rutz at
@@ -17,7 +17,7 @@ package graph
 import de.sciss.fscape.UGen.Aux
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
-import de.sciss.numbers.{DoubleFunctions => rd, DoubleFunctions2 => rd2}
+import de.sciss.numbers.{DoubleFunctions => rd, DoubleFunctions2 => rd2, IntFunctions => ri}
 
 import scala.annotation.switch
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -344,6 +344,11 @@ object UnaryOp {
   case object IsNaN extends Op {
     final val id = 100
     def apply(a: Double): Double = if (java.lang.Double.isNaN(a)) 1.0 else 0.0
+  }
+
+  case object NextPowerOfTwo extends Op {
+    final val id = 101
+    def apply(a: Double): Double = ri.nextPowerOfTwo(Math.ceil(a).toInt).toDouble
   }
 }
 final case class UnaryOp(op: Int, in: GE) extends UGenSource.SingleOut {

@@ -15,8 +15,11 @@ It has basic integration with [Mellite](http://sciss.github.io/Mellite/), but si
 
 FScape(-next) is (C)opyright 2001&ndash;2018 by Hanns Holger Rutz. All rights reserved.
 This program is free software; you can redistribute it and/or modify it under the terms 
-of the [GNU General Public License](http://github.com/Sciss/FScape-next/blob/master/LICENSE) v2+.
+of the [GNU Affero General Public License](http://github.com/Sciss/FScape-next/blob/master/LICENSE) v3+.
 To contact the author, send an email to `contact at sciss.de`.
+
+FScape contains code adapted from Praat by Paul Boersma and David Weenink, published under the 
+GNU General Public License v2+.
 
 ## building
 

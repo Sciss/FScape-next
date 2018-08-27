@@ -4,7 +4,7 @@
  *
  *  Copyright (c) 2001-2018 Hanns Holger Rutz. All rights reserved.
  *
- *  This software is published under the GNU General Public License v2+
+ *  This software is published under the GNU Affero General Public License v3+
  *
  *
  *  For further information, please contact Hanns Holger Rutz at
@@ -92,6 +92,8 @@ final class GEOps1(val `this`: GE) extends AnyVal { me =>
   // def theta : GE             = UnOp.make( 'theta, this )
 
   def isNaN: GE = unOp(IsNaN)
+
+  def nextPowerOfTwo: GE = unOp(NextPowerOfTwo)
 
   def elastic(n: GE = 1): GE = Elastic(g, n)
 
@@ -297,6 +299,7 @@ final class GEComplexOps(val `this`: GE) extends AnyVal { me =>
   def log2      : GE  = cUnOp(Log2       )
   def log10     : GE  = cUnOp(Log10      )
   def conj      : GE  = cUnOp(Conj       )
+  def absSquared: GE  = cUnOp(AbsSquared )
 
   @inline private def cBinOp(op: ComplexBinaryOp.Op, b: GE): GE = op.make(g, b)
 

@@ -4,7 +4,7 @@
  *
  *  Copyright (c) 2001-2018 Hanns Holger Rutz. All rights reserved.
  *
- *  This software is published under the GNU General Public License v2+
+ *  This software is published under the GNU Affero General Public License v3+
  *
  *
  *  For further information, please contact Hanns Holger Rutz at
@@ -67,6 +67,7 @@ object ComplexUnaryOp {
       //      case Ramp       .id => Ramp
       //      case Scurve     .id => Scurve
       case Conj       .id => Conj
+      case AbsSquared .id => AbsSquared
     }
   }
 
@@ -271,6 +272,24 @@ object ComplexUnaryOp {
         val inIm    = in(i); i += 1
         val outRe   = inRe
         val outIm   = -inIm
+        out(j) = outRe; j += 1
+        out(j) = outIm; j += 1
+      }
+    }
+  }
+
+  case object AbsSquared extends Op {
+    final val id = 101
+
+    def apply(in: Array[Double], inOff: Int, out: Array[Double], outOff: Int, len: Int): Unit = {
+      val inStop = inOff + (len << 1)
+      var i = inOff
+      var j = outOff
+      while (i < inStop) {
+        val inRe  = in(i); i += 1
+        val inIm  = in(i); i += 1
+        val outRe = inRe * inRe + inIm * inIm
+        val outIm = 0.0
         out(j) = outRe; j += 1
         out(j) = outIm; j += 1
       }

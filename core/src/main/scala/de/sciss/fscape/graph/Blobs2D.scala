@@ -4,7 +4,7 @@
  *
  *  Copyright (c) 2001-2018 Hanns Holger Rutz. All rights reserved.
  *
- *  This software is published under the GNU General Public License v2+
+ *  This software is published under the GNU Affero General Public License v3+
  *
  *
  *  For further information, please contact Hanns Holger Rutz at
@@ -43,7 +43,7 @@ final case class Blobs2D(in: GE, width: GE, height: GE, thresh: GE = 0.3, pad: G
     unwrap(this, Vector(in.expand, width.expand, height.expand, thresh.expand, pad.expand))
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
-    UGen.MultiOut(this, args, 4)
+    UGen.MultiOut(this, args, numOutputs = 4)
 
   def numBlobs    : GE = ChannelProxy(this, 0)
   def bounds      : GE = ChannelProxy(this, 1)

@@ -4,7 +4,7 @@
  *
  *  Copyright (c) 2001-2018 Hanns Holger Rutz. All rights reserved.
  *
- *  This software is published under the GNU General Public License v2+
+ *  This software is published under the GNU Affero General Public License v3+
  *
  *
  *  For further information, please contact Hanns Holger Rutz at
@@ -14,6 +14,8 @@
 package de.sciss.fscape
 
 object Util {
+  final val log2 = math.log(2)
+
   // ---- multi-channel ----
 
   def copy(in: Array[Array[Float]], inOff: Int, out: Array[Array[Double]], outOff: Int, len: Int): Unit = {
@@ -68,6 +70,10 @@ object Util {
 
   /** Copies input to output. */
   def copy(in: Array[Double], inOff: Int, out: Array[Double], outOff: Int, len: Int): Unit =
+    System.arraycopy(in, inOff, out, outOff, len)
+
+  /** Copies input to output. */
+  def copy(in: Array[Int], inOff: Int, out: Array[Int], outOff: Int, len: Int): Unit =
     System.arraycopy(in, inOff, out, outOff, len)
 
   /** Fills buffer with zeroes. */

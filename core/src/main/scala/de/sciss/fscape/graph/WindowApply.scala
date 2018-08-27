@@ -4,7 +4,7 @@
  *
  *  Copyright (c) 2001-2018 Hanns Holger Rutz. All rights reserved.
  *
- *  This software is published under the GNU General Public License v2+
+ *  This software is published under the GNU Affero General Public License v3+
  *
  *
  *  For further information, please contact Hanns Holger Rutz at
@@ -20,9 +20,7 @@ import de.sciss.fscape.stream.{BufElem, Builder, OutI, StreamIn, StreamInElem, S
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-/** A UGen that determines for each input window the first index where a predicate holds.
-  * It outputs one integer value per window; if the predicate does not hold across the entire
-  * window, the index will be `-1`.
+/** A UGen that extracts for each input window the element at a given index.
   *
   * @param in     the window'ed signal to index
   * @param size   the window size.
