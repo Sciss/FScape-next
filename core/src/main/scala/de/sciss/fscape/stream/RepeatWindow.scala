@@ -77,7 +77,7 @@ object RepeatWindow {
     private[this] var inOff0: Int   = 0
     private[this] var inOff1: Int   = 0
     private[this] var inOff2: Int   = 0
-    private[this] var outOff0: Int   = 0
+    private[this] var outOff0: Int  = 0
 
     private[this] var stage = 0
     private[this] var inputDone = false
@@ -204,7 +204,6 @@ object RepeatWindow {
         }
 
         if (!needsWinSize && !needsNum) {
-          inValid
           readOff     = 0
           stage       = 1
           stateChange = true
@@ -270,7 +269,7 @@ object RepeatWindow {
           }
         }
 
-        if (outOff0 == bufOut0.size && isAvailable(shape.out)) {
+        if (outOff0 == bufOut0.size && canWrite) {
           writeOuts(outOff0)
           stateChange = true
         }
