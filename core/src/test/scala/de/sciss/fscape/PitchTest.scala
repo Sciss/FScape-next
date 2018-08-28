@@ -56,7 +56,7 @@ object PitchTest extends App {
 
     def mkWindow() = GenWindow(winSize, shape = GenWindow.Hann)
 
-    val inW         = {
+    val inW = {
       // remove DC
       val leak  = NormalizeWindow(inSlid, winSize, mode = NormalizeWindow.ZeroMean)
       leak * mkWindow()
@@ -114,7 +114,7 @@ object PitchTest extends App {
 //    val voicedUnvoicedCostC = VoicedUnvoicedCost
 
     val vitIn     = PitchesToViterbi(lags = lags, strengths = strengths, n = NumCandidates,
-      minLag = minLag,
+      minLag = minLag, maxLag = maxLag,
       voicingThresh = VoicingThreshold, silenceThresh = SilenceThreshold, octaveCost = OctaveCost,
       octaveJumpCost = octaveJumpCostC, voicedUnvoicedCost = voicedUnvoicedCostC)
 

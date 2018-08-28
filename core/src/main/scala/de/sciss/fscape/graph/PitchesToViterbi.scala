@@ -48,6 +48,7 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 final case class PitchesToViterbi(lags: GE, strengths: GE,
                                   n                 : GE = 15,
                                   minLag            : GE,
+                                  maxLag            : GE,
                                   voicingThresh     : GE = 0.45,
                                   silenceThresh     : GE = 0.03,
                                   octaveCost        : GE = 0.01,
@@ -57,16 +58,17 @@ final case class PitchesToViterbi(lags: GE, strengths: GE,
   extends UGenSource.SingleOut {
 
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
-    unwrap(this, Vector(lags.expand, strengths.expand, n.expand, minLag.expand, voicingThresh.expand,
+    unwrap(this, Vector(lags.expand, strengths.expand, n.expand, minLag.expand, maxLag.expand, voicingThresh.expand,
       silenceThresh.expand, octaveCost.expand, octaveJumpCost.expand, voicedUnvoicedCost.expand))
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
     UGen.SingleOut(this, args)
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
-    val Vec(lags, strengths, n, minLag, voicingThresh, silenceThresh,
+    val Vec(lags, strengths, n, minLag, maxLag, voicingThresh, silenceThresh,
       octaveCost, octaveJumpCost, voicedUnvoicedCost) = args
-    stream.PitchesToViterbi(lags = lags.toDouble, strengths = strengths.toDouble, n = n.toInt, minLag = minLag.toInt,
+    stream.PitchesToViterbi(lags = lags.toDouble, strengths = strengths.toDouble, n = n.toInt,
+      minLag = minLag.toInt, maxLag = maxLag.toInt,
       voicingThresh = voicingThresh.toDouble, silenceThresh = silenceThresh.toDouble,
       octaveCost = octaveCost.toDouble, octaveJumpCost = octaveJumpCost.toDouble,
       voicedUnvoicedCost = voicedUnvoicedCost.toDouble)

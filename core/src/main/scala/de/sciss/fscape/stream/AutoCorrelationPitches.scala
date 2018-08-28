@@ -271,15 +271,19 @@ object AutoCorrelationPitches {
       }
       if (bufIn2 != null && inOff < bufIn2.size) {
         minLag = math.max(1, bufIn2.buf(inOff))
+        // println(s"minLag $minLag")
       }
       if (bufIn3 != null && inOff < bufIn3.size) {
         maxLag = math.max(1, bufIn3.buf(inOff))
+        // println(s"maxLag $maxLag")
       }
       if (bufIn4 != null && inOff < bufIn4.size) {
         thresh = math.max(0.0, bufIn4.buf(inOff)) * 0.5
+        // println(s"thresh ${thresh * 2}")
       }
       if (bufIn5 != null && inOff < bufIn5.size) {
         octaveCost = math.max(0.0, bufIn5.buf(inOff)) / Util.log2
+        // println(s"octaveCost ${octaveCost * Util.log2}")
       }
       if (bufIn6 != null && inOff < bufIn6.size) {
         val oldN = numPaths
@@ -332,7 +336,7 @@ object AutoCorrelationPitches {
       Util.clear(lagBuf     , 0, n)
       Util.clear(strengthBuf, 0, n)
 
-      val intensity = _buf(0)
+      val intensity = _buf(0)   // XXX TODO --- this is obviously different from Boersma's implementatino
       if (intensity == 0) return n
 
       val gain = 1.0 / intensity
@@ -356,7 +360,7 @@ object AutoCorrelationPitches {
       val n1          = n -1
       var pathsTaken  = 0
 
-      while (li < _maxLag) {
+      while (li < _maxLag) {  // XXX TODO --- `li` runs further in Boersma's implementation
         val vn = _buf(li + 1)
         if (vi > _thresh && vp < vi && vn < vi) {
           /*
@@ -370,6 +374,7 @@ object AutoCorrelationPitches {
           val denom = 2.0 * vi - (vn + vp)
           val lag   = li + num / denom
 
+          // XXX TODO `len` is smaller ? in Boersma's implementation
           val strength0 = sincInterp(_buf, len = _bufSz, x = lag, maxDepth = 30)
           val strength  = strength0 // math.min(1.0, strength0)
 

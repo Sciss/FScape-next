@@ -14,11 +14,11 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.{Attributes, FanInShape9, Outlet}
+import akka.stream.{Attributes, FanInShape10, Outlet}
 import de.sciss.fscape.stream.impl.{DemandAuxInHandler, DemandInOutImpl, DemandProcessInHandler, DemandWindowedLogic, NodeImpl, Out1DoubleImpl, Out1LogicImpl, ProcessOutHandlerImpl, StageImpl}
 
 object PitchesToViterbi {
-  def apply(lags: OutD, strengths: OutD, n: OutI, minLag: OutI, voicingThresh: OutD, silenceThresh: OutD, 
+  def apply(lags: OutD, strengths: OutD, n: OutI, minLag: OutI, maxLag: OutI, voicingThresh: OutD, silenceThresh: OutD, 
             octaveCost: OutD, octaveJumpCost: OutD, voicedUnvoicedCost: OutD)(implicit b: Builder): OutD = {
     val stage0  = new Stage
     val stage   = b.add(stage0)
@@ -26,29 +26,31 @@ object PitchesToViterbi {
     b.connect(strengths         , stage.in1)
     b.connect(n                 , stage.in2)
     b.connect(minLag            , stage.in3)
-    b.connect(voicingThresh     , stage.in4)
-    b.connect(silenceThresh     , stage.in5)
-    b.connect(octaveCost        , stage.in6)
-    b.connect(octaveJumpCost    , stage.in7)
-    b.connect(voicedUnvoicedCost, stage.in8)
+    b.connect(maxLag            , stage.in4)
+    b.connect(voicingThresh     , stage.in5)
+    b.connect(silenceThresh     , stage.in6)
+    b.connect(octaveCost        , stage.in7)
+    b.connect(octaveJumpCost    , stage.in8)
+    b.connect(voicedUnvoicedCost, stage.in9)
     stage.out
   }
 
   private final val name = "PitchesToViterbi"
 
-  private type Shape = FanInShape9[BufD, BufD, BufI, BufI, BufD, BufD, BufD, BufD, BufD, BufD]
+  private type Shape = FanInShape10[BufD, BufD, BufI, BufI, BufI, BufD, BufD, BufD, BufD, BufD, BufD]
 
   private final class Stage(implicit ctrl: Control) extends StageImpl[Shape](name) {
-    val shape = new FanInShape9(
+    val shape = new FanInShape10(
       in0 = InD (s"$name.lags"              ),
       in1 = InD (s"$name.strengths"         ),
       in2 = InI (s"$name.n"                 ),
       in3 = InI (s"$name.minLag"            ),
-      in4 = InD (s"$name.voicingThresh"     ),
-      in5 = InD (s"$name.silenceThresh"     ),
-      in6 = InD (s"$name.octaveCost"        ),
-      in7 = InD (s"$name.octaveJumpCost"    ),
-      in8 = InD (s"$name.voicedUnvoicedCost"),
+      in4 = InI (s"$name.maxLag"            ),
+      in5 = InD (s"$name.voicingThresh"     ),
+      in6 = InD (s"$name.silenceThresh"     ),
+      in7 = InD (s"$name.octaveCost"        ),
+      in8 = InD (s"$name.octaveJumpCost"    ),
+      in9 = InD (s"$name.voicedUnvoicedCost"),
       out = OutD(s"$name.out"               )
     )
 
@@ -65,11 +67,12 @@ object PitchesToViterbi {
     private[this] var bufIn1 : BufD = _
     private[this] var bufIn2 : BufI = _
     private[this] var bufIn3 : BufI = _
-    private[this] var bufIn4 : BufD = _
+    private[this] var bufIn4 : BufI = _
     private[this] var bufIn5 : BufD = _
     private[this] var bufIn6 : BufD = _
     private[this] var bufIn7 : BufD = _
     private[this] var bufIn8 : BufD = _
+    private[this] var bufIn9 : BufD = _
 
     protected var bufOut0: BufD = _
 
@@ -82,6 +85,7 @@ object PitchesToViterbi {
     private[this] var numStates         : Int = -1
     private[this] var statesSq          : Int = _
     private[this] var minLag            : Int = _
+    private[this] var maxLag            : Int = _
     private[this] var voicingThresh     : Double = _
     private[this] var silenceThresh     : Double = _
     private[this] var octaveCost        : Double = _
@@ -113,6 +117,7 @@ object PitchesToViterbi {
     new DemandAuxInHandler    (shape.in6, this)
     new DemandAuxInHandler    (shape.in7, this)
     new DemandAuxInHandler    (shape.in8, this)
+    new DemandAuxInHandler    (shape.in9, this)
     new ProcessOutHandlerImpl (shape.out, this)
 
     override def preStart(): Unit = {
@@ -126,6 +131,7 @@ object PitchesToViterbi {
       pull(sh.in6)
       pull(sh.in7)
       pull(sh.in8)
+      pull(sh.in9)
     }
 
     override protected def stopped(): Unit = {
@@ -193,6 +199,10 @@ object PitchesToViterbi {
         bufIn8.release()
         bufIn8 = null
       }
+      if (bufIn9 != null) {
+        bufIn9.release()
+        bufIn9 = null
+      }
     }
 
     private def freeMainInBuffers(): Unit = {
@@ -246,6 +256,11 @@ object PitchesToViterbi {
         sz      = math.max(sz, bufIn8.size)
         tryPull(sh.in8)
       }
+      if (isAvailable(sh.in9)) {
+        bufIn9  = grab(sh.in9)
+        sz      = math.max(sz, bufIn9.size)
+        tryPull(sh.in9)
+      }
 
       if (!_auxInValid) {
         _auxInValid = true
@@ -265,7 +280,8 @@ object PitchesToViterbi {
         ((isClosed(sh.in5) && _auxInValid) || isAvailable(sh.in5)) &&
         ((isClosed(sh.in6) && _auxInValid) || isAvailable(sh.in6)) &&
         ((isClosed(sh.in7) && _auxInValid) || isAvailable(sh.in7)) &&
-        ((isClosed(sh.in8) && _auxInValid) || isAvailable(sh.in8))
+        ((isClosed(sh.in8) && _auxInValid) || isAvailable(sh.in8)) &&
+        ((isClosed(sh.in9) && _auxInValid) || isAvailable(sh.in9))
     }
 
     def updateMainCanRead(): Unit = {
@@ -286,7 +302,7 @@ object PitchesToViterbi {
       }
 
     protected def startNextWindow(): Long = {
-      // n: 2, voicingThresh: 3, silenceThresh: 4, octaveCost: 5, octaveJumpCost: 6, voicedUnvoicedCost: 7
+      // n: 2, minLag: 3, maxLag: 4, voicingThresh: 5, silenceThresh: 6, octaveCost: 7, octaveJumpCost: 8, voicedUnvoicedCost: 9
       val inOff = auxInOff
       if (bufIn2 != null && inOff < bufIn2.size) {
         val oldN = numStates
@@ -303,27 +319,24 @@ object PitchesToViterbi {
       }
       if (bufIn3 != null && inOff < bufIn3.size) {
         minLag = math.max(1, bufIn3.buf(inOff))
-//        println(s"minLag $minLag")
       }
       if (bufIn4 != null && inOff < bufIn4.size) {
-        voicingThresh = math.max(0.0, bufIn4.buf(inOff))
-//        println(s"voicingThresh $voicingThresh")
+        maxLag = math.max(1, bufIn4.buf(inOff))
       }
       if (bufIn5 != null && inOff < bufIn5.size) {
-        silenceThresh = math.max(0.0, bufIn5.buf(inOff))
-//        println(s"silenceThresh $silenceThresh")
+        voicingThresh = math.max(0.0, bufIn5.buf(inOff))
       }
       if (bufIn6 != null && inOff < bufIn6.size) {
-        octaveCost = bufIn6.buf(inOff) / Util.log2
-//        println(s"octaveCost ${octaveCost * Util.log2}")
+        silenceThresh = math.max(0.0, bufIn6.buf(inOff))
       }
       if (bufIn7 != null && inOff < bufIn7.size) {
-        octaveJumpCost = bufIn7.buf(inOff) / Util.log2
-//        println(s"octaveJumpCost ${octaveJumpCost * Util.log2}")
+        octaveCost = bufIn7.buf(inOff) / Util.log2
       }
       if (bufIn8 != null && inOff < bufIn8.size) {
-        voicedUnvoicedCost = bufIn8.buf(inOff)
-//        println(s"voicedUnvoicedCost $voicedUnvoicedCost")
+        octaveJumpCost = bufIn8.buf(inOff) / Util.log2
+      }
+      if (bufIn9 != null && inOff < bufIn9.size) {
+        voicedUnvoicedCost = bufIn9.buf(inOff)
       }
 
       numStates
@@ -354,7 +367,7 @@ object PitchesToViterbi {
       val _voicingThresh  = voicingThresh
       val _noSil          = _silenceThresh == 0.0
       val _unvoicedFactor = if (_noSil) 0.0 else (1.0 + _voicingThresh) / _silenceThresh
-      val _minLag         = minLag
+      val _maxLag         = maxLag
       val _octaveCost     = octaveCost
 
       // first update the strengths to include octave costs etc.
@@ -367,9 +380,14 @@ object PitchesToViterbi {
           val strengthC = _voicingThresh + (if (_noSil) 0.0 else math.max(0.0, 2.0 - strength * _unvoicedFactor))
           _strengths(i) = strengthC
           numCand = i + 1
+//          i += 1
+//          while (i < _numStates) {
+//            _strengths(i) = Double.NegativeInfinity
+//            i += 1
+//          }
           i = _numStates  // "break", the following entries are invalid (all zero)
         } else {
-          val strengthC = strength + _octaveCost * math.log(_minLag / lag)
+          val strengthC = strength + _octaveCost * math.log(_maxLag / lag)
           _strengths(i) = strengthC
           i += 1
         }
