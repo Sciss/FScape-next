@@ -303,21 +303,27 @@ object PitchesToViterbi {
       }
       if (bufIn3 != null && inOff < bufIn3.size) {
         minLag = math.max(1, bufIn3.buf(inOff))
+//        println(s"minLag $minLag")
       }
       if (bufIn4 != null && inOff < bufIn4.size) {
         voicingThresh = math.max(0.0, bufIn4.buf(inOff))
+//        println(s"voicingThresh $voicingThresh")
       }
       if (bufIn5 != null && inOff < bufIn5.size) {
         silenceThresh = math.max(0.0, bufIn5.buf(inOff))
+//        println(s"silenceThresh $silenceThresh")
       }
       if (bufIn6 != null && inOff < bufIn6.size) {
         octaveCost = bufIn6.buf(inOff) / Util.log2
+//        println(s"octaveCost ${octaveCost * Util.log2}")
       }
       if (bufIn7 != null && inOff < bufIn7.size) {
         octaveJumpCost = bufIn7.buf(inOff) / Util.log2
+//        println(s"octaveJumpCost ${octaveJumpCost * Util.log2}")
       }
       if (bufIn8 != null && inOff < bufIn8.size) {
         voicedUnvoicedCost = bufIn8.buf(inOff)
+//        println(s"voicedUnvoicedCost $voicedUnvoicedCost")
       }
 
       numStates
@@ -361,7 +367,7 @@ object PitchesToViterbi {
           val strengthC = _voicingThresh + (if (_noSil) 0.0 else math.max(0.0, 2.0 - strength * _unvoicedFactor))
           _strengths(i) = strengthC
           numCand = i + 1
-          i = _numStates  // "break"
+          i = _numStates  // "break", the following entries are invalid (all zero)
         } else {
           val strengthC = strength + _octaveCost * math.log(_minLag / lag)
           _strengths(i) = strengthC

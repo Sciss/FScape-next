@@ -26,13 +26,13 @@ object PitchTest extends App {
 
   lazy val g = Graph {
     import de.sciss.fscape.graph._
-    val numFrames   = 48000 * 4 // specIn.numFrames
-    val in          = AudioFileIn(file = fIn, numChannels = 1).drop(24000).take(numFrames)
+    val start       = 19932
+    val numFrames   = 28451 // 242239 // 48000 * 87 // specIn.numFrames
+    val in          = AudioFileIn(file = fIn, numChannels = 1).drop(start).take(numFrames)
 
     val MinimumPitch        =  60.0 // 100.0
     val MaximumPitch        = 200.0 // 1000.0
     val VoicingThreshold    = 0.45
-//    val SilenceThreshold    = 0.03
     val SilenceThreshold    = 0.03
     val OctaveCost          = 0.01
     val OctaveJumpCost      = 0.35
@@ -52,7 +52,7 @@ object PitchTest extends App {
     val inSlid      = Sliding (in = in , size = winSize, step = stepSize)
     val numSteps: Int = (numFrames + stepSize - 1) / stepSize
 
-    println(s"maxDly $maxLag, winSize $winSize, winPadded $winPadded, fftSize $fftSize, stepSize $stepSize, numSteps $numSteps")
+    println(s"minDly $minLag, maxDly $maxLag, winSize $winSize, winPadded $winPadded, fftSize $fftSize, stepSize $stepSize, numSteps $numSteps")
 
     def mkWindow() = GenWindow(winSize, shape = GenWindow.Hann)
 
@@ -107,9 +107,9 @@ object PitchTest extends App {
     //    freqs     .poll(Metro(NumCandidates), "freqs")
     //    strengths .poll(Metro(NumCandidates), "strengths")
 
-    val timeStepCorr        = 0.01 * sampleRate / stepSize
-//    val octaveJumpCostC     = OctaveJumpCost      * timeStepCorr
-    val octaveJumpCostC     = OctaveJumpCost * 4
+    val timeStepCorr        = 0.01 * sampleRate / stepSize    // 0.87 in this case
+    val octaveJumpCostC     = OctaveJumpCost      * timeStepCorr
+//    val octaveJumpCostC     = OctaveJumpCost * 4
     val voicedUnvoicedCostC = VoicedUnvoicedCost  * timeStepCorr
 //    val voicedUnvoicedCostC = VoicedUnvoicedCost
 
@@ -127,9 +127,12 @@ object PitchTest extends App {
 //    RepeatWindow(states).poll(Metro(2), "viterbi")
 
     val lagsSel   = WindowApply(BufferMemory(lags, numSteps * NumCandidates), NumCandidates, states)
-    val freqsSel  = lagsSel.reciprocal * sampleRate
+    val hasFreq   = lagsSel > 0
+    val freqsSel  = Gate(lagsSel.reciprocal, hasFreq) * sampleRate
 
-    RepeatWindow(freqsSel).poll(Metro(2), "freq")
+    Plot1D(freqsSel, size = numSteps)
+
+//    RepeatWindow(freqsSel).poll(Metro(2), "freq")
 
 //    val osc = Vector.tabulate(NumCandidates) { i =>
 //      val lag       = WindowApply(lags, NumCandidates, i)

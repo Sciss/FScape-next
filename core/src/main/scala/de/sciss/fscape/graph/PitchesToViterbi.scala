@@ -23,6 +23,8 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * Viterbi algorithm. The inputs are typically taken from `AutoCorrelationPitches`,
   * and from this a suitable `add` signal is produced to be used in the `Viterbi` UGen.
   *
+  * '''Warning:''' This is still not thoroughly tested.
+  *
   * @param lags               pitches given as sample periods, such as returned by
   *                           `AutoCorrelationPitches`.
   * @param strengths          strengths corresponding to the `lags`, such as returned by

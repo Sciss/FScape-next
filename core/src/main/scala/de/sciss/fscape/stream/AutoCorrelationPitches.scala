@@ -438,7 +438,8 @@ object AutoCorrelationPitches {
       else {
         // 1 < x < nx && x not integer: interpolate.
 
-        val maxDepthC = math.min(math.min(maxDepth, midRight - 1),  len - midLeft)
+//        val maxDepthC = math.min(math.min(maxDepth, midRight - 1),  len - midLeft)
+        val maxDepthC = math.min(math.min(maxDepth, midLeft),  len - midRight)
 
         if      (maxDepthC <= 0 /* nearest */) xs((x + 0.5).toInt)
         else if (maxDepthC == 1 /* linear  */) xs(midLeft) + (x - midLeft) * (xs(midRight) - xs(midLeft))
