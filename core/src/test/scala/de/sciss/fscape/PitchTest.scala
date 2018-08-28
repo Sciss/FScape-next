@@ -1,11 +1,11 @@
 package de.sciss.fscape
 
 import de.sciss.file._
+import de.sciss.fscape.gui.SimpleGUI
 import de.sciss.numbers.Implicits._
 import de.sciss.synth.io.AudioFile
 
-import scala.concurrent.Await
-import scala.concurrent.duration.Duration
+import scala.swing.Swing
 
 /*
 
@@ -110,6 +110,7 @@ object PitchTest extends App {
     val voicedUnvoicedCostC = VoicedUnvoicedCost  * timeStepCorr
 
     val vitIn     = PitchesToViterbi(lags = lags, strengths = strengths, n = NumCandidates,
+      minLag = minLag,
       voicingThresh = VoicingThreshold, silenceThresh = SilenceThreshold, octaveCost = OctaveCost,
       octaveJumpCost = octaveJumpCostC, voicedUnvoicedCost = voicedUnvoicedCostC)
     val states    = Viterbi(add = vitIn, numStates = NumCandidates)
@@ -136,5 +137,12 @@ object PitchTest extends App {
   config.useAsync = false
   implicit val ctrl: stream.Control = stream.Control(config)
   ctrl.run(g)
-  Await.result(ctrl.status, Duration.Inf)
+
+//  Await.result(ctrl.status, Duration.Inf)
+
+  Swing.onEDT {
+    SimpleGUI(ctrl)
+  }
+
+  println("Running.")
 }
