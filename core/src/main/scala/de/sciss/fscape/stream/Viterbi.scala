@@ -262,22 +262,25 @@ object Viterbi {
 
           if (deltaCurr == null || deltaCurr.length != numStates) {
             deltaCurr = new Array(numStates)
+            deltaPrev = new Array(numStates)
           }
           deltaSeq  = null
           deltaSeqB = Array.newBuilder
 
         } else {
+          val numFramesP = numFrames + 1  // we ensure >= 2 and valid access to `numFrames`
           // known number of frames, use two-dimensional arrays
-          if (psiSeq == null || psiSeq.length != numFrames || psiSeq(0).length != numStates) {
-            psiSeq = Array.ofDim(numFrames, numStates)
+          if (psiSeq == null || psiSeq.length != numFramesP || psiSeq(0).length != numStates) {
+            psiSeq = Array.ofDim(numFramesP, numStates)
           }
           psiCurr = psiSeq(0)
           psiSeqB = null
 
-          if (deltaSeq == null || deltaSeq.length != numFrames || deltaSeq(0).length != numStates) {
-            deltaSeq = Array.ofDim(numFrames, numStates)
+          if (deltaSeq == null || deltaSeq.length != numFramesP || deltaSeq(0).length != numStates) {
+            deltaSeq = Array.ofDim(numFramesP, numStates)
           }
           deltaCurr = deltaSeq(0)
+          deltaPrev = deltaSeq(numFramesP - 1) // doesn't matter as long as it's not identical to deltaCurr
           deltaSeqB = null
         }
 
@@ -318,12 +321,13 @@ object Viterbi {
       if (!in0Ended) {
         if (bufIn0 != null && inOff0 < bufIn0.size) {
           val chunk = math.min(statesSq - innerMulOff, bufIn0.size - inOff0)
-          Util.copy(bufIn0.buf, inOff0, innerMul, innerMulOff, chunk)
-          innerMulClear = false
-          inOff0       += chunk
-          innerMulOff  += chunk
-          // innerRem      = statesSq - math.min(innerMulOff, innerAddOff)
-          stateChange   = true
+          if (chunk > 0) {
+            Util.copy(bufIn0.buf, inOff0, innerMul, innerMulOff, chunk)
+            innerMulClear = false
+            inOff0       += chunk
+            innerMulOff  += chunk
+            stateChange   = true
+          }
         } else if (isAvailable(shape.in0)) {
           freeBufIn0()
           bufIn0      = grab(shape.in0)
@@ -331,14 +335,7 @@ object Viterbi {
           tryPull(shape.in0)
           stateChange = true
         } else if (isClosed(shape.in0)) {
-          in0Ended = true
-          val bothZero = innerMulOff == 0 && innerAddOff == 0
-          if (bothZero) {
-              if (in1Ended) prepareStage3()
-          } else {
-            val chunk = statesSq - innerMulOff
-            Util.clear(innerMul, innerMulOff, chunk)
-          }
+          in0Ended    = true
           stateChange = true
         }
       }
@@ -346,12 +343,13 @@ object Viterbi {
       if (!in1Ended) {
         if (bufIn1 != null && inOff1 < bufIn1.size) {
           val chunk = math.min(statesSq - innerAddOff, bufIn1.size - inOff1)
-          Util.copy(bufIn1.buf, inOff1, innerAdd, innerAddOff, chunk)
-          innerAddClear = false
-          inOff1       += chunk
-          innerAddOff  += chunk
-          // innerRem      = statesSq - math.min(innerMulOff, innerAddOff)
-          stateChange   = true
+          if (chunk > 0) {
+            Util.copy(bufIn1.buf, inOff1, innerAdd, innerAddOff, chunk)
+            innerAddClear = false
+            inOff1       += chunk
+            innerAddOff  += chunk
+            stateChange   = true
+          }
         } else if (isAvailable(shape.in1)) {
           freeBufIn1()
           bufIn1      = grab(shape.in1)
@@ -359,20 +357,35 @@ object Viterbi {
           tryPull(shape.in1)
           stateChange = true
         } else if (isClosed(shape.in1)) {
-          in1Ended = true
-          val bothZero = innerMulOff == 0 && innerAddOff == 0
-          if (bothZero) {
-            if (in0Ended) prepareStage3()
-          } else {
-            val chunk = statesSq - innerAddOff
-            Util.clear(innerAdd, innerAddOff, chunk)
-          }
+          in1Ended    = true
           stateChange = true
         }
       }
 
       if (innerMulOff == statesSq && innerAddOff == statesSq) {
-        stage = 2
+        stage       = 2
+        stateChange = true
+
+      } else if (in0Ended && in1Ended && innerMulOff == 0 && innerAddOff == 0) {
+        prepareStage3()
+
+      } else {
+        if (in0Ended) {
+          val chunk = statesSq - innerMulOff
+          if (chunk > 0) {
+            Util.clear(innerMul, innerMulOff, chunk)
+            innerMulOff = statesSq
+            stateChange = true
+          }
+        }
+        if (in1Ended) {
+          val chunk = statesSq - innerAddOff
+          if (chunk > 0) {
+            Util.clear(innerAdd, innerAddOff, chunk)
+            innerAddOff = statesSq
+            stateChange = true
+          }
+        }
       }
 
       stateChange
@@ -385,6 +398,7 @@ object Viterbi {
       val _add        = innerAdd
       val _prev       = deltaPrev
       val _curr       = deltaCurr
+      val _psi        = psiCurr
       var i = 0
       var k = 0
       while (i < _numStates) {
@@ -392,6 +406,9 @@ object Viterbi {
         var maxVal  = Double.NegativeInfinity
         var maxIdx  = -1
         while (j < _numStates) {
+//          if (_prev == null || _mul == null || _add == null) {
+//            println("AQUI")
+//          }
           val v = _prev(j) * _mul(k) + _add(k)
           if (v > maxVal) {
             maxVal = v
@@ -401,12 +418,26 @@ object Viterbi {
           k += 1
         }
         _curr(i) = maxVal
+        _psi (i) = maxIdx
 
         i += 1
       }
 
-      frameOff += 1
-      if ((frameOff == numFrames) || (in0Ended && in1Ended)) {
+      deltaPrev  = _curr
+      frameOff  += 1
+      val framesDone = (frameOff == numFrames) || (in0Ended && in1Ended)
+
+      if (deltaSeqB == null) {
+        deltaCurr = deltaSeq(frameOff)
+        psiCurr   = psiSeq  (frameOff)
+      } else if (!framesDone) {
+        deltaSeqB += _curr
+        psiSeqB   += _psi
+        deltaCurr = new Array(numStates)
+        psiCurr   = new Array(numStates)
+      }
+
+      if (framesDone) {
         prepareStage3()
       } else {
         prepareStage1()

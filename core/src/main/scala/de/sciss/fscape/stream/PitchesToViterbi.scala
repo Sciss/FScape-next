@@ -314,7 +314,7 @@ object PitchesToViterbi {
         octaveCost = bufIn6.buf(inOff) / Util.log2
       }
       if (bufIn7 != null && inOff < bufIn7.size) {
-        octaveJumpCost = bufIn7.buf(inOff)
+        octaveJumpCost = bufIn7.buf(inOff) / Util.log2
       }
       if (bufIn8 != null && inOff < bufIn8.size) {
         voicedUnvoicedCost = bufIn8.buf(inOff)
@@ -389,16 +389,28 @@ object PitchesToViterbi {
         }
 
       } else {
-        val _lagsPrev       = lagsPrev
-        val _strengthsPrev  = strengthsPrev
+        val _lagsPrev           = lagsPrev
+        val _voicedUnvoicedCost = voicedUnvoicedCost
+        val _octaveJumpCost     = octaveJumpCost
 
         i = 0
         var k = 0
         while (i < _numStates) {
           var j = 0
+          val lagCurr       = _lags     (i)
+          val strengthCurr  = _strengths(i)
+          val currVoiceless = lagCurr == 0
           while (j < _numStates) {
-            val v = ???
-            _mat(k) = v
+            val lagPrev       = _lagsPrev(j)
+            val prevVoiceless = lagPrev == 0
+            val cost = if (currVoiceless ^ prevVoiceless) {
+              _voicedUnvoicedCost
+            } else if (currVoiceless /* & prevVoiceless */) {
+              0.0
+            } else {
+              _octaveJumpCost * math.abs(math.log(lagCurr / lagPrev))
+            }
+            _mat(k) = strengthCurr - cost
             j += 1
             k += 1
           }

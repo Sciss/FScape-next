@@ -32,6 +32,7 @@ object PitchTest extends App {
     val MinimumPitch        =  60.0 // 100.0
     val MaximumPitch        = 200.0 // 1000.0
     val VoicingThreshold    = 0.45
+//    val SilenceThreshold    = 0.03
     val SilenceThreshold    = 0.03
     val OctaveCost          = 0.01
     val OctaveJumpCost      = 0.35
@@ -49,8 +50,9 @@ object PitchTest extends App {
     //    val fftSize     = 4096 // 2048  // c. 40 ms
     val stepSize    = winSize / 4 // fftSize / 4
     val inSlid      = Sliding (in = in , size = winSize, step = stepSize)
+    val numSteps: Int = (numFrames + stepSize - 1) / stepSize
 
-    println(s"maxDly $maxLag, winSize $winSize, winPadded $winPadded, fftSize $fftSize, stepSize $stepSize")
+    println(s"maxDly $maxLag, winSize $winSize, winPadded $winPadded, fftSize $fftSize, stepSize $stepSize, numSteps $numSteps")
 
     def mkWindow() = GenWindow(winSize, shape = GenWindow.Hann)
 
@@ -95,7 +97,7 @@ object PitchTest extends App {
     //    val hasFreq     = freq > 0
 
     val paths = AutoCorrelationPitches(r_x, size = fftSizeH, minLag = minLag, maxLag = maxLag,
-      thresh = VoicedUnvoicedCost, octaveCost = OctaveCost, n = NumCandidates)
+      thresh = VoicingThreshold, octaveCost = OctaveCost, n = NumCandidates)
 
     val lags      = paths.lags
     val strengths = paths.strengths
@@ -106,16 +108,28 @@ object PitchTest extends App {
     //    strengths .poll(Metro(NumCandidates), "strengths")
 
     val timeStepCorr        = 0.01 * sampleRate / stepSize
-    val octaveJumpCostC     = OctaveJumpCost      * timeStepCorr
+//    val octaveJumpCostC     = OctaveJumpCost      * timeStepCorr
+    val octaveJumpCostC     = OctaveJumpCost * 4
     val voicedUnvoicedCostC = VoicedUnvoicedCost  * timeStepCorr
+//    val voicedUnvoicedCostC = VoicedUnvoicedCost
 
     val vitIn     = PitchesToViterbi(lags = lags, strengths = strengths, n = NumCandidates,
       minLag = minLag,
       voicingThresh = VoicingThreshold, silenceThresh = SilenceThreshold, octaveCost = OctaveCost,
       octaveJumpCost = octaveJumpCostC, voicedUnvoicedCost = voicedUnvoicedCostC)
+
+//    Frames(vitIn).poll(Metro(100), "vit-in")
+//    Length(vitIn).poll(0, "vit-in-length")
+
     val states    = Viterbi(add = vitIn, numStates = NumCandidates)
 
-    states.poll()
+//    Length(states).poll(0, "path-length")
+//    RepeatWindow(states).poll(Metro(2), "viterbi")
+
+    val lagsSel   = WindowApply(BufferMemory(lags, numSteps * NumCandidates), NumCandidates, states)
+    val freqsSel  = lagsSel.reciprocal * sampleRate
+
+    RepeatWindow(freqsSel).poll(Metro(2), "freq")
 
 //    val osc = Vector.tabulate(NumCandidates) { i =>
 //      val lag       = WindowApply(lags, NumCandidates, i)
