@@ -90,8 +90,8 @@ object Viterbi {
     private[this] var writeElem   : Int = _
     private[this] var innerMulOff : Int = _
     private[this] var innerAddOff : Int = _
-    private[this] var innerMulClear: Boolean = _
-    private[this] var innerAddClear: Boolean = _
+    private[this] var innerMulEqual: Boolean = _
+    private[this] var innerAddEqual: Boolean = _
     
     private[this] var in0Ended  = false
     private[this] var in1Ended  = false
@@ -245,8 +245,8 @@ object Viterbi {
           statesSq      = _statesSq
           innerMul      = new Array(_statesSq)
           innerAdd      = new Array(_statesSq)
-          innerMulClear = true
-          innerAddClear = true
+          innerMulEqual = true
+          innerAddEqual = true
         }
 
         prepareStage1()
@@ -292,21 +292,27 @@ object Viterbi {
 
     private def prepareStage1(): Unit = {
       if (in0Ended) {
-        if (!innerMulClear) {
-          Util.clear(innerMul, 0, statesSq)
-          innerMulClear = true
+        val _statesSq = statesSq
+        if (!innerMulEqual) {
+          val _buf      = innerMul
+          val mul       = _buf(_statesSq - 1)
+          Util.fill(_buf, 0, _statesSq, mul)
+          innerMulEqual = true
         }
-        innerMulOff = statesSq
+        innerMulOff = _statesSq
       } else {
         innerMulOff = 0
       }
 
       if (in1Ended) {
-        if (!innerAddClear) {
-          Util.clear(innerAdd, 0, statesSq)
-          innerAddClear = true
+        val _statesSq = statesSq
+        if (!innerAddEqual) {
+          val _buf      = innerAdd
+          val add       = _buf(_statesSq - 1)
+          Util.fill(_buf, 0, _statesSq, add)
+          innerAddEqual = true
         }
-        innerAddOff = statesSq
+        innerAddOff = _statesSq
       } else {
         innerAddOff = 0
       }
@@ -323,7 +329,7 @@ object Viterbi {
           val chunk = math.min(statesSq - innerMulOff, bufIn0.size - inOff0)
           if (chunk > 0) {
             Util.copy(bufIn0.buf, inOff0, innerMul, innerMulOff, chunk)
-            innerMulClear = false
+            innerMulEqual = false
             inOff0       += chunk
             innerMulOff  += chunk
             stateChange   = true
@@ -345,7 +351,7 @@ object Viterbi {
           val chunk = math.min(statesSq - innerAddOff, bufIn1.size - inOff1)
           if (chunk > 0) {
             Util.copy(bufIn1.buf, inOff1, innerAdd, innerAddOff, chunk)
-            innerAddClear = false
+            innerAddEqual = false
             inOff1       += chunk
             innerAddOff  += chunk
             stateChange   = true
@@ -371,19 +377,29 @@ object Viterbi {
 
       } else {
         if (in0Ended) {
-          val chunk = statesSq - innerMulOff
+          val _mulOff   = innerMulOff
+          val _statesSq = statesSq
+          val chunk     = _statesSq - _mulOff
           if (chunk > 0) {
-            Util.clear(innerMul, innerMulOff, chunk)
-            innerMulOff = statesSq
-            stateChange = true
+            val _buf      = innerMul
+            innerMulEqual = _mulOff == 0
+            val mul       = if (innerMulEqual) _buf(_statesSq - 1) else _buf(_mulOff - 1)
+            Util.fill(_buf, _mulOff, chunk, mul)
+            innerMulOff   = _statesSq
+            stateChange   = true
           }
         }
         if (in1Ended) {
-          val chunk = statesSq - innerAddOff
+          val _addOff   = innerAddOff
+          val _statesSq = statesSq
+          val chunk     = _statesSq - _addOff
           if (chunk > 0) {
-            Util.clear(innerAdd, innerAddOff, chunk)
-            innerAddOff = statesSq
-            stateChange = true
+            val _buf      = innerAdd
+            innerAddEqual = _addOff == 0
+            val add       = if (innerAddEqual) _buf(_statesSq - 1) else _buf(_addOff - 1)
+            Util.fill(_buf, _addOff, chunk, add)
+            innerAddOff   = _statesSq
+            stateChange   = true
           }
         }
       }
