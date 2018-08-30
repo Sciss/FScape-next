@@ -69,7 +69,7 @@ object Metro {
         periodV       = b0(inOffI)
         if (periodV == 0) periodV = Long.MaxValue
         val phaseOffV = b1(inOffI)
-        phaseV        = phaseOffV + periodV
+        phaseV        = (phaseOffV + periodV - 1) % periodV + 1
         init          = false
       }
 

@@ -1,5 +1,5 @@
 /*
- *  AutoCorrelationPitches.scala
+ *  AutoCorrelationPeaks.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2018 Hanns Holger Rutz. All rights reserved.
@@ -18,7 +18,7 @@ import akka.stream.{Attributes, Outlet}
 import akka.stream.stage.OutHandler
 import de.sciss.fscape.stream.impl.{AuxInHandlerImpl, FilterLogicImpl, FullInOutImpl, In7Out2Shape, NodeImpl, ProcessInHandlerImpl, StageImpl, WindowedLogicImpl}
 
-object AutoCorrelationPitches {
+object AutoCorrelationPeaks {
   def apply(ac: OutD, size: OutI, minLag: OutI, maxLag: OutI, thresh: OutD, octaveCost: OutD, n: OutI)
            (implicit b: Builder): (OutD, OutD) = {
     val stage0  = new Stage
@@ -422,7 +422,7 @@ object AutoCorrelationPitches {
 
       // 'unvoiced'
       // lagBuf(pathsTaken) = 0.0
-      strengthBuf(pathsTaken) = 18 * intensity // math.min(1.0, 18 * intensity)
+      strengthBuf(pathsTaken) = math.sqrt(intensity) // 18 * intensity // math.min(1.0, 18 * intensity)
 
       n
     }

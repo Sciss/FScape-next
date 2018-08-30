@@ -42,7 +42,7 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   *                           (typically in the order of 0.25)
   * @param n                  number of paths / candidates
   *
-  * see [[AutoCorrelationPitches]]
+  * see [[AutoCorrelationPeaks]]
   * see [[Viterbi]]
   */
 final case class PitchesToViterbi(lags: GE, strengths: GE,

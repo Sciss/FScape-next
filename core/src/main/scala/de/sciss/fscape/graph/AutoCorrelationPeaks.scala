@@ -1,5 +1,5 @@
 /*
- *  AutoCorrelationPitches.scala
+ *  AutoCorrelationPeaks.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2018 Hanns Holger Rutz. All rights reserved.
@@ -50,8 +50,8 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * see [[PitchesToViterbi]]
   * see [[Viterbi]]
   */
-final case class AutoCorrelationPitches(ac: GE, size: GE, minLag: GE, maxLag: GE, thresh: GE = 0.45,
-                                        octaveCost: GE = 0.01, n: GE = 15)
+final case class AutoCorrelationPeaks(ac: GE, size: GE, minLag: GE, maxLag: GE, thresh: GE = 0.45,
+                                      octaveCost: GE = 0.01, n: GE = 15)
   extends UGenSource.MultiOut {
 
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
@@ -66,7 +66,7 @@ final case class AutoCorrelationPitches(ac: GE, size: GE, minLag: GE, maxLag: GE
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Vec[StreamOut] = {
     val Vec(ac, size, minLag, maxLag, thresh, octaveCost, n) = args
-    val (out0, out1) = stream.AutoCorrelationPitches(ac = ac.toDouble, size = size.toInt,
+    val (out0, out1) = stream.AutoCorrelationPeaks(ac = ac.toDouble, size = size.toInt,
       minLag = minLag.toInt, maxLag = maxLag.toInt,
       thresh = thresh.toDouble, octaveCost = octaveCost.toDouble, n = n.toInt)
     Vector[StreamOut](out0, out1)

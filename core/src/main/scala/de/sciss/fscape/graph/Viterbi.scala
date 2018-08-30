@@ -74,7 +74,7 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * @param numFrames  the number of observations. If `-1`, the UGen runs until the input
   *                   is exhausted. This happens when ''both'' `mul` and `add` end.
   *
-  * see [[AutoCorrelationPitches]]
+  * see [[AutoCorrelationPeaks]]
   * see [[PitchesToViterbi]]
   */
 final case class Viterbi(mul: GE = 1.0, add: GE, numStates: GE, numFrames: GE = -1) extends UGenSource.SingleOut {

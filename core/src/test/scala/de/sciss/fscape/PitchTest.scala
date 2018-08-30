@@ -112,7 +112,7 @@ object PitchTest extends App {
     //    val freq        = SlidingPercentile(freq1, len = 3)
     //    val hasFreq     = freq > 0
 
-    val paths = AutoCorrelationPitches(r_x, size = fftSizeH, minLag = minLag, maxLag = maxLag,
+    val paths = AutoCorrelationPeaks(r_x, size = fftSizeH, minLag = minLag, maxLag = maxLag,
       thresh = VoicingThreshold, octaveCost = OctaveCost, n = NumCandidates)
 
     val lags      = paths.lags
@@ -120,8 +120,8 @@ object PitchTest extends App {
     val freqsN    = lags.reciprocal
     val freqs     = freqsN * sampleRate
 //    RepeatWindow(lags     ).poll(Metro(2), "lags")
-    RepeatWindow(freqs    ).poll(Metro(2), "freqs")
-    RepeatWindow(strengths).poll(Metro(2), "strengths")
+//    RepeatWindow(freqs    ).poll(Metro(2), "freqs")
+//    RepeatWindow(strengths).poll(Metro(2), "strengths")
 
     val timeStepCorr        = 0.01 * sampleRate / stepSize    // 0.87 in this case
     val octaveJumpCostC     = OctaveJumpCost      * timeStepCorr
