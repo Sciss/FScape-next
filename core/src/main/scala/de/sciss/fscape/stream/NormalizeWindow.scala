@@ -66,7 +66,7 @@ object NormalizeWindow {
         }
       }
       if (bufIn2 != null && inOff < bufIn2.size) {
-        mode = math.max(0, math.min(2, bufIn2.buf(inOff)))
+        mode = math.max(0, math.min(ModeMax, bufIn2.buf(inOff)))
       }
       winSize
     }

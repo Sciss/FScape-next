@@ -1,11 +1,11 @@
 package de.sciss.fscape
 
 import de.sciss.file._
-import de.sciss.fscape.gui.SimpleGUI
 import de.sciss.numbers.Implicits._
 import de.sciss.synth.io.AudioFile
 
-import scala.swing.Swing
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
 
 /*
 
@@ -17,7 +17,9 @@ import scala.swing.Swing
 
  */
 object PitchTest extends App {
-  val fIn     = file("/data/projects/Maeanderungen/audio_work/edited/HB_0_HH_T168.wav")
+//  val fIn     = file("/data/projects/Maeanderungen/audio_work/edited/HB_0_HH_T168.wav")
+  val fIn     = file("/data/temp/ac-in.aif")
+//  val fIn     = file("/data/temp/ac-inFOO.aif")
   val fOut    = file("/data/temp/test.aif")
   val specIn  = AudioFile.readSpec(fIn)
   import specIn.sampleRate
@@ -26,12 +28,15 @@ object PitchTest extends App {
 
   lazy val g = Graph {
     import de.sciss.fscape.graph._
-    val start       = 19932
-    val numFrames   = 28451 // 242239 // 48000 * 87 // specIn.numFrames
-    val in          = AudioFileIn(file = fIn, numChannels = 1).drop(start).take(numFrames)
+//    val start       = 19932
+//    val numFrames   = 28451 // 242239 // 48000 * 87 // specIn.numFrames
+//    val in          = AudioFileIn(file = fIn, numChannels = 1).drop(start).take(numFrames)
+    val in0         = AudioFileIn(file = fIn, numChannels = 1)
+    val in = in0 // * 0.00000000001 + SinOsc(200.0/44100)
+    val numFrames   = specIn.numFrames
 
     val MinimumPitch        =  60.0 // 100.0
-    val MaximumPitch        = 200.0 // 1000.0
+    val MaximumPitch        = 300.0 // 1000.0
     val VoicingThreshold    = 0.45
     val SilenceThreshold    = 0.03
     val OctaveCost          = 0.01
@@ -50,15 +55,17 @@ object PitchTest extends App {
     //    val fftSize     = 4096 // 2048  // c. 40 ms
     val stepSize    = winSize / 4 // fftSize / 4
     val inSlid      = Sliding (in = in , size = winSize, step = stepSize)
-    val numSteps: Int = (numFrames + stepSize - 1) / stepSize
+    val numSteps: Int = ((numFrames + stepSize - 1) / stepSize).toInt
 
-    println(s"minDly $minLag, maxDly $maxLag, winSize $winSize, winPadded $winPadded, fftSize $fftSize, stepSize $stepSize, numSteps $numSteps")
+    println(s"minLag $minLag, maxLag $maxLag, winSize $winSize, winPadded $winPadded, fftSize $fftSize, stepSize $stepSize, numSteps $numSteps")
 
     def mkWindow() = GenWindow(winSize, shape = GenWindow.Hann)
 
     val inW = {
       // remove DC
-      val leak  = NormalizeWindow(inSlid, winSize, mode = NormalizeWindow.ZeroMean)
+      val leak = NormalizeWindow(inSlid, winSize, mode = NormalizeWindow.ZeroMean)
+//      Plot1D(inSlid, winSize, "BEFORE")
+//      Plot1D(leak  , winSize, "AFTER")
       leak * mkWindow()
     }
 
@@ -86,10 +93,19 @@ object PitchTest extends App {
     //    RunningMax(inW.abs).poll(DelayN(Metro(0), winSize - 1, winSize - 1), "localAbsPeak")
     // (ConstantD(0) ++ RunningMax(inW.abs, Metro(winSize))).poll(Metro(winSize) - Metro(0), "localAbsPeak")
 
-    //    Plot1D(inW, fftSize, "inW")
-    //    Plot1D(r_a, fftSizeH, "r_a")
-    //    Plot1D(r_w, fftSizeH, "r_w")
-    //    Plot1D(r_x, fftSizeH, "r_x")
+//    Plot1D(inW, winSize, "inW")
+//    Plot1D(r_a, fftSizeH, "r_a")
+//    Plot1D(r_w, fftSizeH, "r_w")
+
+//      val r_aN = mkAR(inW, normalize = true)
+//    Plot1D((r_aN / r_w) * 1000, fftSizeH, "r_x")
+
+//    val fft__   = Real1FFT(in = inW, size = winSize, padding = fftSize - winSize, mode = 2)
+//    val pow__   = fft__.complex.absSquared
+//    val ar0__   = Real1IFFT(pow__, size = fftSize, mode = 2) // / fftSize
+//    val ar1__   = ResizeWindow(ar0__, fftSize, stop = -fftSizeH)
+//    Plot1D(ar1__, fftSizeH, "AR1")
+//    Plot1D(ar1__ / r_w, fftSizeH, "BLA")
 
     //    val loud        = Loudness(inW, sampleRate = sampleRate, size = winSize, spl = 70, diffuse = 1)
     //    val freq1       = freq0 * (loud > 15)
@@ -101,11 +117,11 @@ object PitchTest extends App {
 
     val lags      = paths.lags
     val strengths = paths.strengths
-    //    val freqsN    = lags.reciprocal
-    //    val freqs     = freqsN * sampleRate
-    //    paths.lags.poll(Metro(NumCandidates), "lags")
-    //    freqs     .poll(Metro(NumCandidates), "freqs")
-    //    strengths .poll(Metro(NumCandidates), "strengths")
+    val freqsN    = lags.reciprocal
+    val freqs     = freqsN * sampleRate
+//    RepeatWindow(lags     ).poll(Metro(2), "lags")
+    RepeatWindow(freqs    ).poll(Metro(2), "freqs")
+    RepeatWindow(strengths).poll(Metro(2), "strengths")
 
     val timeStepCorr        = 0.01 * sampleRate / stepSize    // 0.87 in this case
     val octaveJumpCostC     = OctaveJumpCost      * timeStepCorr
@@ -130,9 +146,9 @@ object PitchTest extends App {
     val hasFreq   = lagsSel > 0
     val freqsSel  = Gate(lagsSel.reciprocal, hasFreq) * sampleRate
 
-    Plot1D(freqsSel, size = numSteps)
+//    Plot1D(freqsSel, size = numSteps)
 
-//    RepeatWindow(freqsSel).poll(Metro(2), "freq")
+    RepeatWindow(freqsSel).poll(Metro(2), "path")
 
 //    val osc = Vector.tabulate(NumCandidates) { i =>
 //      val lag       = WindowApply(lags, NumCandidates, i)
@@ -155,11 +171,12 @@ object PitchTest extends App {
   implicit val ctrl: stream.Control = stream.Control(config)
   ctrl.run(g)
 
-//  Await.result(ctrl.status, Duration.Inf)
-
-  Swing.onEDT {
-    SimpleGUI(ctrl)
-  }
-
   println("Running.")
+
+  Await.result(ctrl.status, Duration.Inf)
+
+//  Swing.onEDT {
+//    SimpleGUI(ctrl)
+//  }
+//
 }
