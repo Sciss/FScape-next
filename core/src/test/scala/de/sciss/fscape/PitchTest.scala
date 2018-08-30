@@ -117,7 +117,7 @@ object PitchTest extends App {
     val strengths = paths.strengths
     val freqsN    = lags.reciprocal
     val freqs     = freqsN * sampleRate
-//    RepeatWindow(lags     ).poll(Metro(2), "lags")
+    RepeatWindow(lags     ).poll(Metro(2), "lags")
 //    RepeatWindow(freqs    ).poll(Metro(2), "freqs")
 //    RepeatWindow(strengths).poll(Metro(2), "strengths")
 
@@ -140,13 +140,14 @@ object PitchTest extends App {
 //    Length(states).poll(0, "path-length")
 //    RepeatWindow(states).poll(Metro(2), "viterbi")
 
-    val lagsSel   = WindowApply(BufferMemory(lags, numSteps * NumCandidates), NumCandidates, states)
+    val lagsSel   = WindowApply(BufferMemory(lags, numSteps * NumCandidates), size = NumCandidates, index = states)
     val hasFreq   = lagsSel > 0
     val freqsSel  = Gate(lagsSel.reciprocal, hasFreq) * sampleRate
 
 //    Plot1D(freqsSel, size = numSteps)
 
-    RepeatWindow(freqsSel).poll(Metro(2), "path")
+    RepeatWindow(lagsSel).poll(Metro(2), "lags-sel")
+//    RepeatWindow(freqsSel).poll(Metro(2), "path")
 
 //    val osc = Vector.tabulate(NumCandidates) { i =>
 //      val lag       = WindowApply(lags, NumCandidates, i)

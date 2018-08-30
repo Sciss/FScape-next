@@ -84,10 +84,10 @@ object Viterbi {
     private[this] var psiSeq    : Array[Array[Int   ]] = _
     private[this] var deltaSeqB : mutable.Builder[Array[Double], Array[Array[Double]]] = _
     private[this] var psiSeqB   : mutable.Builder[Array[Int   ], Array[Array[Int   ]]] = _
+    private[this] var path      : Array[Int] = _
 
     private[this] var frameOff    : Int = _
     private[this] var writeRem    : Int = _
-    private[this] var writeElem   : Int = _
     private[this] var innerMulOff : Int = _
     private[this] var innerAddOff : Int = _
     private[this] var innerMulEqual: Boolean = _
@@ -470,24 +470,43 @@ object Viterbi {
         psiSeq  = psiSeqB.result()
         psiSeqB = null
       }
-      writeRem = deltaSeq.length
+      val _deltaSeq = deltaSeq
+      val _psi      = psiSeq
+      var rem       = _deltaSeq.length
+      writeRem      = rem
+      assert(_psi.length == rem)
 
-      val _curr       = deltaSeq(writeRem - 1)
+      // because the backtracking will produce the
+      // time reversed sequence, we perform it here
+      // completely and simply write the results
+      // into the first indices of psi
+
+      val _path = new Array[Int](rem)
+
+      rem -= 1
+      val _curr       = _deltaSeq(rem)
       val _numStates  = numStates
       var maxVal      = Double.NegativeInfinity
-      var maxIdx      = -1
+      var pathIdx     = -1
       var i = 0
       while (i < _numStates) {
         val v = _curr(i)
         if (v > maxVal) {
           maxVal = v
-          maxIdx = i
+          pathIdx = i
         }
         i += 1
       }
+      // now pathIdx is the index of the maximum
+      // element in the last frame
 
-      writeElem = maxIdx
+      while (rem >= 0) {
+        _path(rem) = pathIdx
+        pathIdx    = _psi(rem)(pathIdx)
+        rem       -= 1
+      }
 
+      path  = _path
       stage = 3
     }
 
@@ -500,32 +519,20 @@ object Viterbi {
         outOff0 = 0
       }
 
-      var _off  = outOff0
-      var _rem  = writeRem
-      val chunk = math.min(_rem, bufOut0.size - _off)
+      val chunk = math.min(writeRem, bufOut0.size - outOff0)
       if (chunk > 0) {
-        val stop  = _off + chunk
-        val _buf  = bufOut0.buf
-        val _psi  = psiSeq
-        var _elem = writeElem
-        while (_off < stop) {
-          _buf(_off) = _elem
-          _rem -= 1
-          _elem = _psi(_rem)(_elem)
-          _off += 1
-        }
-        writeElem = _elem
-        writeRem  = _rem
-        outOff0   = _off
-
+        val pathOff = path.length - writeRem
+        Util.copy(path, pathOff, bufOut0.buf, outOff0, chunk)
+        writeRem   -= chunk
+        outOff0    += chunk
         stateChange = true
       }
 
-      val stageDone = _rem == 0
+      val stageDone = writeRem == 0
       val flush     = stageDone && in0Ended && in1Ended
 
-      if ((_off == bufOut0.size || flush) && canWrite) {
-        writeOuts(_off)
+      if ((outOff0 == bufOut0.size || flush) && canWrite) {
+        writeOuts(outOff0)
         stateChange = true
       }
 
