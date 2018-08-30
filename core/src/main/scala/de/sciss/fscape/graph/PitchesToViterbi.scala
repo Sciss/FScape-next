@@ -29,6 +29,9 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   *                           `AutoCorrelationPitches`.
   * @param strengths          strengths corresponding to the `lags`, such as returned by
   *                           `AutoCorrelationPitches`.
+  * @param n                  number of paths / candidates
+  * @param peaks              the peak amplitude of the underlying input signal, one sample per pitch frame
+  * @param maxLag             the maximum lag time, corresponding to the minimum pitch
   * @param voicingThresh      threshold for determining whether window is voiced or unvoiced.
   * @param silenceThresh      threshold for determining whether window is background or foreground.
   * @param octaveCost         weighting factor for low versus high frequency preference.
@@ -40,14 +43,13 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   *                           to match the parameters in Praat,
   *                           the "literature" value by `0.01 * sampleRate / stepSize`
   *                           (typically in the order of 0.25)
-  * @param n                  number of paths / candidates
   *
   * see [[AutoCorrelationPeaks]]
   * see [[Viterbi]]
   */
 final case class PitchesToViterbi(lags: GE, strengths: GE,
                                   n                 : GE = 15,
-                                  minLag            : GE,
+                                  peaks             : GE,
                                   maxLag            : GE,
                                   voicingThresh     : GE = 0.45,
                                   silenceThresh     : GE = 0.03,
@@ -58,17 +60,17 @@ final case class PitchesToViterbi(lags: GE, strengths: GE,
   extends UGenSource.SingleOut {
 
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
-    unwrap(this, Vector(lags.expand, strengths.expand, n.expand, minLag.expand, maxLag.expand, voicingThresh.expand,
+    unwrap(this, Vector(lags.expand, strengths.expand, n.expand, peaks.expand, maxLag.expand, voicingThresh.expand,
       silenceThresh.expand, octaveCost.expand, octaveJumpCost.expand, voicedUnvoicedCost.expand))
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
     UGen.SingleOut(this, args)
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
-    val Vec(lags, strengths, n, minLag, maxLag, voicingThresh, silenceThresh,
+    val Vec(lags, strengths, n, peaks, maxLag, voicingThresh, silenceThresh,
       octaveCost, octaveJumpCost, voicedUnvoicedCost) = args
     stream.PitchesToViterbi(lags = lags.toDouble, strengths = strengths.toDouble, n = n.toInt,
-      minLag = minLag.toInt, maxLag = maxLag.toInt,
+      peaks = peaks.toDouble, maxLag = maxLag.toInt,
       voicingThresh = voicingThresh.toDouble, silenceThresh = silenceThresh.toDouble,
       octaveCost = octaveCost.toDouble, octaveJumpCost = octaveJumpCost.toDouble,
       voicedUnvoicedCost = voicedUnvoicedCost.toDouble)

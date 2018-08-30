@@ -18,14 +18,14 @@ import akka.stream.{Attributes, FanInShape10, Outlet}
 import de.sciss.fscape.stream.impl.{DemandAuxInHandler, DemandInOutImpl, DemandProcessInHandler, DemandWindowedLogic, NodeImpl, Out1DoubleImpl, Out1LogicImpl, ProcessOutHandlerImpl, StageImpl}
 
 object PitchesToViterbi {
-  def apply(lags: OutD, strengths: OutD, n: OutI, minLag: OutI, maxLag: OutI, voicingThresh: OutD, silenceThresh: OutD, 
+  def apply(lags: OutD, strengths: OutD, n: OutI, peaks: OutD, maxLag: OutI, voicingThresh: OutD, silenceThresh: OutD,
             octaveCost: OutD, octaveJumpCost: OutD, voicedUnvoicedCost: OutD)(implicit b: Builder): OutD = {
     val stage0  = new Stage
     val stage   = b.add(stage0)
     b.connect(lags              , stage.in0)
     b.connect(strengths         , stage.in1)
     b.connect(n                 , stage.in2)
-    b.connect(minLag            , stage.in3)
+    b.connect(peaks             , stage.in3)
     b.connect(maxLag            , stage.in4)
     b.connect(voicingThresh     , stage.in5)
     b.connect(silenceThresh     , stage.in6)
@@ -37,14 +37,14 @@ object PitchesToViterbi {
 
   private final val name = "PitchesToViterbi"
 
-  private type Shape = FanInShape10[BufD, BufD, BufI, BufI, BufI, BufD, BufD, BufD, BufD, BufD, BufD]
+  private type Shape = FanInShape10[BufD, BufD, BufI, BufD, BufI, BufD, BufD, BufD, BufD, BufD, BufD]
 
   private final class Stage(implicit ctrl: Control) extends StageImpl[Shape](name) {
     val shape = new FanInShape10(
       in0 = InD (s"$name.lags"              ),
       in1 = InD (s"$name.strengths"         ),
       in2 = InI (s"$name.n"                 ),
-      in3 = InI (s"$name.minLag"            ),
+      in3 = InD (s"$name.peaks"             ),
       in4 = InI (s"$name.maxLag"            ),
       in5 = InD (s"$name.voicingThresh"     ),
       in6 = InD (s"$name.silenceThresh"     ),
@@ -66,7 +66,7 @@ object PitchesToViterbi {
     private[this] var bufIn0 : BufD = _
     private[this] var bufIn1 : BufD = _
     private[this] var bufIn2 : BufI = _
-    private[this] var bufIn3 : BufI = _
+    private[this] var bufIn3 : BufD = _
     private[this] var bufIn4 : BufI = _
     private[this] var bufIn5 : BufD = _
     private[this] var bufIn6 : BufD = _
@@ -82,15 +82,15 @@ object PitchesToViterbi {
     private[this] var _auxInValid   = false
     private[this] var _inValid      = false
 
-    private[this] var numStates         : Int = -1
-    private[this] var statesSq          : Int = _
-    private[this] var minLag            : Int = _
-    private[this] var maxLag            : Int = _
-    private[this] var voicingThresh     : Double = _
-    private[this] var silenceThresh     : Double = _
-    private[this] var octaveCost        : Double = _
-    private[this] var octaveJumpCost    : Double = _
-    private[this] var voicedUnvoicedCost: Double = _
+    private[this] var numStates         : Int     = -1
+    private[this] var statesSq          : Int     = _
+    private[this] var peak              : Double  = _
+    private[this] var maxLag            : Int     = _
+    private[this] var voicingThresh     : Double  = _
+    private[this] var silenceThresh     : Double  = _
+    private[this] var octaveCost        : Double  = _
+    private[this] var octaveJumpCost    : Double  = _
+    private[this] var voicedUnvoicedCost: Double  = _
 
     private[this] var lagsPrev      : Array[Double] = _
     private[this] var lagsCurr      : Array[Double] = _
@@ -302,7 +302,7 @@ object PitchesToViterbi {
       }
 
     protected def startNextWindow(): Long = {
-      // n: 2, minLag: 3, maxLag: 4, voicingThresh: 5, silenceThresh: 6, octaveCost: 7, octaveJumpCost: 8, voicedUnvoicedCost: 9
+      // n: 2, peaks: 3, maxLag: 4, voicingThresh: 5, silenceThresh: 6, octaveCost: 7, octaveJumpCost: 8, voicedUnvoicedCost: 9
       val inOff = auxInOff
       if (bufIn2 != null && inOff < bufIn2.size) {
         val oldN = numStates
@@ -318,7 +318,7 @@ object PitchesToViterbi {
         }
       }
       if (bufIn3 != null && inOff < bufIn3.size) {
-        minLag = math.max(1, bufIn3.buf(inOff))
+        peak = math.max(0.0, bufIn3.buf(inOff))
       }
       if (bufIn4 != null && inOff < bufIn4.size) {
         maxLag = math.max(1, bufIn4.buf(inOff))
@@ -369,15 +369,15 @@ object PitchesToViterbi {
       val _unvoicedFactor = if (_noSil) 0.0 else (1.0 + _voicingThresh) / _silenceThresh
       val _maxLag         = maxLag
       val _octaveCost     = octaveCost
+      val _peak           = peak
 
       // first update the strengths to include octave costs etc.
       var numCand = 0
       var i = 0
       while (i < _numStates) {
         val lag       = _lags     (i)
-        val strength  = _strengths(i)
         if (lag == 0.0) { // unvoiced
-          val strengthC = _voicingThresh + (if (_noSil) 0.0 else math.max(0.0, 2.0 - strength * _unvoicedFactor))
+          val strengthC = _voicingThresh + (if (_noSil) 0.0 else math.max(0.0, 2.0 - _peak * _unvoicedFactor))
           _strengths(i) = strengthC
           numCand = i + 1
 //          i += 1
@@ -387,7 +387,23 @@ object PitchesToViterbi {
 //          }
           i = _numStates  // "break", the following entries are invalid (all zero)
         } else {
-          val strengthC = strength + _octaveCost * math.log(_maxLag / lag)
+          val strength  = _strengths(i)
+          // not sure what's right here
+          // cf. https://github.com/praat/praat/issues/662
+          // Praat has
+          //   -OctaveCost * log2 (ceiling / candidate_frequency)
+          // But paper has
+          //   -OctaveCost * log2 (MinimumPitch * lag)
+          //
+          // So in the paper: if we have the minimum-frequency, the cost is zero,
+          // if we have twice the minimum frequency (half the lag), we would _add_
+          // octave-cost to the strength.
+          // Whereas in Praat, if we have the maximum-frequency, the cost is zero,
+          // if we have half the maximum frequency, we would _subtract_ octave cost
+          // from the strength. The direction is the same (higher frequencies are
+          // preferred), but the total cost amount is different.
+          val strengthC = strength - _octaveCost * math.log(_maxLag / lag)
+//          val strengthC1 = strength + _octaveCost * math.log(147 / lag)
           _strengths(i) = strengthC
           i += 1
         }

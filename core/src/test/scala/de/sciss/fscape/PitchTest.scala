@@ -61,13 +61,10 @@ object PitchTest extends App {
 
     def mkWindow() = GenWindow(winSize, shape = GenWindow.Hann)
 
-    val inW = {
-      // remove DC
-      val leak = NormalizeWindow(inSlid, winSize, mode = NormalizeWindow.ZeroMean)
-//      Plot1D(inSlid, winSize, "BEFORE")
-//      Plot1D(leak  , winSize, "AFTER")
-      leak * mkWindow()
-    }
+    val inLeak  = NormalizeWindow(inSlid, winSize, mode = NormalizeWindow.ZeroMean)
+    val inW     = inLeak * mkWindow()
+    val peaks   = WindowApply(RunningMax(inLeak.abs, Metro(winSize)), winSize, winSize - 1)
+//    RepeatWindow(peaks).poll(Metro(2), "peak")
 
     def mkAR(sig: GE, normalize: Boolean = true) = {
       val fft   = Real1FFT(in = sig, size = winSize, padding = fftSize - winSize, mode = 2)
@@ -96,6 +93,7 @@ object PitchTest extends App {
 //    Plot1D(inW, winSize, "inW")
 //    Plot1D(r_a, fftSizeH, "r_a")
 //    Plot1D(r_w, fftSizeH, "r_w")
+//    Plot1D(r_x.drop(fftSizeH*5), fftSizeH, "r_x")
 
 //      val r_aN = mkAR(inW, normalize = true)
 //    Plot1D((r_aN / r_w) * 1000, fftSizeH, "r_x")
@@ -130,7 +128,7 @@ object PitchTest extends App {
 //    val voicedUnvoicedCostC = VoicedUnvoicedCost
 
     val vitIn     = PitchesToViterbi(lags = lags, strengths = strengths, n = NumCandidates,
-      minLag = minLag, maxLag = maxLag,
+      peaks = peaks, maxLag = maxLag,
       voicingThresh = VoicingThreshold, silenceThresh = SilenceThreshold, octaveCost = OctaveCost,
       octaveJumpCost = octaveJumpCostC, voicedUnvoicedCost = voicedUnvoicedCostC)
 
