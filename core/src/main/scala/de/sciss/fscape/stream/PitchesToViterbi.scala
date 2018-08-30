@@ -18,13 +18,13 @@ import akka.stream.{Attributes, FanInShape10, Outlet}
 import de.sciss.fscape.stream.impl.{DemandAuxInHandler, DemandInOutImpl, DemandProcessInHandler, DemandWindowedLogic, NodeImpl, Out1DoubleImpl, Out1LogicImpl, ProcessOutHandlerImpl, StageImpl}
 
 object PitchesToViterbi {
-  def apply(lags: OutD, strengths: OutD, n: OutI, peaks: OutD, maxLag: OutI, voicingThresh: OutD, silenceThresh: OutD,
+  def apply(lags: OutD, strengths: OutD, numIn: OutI, peaks: OutD, maxLag: OutI, voicingThresh: OutD, silenceThresh: OutD,
             octaveCost: OutD, octaveJumpCost: OutD, voicedUnvoicedCost: OutD)(implicit b: Builder): OutD = {
     val stage0  = new Stage
     val stage   = b.add(stage0)
     b.connect(lags              , stage.in0)
     b.connect(strengths         , stage.in1)
-    b.connect(n                 , stage.in2)
+    b.connect(numIn             , stage.in2)
     b.connect(peaks             , stage.in3)
     b.connect(maxLag            , stage.in4)
     b.connect(voicingThresh     , stage.in5)
@@ -82,7 +82,7 @@ object PitchesToViterbi {
     private[this] var _auxInValid   = false
     private[this] var _inValid      = false
 
-    private[this] var numStates         : Int     = -1
+    private[this] var numStatesIn       : Int     = -1
     private[this] var statesSq          : Int     = _
     private[this] var peak              : Double  = _
     private[this] var maxLag            : Int     = _
@@ -305,15 +305,16 @@ object PitchesToViterbi {
       // n: 2, peaks: 3, maxLag: 4, voicingThresh: 5, silenceThresh: 6, octaveCost: 7, octaveJumpCost: 8, voicedUnvoicedCost: 9
       val inOff = auxInOff
       if (bufIn2 != null && inOff < bufIn2.size) {
-        val oldN = numStates
-        val _numStates = math.max(1, bufIn2.buf(inOff))
-        if (_numStates != oldN) {
-          numStates     = _numStates
-          lagsPrev      = new Array(_numStates)
-          lagsCurr      = new Array(_numStates)
-          strengthsPrev = new Array(_numStates)
-          strengthsCurr = new Array(_numStates)
-          statesSq      = _numStates * _numStates
+        val oldN = numStatesIn
+        val _numStatesIn = math.max(0, bufIn2.buf(inOff))
+        if (_numStatesIn != oldN) {
+          val _numStatesOut = _numStatesIn + 1
+          numStatesIn   = _numStatesIn
+          lagsPrev      = new Array(_numStatesOut)
+          lagsCurr      = new Array(_numStatesOut)
+          strengthsPrev = new Array(_numStatesOut)
+          strengthsCurr = new Array(_numStatesOut)
+          statesSq      = _numStatesOut * _numStatesOut
           innerMat      = new Array(statesSq)
         }
       }
@@ -339,7 +340,7 @@ object PitchesToViterbi {
         voicedUnvoicedCost = bufIn9.buf(inOff)
       }
 
-      numStates
+      numStatesIn
     }
 
     protected def copyInputToWindow(writeToWinOff: Long, chunk: Int): Unit = {
@@ -355,37 +356,36 @@ object PitchesToViterbi {
 
     protected def processWindow(writeToWinOff: Long): Long = {
       val off = writeToWinOff.toInt
-      val _numStates  = numStates
-      val _lags       = lagsCurr
-      val _strengths  = strengthsCurr
-      if (off < _numStates) {
-        Util.clear(_lags     , off, _numStates - off)
-        Util.clear(_strengths, off, _numStates - off)
+      val _numStatesIn  = numStatesIn
+      val _numStatesOut = _numStatesIn + 1
+      val _lags         = lagsCurr
+      val _strengths    = strengthsCurr
+      if (off < _numStatesIn) {
+        Util.clear(_lags     , off, _numStatesIn - off)
+        Util.clear(_strengths, off, _numStatesIn - off)
       }
 
       val _silenceThresh  = silenceThresh
       val _voicingThresh  = voicingThresh
       val _noSil          = _silenceThresh == 0.0
-      val _unvoicedFactor = if (_noSil) 0.0 else (1.0 + _voicingThresh) / _silenceThresh
       val _maxLag         = maxLag
       val _octaveCost     = octaveCost
-      val _peak           = peak
+      val _unvoicedStrength = if (_noSil) _voicingThresh else {
+        _voicingThresh + math.max(0.0, 2.0 - peak * (1.0 + _voicingThresh) / _silenceThresh)
+      }
 
       // first update the strengths to include octave costs etc.
-      var numCand = 0
       var i = 0
-      while (i < _numStates) {
-        val lag       = _lags     (i)
+      while (i < _numStatesOut) {
+        val lag = if (i < _numStatesIn) _lags(i) else 0.0
         if (lag == 0.0) { // unvoiced
-          val strengthC = _voicingThresh + (if (_noSil) 0.0 else math.max(0.0, 2.0 - _peak * _unvoicedFactor))
-          _strengths(i) = strengthC
-          numCand = i + 1
-//          i += 1
-//          while (i < _numStates) {
-//            _strengths(i) = Double.NegativeInfinity
-//            i += 1
-//          }
-          i = _numStates  // "break", the following entries are invalid (all zero)
+          _strengths(i) = _unvoicedStrength
+          i += 1
+          while (i < _numStatesOut) {
+            _strengths(i) = 0.0 // Double.NegativeInfinity
+            i += 1
+          }
+
         } else {
           val strength  = _strengths(i)
           // not sure what's right here
@@ -417,10 +417,10 @@ object PitchesToViterbi {
         // one value of the initial delta vector
         i = 0
         var k = 0
-        while (i < _numStates) {
+        while (i < _numStatesOut) {
           var j = 0
           val v = _strengths(i)
-          while (j < _numStates) {
+          while (j < _numStatesOut) {
             _mat(k) = v
             j += 1
             k += 1
@@ -435,12 +435,12 @@ object PitchesToViterbi {
 
         i = 0
         var k = 0
-        while (i < _numStates) {
+        while (i < _numStatesOut) {
           var j = 0
           val lagCurr       = _lags     (i)
           val strengthCurr  = _strengths(i)
           val currVoiceless = lagCurr == 0
-          while (j < _numStates) {
+          while (j < _numStatesOut) {
             val lagPrev       = _lagsPrev(j)
             val prevVoiceless = lagPrev == 0
             val cost = if (currVoiceless ^ prevVoiceless) {

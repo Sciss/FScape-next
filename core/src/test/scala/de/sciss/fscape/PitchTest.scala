@@ -42,7 +42,8 @@ object PitchTest extends App {
     val OctaveCost          = 0.01
     val OctaveJumpCost      = 0.35
     val VoicedUnvoicedCost  = 0.14
-    val NumCandidates       = 15
+    val NumCandidatesM      = 14
+    val NumCandidates       = NumCandidatesM + 1
 
     val minLag        = (sampleRate / MaximumPitch).floor.toInt
     val maxLag        = (sampleRate / MinimumPitch).ceil .toInt
@@ -81,7 +82,7 @@ object PitchTest extends App {
     // val localPeak = inW.abs.max
     // val isSilent = localPeak < SilenceThreshold
 
-    val r_a = mkAR(inW, normalize = false)
+    val r_a = mkAR(inW) // , normalize = false)
     val r_w = mkAR(mkWindow())
     val r_x = r_a / r_w
     //    r_a.poll(0, "arX[0]")
@@ -111,8 +112,8 @@ object PitchTest extends App {
     //    val freq        = SlidingPercentile(freq1, len = 3)
     //    val hasFreq     = freq > 0
 
-    val paths = AutoCorrelationPeaks(r_x, size = fftSizeH, minLag = minLag, maxLag = maxLag,
-      thresh = VoicingThreshold, octaveCost = OctaveCost, n = NumCandidates)
+    val paths = StrongestLocalMaxima(r_x, size = fftSizeH, minLag = minLag, maxLag = maxLag,
+      thresh = VoicingThreshold * 0.5, octaveCost = OctaveCost, num = NumCandidatesM)
 
     val lags0       = paths.lags
     val strengths0  = paths.strengths
@@ -133,7 +134,7 @@ object PitchTest extends App {
     val voicedUnvoicedCostC = VoicedUnvoicedCost  * timeStepCorr
 //    val voicedUnvoicedCostC = VoicedUnvoicedCost
 
-    val vitIn     = PitchesToViterbi(lags = lags, strengths = strengths, n = NumCandidates,
+    val vitIn     = PitchesToViterbi(lags = lags, strengths = strengths, numIn = NumCandidatesM,
       peaks = peaks, maxLag = maxLag,
       voicingThresh = VoicingThreshold, silenceThresh = SilenceThreshold, octaveCost = OctaveCost,
       octaveJumpCost = octaveJumpCostC, voicedUnvoicedCost = voicedUnvoicedCostC)
@@ -146,7 +147,8 @@ object PitchTest extends App {
 //    Length(states).poll(0, "path-length")
 //    RepeatWindow(states).poll(Metro(2), "viterbi")
 
-    val lagsSel   = WindowApply(BufferMemory(lags, numSteps * NumCandidates), size = NumCandidates, index = states)
+    val lagsSel   = WindowApply(BufferMemory(lags, numSteps * NumCandidates), size = NumCandidatesM, index = states,
+      mode = 3)
 //    val lagsSel   = WindowApply(BufferDisk(lags), size = NumCandidates, index = states)
     val hasFreq   = lagsSel > 0
     val freqsSel  = Gate(lagsSel.reciprocal, hasFreq) * sampleRate

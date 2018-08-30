@@ -1,5 +1,5 @@
 /*
- *  AutoCorrelationPeaks.scala
+ *  StrongestLocalMaxima.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2018 Hanns Holger Rutz. All rights reserved.
@@ -18,23 +18,23 @@ import akka.stream.{Attributes, Outlet}
 import akka.stream.stage.OutHandler
 import de.sciss.fscape.stream.impl.{AuxInHandlerImpl, FilterLogicImpl, FullInOutImpl, In7Out2Shape, NodeImpl, ProcessInHandlerImpl, StageImpl, WindowedLogicImpl}
 
-object AutoCorrelationPeaks {
-  def apply(ac: OutD, size: OutI, minLag: OutI, maxLag: OutI, thresh: OutD, octaveCost: OutD, n: OutI)
+object StrongestLocalMaxima {
+  def apply(in: OutD, size: OutI, minLag: OutI, maxLag: OutI, thresh: OutD, octaveCost: OutD, num: OutI)
            (implicit b: Builder): (OutD, OutD) = {
     val stage0  = new Stage
     val stage   = b.add(stage0)
-    b.connect(ac        , stage.in0)
+    b.connect(in        , stage.in0)
     b.connect(size      , stage.in1)
     b.connect(minLag    , stage.in2)
     b.connect(maxLag    , stage.in3)
     b.connect(thresh    , stage.in4)
     b.connect(octaveCost, stage.in5)
-    b.connect(n         , stage.in6)
+    b.connect(num       , stage.in6)
 
     (stage.out0, stage.out1)
   }
 
-  private final val name = "AutoCorrelationPitches"
+  private final val name = "StrongestLocalMaxima"
 
   private type Shape = In7Out2Shape[BufD, BufI, BufI, BufI, BufD, BufD, BufI,   BufD, BufD]
 
@@ -278,7 +278,7 @@ object AutoCorrelationPeaks {
         // println(s"maxLag $maxLag")
       }
       if (bufIn4 != null && inOff < bufIn4.size) {
-        thresh = math.max(0.0, bufIn4.buf(inOff)) * 0.5
+        thresh = math.max(0.0, bufIn4.buf(inOff)) // * 0.5
         // println(s"thresh ${thresh * 2}")
       }
       if (bufIn5 != null && inOff < bufIn5.size) {
@@ -287,7 +287,7 @@ object AutoCorrelationPeaks {
       }
       if (bufIn6 != null && inOff < bufIn6.size) {
         val oldN = numPaths
-        numPaths = math.max(2, bufIn6.buf(inOff))
+        numPaths = math.max(1, bufIn6.buf(inOff))
         if (numPaths != oldN) {
           lagBuf      = new Array[Double](numPaths)
           lagIBuf     = new Array[Int   ](numPaths)
@@ -336,17 +336,6 @@ object AutoCorrelationPeaks {
       Util.clear(lagBuf     , 0, n)
       Util.clear(strengthBuf, 0, n)
 
-      val intensity = _buf(0)   // XXX TODO --- this is obviously different from Boersma's implementatino
-      if (intensity == 0) return n
-
-      val gain = 1.0 / intensity
-      // normalize AC
-      var ni = 0
-      while (ni < sz0) {
-        _buf(ni) *= gain
-        ni += 1
-      }
-
       val _minLag = math.min(_bufSz - 1, minLag)
       val _maxLag = math.min(_bufSz - 1, maxLag)
       val _thresh = thresh
@@ -355,9 +344,6 @@ object AutoCorrelationPeaks {
       var vp  = _buf(_minLag - 1)
       var vi  = _buf(_minLag)
 
-      // val brent_ixmax = ifloor(nsamp_window * interpolation_depth)
-
-      val n1          = n -1
       var pathsTaken  = 0
 
       while (li < _maxLag) {  // XXX TODO --- `li` runs further in Boersma's implementation
@@ -378,7 +364,7 @@ object AutoCorrelationPeaks {
           val strength0 = sincInterp(_buf, len = _bufSz, x = lag, maxDepth = 30)
           val strength  = strength0 // math.min(1.0, strength0)
 
-          val pathIdx = if (pathsTaken < n1) {
+          val pathIdx = if (pathsTaken < n) {
             val res = pathsTaken
             pathsTaken += 1
             res
@@ -387,7 +373,7 @@ object AutoCorrelationPeaks {
             var weakest   = strengthC
             var res = -1
             var j = 0
-            while (j < n1) {
+            while (j < n) {
               val lagJ      = lagBuf      (j)
               val strengthJ = strengthBuf (j) + octaveCost * math.log(_maxLag / lagJ)
               if (strengthJ < weakest) {
@@ -420,9 +406,9 @@ object AutoCorrelationPeaks {
         pi += 1
       }
 
-      // 'unvoiced'
-      // lagBuf(pathsTaken) = 0.0
-      strengthBuf(pathsTaken) = math.sqrt(intensity) // 18 * intensity // math.min(1.0, 18 * intensity)
+//      // 'unvoiced'
+//      // lagBuf(pathsTaken) = 0.0
+//      strengthBuf(pathsTaken) = math.sqrt(intensity) // 18 * intensity // math.min(1.0, 18 * intensity)
 
       n
     }

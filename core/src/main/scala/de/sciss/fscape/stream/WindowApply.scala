@@ -18,15 +18,17 @@ import akka.stream.{Attributes, FanInShape4, Inlet, Outlet}
 import de.sciss.fscape.stream.impl.{DemandFilterIn4, DemandWindowedLogic, NodeImpl, StageImpl}
 import de.sciss.numbers.IntFunctions
 
+import scala.annotation.switch
+
 object WindowApply {
-  def apply[A, BufA >: Null <: BufElem[A]](in: Outlet[BufA], size: OutI, index: OutI, wrap: OutI)
+  def apply[A, BufA >: Null <: BufElem[A]](in: Outlet[BufA], size: OutI, index: OutI, mode: OutI)
                                           (implicit b: Builder, aTpe: StreamType[A, BufA]): Outlet[BufA] = {
     val stage0  = new Stage[A, BufA]
     val stage   = b.add(stage0)
     b.connect(in    , stage.in0)
     b.connect(size  , stage.in1)
     b.connect(index , stage.in2)
-    b.connect(wrap  , stage.in3)
+    b.connect(mode  , stage.in3)
 
     stage.out
   }
@@ -43,7 +45,7 @@ object WindowApply {
       in0 = Inlet[BufA] (s"$name.in"   ),
       in1 = InI         (s"$name.size" ),
       in2 = InI         (s"$name.index"),
-      in3 = InI         (s"$name.wrap" ),
+      in3 = InI         (s"$name.mode" ),
       out = Outlet[BufA](s"$name.out"  )
     )
 
@@ -60,7 +62,8 @@ object WindowApply {
     private[this] var winSize     : Int     = _
     private[this] var index0      : Int     = _
     private[this] var index       : Int     = _
-    private[this] var wrap        : Boolean = _
+    private[this] var mode        : Int     = _
+    private[this] val zero        : A       = aTpe.newArray(1)(0)
 
     protected def allocOutBuf0(): BufA = aTpe.allocBuf()
 
@@ -76,13 +79,19 @@ object WindowApply {
         index0 = bufIn2.buf(inOff)
       }
       if (bufIn3 != null && inOff < bufIn3.size) {
-        wrap = bufIn3.buf(inOff) != 0
+        mode = math.max(0, math.min(3, bufIn3.buf(inOff)))
       }
 
       index =
         if (index0 >= 0 && index0 < winSize) index0
-        else if (wrap)  IntFunctions.wrap(index0, 0, winSize - 1)
-        else            IntFunctions.clip(index0, 0, winSize - 1)
+        else (mode: @switch) match {
+          case 0 => IntFunctions.clip(index0, 0, winSize - 1)
+          case 1 => IntFunctions.wrap(index0, 0, winSize - 1)
+          case 2 => IntFunctions.fold(index0, 0, winSize - 1)
+          case 3 =>
+            elem = zero
+            -1
+        }
 
       winSize
     }

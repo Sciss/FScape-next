@@ -25,24 +25,25 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * @param in     the window'ed signal to index
   * @param size   the window size.
   * @param index  the zero-based index into each window. One value per window is polled.
-  * @param wrap   if non-zero, wraps indices around the window boundaries, otherwise clips.
+  * @param mode   wrap mode. `0` clips indices, `1` wraps them around, `2` folds them, `3` outputs
+  *               zeroes when index is out of bounds.
   */
-final case class WindowApply(in: GE, size: GE, index: GE = 0, wrap: GE = 0) extends UGenSource.SingleOut {
+final case class WindowApply(in: GE, size: GE, index: GE = 0, mode: GE = 0) extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
-    unwrap(this, Vector(in.expand, size.expand, index.expand, wrap.expand))
+    unwrap(this, Vector(in.expand, size.expand, index.expand, mode.expand))
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
     UGen.SingleOut(this, args)
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
-    val Vec(in, size, index, wrap) = args
-    mkStream[in.A, in.Buf](in = in, size = size.toInt, index = index.toInt, wrap = wrap.toInt)
+    val Vec(in, size, index, mode) = args
+    mkStream[in.A, in.Buf](in = in, size = size.toInt, index = index.toInt, mode = mode.toInt)
   }
 
-  private def mkStream[A, BufA >: Null <: BufElem[A]](in: StreamInElem[A, BufA], size: OutI, index: OutI, wrap: OutI)
+  private def mkStream[A, BufA >: Null <: BufElem[A]](in: StreamInElem[A, BufA], size: OutI, index: OutI, mode: OutI)
                                                      (implicit b: Builder): StreamOut = {
     import in.{tpe => inTpe}  // IntelliJ doesn't get it
-    val out: Outlet[BufA] = stream.WindowApply[A, BufA](in = in.toElem, size = size, index = index, wrap = wrap)
+    val out: Outlet[BufA] = stream.WindowApply[A, BufA](in = in.toElem, size = size, index = index, mode = mode)
     inTpe.mkStreamOut(out) // IntelliJ doesn't get it
   }
 }
