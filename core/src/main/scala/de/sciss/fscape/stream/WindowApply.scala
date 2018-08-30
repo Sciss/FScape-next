@@ -15,7 +15,7 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape4, Inlet, Outlet}
-import de.sciss.fscape.stream.impl.{FilterIn4Impl, FilterLogicImpl, NodeImpl, StageImpl, WindowedLogicImpl}
+import de.sciss.fscape.stream.impl.{DemandFilterIn4, DemandWindowedLogic, NodeImpl, StageImpl}
 import de.sciss.numbers.IntFunctions
 
 object WindowApply {
@@ -53,9 +53,8 @@ object WindowApply {
   private final class Logic[A, BufA >: Null <: BufElem[A]](shape: Shape[A, BufA])
                                                           (implicit ctrl: Control, aTpe: StreamType[A, BufA])
     extends NodeImpl(name, shape)
-      with WindowedLogicImpl[Shape[A, BufA]]
-      with FilterLogicImpl[BufA, Shape[A, BufA]]
-      with FilterIn4Impl[BufA, BufI, BufI, BufI, BufA] {
+      with DemandWindowedLogic[Shape[A, BufA]]
+      with DemandFilterIn4[BufA, BufI, BufI, BufI, BufA] {
 
     private[this] var elem        : A       = _
     private[this] var winSize     : Int     = _
@@ -65,7 +64,11 @@ object WindowApply {
 
     protected def allocOutBuf0(): BufA = aTpe.allocBuf()
 
-    protected def startNextWindow(inOff: Int): Long = {
+    protected def inputsEnded: Boolean =
+      mainInRemain == 0 && isClosed(in0) && !isAvailable(in0)
+
+    protected def startNextWindow(): Long = {
+      val inOff = auxInOff
       if (bufIn1 != null && inOff < bufIn1.size) {
         winSize = math.max(1, bufIn1.buf(inOff))
       }
@@ -84,12 +87,12 @@ object WindowApply {
       winSize
     }
 
-    protected def copyInputToWindow(inOff: Int, writeToWinOff: Long, chunk: Int): Unit = {
+    protected def copyInputToWindow(writeToWinOff: Long, chunk: Int): Unit = {
       val writeOffI = writeToWinOff.toInt
       val stop      = writeOffI + chunk
       val _index    = index
       if (_index >= writeOffI && _index < stop) {
-        elem = bufIn0.buf(_index - writeOffI + inOff)
+        elem = bufIn0.buf(_index - writeOffI + mainInOff)
       }
     }
 

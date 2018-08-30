@@ -17,10 +17,10 @@ import scala.concurrent.duration.Duration
 
  */
 object PitchTest extends App {
-//  val fIn     = file("/data/projects/Maeanderungen/audio_work/edited/HB_0_HH_T168.wav")
-  val fIn     = file("/data/temp/ac-in.aif")
+  val fIn     = file("/data/projects/Maeanderungen/audio_work/edited/HB_0_HH_T168.wav")
+//  val fIn     = file("/data/temp/ac-in.aif")
 //  val fIn     = file("/data/temp/ac-inFOO.aif")
-  val fOut    = file("/data/temp/test.aif")
+//  val fOut    = file("/data/temp/test.aif")
   val specIn  = AudioFile.readSpec(fIn)
   import specIn.sampleRate
 
@@ -63,7 +63,7 @@ object PitchTest extends App {
 
     val inLeak  = NormalizeWindow(inSlid, winSize, mode = NormalizeWindow.ZeroMean)
     val inW     = inLeak * mkWindow()
-    val peaks   = WindowApply(RunningMax(inLeak.abs, Metro(winSize)), winSize, winSize - 1)
+    val peaks0  = WindowApply(RunningMax(inLeak.abs, Metro(winSize)), winSize, winSize - 1)
 //    RepeatWindow(peaks).poll(Metro(2), "peak")
 
     def mkAR(sig: GE, normalize: Boolean = true) = {
@@ -86,6 +86,7 @@ object PitchTest extends App {
     val r_x = r_a / r_w
     //    r_a.poll(0, "arX[0]")
 //    r_a.poll(fftSizeH, "arX")
+//    r_x.poll(fftSizeH, "arX")
     //    r_w.poll(0, "arW[0]")
     //    RunningMax(inW.abs).poll(DelayN(Metro(0), winSize - 1, winSize - 1), "localAbsPeak")
     // (ConstantD(0) ++ RunningMax(inW.abs, Metro(winSize))).poll(Metro(winSize) - Metro(0), "localAbsPeak")
@@ -113,13 +114,18 @@ object PitchTest extends App {
     val paths = AutoCorrelationPeaks(r_x, size = fftSizeH, minLag = minLag, maxLag = maxLag,
       thresh = VoicingThreshold, octaveCost = OctaveCost, n = NumCandidates)
 
-    val lags      = paths.lags
-    val strengths = paths.strengths
-    val freqsN    = lags.reciprocal
-    val freqs     = freqsN * sampleRate
-    RepeatWindow(lags     ).poll(Metro(2), "lags")
+    val lags0       = paths.lags
+    val strengths0  = paths.strengths
+    val lags        = BufferMemory(lags0      , fftSize * 4)
+    val strengths   = BufferMemory(strengths0 , fftSize * 4)
+    val peaks       = BufferMemory(peaks0     , fftSize * 2)  // WTF
+
+//    val freqsN    = lags.reciprocal
+//    val freqs     = freqsN * sampleRate
+//    RepeatWindow(lags     ).poll(Metro(2), "lags")
 //    RepeatWindow(freqs    ).poll(Metro(2), "freqs")
 //    RepeatWindow(strengths).poll(Metro(2), "strengths")
+//    strengths.poll(Metro(1000), "strengths")
 
     val timeStepCorr        = 0.01 * sampleRate / stepSize    // 0.87 in this case
     val octaveJumpCostC     = OctaveJumpCost      * timeStepCorr
@@ -132,7 +138,7 @@ object PitchTest extends App {
       voicingThresh = VoicingThreshold, silenceThresh = SilenceThreshold, octaveCost = OctaveCost,
       octaveJumpCost = octaveJumpCostC, voicedUnvoicedCost = voicedUnvoicedCostC)
 
-//    Frames(vitIn).poll(Metro(100), "vit-in")
+//    Frames(vitIn).poll(Metro(NumCandidates*NumCandidates), "vit-in")
 //    Length(vitIn).poll(0, "vit-in-length")
 
     val states    = Viterbi(add = vitIn, numStates = NumCandidates)
@@ -141,13 +147,14 @@ object PitchTest extends App {
 //    RepeatWindow(states).poll(Metro(2), "viterbi")
 
     val lagsSel   = WindowApply(BufferMemory(lags, numSteps * NumCandidates), size = NumCandidates, index = states)
+//    val lagsSel   = WindowApply(BufferDisk(lags), size = NumCandidates, index = states)
     val hasFreq   = lagsSel > 0
     val freqsSel  = Gate(lagsSel.reciprocal, hasFreq) * sampleRate
 
 //    Plot1D(freqsSel, size = numSteps)
 
-    RepeatWindow(lagsSel).poll(Metro(2), "lags-sel")
-//    RepeatWindow(freqsSel).poll(Metro(2), "path")
+//    RepeatWindow(lagsSel).poll(Metro(2), "lags-sel")
+    RepeatWindow(freqsSel).poll(Metro(2), "path")
 
 //    val osc = Vector.tabulate(NumCandidates) { i =>
 //      val lag       = WindowApply(lags, NumCandidates, i)
@@ -177,5 +184,5 @@ object PitchTest extends App {
 //  Swing.onEDT {
 //    SimpleGUI(ctrl)
 //  }
-//
+
 }
