@@ -176,6 +176,7 @@ object PitchTest extends App {
 
   val config = stream.Control.Config()
   config.useAsync = false
+  config.blockSize  = 512 // 4096
   implicit val ctrl: stream.Control = stream.Control(config)
   ctrl.run(g)
 

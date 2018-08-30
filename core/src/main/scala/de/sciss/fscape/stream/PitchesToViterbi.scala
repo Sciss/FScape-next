@@ -382,7 +382,7 @@ object PitchesToViterbi {
           _strengths(i) = _unvoicedStrength
           i += 1
           while (i < _numStatesOut) {
-            _strengths(i) = 0.0 // Double.NegativeInfinity
+            _strengths(i) = _unvoicedStrength  // 0.0 // Double.NegativeInfinity
             i += 1
           }
 
