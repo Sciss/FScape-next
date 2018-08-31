@@ -17,6 +17,10 @@ package graph
 /** A graph element that implements Boersma's auto-correlation based pitch tracking
   * algorithm.
   *
+  * cf. Paul Boersma, ACCURATE SHORT-TERM ANALYSIS OF THE FUNDAMENTAL FREQUENCY AND
+  * THE HARMONICS-TO-NOISE RATIO OF A SAMPLED SOUND,
+  * Institute of Phonetic Sciences, University of Amsterdam, Proceedings 17 (1993), 97-110
+  *
   * Note that this is currently implemented as a macro, thus being quite slow.
   * A future version might implement it directly as a UGen.
   * Currently `stepSize` is automatically given, and windowing is fixed to Hann.
