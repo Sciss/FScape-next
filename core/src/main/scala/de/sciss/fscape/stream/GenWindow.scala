@@ -73,6 +73,10 @@ object GenWindow {
       winSize
     }
 
+    protected def canStartNextWindow: Boolean = auxInRemain > 0 || (auxInValid && {
+      isClosed(in1) && isClosed(in2)
+    })
+
     protected def copyInputToWindow(writeToWinOff: Long, chunk: Int): Unit = ()
 
     protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit = {

@@ -96,6 +96,10 @@ object WindowApply {
       winSize
     }
 
+    protected def canStartNextWindow: Boolean = auxInRemain > 0 || (auxInValid && {
+      isClosed(in1) && isClosed(in2) && isClosed(in3)
+    })
+
     protected def copyInputToWindow(writeToWinOff: Long, chunk: Int): Unit = {
       val writeOffI = writeToWinOff.toInt
       val stop      = writeOffI + chunk

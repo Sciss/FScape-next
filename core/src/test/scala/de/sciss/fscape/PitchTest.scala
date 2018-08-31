@@ -141,15 +141,17 @@ object PitchTest extends App {
       voicingThresh = VoicingThreshold, silenceThresh = SilenceThreshold, octaveCost = OctaveCost,
       octaveJumpCost = octaveJumpCostC, voicedUnvoicedCost = voicedUnvoicedCostC)
 
-    Hash(vitIn).last.poll(0, "hash-vitIn")
+//    Hash(vitIn).last.poll(0, "hash-vitIn")
 
     //    Frames(vitIn).poll(Metro(NumCandidates*NumCandidates), "vit-in")
 //    Length(vitIn).poll(0, "vit-in-length")
 
     val states    = Viterbi(add = vitIn, numStates = NumCandidates)
 
-//    Length(states).poll(0, "path-length")
-    RepeatWindow(states).poll(Metro(2), "viterbi")
+    Hash(states).last.poll(0, "hash-states")
+
+    //    Length(states).poll(0, "path-length")
+//    RepeatWindow(states).poll(Metro(2), "viterbi")
 
     val lagsSel   = WindowApply(BufferMemory(lags, numSteps * NumCandidates), size = NumCandidatesM, index = states,
       mode = 3)
@@ -161,7 +163,7 @@ object PitchTest extends App {
 
 //    RepeatWindow(lagsSel).poll(Metro(2), "lags-sel")
 //    RepeatWindow(freqsSel).poll(Metro(2), "path")
-//    freqsSel.last.poll(0, "last")
+    freqsSel.last.poll(0, "last")
 
 //    val osc = Vector.tabulate(NumCandidates) { i =>
 //      val lag       = WindowApply(lags, NumCandidates, i)
@@ -181,7 +183,7 @@ object PitchTest extends App {
 
   val config = stream.Control.Config()
   config.useAsync = false
-  config.blockSize  = 512 // 4096
+  config.blockSize  = 1024 // 512 // 4096
   implicit val ctrl: stream.Control = stream.Control(config)
   ctrl.run(g)
 

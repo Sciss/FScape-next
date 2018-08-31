@@ -58,6 +58,8 @@ trait DemandWindowedLogic[S <: Shape] extends DemandChunkImpl[S] {
 
   protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit
 
+  protected def canStartNextWindow: Boolean
+
   // ---- impl ----
 
   private[this] final var writeToWinOff     = 0L
@@ -74,7 +76,7 @@ trait DemandWindowedLogic[S <: Shape] extends DemandChunkImpl[S] {
 
     if (canWriteToWindow) {
       val flushIn0 = inputsEnded // inRemain == 0 && shouldComplete()
-      if (isNextWindow && !flushIn0) {
+      if (isNextWindow && canStartNextWindow && !flushIn0) {
         writeToWinRemain  = startNextWindow()
         isNextWindow      = false
         stateChange       = true

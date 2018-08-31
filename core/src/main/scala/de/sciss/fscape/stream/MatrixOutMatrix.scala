@@ -113,6 +113,11 @@ object MatrixOutMatrix {
       newSizeIn
     }
 
+    protected def canStartNextWindow: Boolean = auxInRemain > 0 || (auxInValid && {
+      isClosed(in1) && isClosed(in2) && isClosed(in3) && isClosed(in4) &&
+      isClosed(in5) && isClosed(in6) && isClosed(in7)
+    })
+
     override protected def stopped(): Unit = {
       super.stopped()
       winInBuf  = null

@@ -206,6 +206,8 @@ object SortWindow {
       winSize
     }
 
+    protected def canStartNextWindow: Boolean = auxInRemain > 0 || (auxInValid && isClosed(shape.in2))
+
     protected def copyInputToWindow(writeToWinOff: Long, chunk: Int): Unit = {
       // System.arraycopy(bufIn0.buf, mainInOff, winBuf, writeToWinOff.toInt, chunk)
       val b0 = bufIn0.buf

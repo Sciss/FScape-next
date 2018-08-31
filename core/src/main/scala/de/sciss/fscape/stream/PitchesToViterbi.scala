@@ -43,7 +43,7 @@ object PitchesToViterbi {
     val shape = new FanInShape10(
       in0 = InD (s"$name.lags"              ),
       in1 = InD (s"$name.strengths"         ),
-      in2 = InI (s"$name.n"                 ),
+      in2 = InI (s"$name.numIn"             ),
       in3 = InD (s"$name.peaks"             ),
       in4 = InI (s"$name.maxLag"            ),
       in5 = InD (s"$name.voicingThresh"     ),
@@ -54,14 +54,15 @@ object PitchesToViterbi {
       out = OutD(s"$name.out"               )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape)
+    def createLogic(attr: Attributes): NodeImpl[PitchesToViterbi.Shape] = new Logic(shape)
   }
 
   private final class Logic(shape: Shape)(implicit ctrl: Control)
     extends NodeImpl(name, shape)
       with DemandWindowedLogic[Shape]
-      with Out1DoubleImpl[Shape] with Out1LogicImpl[BufD, Shape] 
-      with DemandInOutImpl[Shape] {
+      with Out1DoubleImpl     [Shape]
+      with Out1LogicImpl[BufD, Shape]
+      with DemandInOutImpl    [Shape] {
 
     private[this] var bufIn0 : BufD = _
     private[this] var bufIn1 : BufD = _
@@ -302,6 +303,8 @@ object PitchesToViterbi {
       }
 
     protected def startNextWindow(): Long = {
+      // println(s"- window: $auxInOff, ${if (bufIn3 == null) "null" else bufIn3.size}")
+
       // n: 2, peaks: 3, maxLag: 4, voicingThresh: 5, silenceThresh: 6, octaveCost: 7, octaveJumpCost: 8, voicedUnvoicedCost: 9
       val inOff = auxInOff
       if (bufIn2 != null && inOff < bufIn2.size) {
@@ -320,6 +323,7 @@ object PitchesToViterbi {
       }
       if (bufIn3 != null && inOff < bufIn3.size) {
         peak = math.max(0.0, bufIn3.buf(inOff))
+//        println(s"peak: $peak")
       }
       if (bufIn4 != null && inOff < bufIn4.size) {
         maxLag = math.max(1, bufIn4.buf(inOff))
@@ -342,6 +346,13 @@ object PitchesToViterbi {
 
       numStatesIn
     }
+
+    protected def canStartNextWindow: Boolean = auxInRemain > 0 || (auxInValid && {
+      val sh = shape
+      import sh._
+      isClosed(in2) && isClosed(in3) && isClosed(in4) && isClosed(in5) &&
+      isClosed(in6) && isClosed(in7) && isClosed(in8) && isClosed(in9)
+    })
 
     protected def copyInputToWindow(writeToWinOff: Long, chunk: Int): Unit = {
       val off = writeToWinOff.toInt

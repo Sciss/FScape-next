@@ -90,6 +90,10 @@ object ARCWindow {
       winSize
     }
 
+    protected def canStartNextWindow: Boolean = auxInRemain > 0 || (auxInValid && {
+      isClosed(in1) && isClosed(in2) && isClosed(in3) && isClosed(in4)
+    })
+
     protected def copyInputToWindow(writeToWinOff: Long, chunk: Int): Unit =
       Util.copy(bufIn0.buf, mainInOff, winBuf, writeToWinOff.toInt, chunk)
 
