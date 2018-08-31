@@ -29,11 +29,12 @@ object PitchTest extends App {
   lazy val g = Graph {
     import de.sciss.fscape.graph._
 //    val start       = 19932
-//    val numFrames   = 28451 // 242239 // 48000 * 87 // specIn.numFrames
+    val numFrames   = 200L * 2000 // 242239 // 48000 * 87 // specIn.numFrames
 //    val in          = AudioFileIn(file = fIn, numChannels = 1).drop(start).take(numFrames)
-    val in0         = AudioFileIn(file = fIn, numChannels = 1)
+//    val in0         = AudioFileIn(file = fIn, numChannels = 1)
+    val in0         = AudioFileIn(file = fIn, numChannels = 1).take(numFrames)
     val in = in0 // * 0.00000000001 + SinOsc(200.0/44100)
-    val numFrames   = specIn.numFrames
+//    val numFrames   = specIn.numFrames
 
     val MinimumPitch        =  60.0 // 100.0
     val MaximumPitch        = 300.0 // 1000.0
@@ -85,6 +86,7 @@ object PitchTest extends App {
     val r_a = mkAR(inW) // , normalize = false)
     val r_w = mkAR(mkWindow())
     val r_x = r_a / r_w
+
     //    r_a.poll(0, "arX[0]")
 //    r_a.poll(fftSizeH, "arX")
 //    r_x.poll(fftSizeH, "arX")
@@ -139,13 +141,15 @@ object PitchTest extends App {
       voicingThresh = VoicingThreshold, silenceThresh = SilenceThreshold, octaveCost = OctaveCost,
       octaveJumpCost = octaveJumpCostC, voicedUnvoicedCost = voicedUnvoicedCostC)
 
-//    Frames(vitIn).poll(Metro(NumCandidates*NumCandidates), "vit-in")
+    Hash(vitIn).last.poll(0, "hash-vitIn")
+
+    //    Frames(vitIn).poll(Metro(NumCandidates*NumCandidates), "vit-in")
 //    Length(vitIn).poll(0, "vit-in-length")
 
     val states    = Viterbi(add = vitIn, numStates = NumCandidates)
 
 //    Length(states).poll(0, "path-length")
-//    RepeatWindow(states).poll(Metro(2), "viterbi")
+    RepeatWindow(states).poll(Metro(2), "viterbi")
 
     val lagsSel   = WindowApply(BufferMemory(lags, numSteps * NumCandidates), size = NumCandidatesM, index = states,
       mode = 3)
@@ -156,7 +160,8 @@ object PitchTest extends App {
 //    Plot1D(freqsSel, size = numSteps)
 
 //    RepeatWindow(lagsSel).poll(Metro(2), "lags-sel")
-    RepeatWindow(freqsSel).poll(Metro(2), "path")
+//    RepeatWindow(freqsSel).poll(Metro(2), "path")
+//    freqsSel.last.poll(0, "last")
 
 //    val osc = Vector.tabulate(NumCandidates) { i =>
 //      val lag       = WindowApply(lags, NumCandidates, i)

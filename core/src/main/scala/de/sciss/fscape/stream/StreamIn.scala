@@ -14,6 +14,7 @@
 package de.sciss.fscape
 package stream
 
+import akka.NotUsed
 import akka.stream.Outlet
 import akka.stream.scaladsl.{GraphDSL, Sink}
 
@@ -375,12 +376,12 @@ object StreamOut {
 
     def toIn(numChildren: Int)(implicit b: stream.Builder): StreamIn = (numChildren: @switch) match {
       case 0 =>
-        implicit val dsl = b.dsl
+        implicit val dsl: GraphDSL.Builder[NotUsed] = b.dsl
         import GraphDSL.Implicits._
         peer ~> Sink.ignore
         StreamIn.unused
       case 1 => StreamIn.singleD(peer)
-      case n => StreamIn.multiD (peer, numChildren)
+      case _ => StreamIn.multiD (peer, numChildren)
     }
   }
 
@@ -389,12 +390,12 @@ object StreamOut {
 
     def toIn(numChildren: Int)(implicit b: stream.Builder): StreamIn = (numChildren: @switch) match {
       case 0 =>
-        implicit val dsl = b.dsl
+        implicit val dsl: GraphDSL.Builder[NotUsed] = b.dsl
         import GraphDSL.Implicits._
         peer ~> Sink.ignore
         StreamIn.unused
       case 1 => StreamIn.singleI(peer)
-      case n => StreamIn.multiI (peer, numChildren)
+      case _ => StreamIn.multiI (peer, numChildren)
     }
   }
 
@@ -403,12 +404,12 @@ object StreamOut {
 
     def toIn(numChildren: Int)(implicit b: stream.Builder): StreamIn = (numChildren: @switch) match {
       case 0 =>
-        implicit val dsl = b.dsl
+        implicit val dsl: GraphDSL.Builder[NotUsed] = b.dsl
         import GraphDSL.Implicits._
         peer ~> Sink.ignore
         StreamIn.unused
       case 1 => StreamIn.singleL(peer)
-      case n => StreamIn.multiL (peer, numChildren)
+      case _ => StreamIn.multiL (peer, numChildren)
     }
   }
 }

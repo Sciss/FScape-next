@@ -74,6 +74,11 @@ trait FilterIn1Impl[In >: Null <: BufLike, Out >: Null <: BufLike]
   new ProcessOutHandlerImpl(out0, this)
 }
 
+trait FilterIn1IImpl[In >: Null <: BufLike] extends FilterIn1Impl[In, BufI] with Out1IntImpl[FlowShape[In, BufI]] {
+
+  _: GraphStageLogic with Node =>
+}
+
 trait FilterIn1DImpl[In >: Null <: BufLike] extends FilterIn1Impl[In, BufD] with Out1DoubleImpl[FlowShape[In, BufD]] {
 
   _: GraphStageLogic with Node =>

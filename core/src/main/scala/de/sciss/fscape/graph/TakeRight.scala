@@ -28,9 +28,9 @@ final case class TakeRight(in: GE, length: GE) extends UGenSource.SingleOut {
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
     val Vec(in, length) = args
-    stream.TakeRight(in = in.toDouble, length = length.toInt)
+    val inE = in.toElem
+    import in.tpe
+    val out = stream.TakeRight[in.A, in.Buf](in = inE, length = length.toInt)
+    in.tpe.mkStreamOut(out)
   }
-
-  // XXX TODO --- remove in next major release
-  def len: GE = length
 }
