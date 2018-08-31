@@ -531,14 +531,14 @@ object Viterbi {
       val stageDone = writeRem == 0
       val flush     = stageDone && in0Ended && in1Ended
 
+
       if ((outOff0 == bufOut0.size || flush) && canWrite) {
         writeOuts(outOff0)
         stateChange = true
+        if (flush) completeStage()
       }
 
-      if (flush) {
-        completeStage()
-      } else if (stageDone) {
+      if (stageDone && !flush) {
         prepareStage0()
       }
 

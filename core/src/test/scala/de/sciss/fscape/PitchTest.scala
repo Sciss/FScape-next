@@ -29,12 +29,12 @@ object PitchTest extends App {
   lazy val g = Graph {
     import de.sciss.fscape.graph._
 //    val start       = 19932
-    val numFrames   = 200L * 2000 // 242239 // 48000 * 87 // specIn.numFrames
+//    val numFrames   = 200L * 2000 // 242239 // 48000 * 87 // specIn.numFrames
 //    val in          = AudioFileIn(file = fIn, numChannels = 1).drop(start).take(numFrames)
-//    val in0         = AudioFileIn(file = fIn, numChannels = 1)
-    val in0         = AudioFileIn(file = fIn, numChannels = 1).take(numFrames)
+    val in0         = AudioFileIn(file = fIn, numChannels = 1)
+//    val in0         = AudioFileIn(file = fIn, numChannels = 1).take(numFrames)
     val in = in0 // * 0.00000000001 + SinOsc(200.0/44100)
-//    val numFrames   = specIn.numFrames
+    val numFrames   = specIn.numFrames
 
     val MinimumPitch        =  60.0 // 100.0
     val MaximumPitch        = 300.0 // 1000.0
@@ -148,7 +148,7 @@ object PitchTest extends App {
 
     val states    = Viterbi(add = vitIn, numStates = NumCandidates)
 
-    Hash(states).last.poll(0, "hash-states")
+//    Hash(states).last.poll(0, "hash-states")
 
     //    Length(states).poll(0, "path-length")
 //    RepeatWindow(states).poll(Metro(2), "viterbi")
@@ -162,8 +162,8 @@ object PitchTest extends App {
 //    Plot1D(freqsSel, size = numSteps)
 
 //    RepeatWindow(lagsSel).poll(Metro(2), "lags-sel")
-//    RepeatWindow(freqsSel).poll(Metro(2), "path")
-    freqsSel.last.poll(0, "last")
+    RepeatWindow(freqsSel).poll(Metro(2), "path")
+//    freqsSel.last.poll(0, "last")
 
 //    val osc = Vector.tabulate(NumCandidates) { i =>
 //      val lag       = WindowApply(lags, NumCandidates, i)
@@ -183,7 +183,7 @@ object PitchTest extends App {
 
   val config = stream.Control.Config()
   config.useAsync = false
-  config.blockSize  = 1024 // 512 // 4096
+  config.blockSize  = 512 // 4096
   implicit val ctrl: stream.Control = stream.Control(config)
   ctrl.run(g)
 
