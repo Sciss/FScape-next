@@ -484,7 +484,7 @@ object Viterbi {
       val _path = new Array[Int](rem)
 
       rem -= 1
-      val _curr       = _deltaSeq(rem)
+      val _curr       = if (rem >= 0) _deltaSeq(rem) else null
       val _numStates  = numStates
       var maxVal      = Double.NegativeInfinity
       var pathIdx     = -1

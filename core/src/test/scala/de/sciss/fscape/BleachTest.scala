@@ -35,7 +35,7 @@ object BleachTest extends App {
   val config = Control.Config()
   config.useAsync = false
   var gui: SimpleGUI = _
-  config.progressReporter = rep => Swing.onEDT(gui.progress = rep.total)
+    config.progressReporter = rep => Swing.onEDT(gui.progress = rep.total)
   implicit val ctrl: Control = Control(config)
 
   Swing.onEDT {
