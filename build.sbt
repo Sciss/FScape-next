@@ -2,7 +2,7 @@ lazy val baseName   = "FScape"
 lazy val baseNameL  = baseName.toLowerCase
 lazy val githubRepo = "FScape-next"
 
-lazy val projectVersion = "2.17.3"
+lazy val projectVersion = "2.18.0-SNAPSHOT"
 lazy val mimaVersion    = "2.17.0"
 
 lazy val baseDescription = "An audio rendering library"
@@ -16,7 +16,8 @@ lazy val commonSettings = Seq(
   licenses           := Seq("AGPL v3+" -> url("http://www.gnu.org/licenses/agpl-3.0.txt")),
   homepage           := Some(url(s"https://github.com/Sciss/$githubRepo")),
   scalacOptions in (Compile, compile) ++= Seq("-deprecation", "-unchecked", "-feature", "-encoding", "utf8", "-Xfuture", "-Xlint"),
-  resolvers          += "Oracle Repository" at "http://download.oracle.com/maven"  // required for sleepycat
+  resolvers          += "Oracle Repository" at "http://download.oracle.com/maven",  // required for sleepycat
+  updateOptions      := updateOptions.value.withLatestSnapshots(false)
 ) ++ publishSettings
 
 lazy val deps = new {
@@ -32,11 +33,11 @@ lazy val deps = new {
   }
   val lucre = new {
     val fileCache       = "0.4.0"
-    val soundProcesses  = "3.21.2"
+    val soundProcesses  = "3.22.0-SNAPSHOT"
   }
   val test = new {
     val kollFlitz       = "0.2.2"
-    val lucre           = "3.9.0"
+    val lucre           = "3.9.1"
     val scalaTest       = "3.0.5"
     val scopt           = "3.7.0"
   }
