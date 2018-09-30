@@ -6,7 +6,7 @@ import de.sciss.fscape.lucre.FScape.Output
 import de.sciss.fscape.lucre.{Cache, FScape}
 import de.sciss.lucre.expr.DoubleVector
 import de.sciss.lucre.synth.InMemory
-import de.sciss.synth.proc.{GenContext, GenView}
+import de.sciss.synth.proc.{GenView, Universe}
 
 import scala.concurrent.stm.Ref
 import scala.util.{Failure, Success}
@@ -38,8 +38,7 @@ object DoubleVectorOutputTest extends App {
 
     val count = Ref(0)
 
-    import de.sciss.lucre.stm.WorkspaceHandle.Implicits.dummy
-    implicit val genCtx: GenContext[S] = GenContext[S]
+    implicit val universe: Universe[S] = Universe.dummy
 
     def mkView(out: Output[S], idx: Int): GenView[S] = {
       val view = GenView(out)

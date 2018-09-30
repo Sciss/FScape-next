@@ -3,10 +3,9 @@ package de.sciss.fscape
 import de.sciss.file._
 import de.sciss.fscape.lucre.FScape
 import de.sciss.lucre.artifact.{Artifact, ArtifactLocation}
-import de.sciss.lucre.stm.Durable
 import de.sciss.lucre.stm.store.BerkeleyDB
 import de.sciss.synth.io.{AudioFile, AudioFileSpec, AudioFileType, SampleFormat}
-import de.sciss.synth.proc.{GenContext, SoundProcesses}
+import de.sciss.synth.proc.{Durable, SoundProcesses, Universe}
 import org.scalatest.{Matchers, Outcome, fixture}
 
 import scala.concurrent.Await
@@ -53,8 +52,7 @@ class AudioFileOutSpec extends fixture.FlatSpec with Matchers {
       f.graph() = g
       val art = Artifact[S](ArtifactLocation.newConst(fOut.parent), fOut)
       f.attr.put("out", art)
-      import de.sciss.lucre.stm.WorkspaceHandle.Implicits._
-      implicit val gen: GenContext[S] = GenContext.apply
+      implicit val universe: Universe[S] = Universe.dummy
       f.run()
     }
 

@@ -7,13 +7,13 @@ import de.sciss.lucre.artifact.{Artifact, ArtifactLocation}
 import de.sciss.lucre.expr.IntObj
 import de.sciss.lucre.synth.InMemory
 import de.sciss.synth.io.AudioFile
-import de.sciss.synth.proc.GenContext
+import de.sciss.synth.proc.Universe
 
 import scala.util.{Failure, Success}
 
 object Test extends App {
-  implicit val cursor = InMemory()
-  type S              = InMemory
+  type S                  = InMemory
+  implicit val cursor: S  = InMemory()
 
 //  val tmp = File.createTemp()
   val tmpDir  = userHome / "Documents" / "temp"
@@ -43,11 +43,9 @@ object Test extends App {
     tx.newHandle(f)
   }
 
-  import de.sciss.lucre.stm.WorkspaceHandle.Implicits.dummy
-
   cursor.step { implicit tx =>
     val f = fH()
-    implicit val ctx = GenContext[S]
+    implicit val universe: Universe[S] = Universe.dummy
     val r = f.run()
     r.reactNow { implicit tx => state =>
       println(s"Rendering: $state")

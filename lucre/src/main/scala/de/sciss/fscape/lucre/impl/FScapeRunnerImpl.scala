@@ -22,7 +22,6 @@ import de.sciss.lucre.event.impl.ObservableImpl
 import de.sciss.lucre.stm.TxnLike.peer
 import de.sciss.lucre.stm.{Disposable, Obj, Sys}
 import de.sciss.lucre.{stm, synth}
-import de.sciss.synth.proc.Runner.Handler
 import de.sciss.synth.proc.impl.BasicRunnerImpl
 import de.sciss.synth.proc.{ObjViewBase, Runner, TimeRef}
 
@@ -41,10 +40,11 @@ object FScapeRunnerImpl extends Runner.Factory {
 
   def init(): Unit = _init
 
-  def mkRunner[S <: synth.Sys[S]](obj: FScape[S], h: Handler[S])(implicit tx: S#Tx): Runner[S] =
-    new Impl(tx.newHandle(obj), h)
+  def mkRunner[S <: synth.Sys[S]](obj: FScape[S])(implicit tx: S#Tx, universe: Runner.Universe[S]): Runner[S] =
+    new Impl(tx.newHandle(obj))
 
-  private final class Impl[S <: synth.Sys[S]](val objH: stm.Source[S#Tx, FScape[S]], val handler: Handler[S])
+  private final class Impl[S <: synth.Sys[S]](val objH: stm.Source[S#Tx, FScape[S]])
+                                             (implicit val universe: Runner.Universe[S])
     extends BasicRunnerImpl[S] with ObjViewBase[S, Unit] {
 
     private[this] val renderRef = Ref(Option.empty[Rendering[S]])
@@ -104,12 +104,12 @@ object FScapeRunnerImpl extends Runner.Factory {
 
     def run(timeRef: TimeRef.Option, target: Unit)(implicit tx: S#Tx): Unit = {
       val obj = objH()
-      import handler.genContext
       state = Runner.Running
       val cfg = Control.Config()
       cfg.progressReporter = { p =>
         progress.push(p.total)
       }
+      import universe.genContext
       val r: Rendering[S] = obj.run(cfg)
       renderRef.swap(Some(r)).foreach(_.dispose())
       obsRef   .swap(Disposable.empty) .dispose()

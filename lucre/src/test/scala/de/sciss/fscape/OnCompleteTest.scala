@@ -4,15 +4,14 @@ import de.sciss.fscape.lucre.FScape
 import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.synth.InMemory
 import de.sciss.synth.proc
-import de.sciss.synth.proc.Action.Universe
-import de.sciss.synth.proc.GenContext
+import de.sciss.synth.proc.Universe
 
 object OnCompleteTest extends App {
   type S                  = InMemory
   implicit val cursor: S  = InMemory()
 
   val body: proc.Action.Body = new proc.Action.Body {
-    def apply[T <: Sys[T]](universe: Universe[T])(implicit tx: T#Tx): Unit =
+    def apply[T <: Sys[T]](universe: proc.Action.Universe[T])(implicit tx: T#Tx): Unit =
       tx.afterCommit {
         println(s"Completed: ${universe.value}")
         sys.exit()
@@ -38,8 +37,7 @@ object OnCompleteTest extends App {
     val a = proc.Action.predef[S]("bang")
     f.attr.put("action", a)
     f.graph() = g
-    import de.sciss.lucre.stm.WorkspaceHandle.Implicits.dummy
-    implicit val ctx = GenContext[S]
+    implicit val universe: Universe[S] = Universe.dummy
     f.run()
   }
 }

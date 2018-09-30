@@ -8,14 +8,14 @@
 
 An audio rendering (offline signal processing) library. Although not optimised for it, it can also be used to
 process still images and image sequences (aka videos). This project should eventually become the next major version of
-[FScape](https://github.com/Sciss/FScape), an experimental music and sound signal processing workbench. As of
+[FScape](https://git.iem.at/sciss/FScape), an experimental music and sound signal processing workbench. As of
 this writing, the library is still experimental (although very useful, and I have used it in several projects).
-It has basic integration with [Mellite](http://sciss.github.io/Mellite/), but since Mellite does not yet offer
+It has basic integration with [Mellite](http://sciss.de/mellite/), but since Mellite does not yet offer
 "widget programs", it currently does not replace FScape (version 1) yet.
 
 FScape(-next) is (C)opyright 2001&ndash;2018 by Hanns Holger Rutz. All rights reserved.
 This program is free software; you can redistribute it and/or modify it under the terms 
-of the [GNU Affero General Public License](http://github.com/Sciss/FScape-next/blob/master/LICENSE) v3+.
+of the [GNU Affero General Public License](https://git.iem.at/sciss/FScape-next/raw/master/LICENSE) v3+.
 To contact the author, send an email to `contact at sciss.de`.
 
 FScape contains code adapted from Praat by Paul Boersma and David Weenink, published under the 
@@ -49,12 +49,12 @@ The goals of this project are:
 - completely separate GUI and processes
 - move from Java to Scala
 - reformulate modules as a graph of small modular DSP blocks
-- DSP blocks are modelled as UGens similar to those in [ScalaCollider](https://github.com/Sciss/ScalaCollider),
+- DSP blocks are modelled as UGens similar to those in [ScalaCollider](https://git.iem.at/sciss/ScalaCollider),
   with the crucial difference that in FScape processes run in non-realtime and usually will have a bounded duration
 - currently UGens graphs will be translated into an Akka Stream graph, hopefully providing a robust
   streaming API and the possibility to customise parallelism
 - provide a simple DSL similar to ScalaCollider for users to write their own DSP graphs
-- integrate these graphs into [Mellite](https://github.com/Sciss/Mellite)
+- integrate these graphs into [Mellite](https://git.iem.at/sciss/Mellite)
 
 FScape (v2) provides a set of unit generators in the package `de.sciss.fscape.graph` which roughly follow the
 idea of UGens in ScalaCollider. Or more precisely, the building blocks are of type `GE` or _graph element_.
@@ -73,7 +73,7 @@ the window size, a dynamic signal could be used instead of the constant.
 
 ## example
 
-The following [program](https://github.com/Sciss/FScape-next/blob/master/core/src/test/scala/de/sciss/fscape/ConstQTest.scala)
+The following [program](https://git.iem.at/sciss/FScape-next/blob/master/core/src/test/scala/de/sciss/fscape/ConstQTest.scala)
 reads in a monophonic sound file and outputs a logarithmic gray scale sonogram PNG image:
 
 ```scala
@@ -137,12 +137,12 @@ ImageFileOut(file = fOut, spec = specOut, in = Seq(rotImg.out(0), rotImg.out(1),
 ```
 
 For more examples, browse the 'test' sources. Also see
-the [API Documentation](http://sciss.github.io/Mellite/latest/api/de/sciss/fscape/).
+the [API Documentation](http://sciss.de/mellite/latest/api/de/sciss/fscape/).
 
 ## notes
 
 - early blog post: https://sciss.github.io/rethinking-fscape/
-- future versions may take some lessons from the [Patterns](https://github.com/Sciss/Patterns) project, namely
+- future versions may take some lessons from the [Patterns](https://git.iem.at/sciss/Patterns) project, namely
   to use typed streams instead of the opaque `GE`. Currently, `GE` can "hide" different element types such as
   `Double`, `Int`, `Long`. This may create confusing behaviour with regard to some arithmetic operators, and also
   it makes it unclear what the underlying type may be. Secondly, the notion of _resettable_ programs is introduced

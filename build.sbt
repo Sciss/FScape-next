@@ -1,9 +1,9 @@
 lazy val baseName   = "FScape"
 lazy val baseNameL  = baseName.toLowerCase
-lazy val githubRepo = "FScape-next"
+lazy val gitRepo    = "FScape-next"
 
 lazy val projectVersion = "2.18.0-SNAPSHOT"
-lazy val mimaVersion    = "2.17.0"
+lazy val mimaVersion    = "2.18.0"
 
 lazy val baseDescription = "An audio rendering library"
 
@@ -11,11 +11,13 @@ lazy val commonSettings = Seq(
   organization       := "de.sciss",
   description        := baseDescription,
   version            := projectVersion,
-  scalaVersion       := "2.12.6",
-  crossScalaVersions := Seq("2.12.6", "2.11.12"),
+  scalaVersion       := "2.12.7",
+  crossScalaVersions := Seq("2.12.7", "2.11.12"),
   licenses           := Seq("AGPL v3+" -> url("http://www.gnu.org/licenses/agpl-3.0.txt")),
-  homepage           := Some(url(s"https://github.com/Sciss/$githubRepo")),
-  scalacOptions in (Compile, compile) ++= Seq("-deprecation", "-unchecked", "-feature", "-encoding", "utf8", "-Xfuture", "-Xlint"),
+  homepage           := Some(url(s"https://git.iem.at/sciss/$gitRepo")),
+  scalacOptions in (Compile, compile) ++= Seq(
+    "-deprecation", "-unchecked", "-feature", "-encoding", "utf8", "-Xfuture", "-Xlint", "-Xsource:2.13"
+  ),
   resolvers          += "Oracle Repository" at "http://download.oracle.com/maven",  // required for sleepycat
   updateOptions      := updateOptions.value.withLatestSnapshots(false)
 ) ++ publishSettings
@@ -136,8 +138,8 @@ lazy val publishSettings = Seq(
   pomIncludeRepository := { _ => false },
   pomExtra := {
 <scm>
-  <url>git@github.com:Sciss/{githubRepo}.git</url>
-  <connection>scm:git:git@github.com:Sciss/{githubRepo}.git</connection>
+  <url>git@git.iem.at:sciss/{gitRepo}.git</url>
+  <connection>scm:git:git@git.iem.at:sciss/{gitRepo}.git</connection>
 </scm>
 <developers>
   <developer>

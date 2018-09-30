@@ -5,8 +5,7 @@ import de.sciss.fscape.stream.Cancelled
 import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.synth.InMemory
 import de.sciss.synth.proc
-import de.sciss.synth.proc.Action.Universe
-import de.sciss.synth.proc.GenContext
+import de.sciss.synth.proc.Universe
 
 import scala.util.{Failure, Success}
 
@@ -17,7 +16,7 @@ object ActionTest extends App {
   var r: FScape.Rendering[S] = _
 
   val body: proc.Action.Body = new proc.Action.Body {
-    def apply[T <: Sys[T]](universe: Universe[T])(implicit tx: T#Tx): Unit = {
+    def apply[T <: Sys[T]](universe: proc.Action.Universe[T])(implicit tx: T#Tx): Unit = {
       tx.afterCommit(println("Bang!"))
       assert(tx.system == cursor)
       val stx = tx.asInstanceOf[S#Tx]
@@ -41,11 +40,9 @@ object ActionTest extends App {
     tx.newHandle(f)
   }
 
-  import de.sciss.lucre.stm.WorkspaceHandle.Implicits.dummy
-
   cursor.step { implicit tx =>
     val f = fH()
-    implicit val ctx: GenContext[S] = GenContext.apply
+    implicit val universe: Universe[S] = Universe.dummy
     r = f.run()
     r.reactNow { implicit tx => state =>
       println(s"Rendering: $state")

@@ -21,10 +21,11 @@ import de.sciss.lucre.data.SkipList
 import de.sciss.lucre.event.Targets
 import de.sciss.lucre.stm.impl.ObjSerializer
 import de.sciss.lucre.stm.{Copy, Elem, NoSys, Obj, Sys}
+import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.lucre.{event => evt}
 import de.sciss.serial.{DataInput, DataOutput, Serializer}
 import de.sciss.synth.proc.impl.CodeImpl
-import de.sciss.synth.proc.{GenContext, GenView}
+import de.sciss.synth.proc.{GenContext, GenView, Universe}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
@@ -77,9 +78,10 @@ object FScapeImpl {
 
     type Repr[~ <: Sys[~]] = Output[~]
 
-    def apply[S <: Sys[S]](output: Output[S])(implicit tx: S#Tx, context: GenContext[S]): GenView[S] = {
+    def apply[S <: SSys[S]](output: Output[S])(implicit tx: S#Tx, universe: Universe[S]): GenView[S] = {
       val _fscape = output.fscape
-      val fscView = context.acquire[Rendering[S]](_fscape) {
+      import universe.genContext
+      val fscView = genContext.acquire[Rendering[S]](_fscape) {
         RenderingImpl(_fscape, config, force = false)
       }
       OutputGenView(config, output, fscView)
@@ -95,7 +97,7 @@ object FScapeImpl {
 
     // --- rendering ---
 
-    final def run(config: Control.Config)(implicit tx: S#Tx, context: GenContext[S]): Rendering[S] =
+    final def run(config: Control.Config)(implicit tx: S#Tx, universe: Universe[S]): Rendering[S] =
       Rendering(this, config)
   }
 

@@ -7,7 +7,7 @@ import de.sciss.lucre.expr.IntObj
 import de.sciss.lucre.synth.InMemory
 import de.sciss.synth
 import de.sciss.synth.SynthGraph
-import de.sciss.synth.proc.{AudioCue, AuralSystem, GenView, Proc, Transport}
+import de.sciss.synth.proc.{AudioCue, GenView, Proc, Transport, Universe}
 
 object FeedIntoAuralProcTest extends App {
   type S                  = InMemory
@@ -19,9 +19,7 @@ object FeedIntoAuralProcTest extends App {
   folder.mkdir()
   Cache.init(folder = folder, capacity = Limit())
 
-  val as = AuralSystem()
-
-  def run()(implicit tx: S#Tx): Unit = {
+  def run()(implicit tx: S#Tx, universe: Universe[S]): Unit = {
     val f   = FScape[S]
     val gF  = Graph {
       import graph._
@@ -35,9 +33,6 @@ object FeedIntoAuralProcTest extends App {
     val outNoise  = f.outputs.add("noise", AudioCue.Obj)
     val outMax    = f.outputs.add("max"  , IntObj)
     f.graph() = gF
-
-    import de.sciss.lucre.stm.WorkspaceHandle.Implicits.dummy
-//    implicit val genCtx = GenContext[S]
 
     val p = Proc[S]
     val gP = SynthGraph {
@@ -58,12 +53,14 @@ object FeedIntoAuralProcTest extends App {
     p.attr.put("noise", outNoise)
     p.attr.put("max"  , outMax  )
 
-    val t = Transport[S](as)
+    val t = Transport[S](universe)
     t.addObject(p)
     t.play()
   }
 
   cursor.step { implicit tx =>
+    implicit val universe: Universe[S] = Universe.dummy
+    val as = universe.auralSystem
     as.whenStarted { _ =>
       cursor.step { implicit tx =>
         println("Run.")

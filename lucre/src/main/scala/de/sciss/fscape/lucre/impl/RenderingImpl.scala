@@ -25,8 +25,9 @@ import de.sciss.fscape.stream.Control
 import de.sciss.lucre.event.impl.{DummyObservableImpl, ObservableImpl}
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Disposable, Obj, Sys, TxnLike}
+import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer}
-import de.sciss.synth.proc.{GenContext, GenView}
+import de.sciss.synth.proc.{GenContext, GenView, Universe}
 
 import scala.concurrent.{Future, Promise}
 import scala.concurrent.stm.{Ref, TMap, atomic}
@@ -43,8 +44,8 @@ object RenderingImpl {
     * @param force      if `true`, always renders even if there are no
     *                   outputs.
     */
-  def apply[S <: Sys[S]](fscape: FScape[S], config: Control.Config, force: Boolean)
-                        (implicit tx: S#Tx, context: GenContext[S]): Rendering[S] = {
+  def apply[S <: SSys[S]](fscape: FScape[S], config: Control.Config, force: Boolean)
+                        (implicit tx: S#Tx, universe: Universe[S]): Rendering[S] = {
     val ugbCtx = new UGenGraphBuilderContextImpl.Default(fscape)
     apply(fscape, ugbCtx, config, force = force)
   }
@@ -73,9 +74,9 @@ object RenderingImpl {
     */
   def apply[S <: Sys[S]](fscape: FScape[S], ugbContext: UGenGraphBuilder.Context[S], config: Control.Config,
                          force: Boolean)
-                       (implicit tx: S#Tx, context: GenContext[S]): Rendering[S] = {
-    import context.{cursor, workspace}
+                       (implicit tx: S#Tx, universe: Universe[S]): Rendering[S] = {
     implicit val control: Control = Control(config)
+    import universe.{cursor, workspace}
     val uState = UGenGraphBuilder.build(ugbContext, fscape)
     withState(uState, force = force)
   }

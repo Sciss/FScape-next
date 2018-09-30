@@ -17,19 +17,22 @@ package impl
 
 import de.sciss.fscape.lucre.UGenGraphBuilder.Input
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{Sys, WorkspaceHandle}
+import de.sciss.lucre.stm.Sys
 import de.sciss.synth.proc
-import de.sciss.synth.proc.SoundProcesses
+import de.sciss.synth.proc.{SoundProcesses, Universe}
 
 final class ActionRefImpl[S <: Sys[S]](val key: String,
                                        fH: stm.Source[S#Tx, FScape[S]], aH: stm.Source[S#Tx, proc.Action[S]])
-                                      (implicit cursor: stm.Cursor[S], workspace: WorkspaceHandle[S])
+                                      (implicit universe: Universe[S])
   extends Input.Action.Value {
 
-  def execute(value: Any): Unit = SoundProcesses.atomic[S, Unit] { implicit tx =>
-    val f = fH()
-    val a = aH()
-    val u = proc.Action.Universe(self = a, workspace = workspace, invoker = Some(f), value = value)
-    a.execute(u)
+  def execute(value: Any): Unit = {
+    import universe.cursor
+    SoundProcesses.atomic[S, Unit] { implicit tx =>
+      val f = fH()
+      val a = aH()
+      val u = proc.Action.Universe(self = a, invoker = Some(f), value = value)
+      a.execute(u)
+    }
   }
 }
