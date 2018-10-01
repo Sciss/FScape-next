@@ -22,7 +22,7 @@ import de.sciss.fscape.lucre.UGenGraphBuilder.OutputRef
 import de.sciss.fscape.stream
 import de.sciss.fscape.stream.StreamIn
 import de.sciss.lucre.expr.DoubleVector
-import de.sciss.lucre.stm.{Obj, Sys, WorkspaceHandle}
+import de.sciss.lucre.stm.{Obj, Sys, Workspace}
 import de.sciss.serial.{DataInput, Serializer}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -48,7 +48,7 @@ final case class MkDoubleVector(key: String, in: GE) extends Lazy.Expander[Unit]
 
   def tpe: Obj.Type = DoubleVector
 
-  def readOutput[S <: Sys[S]](in: DataInput)(implicit tx: S#Tx, workspace: WorkspaceHandle[S]): Obj[S] = {
+  def readOutput[S <: Sys[S]](in: DataInput)(implicit tx: S#Tx, workspace: Workspace[S]): Obj[S] = {
     val flat = DoubleVector.valueSerializer.read(in)
     DoubleVector.newConst(flat)
   }

@@ -23,7 +23,7 @@ import de.sciss.fscape.lucre.graph.Attribute
 import de.sciss.fscape.lucre.impl.{AbstractOutputRef, AbstractUGenGraphBuilder, OutputImpl}
 import de.sciss.fscape.stream.Control
 import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{Sys, WorkspaceHandle}
+import de.sciss.lucre.stm.{Sys, Workspace}
 import de.sciss.serial.DataInput
 import de.sciss.synth.UGenSource.Vec
 
@@ -36,8 +36,8 @@ object UGenGraphBuilder {
     case _ => sys.error("Out of context expansion")
   }
 
-  def build[S <: Sys[S]](context: Context[S], f: FScape[S])(implicit tx: S#Tx, cursor: stm.Cursor[S],
-                                                            workspace: WorkspaceHandle[S],
+  def build[S <: Sys[S]](context: Context[S], f: FScape[S])(implicit tx: S#Tx,
+                                                            workspace: Workspace[S],
                                                             ctrl: Control): State[S] = {
     val b = new BuilderImpl(context, f)
     val g = f.graph.value
@@ -45,12 +45,12 @@ object UGenGraphBuilder {
   }
 
 //  def build[S <: Sys[S]](context: Context[S], g: Graph)(implicit tx: S#Tx, cursor: stm.Cursor[S],
-//                                                        workspace: WorkspaceHandle[S],
+//                                                        workspace: Workspace[S],
 //                                                        ctrl: Control): State[S] =
 //    buildOpt[S](context, None, g)
 //
 //  private def buildOpt[S <: Sys[S]](context: Context[S], fOpt: Option[FScape[S]], g: Graph)
-//                                   (implicit tx: S#Tx, workspace: WorkspaceHandle[S],
+//                                   (implicit tx: S#Tx, workspace: Workspace[S],
 //                                    ctrl: Control): State[S] = {
 //    val b = new BuilderImpl(context, fOpt)
 //    b.tryBuild(g)
@@ -387,7 +387,7 @@ object UGenGraphBuilder {
 
   private final class BuilderImpl[S <: Sys[S]](protected val context: Context[S], fscape: FScape[S])
                                               (implicit tx: S#Tx, // cursor: stm.Cursor[S],
-                                               workspace: WorkspaceHandle[S])
+                                               workspace: Workspace[S])
     extends AbstractUGenGraphBuilder[S] { builder =>
 
     protected def requestOutputImpl(reader: Output.Reader): Option[OutputResult[S]] = {
@@ -401,7 +401,7 @@ object UGenGraphBuilder {
 
   private final class OutputRefImpl[S <: Sys[S]](val reader: Output.Reader,
                                                  outputH: stm.Source[S#Tx, OutputImpl[S]])
-                                                (implicit workspace: WorkspaceHandle[S])
+                                                (implicit workspace: Workspace[S])
     extends AbstractOutputRef[S] {
 
     def updateValue(in: DataInput)(implicit tx: S#Tx): scala.Unit = {

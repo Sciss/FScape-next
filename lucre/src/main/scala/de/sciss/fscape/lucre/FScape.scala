@@ -17,7 +17,7 @@ package lucre
 import de.sciss.fscape.lucre.impl.{FScapeRunnerImpl, OutputImpl, UGenGraphBuilderContextImpl, FScapeImpl => Impl}
 import de.sciss.fscape.stream.Control
 import de.sciss.lucre.event.{Observable, Publisher}
-import de.sciss.lucre.stm.{Disposable, Obj, Sys, WorkspaceHandle}
+import de.sciss.lucre.stm.{Disposable, Obj, Sys, Workspace}
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.serial.{DataInput, Serializer}
 import de.sciss.synth.proc
@@ -172,7 +172,7 @@ object FScape extends Obj.Type {
       def key: String
       def tpe: Obj.Type
 
-      def readOutput[S <: Sys[S]](in: DataInput)(implicit tx: S#Tx, workspace: WorkspaceHandle[S]): Obj[S]
+      def readOutput[S <: Sys[S]](in: DataInput)(implicit tx: S#Tx, workspace: Workspace[S]): Obj[S]
     }
 
     type Writer = de.sciss.serial.Writable
