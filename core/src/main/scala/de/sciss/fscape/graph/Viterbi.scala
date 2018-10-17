@@ -27,10 +27,10 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * The output is the sequence of state indices (from zero inclusive to
   * `numStates` exclusive).
   *
-  * '''Note:''' This UGen must run until `numFrames` or the inputs exhausted,
-  * before it can being outputting values.
+  * '''Note:''' This UGen must run until `numFrames` or the inputs are exhausted,
+  * before it can begin outputting values.
   *
-  * This implementation if generalized in the sense that instead of the canonical
+  * This implementation is generalized in the sense that instead of the canonical
   * matrices "sequences of observations", "initial probabilities", "transition matrix",
   * and "emission matrix", it takes two large matrices `mul` and `add` that contain
   * the equivalent information. These two matrices allow the UGen to operate in two
