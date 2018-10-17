@@ -130,6 +130,7 @@ object SegModPhasor {
         if (isInAvailable(shape.in0)) {
           freeInputBuffer0()
           bufIn0      = grab(shape.in0)
+          tryPull(shape.in0)
           inOff0      = 0
           inRemain0   = bufIn0.size
           inValid0    = true
@@ -142,6 +143,7 @@ object SegModPhasor {
       if (inRemain1 == 0 && isInAvailable(shape.in1)) {
         freeInputBuffer1()
         bufIn1      = grab(shape.in1)
+        tryPull(shape.in1)
         inOff1      = 0
         inRemain1   = bufIn1.size
         inValid1    = true
@@ -161,6 +163,7 @@ object SegModPhasor {
 
       if (outRemain == 0 && canWrite) {
         writeOuts(outOff)
+        outOff      = 0
         stateChange = true
       }
 

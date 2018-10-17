@@ -25,16 +25,18 @@ object SegModPhasorTest extends App {
 
   val g = Graph {
     import graph._
-    val periods = Vector(
-      1024, 1024,
-      1024,
+    val periods = Vector.fill(1200)(2)
+//    val periods = Vector(
+//      1024, 512, // 1024,
 //      1024,
-//      1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 618, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024
-    )
+////      1024,
+////      1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 618, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024
+//    )
     val freqN   = ValueDoubleSeq(periods.map(1.0 / _): _*)
     val phase0  = 0.25
     val sh      = SegModPhasor(freqN, phase0)
     val sig     = sh // ((sh + phase0) * (2 * math.Pi)).sin  // sine
+//    val sig     = (sh * (2 * math.Pi)).sin  // sine
     /* val frames  = */ AudioFileOut(sig, file("/data/temp/foo.aif"), AudioFileSpec(numChannels = 1, sampleRate = 44100))
     // Progress(frames / periods.last, Metro(44100))
   }
