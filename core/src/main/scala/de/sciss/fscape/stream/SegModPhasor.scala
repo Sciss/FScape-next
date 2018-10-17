@@ -123,6 +123,7 @@ object SegModPhasor {
 
     @tailrec
     def process(): Unit = {
+      logStream(s"process() $this")
       var stateChange = false
 
       if (inRemain0 == 0) {
@@ -156,11 +157,11 @@ object SegModPhasor {
 
       if (inValid && outRemain > 0) {
         stateChange |= processChunk()
+      }
 
-        if (outRemain == 0 && canWrite) {
-          writeOuts(outOff)
-          stateChange = true
-        }
+      if (outRemain == 0 && canWrite) {
+        writeOuts(outOff)
+        stateChange = true
       }
 
       if (stateChange) process()

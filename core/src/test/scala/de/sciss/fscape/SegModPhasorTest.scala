@@ -34,13 +34,16 @@ object SegModPhasorTest extends App {
     val freqN   = ValueDoubleSeq(periods.map(1.0 / _): _*)
     val phase0  = 0.25
     val sh      = SegModPhasor(freqN, phase0)
-    val sig     = ((sh + phase0) * (2 * math.Pi)).sin  // sine
-    val frames  = AudioFileOut(sig, file("/data/temp/foo.aif"), AudioFileSpec(numChannels = 1, sampleRate = 44100))
-    Progress(frames / periods.last, Metro(44100))
+    val sig     = sh // ((sh + phase0) * (2 * math.Pi)).sin  // sine
+    /* val frames  = */ AudioFileOut(sig, file("/data/temp/foo.aif"), AudioFileSpec(numChannels = 1, sampleRate = 44100))
+    // Progress(frames / periods.last, Metro(44100))
   }
   val cfg = stream.Control.Config()
   cfg.useAsync = false
   val ctl = stream.Control(cfg)
+
+  de.sciss.fscape.showStreamLog = true
+
   ctl.run(g)
   Swing.onEDT {
     SimpleGUI(ctl)
