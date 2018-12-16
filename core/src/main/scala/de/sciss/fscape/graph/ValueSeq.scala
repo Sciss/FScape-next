@@ -16,7 +16,6 @@ package graph
 
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
-import scala.collection.breakOut
 import scala.collection.immutable.{IndexedSeq => Vec}
 
 /** Loops the given values. */
@@ -29,15 +28,15 @@ object ValueSeq {
 /** Loops the given values. */
 final case class ValueIntSeq(elems: Int*) extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
-    makeUGen(elems.map(x => x: UGenIn)(breakOut))
+    makeUGen(elems.iterator.map(x => x: UGenIn).toIndexedSeq)
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
     UGen.SingleOut(this, args)
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
-    val elems: Array[Int] = args.collect {
+    val elems: Array[Int] = args.iterator.collect {
       case c: ConstantI => c.value
-    } (breakOut)
+    } .toArray
 
     stream.ValueSeq.int(elems)
   }
@@ -46,15 +45,15 @@ final case class ValueIntSeq(elems: Int*) extends UGenSource.SingleOut {
 /** Loops the given values. */
 final case class ValueLongSeq(elems: Long*) extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
-    makeUGen(elems.map(x => x: UGenIn)(breakOut))
+    makeUGen(elems.iterator.map(x => x: UGenIn).toIndexedSeq)
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
     UGen.SingleOut(this, args)
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
-    val elems: Array[Long] = args.collect {
+    val elems: Array[Long] = args.iterator.collect {
       case c: ConstantL => c.value
-    } (breakOut)
+    } .toArray
 
     stream.ValueSeq.long(elems)
   }
@@ -63,15 +62,15 @@ final case class ValueLongSeq(elems: Long*) extends UGenSource.SingleOut {
 /** Loops the given values. */
 final case class ValueDoubleSeq(elems: Double*) extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
-    makeUGen(elems.map(x => x: UGenIn)(breakOut))
+    makeUGen(elems.iterator.map(x => x: UGenIn).toIndexedSeq)
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
     UGen.SingleOut(this, args)
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
-    val elems: Array[Double] = args.collect {
+    val elems: Array[Double] = args.iterator.collect {
       case c: ConstantD => c.value
-    } (breakOut)
+    } .toArray
 
     stream.ValueSeq.double(elems)
   }

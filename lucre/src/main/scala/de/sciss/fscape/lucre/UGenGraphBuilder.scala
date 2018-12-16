@@ -27,7 +27,6 @@ import de.sciss.lucre.stm.{Sys, Workspace}
 import de.sciss.serial.DataInput
 import de.sciss.synth.UGenSource.Vec
 
-import scala.collection.breakOut
 import scala.util.control.ControlThrowable
 
 object UGenGraphBuilder {
@@ -145,11 +144,11 @@ object UGenGraphBuilder {
 
     override def toString: String = {
       val acceptedS = {
-        val keys: List[String] = acceptedInputs.keys.map(_.toString)(breakOut)
+        val keys: List[String] = acceptedInputs.keysIterator.map(_.toString).toList
         keys.sorted.mkString(s"accepted: [", ", ", "], ")
       }
       val rejectedS = if (isComplete) "" else {
-        val keys: List[String] = rejectedInputs.map(_.toString)(breakOut)
+        val keys: List[String] = rejectedInputs.iterator.map(_.toString).toList
         keys.sorted.mkString(s"rejected: [", ", ", "], ")
       }
       val outputsS = {

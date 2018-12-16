@@ -1,7 +1,7 @@
 package akka.stream.sciss
 
-import akka.stream.Materializer
-import akka.stream.impl.{ActorMaterializerImpl, StreamSupervisor}
+import akka.stream.impl.StreamSupervisor
+import akka.stream.{ActorMaterializer, Materializer}
 import akka.testkit.TestProbe
 
 object Util {
@@ -11,7 +11,7 @@ object Util {
     */
   def debugDotGraph()(implicit mat: Materializer): Unit =
     mat match {
-      case impl: ActorMaterializerImpl ⇒
+      case impl: ActorMaterializer => // ActorMaterializerImpl ⇒
         val probe = TestProbe()(impl.system)
         impl.supervisor.tell(StreamSupervisor.GetChildren, probe.ref)
         val children = probe.expectMsgType[StreamSupervisor.Children].children

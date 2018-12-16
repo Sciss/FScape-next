@@ -51,7 +51,7 @@ object StreamIn {
   }
 
   object DoubleType extends StreamType[Double, BufD] {
-    val ordering: Ordering[Double] = Ordering.Double
+    val ordering: Ordering[Double] = implicitly[Ordering[Double]] // Ordering.Double
 
     final def mkStreamOut(out: OutD): StreamOut = out
 

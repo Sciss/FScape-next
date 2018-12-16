@@ -17,9 +17,8 @@ import akka.NotUsed
 import akka.stream.ClosedShape
 import akka.stream.scaladsl.{GraphDSL, RunnableGraph}
 import de.sciss.fscape.graph.{Constant, UGenProxy}
-import de.sciss.fscape.stream.StreamIn
+import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
-import scala.collection.breakOut
 import scala.collection.immutable.{IndexedSeq => Vec}
 
 object UGenGraph {
@@ -86,10 +85,10 @@ object UGenGraph {
       var ugenOutMap = Map.empty[IndexedUGenBuilder, Array[StreamIn]]
 
       ugens.foreach { iu =>
-        val args: Vec[StreamIn] = iu.inputIndices.map {
+        val args: Vec[StreamIn] = iu.inputIndices.iterator.map {
           case c: ConstantIndex   => c.peer
           case u: UGenProxyIndex  => ugenOutMap(u.iu)(u.outIdx)
-        } (breakOut)
+        } .toIndexedSeq
 
         @inline def add(value: Array[StreamIn]): Unit = {
           // println(s"map += $iu -> ${value.mkString("[", ", ", "]")}")
@@ -104,11 +103,11 @@ object UGenGraph {
             add(value)
 
           case ugen: UGen.MultiOut  =>
-            val outs  = ugen.source.makeStream(args)
-            val value = outs.zipWithIndex.map { case (out, outIdx) =>
+            val outs: Vec[StreamOut] = ugen.source.makeStream(args)
+            val value: Array[StreamIn] = outs.iterator.zipWithIndex.map { case (out, outIdx) =>
               val numChildren = iu.children(outIdx).size
               out.toIn(numChildren)
-            } (breakOut) : Array[StreamIn]
+            } .toArray
             add(value)
 
           case ugen: UGen.ZeroOut   =>
@@ -131,9 +130,9 @@ object UGenGraph {
       new IndexedUGenBuilder(ugen, eff)
     }
 
-    val ugenMap: Map[AnyRef, IndexedUGenBuilder] = indexedUGens.map(iu => (iu.ugen, iu))(breakOut)
+    val ugenMap: Map[AnyRef, IndexedUGenBuilder] = indexedUGens.iterator.map(iu => (iu.ugen, iu)).toMap
     indexedUGens.foreach { iu =>
-      iu.inputIndices = iu.ugen.inputs.map {
+      iu.inputIndices = iu.ugen.inputs.iterator.map {
         case c: Constant =>
           new ConstantIndex(c)
 
@@ -141,7 +140,7 @@ object UGenGraph {
           val iui = ugenMap(up.ugen)
           iui.children(up.outputIndex) ::= iu
           new UGenProxyIndex(iui, up.outputIndex)
-      } (breakOut)
+      } .toList
       if (iu.effective) iu.inputIndices.foreach(numIneffective -= _.makeEffective())
     }
     val filtered: Vec[IndexedUGenBuilder] =

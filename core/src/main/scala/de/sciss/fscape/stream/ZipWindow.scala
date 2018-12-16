@@ -19,7 +19,6 @@ import akka.stream.{Attributes, Inlet, Outlet}
 import de.sciss.fscape.stream.impl.{StageImpl, NodeImpl}
 
 import scala.annotation.tailrec
-import scala.collection.breakOut
 import scala.collection.immutable.{Seq => ISeq}
 
 /** Zips two signals into one based on a window length. */
@@ -56,13 +55,13 @@ object ZipWindowN {
     override def deepCopy(): Shape =
       Shape(inputs.map(_.carbonCopy()), size.carbonCopy(), out.carbonCopy())
 
-    override def copyFromPorts(inlets: ISeq[Inlet[_]], outlets: ISeq[Outlet[_]]): Shape = {
-      require(inlets .size == this.inlets .size, s"number of inlets [${inlets.size}] does not match [${this.inlets.size}]")
-      require(outlets.size == this.outlets.size, s"number of outlets [${outlets.size}] does not match [${this.outlets.size}]")
-      val init = inlets.init.asInstanceOf[ISeq[Inlet[BufD]]]
-      val last = inlets.last.asInstanceOf[Inlet[BufI]]
-      Shape(init, last, outlets.head.asInstanceOf[OutD])
-    }
+//    override def copyFromPorts(inlets: ISeq[Inlet[_]], outlets: ISeq[Outlet[_]]): Shape = {
+//      require(inlets .size == this.inlets .size, s"number of inlets [${inlets.size}] does not match [${this.inlets.size}]")
+//      require(outlets.size == this.outlets.size, s"number of outlets [${outlets.size}] does not match [${this.outlets.size}]")
+//      val init = inlets.init.asInstanceOf[ISeq[Inlet[BufD]]]
+//      val last = inlets.last.asInstanceOf[Inlet[BufI]]
+//      Shape(init, last, outlets.head.asInstanceOf[OutD])
+//    }
   }
 
   private final class Stage(numInputs: Int)(implicit ctrl: Control) extends StageImpl[Shape]("ZipWindow") {
@@ -90,7 +89,7 @@ object ZipWindowN {
 
     private[this] var isNextWindow      = true
 
-    private[this] val inputs: Array[Input]  = shape.inputs.map(new Input(_))(breakOut)
+    private[this] val inputs: Array[Input]  = shape.inputs.iterator.map(new Input(_)).toArray
 
     private[this] val numInputs             = inputs.length
     private[this] var inIndex               = numInputs - 1

@@ -19,7 +19,7 @@ import akka.stream.{Attributes, Inlet, Outlet}
 import de.sciss.fscape.stream.impl.{StageImpl, NodeImpl}
 
 import scala.annotation.tailrec
-import scala.collection.breakOut
+import scala.collection.{Seq => SSeq}
 import scala.collection.immutable.{IndexedSeq => Vec, Seq => ISeq}
 
 /** Unzips a signal into two based on a window length. */
@@ -29,7 +29,7 @@ object UnzipWindow {
     * @param size   the window size. this is clipped to be `&lt;= 1`
     */
   def apply(in: OutD, size: OutI)(implicit b: Builder): (OutD, OutD) = {
-    val Seq(out0, out1) = UnzipWindowN(2, in = in, size = size)
+    val SSeq(out0, out1) = UnzipWindowN(2, in = in, size = size)
     (out0, out1)
   }
 }
@@ -58,12 +58,12 @@ object UnzipWindowN {
     override def deepCopy(): Shape =
       Shape(in0.carbonCopy(), in1.carbonCopy(), outlets.map(_.carbonCopy()))
 
-    override def copyFromPorts(inlets: ISeq[Inlet[_]], outlets: ISeq[Outlet[_]]): Shape = {
-      require(inlets .size == this.inlets .size, s"number of inlets [${inlets.size}] does not match [${this.inlets.size}]")
-      require(outlets.size == this.outlets.size, s"number of outlets [${outlets.size}] does not match [${this.outlets.size}]")
-      Shape(inlets(0).asInstanceOf[Inlet[BufD]], inlets(1).asInstanceOf[Inlet[BufI]],
-        outlets.asInstanceOf[ISeq[OutD]])
-    }
+//    override def copyFromPorts(inlets: ISeq[Inlet[_]], outlets: ISeq[Outlet[_]]): Shape = {
+//      require(inlets .size == this.inlets .size, s"number of inlets [${inlets.size}] does not match [${this.inlets.size}]")
+//      require(outlets.size == this.outlets.size, s"number of outlets [${outlets.size}] does not match [${this.outlets.size}]")
+//      Shape(inlets(0).asInstanceOf[Inlet[BufD]], inlets(1).asInstanceOf[Inlet[BufI]],
+//        outlets.asInstanceOf[ISeq[OutD]])
+//    }
   }
 
   private final class Stage(numOutputs: Int)(implicit ctrl: Control) extends StageImpl[Shape](name) {
@@ -97,7 +97,7 @@ object UnzipWindowN {
         to flash a particular outlet
         (imagine the case of winSize == 1)
      */
-    private[this] val outputs: Array[Output]  = shape.outlets.map(new Output(_))(breakOut)
+    private[this] val outputs: Array[Output]  = shape.outlets.iterator.map(new Output(_)).toArray
     private[this] val numOutputs              = outputs.length
     private[this] var outIndex                = numOutputs - 1
 
