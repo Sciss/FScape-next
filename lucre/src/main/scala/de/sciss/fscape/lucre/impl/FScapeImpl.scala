@@ -24,8 +24,7 @@ import de.sciss.lucre.stm.{Copy, Elem, NoSys, Obj, Sys}
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.lucre.{event => evt}
 import de.sciss.serial.{DataInput, DataOutput, Serializer}
-import de.sciss.synth.proc.impl.CodeImpl
-import de.sciss.synth.proc.{GenContext, GenView, Universe}
+import de.sciss.synth.proc.{GenView, Universe}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
@@ -58,16 +57,16 @@ object FScapeImpl {
     }
   }
 
-  // ---- Code ----
-
-  implicit object CodeWrapper extends CodeImpl.Wrapper[Unit, Graph, Unit, FScape.Code] {
-    def id      : Int             = FScape.Code.id
-    def binding : Option[String]  = None
-
-    def wrap(in: Unit)(fun: => Unit): Graph = Graph(fun)
-
-    def blockTag = "Unit"
-  }
+//  // ---- Code ----
+//
+//  implicit object CodeWrapper extends CodeImpl.Wrapper[Unit, Graph, Unit, FScape.Code] {
+//    def id      : Int             = FScape.Code.id
+//    def binding : Option[String]  = None
+//
+//    def wrap(in: Unit)(fun: => Unit): Graph = Graph(fun)
+//
+//    def blockTag = "Unit"
+//  }
 
   // ---- GenView ----
 

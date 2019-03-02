@@ -143,17 +143,19 @@ object FScape extends Obj.Type {
     type Out    = fscape.Graph
     def id: Int = Code.id
 
-    def compileBody()(implicit compiler: proc.Code.Compiler): Future[Unit] = {
-      import Impl.CodeWrapper
+    def compileBody()(implicit compiler: proc.Code.Compiler): Future[Unit] =
       CodeImpl.compileBody[In, Out, Unit, Code](this)
-    }
 
-    def execute(in: In)(implicit compiler: proc.Code.Compiler): Out = {
-      import Impl.CodeWrapper
-      CodeImpl.execute[In, Out, Unit, Code](this, in)
-    }
+    def execute(in: In)(implicit compiler: proc.Code.Compiler): Out =
+      Graph {
+        CodeImpl.compileThunk(this, execute = true)
+      }
 
     def contextName: String = Code.name
+
+    def prelude : String = "object Main {\n"
+
+    def postlude: String = "\n}\n"
 
     def updateSource(newText: String): Code = copy(source = newText)
   }

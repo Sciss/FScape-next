@@ -225,7 +225,9 @@ object Control {
     private[this] var _progParts  = Array.empty[Double]
     private[this] val _progHasRep = config.progressReporter ne NoReport
 
-    final def debugDotGraph(): Unit = akka.stream.sciss.Util.debugDotGraph()(config.materializer)
+    final def debugDotGraph(): Unit = {
+      akka.stream.sciss.Util.debugDotGraph()(config.materializer, config.executionContext)
+    }
 
     final def run(graph: Graph): UGenGraph = {
       val ugens = expand(graph)

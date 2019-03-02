@@ -2,8 +2,8 @@ lazy val baseName   = "FScape"
 lazy val baseNameL  = baseName.toLowerCase
 lazy val gitRepo    = "FScape-next"
 
-lazy val projectVersion = "2.20.0"
-lazy val mimaVersion    = "2.20.0"
+lazy val projectVersion = "2.21.0-SNAPSHOT"
+lazy val mimaVersion    = "2.21.0"
 
 lazy val baseDescription = "An audio rendering library"
 
@@ -11,7 +11,7 @@ lazy val commonSettings = Seq(
   organization       := "de.sciss",
   description        := baseDescription,
   version            := projectVersion,
-  scalaVersion       := "2.13.0-M5",
+  scalaVersion       := "2.12.8",
   crossScalaVersions := Seq("2.12.8", "2.11.12", "2.13.0-M5"),
   licenses           := Seq("AGPL v3+" -> url("http://www.gnu.org/licenses/agpl-3.0.txt")),
   homepage           := Some(url(s"https://git.iem.at/sciss/$gitRepo")),
@@ -31,24 +31,23 @@ lazy val deps = new {
     val optional        = "1.0.0"
     val scalaChart      = "0.7.0"
     val swingPlus       = "0.4.0"
-    val akka            = "2.5.19"
+    val akka            = "2.5.21"
   }
   val lucre = new {
     val fileCache       = "0.5.0"
-    val soundProcesses  = "3.24.0"
+    val soundProcesses  = "3.25.0-SNAPSHOT"
   }
   val test = new {
     val kollFlitz       = "0.2.3"
     val lucre           = "3.11.0"
-    val scalaTest       = "3.0.5"
+    val scalaTest       = "3.0.6"
     val scopt           = "3.7.1"
   }
 }
 
 lazy val testSettings = Seq(
   libraryDependencies += {
-    val v = if (scalaVersion.value == "2.13.0-M5") "3.0.6-SNAP5" else deps.test.scalaTest
-    "org.scalatest" %% "scalatest" % v % Test
+    "org.scalatest" %% "scalatest" % deps.test.scalaTest % Test
   }
 )
 
