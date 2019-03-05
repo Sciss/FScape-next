@@ -2,7 +2,7 @@
  *  GEOps.scala
  *  (FScape)
  *
- *  Copyright (c) 2001-2018 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2001-2019 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU Affero General Public License v3+
  *
@@ -18,6 +18,13 @@ import de.sciss.fscape.graph.UnaryOp._
 import de.sciss.fscape.graph.{BinaryOp, ChannelProxy, Clip, ComplexBinaryOp, ComplexUnaryOp, Concat, Constant, Drop, Elastic, FilterSeq, Fold, Metro, Poll, SetResetFF, Take, TakeRight, UnaryOp, UnzipWindow, Wrap, ZipWindow}
 import de.sciss.optional.Optional
 
+/** `GEOps1` are operations for graph elements (`GE`). Instead of having these operations directly defined
+  * in each element, which is a huge list, they appear here as extension methods. `GEOps1` are unary
+  * operators, whereas `GEOps2` are binary and n-ary operators.
+  *
+  * @see [[GE]]
+  * @see [[GEOps2]]
+  */
 final class GEOps1(val `this`: GE) extends AnyVal { me =>
   import me.{`this` => g}
 
@@ -144,6 +151,13 @@ final class GEOps1(val `this`: GE) extends AnyVal { me =>
   def zip(that: GE): GE = ZipWindow(g, that)
 }
 
+/** `GEOps2` are operations for graph elements (`GE`). Instead of having these operations directly defined
+  * in each element, which is a huge list, they appear here as extension methods. `GEOps1` are unary
+  * operators, whereas `GEOps2` are binary and n-ary operators.
+  *
+  * @see [[GE]]
+  * @see [[GEOps1]]
+  */
 final class GEOps2(val `this`: GE) extends AnyVal { me =>
   import me.{`this` => g}
 

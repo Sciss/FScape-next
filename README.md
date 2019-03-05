@@ -13,7 +13,7 @@ this writing, the library is still experimental (although very useful, and I hav
 It has basic integration with [Mellite](http://sciss.de/mellite/), but since Mellite does not yet offer
 "widget programs", it currently does not replace FScape (version 1) yet.
 
-FScape(-next) is (C)opyright 2001&ndash;2018 by Hanns Holger Rutz. All rights reserved.
+FScape(-next) is (C)opyright 2001&ndash;2019 by Hanns Holger Rutz. All rights reserved.
 This program is free software; you can redistribute it and/or modify it under the terms 
 of the [GNU Affero General Public License](https://git.iem.at/sciss/FScape-next/raw/master/LICENSE) v3+.
 To contact the author, send an email to `contact at sciss.de`.

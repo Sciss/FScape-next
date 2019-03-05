@@ -2,7 +2,7 @@
  *  FScape.scala
  *  (FScape)
  *
- *  Copyright (c) 2001-2018 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2001-2019 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU Affero General Public License v3+
  *
@@ -115,7 +115,7 @@ object FScape extends Obj.Type {
     final val name  = "FScape Graph"
     type Repr = Code
 
-    def docBaseSymbol: String = "de.sciss.fscape.lucre.graph"
+    def docBaseSymbol: String = "de.sciss.fscape.graph"
 
     private[this] lazy val _init: Unit = {
       proc.Code.addType(this)

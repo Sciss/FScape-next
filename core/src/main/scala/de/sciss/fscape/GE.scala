@@ -2,7 +2,7 @@
  *  GE.scala
  *  (FScape)
  *
- *  Copyright (c) 2001-2018 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2001-2019 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU Affero General Public License v3+
  *
@@ -30,6 +30,13 @@ object GE {
     case _            => GESeq(xs.toIndexedSeq)
   }
 }
+/** The main trait used in an FScape graph, a graph element, abbreviated as `GE`.
+  *
+  * A lot of operations on `GE` are defined separately in `GEOps1` and `GEOps2`
+  *
+  * @see [[GEOps1]]
+  * @see [[GEOps2]]
+  */
 trait GE extends Product {
   private[fscape] def expand(implicit b: UGenGraph.Builder): UGenInLike
 }
