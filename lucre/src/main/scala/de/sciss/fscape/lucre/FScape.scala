@@ -18,11 +18,10 @@ import de.sciss.fscape.lucre.impl.{FScapeRunnerImpl, OutputImpl, UGenGraphBuilde
 import de.sciss.fscape.stream.Control
 import de.sciss.lucre.event.{Observable, Publisher}
 import de.sciss.lucre.stm.{Disposable, Obj, Sys, Workspace}
-import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.serial.{DataInput, Serializer}
 import de.sciss.synth.proc
 import de.sciss.synth.proc.impl.CodeImpl
-import de.sciss.synth.proc.{Gen, GenContext, GenView, Universe}
+import de.sciss.synth.proc.{Gen, GenView, Universe}
 import de.sciss.{fscape, model}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -116,6 +115,8 @@ object FScape extends Obj.Type {
     final val name  = "FScape Graph"
     type Repr = Code
 
+    def docBaseSymbol: String = "de.sciss.fscape.lucre.graph"
+
     private[this] lazy val _init: Unit = {
       proc.Code.addType(this)
       proc.Code.registerImports(id, Vec(
@@ -148,10 +149,12 @@ object FScape extends Obj.Type {
 
     def execute(in: In)(implicit compiler: proc.Code.Compiler): Out =
       Graph {
-        CodeImpl.compileThunk(this, execute = true)
+        CodeImpl.compileThunk[Unit](this, execute = true)
       }
 
     def contextName: String = Code.name
+
+    def docBaseSymbol: String = Code.docBaseSymbol
 
     def prelude : String = "object Main {\n"
 
