@@ -15,11 +15,10 @@ package de.sciss.fscape
 package stream
 package impl
 
-import akka.Done
 import akka.stream.Shape
 import akka.stream.stage.GraphStageLogic
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 abstract class NodeImpl[+S <: Shape](protected final val name: String,
                                      final val shape: S)
@@ -27,20 +26,6 @@ abstract class NodeImpl[+S <: Shape](protected final val name: String,
   extends GraphStageLogic(shape) with Node {
 
   override def toString = s"$name-L@${hashCode.toHexString}"
-
-  protected def init(): Unit = ()
-
-//  final protected def launch(): Unit =
-//    shape.inlets.foreach(pull(_))
-
-  final def initAsync(): Future[Unit] = {
-    val async = getAsyncCallback { _: Unit =>
-      init()
-    }
-//    async.invoke(())
-    import control.config.executionContext
-    async.invokeWithFeedback(()).map(_ => ())
-  }
 
   final def launchAsync(): Unit = {
     val async = getAsyncCallback { _: Unit =>
@@ -54,5 +39,19 @@ abstract class NodeImpl[+S <: Shape](protected final val name: String,
       failStage(ex)
     }
     async.invoke(())
+  }
+}
+
+trait NodeHasInitImpl extends NodeHasInit {
+  _: GraphStageLogic =>
+
+  protected def init(): Unit = ()
+  final def initAsync(): Future[Unit] = {
+    val async = getAsyncCallback { _: Unit =>
+      init()
+    }
+
+    implicit val ex: ExecutionContext = control.config.executionContext
+    async.invokeWithFeedback(()).map(_ => ())
   }
 }

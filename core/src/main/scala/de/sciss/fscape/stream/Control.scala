@@ -272,11 +272,18 @@ object Control {
       }
     }
 
+    // We kind of emulate what Akka Stream would do itself
+    // if we had used `preStart`: we have to buffer all polls
+    // until the initialization of all nodes is done. Here
+    // we do that by first going through all `NodeHasInit`
+    // and then mapping the resulting future to launch the
+    // nodes (`launch` will typically poll a node's inputs).
     private def actLaunch(): Unit = {
       logControl(s"${hashCode().toHexString} actLaunch")
-      val futInit = nodes.iterator.map { n =>
-        n.initAsync()
+      val futInit: Seq[Future[Unit]] = nodes.iterator.collect {
+        case ni: NodeHasInit => ni.initAsync()
       } .toSeq
+
       import config.executionContext
       Future.sequence(futInit).foreach { _ =>
         nodes.foreach { n =>

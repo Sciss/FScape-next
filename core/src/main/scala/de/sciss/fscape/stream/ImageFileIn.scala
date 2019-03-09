@@ -16,7 +16,7 @@ package stream
 
 import akka.stream.Attributes
 import de.sciss.file._
-import de.sciss.fscape.stream.impl.{BlockingGraphStage, ImageFileInImpl, NodeImpl, UniformSourceShape}
+import de.sciss.fscape.stream.impl.{BlockingGraphStage, ImageFileInImpl, NodeHasInitImpl, NodeImpl, UniformSourceShape}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
@@ -45,7 +45,7 @@ object ImageFileIn {
   }
 
   private final class Logic(shape: Shape, f: File, protected val numChannels: Int)(implicit ctrl: Control)
-    extends NodeImpl(s"$name(${f.name})", shape) with ImageFileInImpl[Shape] {
+    extends NodeImpl(s"$name(${f.name})", shape) with NodeHasInitImpl with ImageFileInImpl[Shape] {
 
     protected val outlets: Vec[OutD] = shape.outlets.toIndexedSeq
 

@@ -16,7 +16,7 @@ package stream
 
 import akka.stream.stage.InHandler
 import akka.stream.{Attributes, FanInShape4, Inlet, Outlet}
-import de.sciss.fscape.stream.impl.{NodeImpl, Out1IntImpl, Out1LogicImpl, ProcessOutHandlerImpl, StageImpl}
+import de.sciss.fscape.stream.impl.{NodeHasInitImpl, NodeImpl, Out1IntImpl, Out1LogicImpl, ProcessOutHandlerImpl, StageImpl}
 
 import scala.annotation.{switch, tailrec}
 import scala.collection.mutable
@@ -50,7 +50,7 @@ object Viterbi {
 
   private final class Logic(shape: Shape)(implicit ctrl: Control)
     extends NodeImpl(name, shape)
-      with Out1IntImpl[Shape] with Out1LogicImpl[BufI, Shape] {
+      with NodeHasInitImpl with Out1IntImpl[Shape] with Out1LogicImpl[BufI, Shape] {
 
     private[this] var bufIn0 : BufD = _
     private[this] var bufIn1 : BufD = _

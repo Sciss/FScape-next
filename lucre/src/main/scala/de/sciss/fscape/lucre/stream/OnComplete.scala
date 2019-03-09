@@ -16,7 +16,7 @@ package lucre.stream
 
 import akka.stream.{Attributes, ClosedShape}
 import de.sciss.fscape.lucre.UGenGraphBuilder.Input
-import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.{NodeHasInitImpl, NodeImpl, StageImpl}
 import de.sciss.fscape.stream.{Builder, Control}
 
 object OnComplete {
@@ -36,7 +36,7 @@ object OnComplete {
   }
 
   private final class Logic(shape: Shape, ref: Input.Action.Value)(implicit ctrl: Control)
-    extends NodeImpl(name, shape) {
+    extends NodeImpl(name, shape) with NodeHasInitImpl {
 
     override protected def init(): Unit = {
       super.init()

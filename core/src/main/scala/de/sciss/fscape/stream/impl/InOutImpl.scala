@@ -23,7 +23,7 @@ trait InOutImpl[S <: Shape] extends Node {
 
   // ---- abstract ----
 
-  override protected def shape: S
+  override def shape: S
 
   implicit protected def control: Control
 

@@ -52,7 +52,11 @@ object AffineTransformTest {
   //    require (X.getHeight == heightIn, s"height is ${X.getHeight}")
   //    X.flush()
 
-      val tempIn    = userHome / "Documents" / "projects" / "Imperfect" / "photos" / "161008_HH"/ "_MG_%d.JPG"
+      val dir0  = {
+        val d = userHome / "Documents" / "projects" / "Imperfect"
+        if (d.isDirectory) d else file("/data") / "projects" / "Imperfect"
+      }
+      val tempIn    = dir0 / "photos" / "161008_HH"/ "_MG_%d.JPG"
       // val fIn       = userHome / "Documents" / "projects" / "Imperfect" / "photos" / "raspi" / "manual_gain.jpg"
 //      val tempOut   = userHome / "Documents" / "projects" / "Imperfect" / "precious"/ "test-%d.jpg"
       val tempOut   = userHome / "Documents" / "temp"/ "test-%d.jpg"
@@ -82,6 +86,9 @@ object AffineTransformTest {
       val seqLen    = rotations.size
 
       val indexIn   = 9948
+
+      require((tempIn.parent / tempIn.name.format(indexIn)).isFile)
+
       val indicesIn = Seq.fill(seqLen)(indexIn: GE).reduce(_ ++ _)
       val img       = ImageFileSeqIn(template = tempIn, numChannels = 3, indices = indicesIn)
 
@@ -112,7 +119,7 @@ object AffineTransformTest {
       val transformsT = transforms.transpose
       println(s"SHAPE: [${transformsT.size}][${transformsT(0).size}]")
 
-      val mat = transformsT.zipWithIndex.map { case (cSeq, cIdx) =>
+      val mat = transformsT.zipWithIndex.map { case (cSeq, _ /* cIdx */) =>
         val cSeqGE = cSeq.map(x => x: GE).reduce(_ ++ _)
         val res = RepeatWindow(cSeqGE, num = frameSizeOut)
         // Length(res).poll(0, s"coef $cIdx length")
@@ -154,6 +161,7 @@ object AffineTransformTest {
     }
 
     ctrl.run(g)
+//    Await.result(ctrl.status, Duration.Inf)
 
     // println("Running.")
   }

@@ -16,7 +16,7 @@ package stream
 
 import akka.stream.stage.{InHandler, OutHandler}
 import akka.stream.{Attributes, FanInShape2}
-import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeImpl}
+import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeHasInitImpl, NodeImpl}
 
 import scala.annotation.tailrec
 
@@ -47,7 +47,7 @@ object Slices {
   }
 
   private final class Logic(shape: Shape)(implicit ctrl: Control)
-    extends NodeImpl(name, shape) with OutHandler {
+    extends NodeImpl(name, shape) with NodeHasInitImpl with OutHandler {
 
     private[this] var af: FileBuffer  = _
 

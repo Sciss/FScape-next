@@ -17,7 +17,7 @@ package stream
 import akka.stream.Attributes
 import akka.stream.stage.OutHandler
 import de.sciss.file._
-import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeImpl, UniformSourceShape}
+import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeHasInitImpl, NodeImpl, UniformSourceShape}
 import de.sciss.synth.io
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -44,7 +44,7 @@ object AudioFileIn {
   }
 
   private final class Logic(shape: Shape, f: File, numChannels: Int)(implicit ctrl: Control)
-    extends NodeImpl(s"$name(${f.name})", shape) with OutHandler {
+    extends NodeImpl(s"$name(${f.name})", shape) with NodeHasInitImpl with OutHandler {
 
     private[this] var af        : io.AudioFile  = _
     private[this] var buf       : io.Frames     = _

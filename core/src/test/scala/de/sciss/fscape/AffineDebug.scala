@@ -52,6 +52,7 @@ object AffineDebug {
 
       val m1        = {
         val tempIn1 = userHome / "Documents" / "temp" / "notebook-test.png"
+        require (tempIn1.isFile)
         val img0 = ImageFileIn(tempIn1, numChannels = 3)
         RepeatWindow(img0, size = kernelS, num = 100)
       }

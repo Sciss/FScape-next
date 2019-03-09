@@ -17,7 +17,7 @@ package stream
 import akka.stream.stage.{InHandler, OutHandler}
 import akka.stream.{Attributes, FlowShape}
 import de.sciss.file._
-import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeImpl}
+import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeHasInitImpl, NodeImpl}
 import de.sciss.synth.io
 import de.sciss.synth.io.{AudioFile, AudioFileSpec, AudioFileType, SampleFormat}
 
@@ -47,7 +47,7 @@ object CdpModifyRadicalReverse {
   }
 
   private final class Logic(shape: Shape)(implicit ctrl: Control)
-    extends NodeImpl(name, shape) with InHandler with OutHandler {
+    extends NodeImpl(name, shape) with NodeHasInitImpl with InHandler with OutHandler {
 
     private[this] var afSource      : io.AudioFile  = _
     private[this] var afSink        : io.AudioFile  = _

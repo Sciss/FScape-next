@@ -17,7 +17,7 @@ package stream
 import akka.stream.stage.{GraphStageLogic, InHandler, OutHandler}
 import akka.stream.{Attributes, UniformFanInShape}
 import de.sciss.file._
-import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeImpl}
+import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeHasInitImpl, NodeImpl}
 import de.sciss.synth.io
 import de.sciss.synth.io.AudioFileSpec
 
@@ -55,12 +55,13 @@ object AudioFileOut {
     extends NodeImpl(s"$name(${file.name})", shape) with AbstractLogic {
   }
 
-  trait AbstractLogic extends Node with OutHandler { logic: GraphStageLogic =>
+  trait AbstractLogic extends NodeHasInitImpl with OutHandler { logic: GraphStageLogic =>
     // ---- abstract ----
 
     protected def file : File
     protected def spec : io.AudioFileSpec
-    protected def shape: Shape
+
+    def shape: Shape
 
     // ---- impl ----
 

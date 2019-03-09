@@ -26,23 +26,21 @@ trait Node {
 
   implicit protected def control: Control
 
-  def initAsync(): Future[Unit]
-
   def launchAsync(): Unit
 
   def failAsync(ex: Exception): Unit
+
+  def shape: Shape
 
   // ---- impl ----
 
   control.addNode(this)
 
+  /** Final so we don't accidentally place code here.
+    * In order to initialize state, use `NodeHasInitImpl`
+    * and implement `init`.
+    */
   override final def preStart(): Unit = ()
-
-  protected def init(): Unit
-
-//  protected def launch(): Unit
-
-  protected def shape: Shape
 
   /** Calls `stopped` and then removes the node from the control. */
   override final def postStop(): Unit = {
@@ -52,4 +50,10 @@ trait Node {
 
   /** Subclasses can override this */
   protected def stopped(): Unit = ()
+}
+
+trait NodeHasInit extends Node {
+  _: GraphStageLogic =>
+
+  def initAsync(): Future[Unit]
 }
