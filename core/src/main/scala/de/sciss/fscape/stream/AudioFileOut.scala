@@ -52,7 +52,7 @@ object AudioFileOut {
 
   private final class Logic(shape: Shape, protected val file: File, protected val spec: io.AudioFileSpec)
                            (implicit ctrl: Control)
-    extends NodeImpl(s"$name(${file.name})", shape) {
+    extends NodeImpl(s"$name(${file.name})", shape) with AbstractLogic {
   }
 
   trait AbstractLogic extends Node with OutHandler { logic: GraphStageLogic =>
