@@ -144,9 +144,6 @@ object AffineTransform2D {
 
     def inValid: Boolean = _inValid
 
-    override def preStart(): Unit =
-      shape.inlets.foreach(pull(_))
-
     override protected def stopped(): Unit = {
       super.stopped()
       freeInputBuffers()

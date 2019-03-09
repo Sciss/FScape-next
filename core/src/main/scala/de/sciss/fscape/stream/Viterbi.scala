@@ -120,14 +120,9 @@ object Viterbi {
     new InHandlerImpl(shape.in3)
     new ProcessOutHandlerImpl(shape.out, this)
 
-    override def preStart(): Unit = {
+    override protected def init(): Unit = {
+      super.init()
       prepareStage0()
-      val sh = shape
-      // mul: 0, add: 1, numStates: 2, numFrames: 3
-      pull(sh.in0)
-      pull(sh.in1)
-      pull(sh.in2)
-      pull(sh.in3)
     }
 
     override protected def stopped(): Unit = {

@@ -50,16 +50,6 @@ In3 >: Null <: BufLike, In4 >: Null <: BufLike, In5 >: Null <: BufLike, Out >: N
   final def canRead: Boolean = _canRead
   final def inValid: Boolean = _inValid
 
-  override def preStart(): Unit = {
-    val sh = shape
-    pull(sh.in0)
-    pull(sh.in1)
-    pull(sh.in2)
-    pull(sh.in3)
-    pull(sh.in4)
-    pull(sh.in5)
-  }
-
   override protected def stopped(): Unit = {
     freeInputBuffers()
     freeOutputBuffers()

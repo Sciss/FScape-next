@@ -112,13 +112,6 @@ object RepeatWindow {
 
     protected def out0: Outlet[BufD] = shape.out
 
-    override def preStart(): Unit = {
-      val sh = shape
-      pull(sh.in0)
-      pull(sh.in1)
-      pull(sh.in2)
-    }
-
     private def freeBufIn0(): Unit =
       if (bufIn0 != null) {
         bufIn0.release()

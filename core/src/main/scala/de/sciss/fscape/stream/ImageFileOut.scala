@@ -51,8 +51,8 @@ object ImageFileOut {
 
     shape.inlets.foreach(setHandler(_, this))
 
-    override def preStart(): Unit = {
-      super.preStart()
+    override protected def init(): Unit = {
+      super.init()
       openImage(f)
     }
 

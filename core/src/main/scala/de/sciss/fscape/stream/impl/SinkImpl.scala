@@ -54,9 +54,6 @@ trait Sink1Impl[In0 >: Null <: BufLike]
   final def canRead: Boolean = _canRead
   final def inValid: Boolean = _inValid
 
-  override def preStart(): Unit =
-    pull(in0)
-
   override protected def stopped(): Unit = {
     freeInputBuffers()
     freeOutputBuffers()
@@ -106,11 +103,6 @@ trait Sink2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike]
 
   final def canRead: Boolean = _canRead
   final def inValid: Boolean = _inValid
-
-  override def preStart(): Unit = {
-    pull(in0)
-    pull(in1)
-  }
 
   override protected def stopped(): Unit = {
     freeInputBuffers()

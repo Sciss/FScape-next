@@ -47,11 +47,6 @@ object DebugOut {
       super.onUpstreamFinish()
     }
 
-    override def preStart(): Unit = {
-      logStream(s"$this - preStart()")
-      pull(shape.in)
-    }
-
     override protected def stopped(): Unit = {
       logStream(s"$this - postStop()")
     }

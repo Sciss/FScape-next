@@ -29,7 +29,7 @@ object AudioFileOut {
     require (spec.numChannels == in.size, s"Channel mismatch (spec has ${spec.numChannels}, in has ${in.size})")
     val sink = new Stage(file, spec)
     val stage = b.add(sink)
-    (in zip stage.inSeq).foreach { case (output, input) =>
+    (in zip stage.inlets).foreach { case (output, input) =>
       b.connect(output, input)
     }
     stage.out
@@ -52,7 +52,7 @@ object AudioFileOut {
 
   private final class Logic(shape: Shape, protected val file: File, protected val spec: io.AudioFileSpec)
                            (implicit ctrl: Control)
-    extends NodeImpl(s"$name(${file.name})", shape) with AbstractLogic {
+    extends NodeImpl(s"$name(${file.name})", shape) {
   }
 
   trait AbstractLogic extends Node with OutHandler { logic: GraphStageLogic =>
@@ -78,7 +78,7 @@ object AudioFileOut {
     protected final def framesWritten : Long     = af.numFrames
 
     {
-      val ins = shape.inSeq
+      val ins = shape.inlets
       var ch = 0
       while (ch < numChannels) {
         val in = ins(ch)
@@ -107,10 +107,10 @@ object AudioFileOut {
 
     // ---- StageLogic
 
-    override def preStart(): Unit = {
-      logStream(s"$this - preStart()")
+    override protected def init(): Unit = {
+      // super.init()
+      logStream(s"$this - init()")
       af = io.AudioFile.openWrite(file, spec)
-      shape.inlets.foreach(pull(_))
     }
 
     override protected def stopped(): Unit = {

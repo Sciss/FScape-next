@@ -47,9 +47,6 @@ object Length {
 
     private[this] var framesRead = 0L
 
-    override def preStart(): Unit =
-      pull(shape.in)
-
     // ---- InHandler ----
 
     def onPush(): Unit = {

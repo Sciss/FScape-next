@@ -40,9 +40,6 @@ trait GenIn1Impl[In >: Null <: BufLike, Out >: Null <: BufLike]
   final def canRead: Boolean = _canRead
   final def inValid: Boolean = _inValid
 
-  override def preStart(): Unit =
-    pull(shape.in)
-
   override protected def stopped(): Unit = {
     freeInputBuffers()
     freeOutputBuffers()

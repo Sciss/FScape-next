@@ -58,9 +58,6 @@ Out1 >: Null <: BufLike, Out2 >: Null <: BufLike]
   protected def allocOutBuf1(): Out1
   protected def allocOutBuf2(): Out2
 
-  override def preStart(): Unit =
-    shape.inlets.foreach(pull(_))
-
   override protected def stopped(): Unit = {
     freeInputBuffers()
     freeOutputBuffers()

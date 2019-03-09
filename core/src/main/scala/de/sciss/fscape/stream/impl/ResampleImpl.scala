@@ -153,14 +153,6 @@ trait ResampleImpl[S <: Shape] extends FullInOutImpl[S] {
 
   // ---- start/stop ----
 
-  override def preStart(): Unit = {
-    pull(inFactor       )
-    pull(inMinFactor    )
-    pull(inRollOff      )
-    pull(inKaiserBeta   )
-    pull(inZeroCrossings)
-  }
-
   override protected def stopped(): Unit = {
     fltBuf  = null
     fltBufD = null

@@ -45,13 +45,6 @@ trait GenIn3Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: 
   final def canRead: Boolean = _canRead
   final def inValid: Boolean = _inValid
 
-  override def preStart(): Unit = {
-    val sh = shape
-    pull(sh.in0)
-    pull(sh.in1)
-    pull(sh.in2)
-  }
-
   override protected def stopped(): Unit = {
     freeInputBuffers()
     freeOutputBuffers()

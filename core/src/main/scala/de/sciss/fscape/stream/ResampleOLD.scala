@@ -190,16 +190,6 @@ object ResampleOLD {
 
     // ---- start/stop ----
 
-    override def preStart(): Unit = {
-      val sh = shape
-      pull(sh.in0)
-      pull(sh.in1)
-      pull(sh.in2)
-      pull(sh.in3)
-      pull(sh.in4)
-      pull(sh.in5)
-    }
-
     override protected def stopped(): Unit = {
       super.stopped()
       winBuf  = null

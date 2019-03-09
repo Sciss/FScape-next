@@ -272,6 +272,19 @@ object Control {
       }
     }
 
+    private def actLaunch(): Unit = {
+      logControl(s"${hashCode().toHexString} actLaunch")
+      val futInit = nodes.iterator.map { n =>
+        n.initAsync()
+      } .toSeq
+      import config.executionContext
+      Future.sequence(futInit).foreach { _ =>
+        nodes.foreach { n =>
+          n.launchAsync()
+        }
+      }
+    }
+
     private def actCancel(): Unit = {
       logControl(s"${hashCode().toHexString} actCancel")
       val ex = Cancelled()
@@ -285,6 +298,7 @@ object Control {
       def receive: Receive = {
         case SetProgress(key, frac) => actSetProgress(key, frac)
         case RemoveNode(n)          => actRemoveNode(n, context, self)
+        case Launch                 => actLaunch()
         case Cancel                 => actCancel()
       }
     }
@@ -299,6 +313,7 @@ object Control {
       logControl(s"${hashCode().toHexString} runExpanded")
       mkActor()
       r.run()(config.materializer)
+      _actor ! Launch
     }
 
     final def mkRandom(): Random = /* sync.synchronized */ {
@@ -404,6 +419,7 @@ object Control {
   // ---- actor messages
 
   private final case class RemoveNode(node: Node)
+  private case object      Launch
   private case object      Cancel
   private final case class SetProgress(key: Int, frac: Double)
 }

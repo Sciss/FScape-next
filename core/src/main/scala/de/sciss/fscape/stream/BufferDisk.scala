@@ -56,9 +56,9 @@ object BufferDisk {
 
     setHandlers(shape.in, shape.out, this)
 
-    override def preStart(): Unit = {
+    override protected def init(): Unit = {
+      super.init()
       af = FileBuffer()
-      pull(shape.in)
     }
 
     override protected def stopped(): Unit = {

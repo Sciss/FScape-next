@@ -142,9 +142,6 @@ object ZipWindowN {
       }
     }
 
-    override def preStart(): Unit =
-      shape.inlets.foreach(pull(_))
-
     override protected def stopped(): Unit = {
       super.stopped()
       freeInputBuffers()

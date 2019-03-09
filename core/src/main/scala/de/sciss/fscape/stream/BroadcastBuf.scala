@@ -16,7 +16,7 @@ package stream
 
 import akka.stream.stage.{InHandler, OutHandler}
 import akka.stream.{Attributes, Inlet, Outlet, UniformFanOutShape}
-import de.sciss.fscape.stream.impl.{StageImpl, NodeImpl}
+import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
@@ -29,7 +29,7 @@ object BroadcastBuf {
     val stage0 = new Stage[B](numOutputs = numOutputs, eagerCancel = false)
     val stage  = b.add(stage0)
     b.connect(in, stage.in)
-    stage.outArray.toIndexedSeq
+    stage.outlets.toIndexedSeq
   }
 
   private final val name = "BroadcastBuf"
@@ -52,7 +52,7 @@ object BroadcastBuf {
   private final class Logic[B <: BufLike](shape: Shape[B], eagerCancel: Boolean)(implicit ctrl: Control)
     extends NodeImpl(name, shape) with InHandler { self =>
 
-    private[this] val numOutputs    = shape.outArray.length
+    private[this] val numOutputs    = shape.outlets.size
     private[this] var pendingCount  = numOutputs
     private[this] val pending       = Array.fill[Boolean](numOutputs)(true)
     private[this] var sinksRunning  = numOutputs

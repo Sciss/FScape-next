@@ -70,8 +70,9 @@ object CdpModifyRadicalReverse {
       file(dir) / s"${prefix}modify"
     }
 
-    override def preStart(): Unit = {
-      logStream(s"preStart() $this")
+    override def init(): Unit = {
+      super.init()
+      logStream(s"init() $this")
       val tmpFileSource0  = control.createTempFile()
       val tmpFileSink0    = control.createTempFile()
       tmpFileSource       = tmpFileSource0.replaceExt("aif")
@@ -85,8 +86,6 @@ object CdpModifyRadicalReverse {
       val specOut = AudioFileSpec(AudioFileType.AIFF, SampleFormat.Float, numChannels = 1, sampleRate = 44100)
       afSink      = io.AudioFile.openWrite(tmpFileSink, specOut)
       bufSize     = ctrl.blockSize
-
-      pull(shape.in)
     }
 
     override def onUpstreamFinish(): Unit = {

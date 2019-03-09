@@ -49,13 +49,6 @@ trait DemandFilterIn3[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Nul
   final def auxInValid  : Boolean = _auxInValid
   final def inValid     : Boolean = _inValid
 
-  override def preStart(): Unit = {
-    val sh = shape
-    pull(sh.in0)
-    pull(sh.in1)
-    pull(sh.in2)
-  }
-
   override protected def stopped(): Unit = {
     freeInputBuffers()
     freeOutputBuffers()

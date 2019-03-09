@@ -67,11 +67,6 @@ object Concat {
     def canRead: Boolean = _canRead
     def inValid: Boolean = true
 
-    override def preStart(): Unit = {
-      pull(in0)
-      pull(in1)
-    }
-
     override protected def stopped(): Unit = {
       super.stopped()
       freeInputBuffers()

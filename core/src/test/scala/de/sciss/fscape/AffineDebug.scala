@@ -9,7 +9,7 @@ import scala.Predef.{any2stringadd => _, _}
 import scala.swing.Swing
 
 object AffineDebug {
-  val baseDir       = userHome / "Documents" / "projects" / "Imperfect" / "scans" /"notebook2016"
+  val baseDir: File = userHome / "Documents" / "projects" / "Imperfect" / "scans" /"notebook2016"
 
   final case class Config(kernel: Int = 16, noiseAmp: Double = 0.05,
                           groupIdx: Int = -1, fadeFrames: Int = 24 * 2 /* * 14 */, skipFrames: Int = 0,

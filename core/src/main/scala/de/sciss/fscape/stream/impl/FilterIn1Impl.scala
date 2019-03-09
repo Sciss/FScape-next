@@ -37,9 +37,6 @@ trait FilterIn1Impl[In >: Null <: BufLike, Out >: Null <: BufLike]
   final def canRead: Boolean = _canRead
   final def inValid: Boolean = _inValid
 
-  override def preStart(): Unit =
-    pull(in0)
-
   override protected def stopped(): Unit = {
     freeInputBuffers()
     freeOutputBuffers()

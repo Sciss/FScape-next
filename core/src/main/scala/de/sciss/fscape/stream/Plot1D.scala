@@ -130,8 +130,8 @@ object Plot1D {
 
     // ---- methods ----
 
-//    override def preStart(): Unit = {
-//      super.preStart()
+//    override def launch(): Unit = {
+//      super.launch()
 //      Swing.onEDT {
 //        frame.open()
 //      }

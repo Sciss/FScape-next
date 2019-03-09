@@ -17,7 +17,7 @@ import scala.concurrent.duration.Duration
 
  */
 object PitchTest extends App {
-  val fIn     = file("/data/projects/Maeanderungen/audio_work/edited/HB_0_HH_T168.wav")
+  val fIn     = file("/data/projects/Maeanderungen/audio_work/raw_orf/HB_0_HH_T168.wav")
 //  val fIn     = file("/data/temp/ac-in.aif")
 //  val fIn     = file("/data/temp/ac-inFOO.aif")
 //  val fOut    = file("/data/temp/test.aif")

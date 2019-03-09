@@ -47,9 +47,6 @@ object Frames {
 
     private[this] var framesRead = 0L
 
-    override def preStart(): Unit =
-      pull(shape.in)
-
     // ---- handlers ----
 
     def onPush(): Unit = if (isAvailable(shape.out)) process()

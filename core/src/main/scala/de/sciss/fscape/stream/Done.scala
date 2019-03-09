@@ -47,11 +47,6 @@ object Done {
     setHandler(shape.in , this)
     setHandler(shape.out, this)
 
-    override def preStart(): Unit = {
-      super.preStart()
-      pull(shape.in)
-    }
-
     override def onUpstreamFinish(): Unit = {
       if (/* !isAvailable(shape.in) && */ isAvailable(shape.out)) flush()
     }

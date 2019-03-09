@@ -18,12 +18,12 @@ package impl
 import akka.stream.stage.{GraphStageLogic, InHandler, OutHandler}
 import akka.stream.{Inlet, Outlet, Shape}
 
-trait InOutImpl[S <: Shape] {
+trait InOutImpl[S <: Shape] extends Node {
   _: GraphStageLogic =>
 
   // ---- abstract ----
 
-  protected def shape: S
+  override protected def shape: S
 
   implicit protected def control: Control
 

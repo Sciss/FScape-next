@@ -51,7 +51,7 @@ object Impulse {
     private[this] var incr    : Double = _
     private[this] var phaseOff: Double = _
     private[this] var phase   : Double = _    // internal state; does not include `phaseOff`
-    private[this] var init = true
+    private[this] var _init = true
 
     protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Unit = {
       // println(s"Impulse.processChunk($bufIn0, $chunk)")
@@ -72,13 +72,13 @@ object Impulse {
       var phaseV    = phase
       var y         = 0.0
 
-      if (init) {
+      if (_init) {
         incrV     = b0(inOffI)
         phaseOffV = b1(inOffI).wrap(0.0, 1.0)
         phaseV    = -incrV
         y         = (phaseV + phaseOffV).wrap(0.0, 1.0)
         if (y == 0.0) y = 1.0
-        init      = false
+        _init     = false
 
       } else {
         y         = (phaseV + phaseOffV).wrap(0.0, 1.0)

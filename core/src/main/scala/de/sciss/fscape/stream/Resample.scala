@@ -89,11 +89,6 @@ object Resample {
 
     // ---- start/stop ----
 
-    override def preStart(): Unit = {
-      super.preStart()
-      pull(in0)
-    }
-
     override protected def stopped(): Unit = {
       super.stopped()
       winBuf  = null

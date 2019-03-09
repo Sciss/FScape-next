@@ -46,13 +46,13 @@ object DC {
       with GenChunkImpl[BufD, BufD, Shape]
       with GenIn1DImpl[BufD] {
 
-    private[this] var init = true
+    private[this] var _init = true
     private[this] var value   : Double = _
 
     protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Unit = {
-      if (init) {
-        value   = bufIn0.buf(inOff)
-        init    = false
+      if (_init) {
+        value = bufIn0.buf(inOff)
+        _init = false
       }
 
       // println(s"DC.fill($value, $chunk) -> $bufOut")

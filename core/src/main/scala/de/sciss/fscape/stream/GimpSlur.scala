@@ -252,18 +252,6 @@ object GimpSlur {
     def aux2InValid : Boolean = _aux2InValid
     def inValid     : Boolean = _inValid
 
-    override def preStart(): Unit = {
-      val sh = shape
-      pull(sh.in0)
-      pull(sh.in1)
-      pull(sh.in2)
-      pull(sh.in3)
-      pull(sh.in4)
-      pull(sh.in5)
-      pull(sh.in6)
-      pull(sh.in7)
-    }
-
     override protected def stopped(): Unit = {
       freeInputBuffers()
       freeOutputBuffers()

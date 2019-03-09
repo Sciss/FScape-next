@@ -51,8 +51,9 @@ object ImageFileIn {
 
     shape.outlets.foreach(setHandler(_, this))
 
-    override def preStart(): Unit = {
-      logStream(s"preStart() $this")
+    override protected def init(): Unit = {
+      super.init()
+      logStream(s"init() $this")
       openImage(f)
     }
 

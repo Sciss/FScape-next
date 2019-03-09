@@ -14,7 +14,10 @@
 package de.sciss.fscape
 package stream
 
+import akka.stream.Shape
 import akka.stream.stage.GraphStageLogic
+
+import scala.concurrent.Future
 
 trait Node {
   _: GraphStageLogic =>
@@ -23,11 +26,23 @@ trait Node {
 
   implicit protected def control: Control
 
+  def initAsync(): Future[Unit]
+
+  def launchAsync(): Unit
+
   def failAsync(ex: Exception): Unit
 
   // ---- impl ----
 
   control.addNode(this)
+
+  override final def preStart(): Unit = ()
+
+  protected def init(): Unit
+
+//  protected def launch(): Unit
+
+  protected def shape: Shape
 
   /** Calls `stopped` and then removes the node from the control. */
   override final def postStop(): Unit = {

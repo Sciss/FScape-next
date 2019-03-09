@@ -97,12 +97,6 @@ object SegModPhasor {
       super.stopped()
     }
 
-    override def preStart(): Unit = {
-      super.preStart()
-      pull(shape.in0)
-      pull(shape.in1)
-    }
-
     private def freeInputBuffer0(): Unit =
       if (bufIn0 != null) {
         bufIn0.release()

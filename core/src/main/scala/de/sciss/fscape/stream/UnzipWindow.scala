@@ -15,12 +15,12 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.stage.{InHandler, OutHandler}
-import akka.stream.{Attributes, Inlet, Outlet}
-import de.sciss.fscape.stream.impl.{StageImpl, NodeImpl}
+import akka.stream.{Attributes, Inlet}
+import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 
 import scala.annotation.tailrec
-import scala.collection.{Seq => SSeq}
 import scala.collection.immutable.{IndexedSeq => Vec, Seq => ISeq}
+import scala.collection.{Seq => SSeq}
 
 /** Unzips a signal into two based on a window length. */
 object UnzipWindow {
@@ -123,12 +123,6 @@ object UnzipWindowN {
         logStream(s"onDownstreamFinish($let)")
         super.onDownstreamFinish()
       }
-    }
-
-    override def preStart(): Unit = {
-      val sh = shape
-      pull(sh.in0)
-      pull(sh.in1)
     }
 
     override protected def stopped(): Unit = {

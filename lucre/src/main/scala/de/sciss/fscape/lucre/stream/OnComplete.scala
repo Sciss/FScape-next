@@ -30,7 +30,7 @@ object OnComplete {
   private type Shape = ClosedShape
 
   private final class Stage(ref: Input.Action.Value)(implicit ctrl: Control) extends StageImpl[Shape](name) {
-    val shape = ClosedShape
+    val shape: Shape = ClosedShape
 
     def createLogic(attr: Attributes) = new Logic(shape, ref)
   }
@@ -38,8 +38,8 @@ object OnComplete {
   private final class Logic(shape: Shape, ref: Input.Action.Value)(implicit ctrl: Control)
     extends NodeImpl(name, shape) {
 
-    override def preStart(): Unit = {
-      super.preStart()
+    override protected def init(): Unit = {
+      super.init()
       import ctrl.config.executionContext
       ctrl.status.onComplete(ref.execute(_))
     }

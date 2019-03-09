@@ -153,12 +153,6 @@ object ResampleWindow {
 
     // ---- start/stop ----
 
-    override def preStart(): Unit = {
-      super.preStart()
-      pull(in0)
-      pull(in1)
-    }
-
     override protected def stopped(): Unit = {
       super.stopped()
       inArr  = null

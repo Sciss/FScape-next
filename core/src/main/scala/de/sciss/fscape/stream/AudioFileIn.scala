@@ -54,8 +54,9 @@ object AudioFileIn {
 
     shape.outlets.foreach(setHandler(_, this))
 
-    override def preStart(): Unit = {
-      logStream(s"preStart() $this")
+    override protected def init(): Unit = {
+      super.init()
+      logStream(s"init() $this")
       af          = io.AudioFile.openRead(f)
       if (af.numChannels != numChannels) {
         Console.err.println(s"Warning: DiskIn - channel mismatch (file has ${af.numChannels}, UGen has $numChannels)")

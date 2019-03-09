@@ -48,7 +48,7 @@ object DelayN {
       with FilterIn3DImpl[BufD, BufI, BufI] {
 
     private[this] var maxLength     = -1
-    private[this] var init          = true
+    private[this] var _init         = true
     private[this] var delayBuf: Array[Double] = _
     private[this] var bufPtr        = 0
     private[this] var delay         = 0
@@ -57,10 +57,10 @@ object DelayN {
       val len = math.min(inRemain, outRemain)
       val res = len > 0
       if (res) {
-        if (init) {
+        if (_init) {
           maxLength = math.max(1, bufIn1.buf(0))
           delayBuf  = new Array[Double](maxLength)
-          init      = false
+          _init     = false
         }
         var inOffI  = inOff
         var outOffI = outOff

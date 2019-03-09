@@ -224,15 +224,6 @@ object Blobs2D {
       _canWrite = false
     }
 
-    override def preStart(): Unit = {
-      val sh = shape
-      pull(sh.in0)
-      pull(sh.in1)
-      pull(sh.in2)
-      pull(sh.in3)
-      pull(sh.in4)
-    }
-
     override protected def stopped(): Unit = {
       winBuf      = null
       blobs       = null

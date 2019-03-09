@@ -78,10 +78,9 @@ object Slices {
       }
     })
 
-    override def preStart(): Unit = {
+    override protected def init(): Unit = {
+      super.init()
       af = FileBuffer()
-      pull(shape.in0)
-      pull(shape.in1)
     }
 
     override protected def stopped(): Unit = {

@@ -23,7 +23,7 @@ trait DemandFilterIn5[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Nul
   In3 >: Null <: BufLike, In4 >: Null <: BufLike, Out >: Null <: BufLike]
   extends Out1LogicImpl[Out, FanInShape5[In0, In1, In2, In3, In4, Out]]
     with DemandInOutImpl[FanInShape5[In0, In1, In2, In3, In4, Out]] {
-  _: GraphStageLogic with Node =>
+  _: GraphStageLogic =>
 
   // ---- impl ----
 
@@ -53,15 +53,6 @@ trait DemandFilterIn5[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Nul
   final def mainInValid : Boolean = _mainInValid
   final def auxInValid  : Boolean = _auxInValid
   final def inValid     : Boolean = _inValid
-
-  override def preStart(): Unit = {
-    val sh = shape
-    pull(sh.in0)
-    pull(sh.in1)
-    pull(sh.in2)
-    pull(sh.in3)
-    pull(sh.in4)
-  }
 
   override protected def stopped(): Unit = {
     freeInputBuffers()

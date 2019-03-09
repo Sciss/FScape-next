@@ -178,11 +178,6 @@ object AudioFileOut {
       }
     }
 
-    override def preStart(): Unit = {
-      logStream(s"$this - preStart()")
-      shape.inlets.foreach(pull(_))
-    }
-
     override protected def stopped(): Unit = {
       logStream(s"$this - postStop()")
       buf = null

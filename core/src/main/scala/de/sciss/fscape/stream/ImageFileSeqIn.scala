@@ -31,7 +31,7 @@ object ImageFileSeqIn {
     val source  = new Stage(template, numChannels = numChannels)
     val stage   = b.add(source)
     b.connect(indices, stage.in)
-    stage.outArray.toIndexedSeq
+    stage.outlets.toIndexedSeq
   }
 
   private final val name = "ImageFileSeqIn"
@@ -55,7 +55,7 @@ object ImageFileSeqIn {
     with ImageFileInImpl[Shape]
     with InHandler {
 
-    protected val outlets: Vec[OutD] = shape.outArray.toIndexedSeq
+    protected val outlets: Vec[OutD] = shape.outlets.toIndexedSeq
 
     private[this] val in0 = shape.in
 
@@ -71,11 +71,6 @@ object ImageFileSeqIn {
 
     shape.outlets.foreach(setHandler(_, this))
     setHandler(in0, this)
-
-    override def preStart(): Unit = {
-      logStream(s"preStart() $this")
-      pull(in0)
-    }
 
     private def inputsEnded: Boolean = inRemain == 0 && isClosed(in0) && !isAvailable(in0)
 

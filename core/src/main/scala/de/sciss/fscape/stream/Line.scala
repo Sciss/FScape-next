@@ -50,7 +50,7 @@ object Line {
     extends NodeImpl(name, shape)
       with GenIn3DImpl[BufD, BufD, BufL] {
 
-    private[this] var init = true
+    private[this] var _init = true
 
     private[this] var start : Double  = _
     private[this] var end   : Double  = _
@@ -64,13 +64,13 @@ object Line {
       if (canRead) {
 //        println("readIns()")
         readIns()
-        if (init) {
+        if (_init) {
 //          println("init")
           start   = bufIn0.buf(0)
           end     = bufIn1.buf(0)
           len     = math.max(1L, bufIn2.buf(0))
           slope   = (end - start) / (len - 1)
-          init    = false
+          _init   = false
         }
       }
 

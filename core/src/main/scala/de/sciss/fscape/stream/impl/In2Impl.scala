@@ -35,11 +35,6 @@ trait In2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, Out >: Null <: Buf
   protected final val in1 : Inlet[In1]  = shape.in1
   protected final val out0: Outlet[Out] = shape.out
 
-  override def preStart(): Unit = {
-    pull(in0)
-    pull(in1)
-  }
-
   override protected def stopped(): Unit = {
     freeInputBuffers()
     freeOutputBuffers()
