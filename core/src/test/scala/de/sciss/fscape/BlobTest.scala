@@ -10,6 +10,8 @@ object BlobTest extends App {
   val width   = 633
   val height  = 526
 
+  require (fIn.isFile)
+
   val g = Graph {
     import graph._
     val in    = ImageFileIn(file = fIn, numChannels = 1)

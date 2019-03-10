@@ -67,6 +67,10 @@ object BroadcastBuf {
 //    }
 
     def onPush(): Unit = {
+      if (pendingCount == 0) process()
+    }
+
+    private def process(): Unit = {
       pendingCount  = sinksRunning
       val buf       = grab(shape.in)
 
@@ -90,10 +94,12 @@ object BroadcastBuf {
         idx += 1
       }
       buf.release()
+
+      tryPull(shape.in)
     }
 
-    private def tryPull(): Unit =
-      if (pendingCount == 0 && !hasBeenPulled(shape.in)) pull(shape.in)
+    private def checkProcess(): Unit =
+      if (pendingCount == 0 && isAvailable(shape.in)) process()
 
     {
       var idx = 0
@@ -104,7 +110,7 @@ object BroadcastBuf {
           def onPull(): Unit = {
             pending(idx0) = false
             pendingCount -= 1
-            tryPull()
+            checkProcess()
           }
 
           override def onDownstreamFinish(): Unit = {
@@ -121,7 +127,7 @@ object BroadcastBuf {
               else if (pending(idx0)) {
                 pending(idx0) = false
                 pendingCount -= 1
-                tryPull()
+                checkProcess()
               }
             }
           }
