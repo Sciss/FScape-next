@@ -20,7 +20,7 @@ import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeImpl}
 
 object DebugOut {
   def apply(in: OutD)(implicit b: Builder): Unit = {
-    val sink = new Stage
+    val sink = new Stage(b.layer)
     val stage = b.add(sink)
     b.connect(in, stage.in)
   }
@@ -29,16 +29,16 @@ object DebugOut {
 
     private type Shape = SinkShape[BufD]
 
-  private final class Stage(implicit protected val ctrl: Control)
+  private final class Stage(layer: Layer)(implicit protected val ctrl: Control)
     extends BlockingGraphStage[Shape](s"$name") {
 
     val shape: Shape = SinkShape[BufD](InD(s"$name.in"))
 
-    def createLogic(attr: Attributes) = new Logic(shape)
+    def createLogic(attr: Attributes) = new Logic(shape, layer)
   }
 
-  private final class Logic(shape: Shape)(implicit ctrl: Control)
-    extends NodeImpl(s"$name", shape) with InHandler { logic =>
+  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+    extends NodeImpl(s"$name", layer, shape) with InHandler { logic =>
 
     setHandler(shape.in, this)
 

@@ -21,7 +21,7 @@ import de.sciss.fscape.stream.{BufI, Builder, Control, _}
 
 object Action {
   def apply(trig: OutI, ref: Input.Action.Value)(implicit b: Builder): Unit = {
-    val stage0  = new Stage(ref)
+    val stage0  = new Stage(b.layer, ref)
     val stage   = b.add(stage0)
     b.connect(trig, stage.in)
   }
@@ -30,16 +30,18 @@ object Action {
 
   private type Shape = SinkShape[BufI]
 
-  private final class Stage(ref: Input.Action.Value)(implicit ctrl: Control) extends StageImpl[Shape](name) {
+  private final class Stage(layer: Layer, ref: Input.Action.Value)(implicit ctrl: Control)
+    extends StageImpl[Shape](name) {
+
     val shape = new SinkShape(
       in = InI(s"$name.trig")
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, ref)
+    def createLogic(attr: Attributes) = new Logic(shape, layer, ref)
   }
 
-  private final class Logic(shape: Shape, ref: Input.Action.Value)(implicit ctrl: Control)
-    extends NodeImpl(name, shape)
+  private final class Logic(shape: Shape, layer: Layer, ref: Input.Action.Value)(implicit ctrl: Control)
+    extends NodeImpl(name, layer, shape)
       with Sink1Impl[BufI] {
 
     private[this] var high0 = false

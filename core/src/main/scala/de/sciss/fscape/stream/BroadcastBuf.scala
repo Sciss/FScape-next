@@ -26,7 +26,7 @@ object BroadcastBuf {
     // any of the two sinks closes, the entire `BroadcastBuf` closes.
     // This is usually _not_ what we want. We want to be able to
     // keep feeding the remaining sink.
-    val stage0 = new Stage[B](numOutputs = numOutputs, eagerCancel = false)
+    val stage0 = new Stage[B](layer = b.layer, numOutputs = numOutputs, eagerCancel = false)
     val stage  = b.add(stage0)
     b.connect(in, stage.in)
     stage.outlets.toIndexedSeq
@@ -37,7 +37,7 @@ object BroadcastBuf {
   private type Shape[B <: BufLike] = UniformFanOutShape[B, B]
 
   /** Variant of Akka's built-in `Broadcast` that properly allocates buffers. */
-  private final class Stage[B <: BufLike](numOutputs: Int, eagerCancel: Boolean)(implicit ctrl: Control)
+  private final class Stage[B <: BufLike](layer: Layer, numOutputs: Int, eagerCancel: Boolean)(implicit ctrl: Control)
     extends StageImpl[Shape[B]](name) {
 
     val shape: Shape = UniformFanOutShape(
@@ -46,11 +46,11 @@ object BroadcastBuf {
     )
 
     def createLogic(attr: Attributes): NodeImpl[Shape] =
-      new Logic(shape = shape, eagerCancel = eagerCancel)
+      new Logic(shape = shape, layer = layer, eagerCancel = eagerCancel)
   }
 
-  private final class Logic[B <: BufLike](shape: Shape[B], eagerCancel: Boolean)(implicit ctrl: Control)
-    extends NodeImpl(name, shape) with InHandler { self =>
+  private final class Logic[B <: BufLike](shape: Shape[B], layer: Layer, eagerCancel: Boolean)(implicit ctrl: Control)
+    extends NodeImpl(name, layer, shape) with InHandler { self =>
 
     private[this] val numOutputs    = shape.outlets.size
     private[this] var pendingCount  = numOutputs

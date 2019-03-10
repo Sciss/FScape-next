@@ -22,7 +22,7 @@ object UnaryOp {
 
   def apply(op: Op, in: OutD)(implicit b: Builder): OutD = {
     // println(s"UnaryOp($op, $in)")
-    val stage0  = new Stage(op)
+    val stage0  = new Stage(b.layer, op)
     val stage   = b.add(stage0)
     b.connect(in, stage.in)
     stage.out
@@ -32,17 +32,19 @@ object UnaryOp {
 
   private type Shape = FlowShape[BufD, BufD]
 
-  private final class Stage(op: Op)(implicit ctrl: Control) extends StageImpl[Shape](s"$name(${op.name})") {
+  private final class Stage(layer: Layer, op: Op)(implicit ctrl: Control)
+    extends StageImpl[Shape](s"$name(${op.name})") {
+
     val shape = new FlowShape(
       in  = InD (s"$name.in" ),
       out = OutD(s"$name.out")
     )
 
-    def createLogic(attr: Attributes) = new Logic(op, shape)
+    def createLogic(attr: Attributes) = new Logic(shape, layer, op)
   }
 
-  private final class Logic(op: Op, shape: Shape)(implicit ctrl: Control)
-    extends NodeImpl(s"$name(${op.name})", shape)
+  private final class Logic(shape: Shape, layer: Layer, op: Op)(implicit ctrl: Control)
+    extends NodeImpl(s"$name(${op.name})", layer, shape)
       with FilterChunkImpl[BufD, BufD, Shape]
       with FilterIn1DImpl[BufD] {
 

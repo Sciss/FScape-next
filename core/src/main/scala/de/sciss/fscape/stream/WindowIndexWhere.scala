@@ -19,7 +19,7 @@ import de.sciss.fscape.stream.impl.{FilterIn2Impl, FilterLogicImpl, NodeImpl, St
 
 object WindowIndexWhere {
   def apply(p: OutI, size: OutI)(implicit b: Builder): OutI = {
-    val stage0  = new Stage
+    val stage0  = new Stage(b.layer)
     val stage   = b.add(stage0)
     b.connect(p   , stage.in0)
     b.connect(size, stage.in1)
@@ -30,18 +30,18 @@ object WindowIndexWhere {
 
   private type Shape = FanInShape2[BufI, BufI, BufI]
 
-  private final class Stage(implicit ctrl: Control) extends StageImpl[Shape](name) {
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
     val shape = new FanInShape2(
       in0 = InI (s"$name.p"   ),
       in1 = InI (s"$name.size"),
       out = OutI(s"$name.out" )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape)
+    def createLogic(attr: Attributes) = new Logic(shape, layer)
   }
 
-  private final class Logic(shape: Shape)(implicit ctrl: Control)
-    extends NodeImpl(name, shape)
+  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+    extends NodeImpl(name, layer, shape)
       with WindowedLogicImpl[Shape]
       with FilterLogicImpl[BufI, Shape]
       with FilterIn2Impl[BufI, BufI, BufI] {

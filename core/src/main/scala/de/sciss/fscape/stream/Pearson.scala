@@ -19,7 +19,7 @@ import de.sciss.fscape.stream.impl.{FilterIn3DImpl, FilterLogicImpl, NodeImpl, S
 
 object Pearson {
   def apply(x: OutD, y: OutD, size: OutI)(implicit b: Builder): OutD = {
-    val stage0  = new Stage
+    val stage0  = new Stage(b.layer)
     val stage   = b.add(stage0)
     b.connect(x   , stage.in0)
     b.connect(y   , stage.in1)
@@ -31,7 +31,7 @@ object Pearson {
 
   private type Shape = FanInShape3[BufD, BufD, BufI, BufD]
 
-  private final class Stage(implicit ctrl: Control) extends StageImpl[Shape](name) {
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
     val shape = new FanInShape3(
       in0 = InD (s"$name.x"   ),
       in1 = InD (s"$name.y"   ),
@@ -39,11 +39,11 @@ object Pearson {
       out = OutD(s"$name.out" )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape)
+    def createLogic(attr: Attributes) = new Logic(shape, layer)
   }
 
-  private final class Logic(shape: Shape)(implicit ctrl: Control)
-    extends NodeImpl(name, shape)
+  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+    extends NodeImpl(name, layer, shape)
       with WindowedLogicImpl[Shape]
       with FilterLogicImpl[BufD, Shape]
       with FilterIn3DImpl[BufD, BufD, BufI] {

@@ -26,6 +26,8 @@ trait Node {
 
   implicit protected def control: Control
 
+  def layer: Layer
+
   def launchAsync(): Unit
 
   def failAsync(ex: Exception): Unit

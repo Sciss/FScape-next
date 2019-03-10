@@ -23,7 +23,7 @@ import edu.emory.mathcs.jtransforms.fft.DoubleFFT_1D
 
 object ConstQ {
   def apply(in: OutD, fftSize: OutI, minFreqN: OutD, maxFreqN: OutD, numBands: OutI)(implicit b: Builder): OutD = {
-    val stage0  = new Stage
+    val stage0  = new Stage(b.layer)
     val stage   = b.add(stage0)
     b.connect(in      , stage.in0)
     b.connect(fftSize , stage.in1)
@@ -37,7 +37,7 @@ object ConstQ {
 
   private type Shape = FanInShape5[BufD, BufI, BufD, BufD, BufI, BufD]
 
-  private final class Stage(implicit ctrl: Control) extends StageImpl[Shape](name) {
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
     val shape = new FanInShape5(
       in0 = InD (s"$name.in"       ),
       in1 = InI (s"$name.fftSize"  ),
@@ -46,7 +46,7 @@ object ConstQ {
       in4 = InI (s"$name.zero"     ),
       out = OutD(s"$name.out"      )
     )
-    def createLogic(attr: Attributes) = new Logic(shape)
+    def createLogic(attr: Attributes) = new Logic(shape, layer)
   }
 
   // N.B.: `offset` is "flat complex", so always even
@@ -54,8 +54,8 @@ object ConstQ {
 
   // XXX TODO --- we could store pre-calculated cosine tables for
   // sufficiently small table sizes
-  private final class Logic(shape: Shape)(implicit ctrl: Control)
-    extends NodeImpl(name, shape)
+  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+    extends NodeImpl(name, layer, shape)
       with FilterLogicImpl[BufD, Shape]
       with WindowedLogicImpl[Shape]
       with FilterIn5DImpl[BufD, BufI, BufD, BufD, BufI] {

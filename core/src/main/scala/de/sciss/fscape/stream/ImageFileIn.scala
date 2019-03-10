@@ -26,7 +26,7 @@ import scala.collection.immutable.{IndexedSeq => Vec}
  */
 object ImageFileIn {
   def apply(file: File, numChannels: Int)(implicit b: Builder): Vec[OutD] = {
-    val source  = new Stage(file, numChannels = numChannels)
+    val source  = new Stage(layer = b.layer, f = file, numChannels = numChannels)
     val stage   = b.add(source)
     stage.outlets.toIndexedSeq
   }
@@ -36,16 +36,16 @@ object ImageFileIn {
   private type Shape = UniformSourceShape[BufD]
 
   // similar to internal `UnfoldResourceSource`
-  private final class Stage(f: File, numChannels: Int)(implicit ctrl: Control)
+  private final class Stage(layer: Int, f: File, numChannels: Int)(implicit ctrl: Control)
     extends BlockingGraphStage[Shape](s"$name(${f.name})") {
 
     val shape = UniformSourceShape(Vector.tabulate(numChannels)(ch => OutD(s"$name.out$ch")))
 
-    def createLogic(attr: Attributes) = new Logic(shape, f, numChannels = numChannels)
+    def createLogic(attr: Attributes) = new Logic(shape, layer, f, numChannels = numChannels)
   }
 
-  private final class Logic(shape: Shape, f: File, protected val numChannels: Int)(implicit ctrl: Control)
-    extends NodeImpl(s"$name(${f.name})", shape) with NodeHasInitImpl with ImageFileInImpl[Shape] {
+  private final class Logic(shape: Shape, layer: Layer, f: File, protected val numChannels: Int)(implicit ctrl: Control)
+    extends NodeImpl(s"$name(${f.name})", layer, shape) with NodeHasInitImpl with ImageFileInImpl[Shape] {
 
     protected val outlets: Vec[OutD] = shape.outlets.toIndexedSeq
 

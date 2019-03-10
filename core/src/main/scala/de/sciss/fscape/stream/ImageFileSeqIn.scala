@@ -28,7 +28,7 @@ import scala.collection.immutable.{IndexedSeq => Vec}
  */
 object ImageFileSeqIn {
   def apply(template: File, numChannels: Int, indices: OutI)(implicit b: Builder): Vec[OutD] = {
-    val source  = new Stage(template, numChannels = numChannels)
+    val source  = new Stage(layer = b.layer, template = template, numChannels = numChannels)
     val stage   = b.add(source)
     b.connect(indices, stage.in)
     stage.outlets.toIndexedSeq
@@ -39,7 +39,7 @@ object ImageFileSeqIn {
   private type Shape = UniformFanOutShape[BufI, BufD]
 
   // similar to internal `UnfoldResourceSource`
-  private final class Stage(template: File, numChannels: Int)(implicit ctrl: Control)
+  private final class Stage(layer: Layer, template: File, numChannels: Int)(implicit ctrl: Control)
     extends BlockingGraphStage[Shape](s"$name(${template.name})") {
 
     val shape: Shape = UniformFanOutShape(
@@ -47,11 +47,11 @@ object ImageFileSeqIn {
       outlets = Vector.tabulate(numChannels)(ch => OutD(s"$name.out$ch")): _*
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, template, numChannels = numChannels)
+    def createLogic(attr: Attributes) = new Logic(shape, layer = layer, template = template, numChannels = numChannels)
   }
 
-  private final class Logic(shape: Shape, template: File, protected val numChannels: Int)(implicit ctrl: Control)
-    extends NodeImpl(s"$name(${template.name})", shape)
+  private final class Logic(shape: Shape, layer: Layer, template: File, protected val numChannels: Int)(implicit ctrl: Control)
+    extends NodeImpl(s"$name(${template.name})", layer, shape)
     with ImageFileInImpl[Shape]
     with InHandler {
 

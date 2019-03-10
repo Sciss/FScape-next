@@ -21,7 +21,7 @@ import scala.annotation.tailrec
 
 object Limiter {
   def apply(in: OutD, attack: OutI, release: OutI, ceiling: OutD)(implicit b: Builder): OutD = {
-    val stage0  = new Stage
+    val stage0  = new Stage(b.layer)
     val stage   = b.add(stage0)
     b.connect(in      , stage.in0)
     b.connect(attack  , stage.in1)
@@ -34,7 +34,7 @@ object Limiter {
 
   private type Shape = FanInShape4[BufD, BufI, BufI, BufD, BufD]
 
-  private final class Stage(implicit ctrl: Control) extends StageImpl[Shape](name) {
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
     val shape = new FanInShape4(
       in0 = InD (s"$name.in"      ),
       in1 = InI (s"$name.attack"  ),
@@ -43,11 +43,11 @@ object Limiter {
       out = OutD(s"$name.out"     )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape)
+    def createLogic(attr: Attributes) = new Logic(shape, layer)
   }
 
-  private final class Logic(shape: Shape)(implicit ctrl: Control)
-    extends NodeImpl(name, shape)
+  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+    extends NodeImpl(name, layer, shape)
       with DemandFilterIn4D[BufD, BufI, BufI, BufD]
   {
 

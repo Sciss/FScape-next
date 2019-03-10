@@ -20,7 +20,7 @@ import de.sciss.numbers.TwoPi
 
 object SinOsc {
   def apply(freqN: OutD, phase: OutD)(implicit b: Builder): OutD = {
-    val stage0  = new Stage
+    val stage0  = new Stage(b.layer)
     val stage   = b.add(stage0)
     b.connect(freqN, stage.in0)
     b.connect(phase, stage.in1)
@@ -31,20 +31,20 @@ object SinOsc {
 
   private type Shape = FanInShape2[BufD, BufD, BufD]
 
-  private final class Stage(implicit ctrl: Control) extends StageImpl[Shape](name) {
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
     val shape = new FanInShape2(
       in0 = InD (s"$name.freqN"),
       in1 = InD (s"$name.phase"),
       out = OutD(s"$name.out"  )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape)
+    def createLogic(attr: Attributes) = new Logic(shape, layer)
   }
 
   // XXX TODO -- detect constant freq input and use multiplication instead of frame-by-frame addition for phase
   // (cf. Resample)
-  private final class Logic(shape: Shape)(implicit ctrl: Control)
-    extends NodeImpl(name, shape)
+  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+    extends NodeImpl(name, layer, shape)
       with GenChunkImpl[BufD, BufD, Shape]
       with GenIn2DImpl[BufD, BufD] {
 

@@ -24,7 +24,7 @@ object ComplexBinaryOp {
   import graph.ComplexBinaryOp.Op
 
   def apply(op: Op, a: OutD, b: OutD)(implicit builder: Builder): OutD = {
-    val stage0  = new Stage(op)
+    val stage0  = new Stage(builder.layer, op)
     val stage   = builder.add(stage0)
     builder.connect(a, stage.in0)
     builder.connect(b, stage.in1)
@@ -35,18 +35,18 @@ object ComplexBinaryOp {
 
   private type Shape = FanInShape2[BufD, BufD, BufD]
 
-  private final class Stage(op: Op)(implicit ctrl: Control) extends StageImpl[Shape](s"$name(${op.name})") {
+  private final class Stage(layer: Layer, op: Op)(implicit ctrl: Control) extends StageImpl[Shape](s"$name(${op.name})") {
     val shape = new FanInShape2(
       in0 = InD (s"$name.a" ),
       in1 = InD (s"$name.b" ),
       out = OutD(s"$name.out")
     )
 
-    def createLogic(attr: Attributes) = new Logic(op, shape)
+    def createLogic(attr: Attributes) = new Logic(shape, layer, op)
   }
 
-  private final class Logic(op: Op, shape: Shape)(implicit ctrl: Control)
-    extends NodeImpl(s"$name(${op.name})", shape)
+  private final class Logic(shape: Shape, layer: Layer, op: Op)(implicit ctrl: Control)
+    extends NodeImpl(s"$name(${op.name})", layer, shape)
       with FilterChunkImpl /* SameChunkImpl[Shape] */ [BufD, BufD, Shape]
       with FilterIn2DImpl /* BinaryInDImpl */[BufD, BufD] {
 

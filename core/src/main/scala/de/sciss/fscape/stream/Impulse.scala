@@ -20,7 +20,7 @@ import de.sciss.numbers
 
 object Impulse {
   def apply(freqN: OutD, phase: OutD)(implicit b: Builder): OutI = {
-    val stage0  = new Stage
+    val stage0  = new Stage(b.layer)
     val stage   = b.add(stage0)
     b.connect(freqN, stage.in0)
     b.connect(phase, stage.in1)
@@ -31,20 +31,20 @@ object Impulse {
 
   private type Shape = FanInShape2[BufD, BufD, BufI]
 
-  private final class Stage(implicit ctrl: Control) extends StageImpl[Shape](name) {
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
     val shape = new FanInShape2(
       in0 = InD (s"$name.freqN"),
       in1 = InD (s"$name.phase"),
       out = OutI(s"$name.out"  )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape)
+    def createLogic(attr: Attributes) = new Logic(shape, layer)
   }
 
   // XXX TODO -- detect constant freq input and use multiplication instead of frame-by-frame addition for phase
   // (cf. Resample)
-  private final class Logic(shape: Shape)(implicit ctrl: Control)
-    extends NodeImpl(name, shape)
+  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+    extends NodeImpl(name, layer, shape)
       with GenChunkImpl[BufD, BufI, Shape]
       with GenIn2IImpl[BufD, BufD] {
 

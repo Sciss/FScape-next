@@ -20,7 +20,7 @@ import de.sciss.fscape.stream.impl.{ChunkImpl, FilterIn2Impl, NodeImpl, StageImp
 object DetectLocalMax {
   def apply[A, Buf >: Null <: BufElem[A]](in: Outlet[Buf], size: OutI)
                                          (implicit b: Builder, tpe: StreamType[A, Buf]): OutI = {
-    val stage0  = new Stage[A, Buf]
+    val stage0  = new Stage[A, Buf](b.layer)
     val stage   = b.add(stage0)
     b.connect(in  , stage.in0)
     b.connect(size, stage.in1)
@@ -31,7 +31,7 @@ object DetectLocalMax {
 
   private type Shape[A, Buf >: Null <: BufElem[A]] = FanInShape2[Buf, BufI, BufI]
 
-  private final class Stage[A, Buf >: Null <: BufElem[A]](implicit ctrl: Control, tpe: StreamType[A, Buf])
+  private final class Stage[A, Buf >: Null <: BufElem[A]](layer: Layer)(implicit ctrl: Control, tpe: StreamType[A, Buf])
     extends StageImpl[Shape[A, Buf]](name) {
 
     val shape = new FanInShape2(
@@ -40,7 +40,7 @@ object DetectLocalMax {
       out = OutI      (s"$name.out" )
     )
 
-    def createLogic(attr: Attributes) = new Logic[A, Buf](shape)
+    def createLogic(attr: Attributes) = new Logic[A, Buf](shape, layer)
   }
 
   /*
@@ -137,9 +137,9 @@ object DetectLocalMax {
 
    */
 
-  private final class Logic[A, Buf >: Null <: BufElem[A]](shape: Shape[A, Buf])
+  private final class Logic[A, Buf >: Null <: BufElem[A]](shape: Shape[A, Buf], layer: Layer)
                                                          (implicit ctrl: Control, tpe: StreamType[A, Buf])
-    extends NodeImpl(name, shape)
+    extends NodeImpl(name, layer, shape)
       with FilterIn2Impl[Buf, BufI, BufI]
       with ChunkImpl[Shape[A, Buf]] {
 

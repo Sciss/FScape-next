@@ -19,7 +19,7 @@ import de.sciss.fscape.stream.impl.{FilterChunkImpl, FilterIn1LImpl, StageImpl, 
 
 object Timer {
   def apply(trig: OutI)(implicit b: Builder): OutL = {
-    val stage0  = new Stage
+    val stage0  = new Stage(b.layer)
     val stage   = b.add(stage0)
     b.connect(trig, stage.in)
     stage.out
@@ -29,17 +29,17 @@ object Timer {
 
   private type Shape = FlowShape[BufI, BufL]
 
-  private final class Stage(implicit ctrl: Control) extends StageImpl[Shape](name) {
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
     val shape = new FlowShape(
       in  = InI (s"$name.trig"),
       out = OutL(s"$name.out" )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape)
+    def createLogic(attr: Attributes) = new Logic(shape, layer)
   }
 
-  private final class Logic(shape: Shape)(implicit ctrl: Control)
-    extends NodeImpl(name, shape)
+  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+    extends NodeImpl(name, layer, shape)
       with FilterIn1LImpl[BufI]
       with FilterChunkImpl[BufI, BufL, Shape] {
 

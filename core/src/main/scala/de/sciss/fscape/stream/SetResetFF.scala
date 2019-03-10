@@ -19,7 +19,7 @@ import de.sciss.fscape.stream.impl.{FilterChunkImpl, FilterIn2IImpl, NodeImpl, S
 
 object SetResetFF {
   def apply(trig: OutI, reset: OutI)(implicit b: Builder): OutI = {
-    val stage0  = new Stage
+    val stage0  = new Stage(b.layer)
     val stage   = b.add(stage0)
     b.connect(trig , stage.in0)
     b.connect(reset, stage.in1)
@@ -30,18 +30,18 @@ object SetResetFF {
 
   private type Shape = FanInShape2[BufI, BufI, BufI]
 
-  private final class Stage(implicit ctrl: Control) extends StageImpl[Shape](name) {
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
     val shape = new FanInShape2(
       in0 = InI (s"$name.trig" ),
       in1 = InI (s"$name.reset"),
       out = OutI(s"$name.out"  )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape)
+    def createLogic(attr: Attributes) = new Logic(shape, layer)
   }
 
-  private final class Logic(shape: Shape)(implicit ctrl: Control)
-    extends NodeImpl(name, shape)
+  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+    extends NodeImpl(name, layer, shape)
       with FilterIn2IImpl[BufI, BufI]
       with FilterChunkImpl[BufI, BufI, Shape] {
 

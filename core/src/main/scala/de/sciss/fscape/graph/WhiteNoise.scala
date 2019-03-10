@@ -19,6 +19,7 @@ import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+/** Nominal signal range is `-mul` to `+mul` (exclusive). */
 final case class WhiteNoise(mul: GE = 1.0) extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = unwrap(this, Vector(mul.expand))
 

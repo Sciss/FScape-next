@@ -21,7 +21,7 @@ import de.sciss.fscape.stream.impl.{NodeImpl, Sink1Impl, StageImpl}
 object DebugPoll {
   def apply(in: Outlet[BufLike], label: String)(implicit b: Builder): Unit = {
     // println(s"DebugPoll($in, $trig, $label)")
-    val stage0  = new Stage(label = label)
+    val stage0  = new Stage(layer = b.layer, label = label)
     val stage   = b.add(stage0)
     b.connect(in, stage.in)
   }
@@ -30,16 +30,16 @@ object DebugPoll {
 
   private type Shape = SinkShape[BufLike]
 
-  private final class Stage(label: String)(implicit ctrl: Control) extends StageImpl[Shape](name) {
+  private final class Stage(layer: Layer, label: String)(implicit ctrl: Control) extends StageImpl[Shape](name) {
     val shape = SinkShape(
       in = Inlet[BufLike](s"$name.in")
     )
 
-    def createLogic(attr: Attributes) = new Logic(label = label, shape = shape)
+    def createLogic(attr: Attributes) = new Logic(shape = shape, layer = layer, label = label)
   }
 
-  private final class Logic(label: String, shape: Shape)(implicit ctrl: Control)
-    extends NodeImpl(name, shape)
+  private final class Logic(shape: Shape, layer: Layer, label: String)(implicit ctrl: Control)
+    extends NodeImpl(name, layer, shape)
       with Sink1Impl[BufLike] {
 
     override def toString = s"$name-L($label)"

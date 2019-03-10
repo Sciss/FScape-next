@@ -22,7 +22,7 @@ import scala.concurrent.Promise
 
 object DebugIntPromise {
   def apply(in: OutI, p: Promise[Vec[Int]])(implicit b: Builder): Unit = {
-    val stage0  = new Stage(p)
+    val stage0  = new Stage(b.layer, p)
     val stage   = b.add(stage0)
     b.connect(in, stage.in)
   }
@@ -31,16 +31,16 @@ object DebugIntPromise {
 
   private type Shape = SinkShape[BufI]
 
-  private final class Stage(p: Promise[Vec[Int]])(implicit ctrl: Control) extends StageImpl[Shape](name) {
+  private final class Stage(layer: Layer, p: Promise[Vec[Int]])(implicit ctrl: Control) extends StageImpl[Shape](name) {
     val shape = SinkShape(
       in = InI(s"$name.in")
     )
 
-    def createLogic(attr: Attributes) = new Logic(p, shape)
+    def createLogic(attr: Attributes) = new Logic(shape, layer, p)
   }
 
-  private final class Logic(p: Promise[Vec[Int]], shape: Shape)(implicit ctrl: Control)
-    extends NodeImpl(name, shape)
+  private final class Logic(shape: Shape, layer: Layer, p: Promise[Vec[Int]])(implicit ctrl: Control)
+    extends NodeImpl(name, layer, shape)
       with Sink1Impl[BufI] {
 
     override def toString = s"$name@${hashCode().toHexString}"

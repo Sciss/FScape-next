@@ -21,7 +21,7 @@ object BinaryOp {
   import graph.BinaryOp.Op
 
   def apply(op: Op, in1: OutD, in2: OutD)(implicit b: Builder): OutD = {
-    val stage0  = new Stage(op)
+    val stage0  = new Stage(layer = b.layer, op = op)
     val stage   = b.add(stage0)
     b.connect(in1, stage.in0)
     b.connect(in2, stage.in1)
@@ -32,18 +32,18 @@ object BinaryOp {
 
   private type Shape = FanInShape2[BufD, BufD, BufD]
 
-  private final class Stage(op: Op)(implicit ctrl: Control) extends StageImpl[Shape](s"$name(${op.name})") {
+  private final class Stage(layer: Layer, op: Op)(implicit ctrl: Control) extends StageImpl[Shape](s"$name(${op.name})") {
     val shape = new FanInShape2(
       in0 = InD (s"$name.in1"),
       in1 = InD (s"$name.in2"),
       out = OutD(s"$name.out")
     )
 
-    def createLogic(attr: Attributes) = new Logic(op, shape)
+    def createLogic(attr: Attributes) = new Logic(shape, layer = layer, op = op)
   }
 
-  private final class Logic(op: Op, shape: Shape)(implicit ctrl: Control)
-    extends NodeImpl(s"$name(${op.name})", shape)
+  private final class Logic(shape: Shape, layer: Layer, op: Op)(implicit ctrl: Control)
+    extends NodeImpl(s"$name(${op.name})", layer, shape)
       with FilterChunkImpl /* SameChunkImpl[Shape] */ [BufD, BufD, Shape]
       with FilterIn2DImpl /* BinaryInDImpl */[BufD, BufD] {
 

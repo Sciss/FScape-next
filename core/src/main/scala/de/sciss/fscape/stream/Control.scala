@@ -217,6 +217,7 @@ object Control {
     private[this] val queueI      = new ConcurrentLinkedQueue[BufI]
     private[this] val queueL      = new ConcurrentLinkedQueue[BufL]
     private[this] val nodes       = mutable.Set.empty[Node]
+    private[this] val nodeLayers  = mutable.Map.empty[Layer, mutable.Set[Node]]
     private[this] val sync        = new AnyRef
     private[this] val statusP     = Promise[Unit]()
     private[this] var _actor      = null : ActorRef
@@ -255,7 +256,17 @@ object Control {
     }
 
     private def actRemoveNode(n: Node, context: ActorContext, self: ActorRef): Unit = {
+      val nl = n.layer
       if (nodes.remove(n)) {
+        val nm = nodeLayers(nl)
+        if (nm.remove(n)) {
+          if (nm.isEmpty) {
+            nodeLayers.remove(nl)
+          }
+        } else {
+          Console.err.println(s"Warning: node $n was not registered with Control layers")
+        }
+
         // XXX TODO --- check for error other than `Cancelled` --- how?
         if (nodes.isEmpty) {
           logControl(s"${hashCode().toHexString} actRemoveNode complete")
@@ -272,31 +283,35 @@ object Control {
       }
     }
 
+    private def nodesInLayer(layer: Layer): Seq[Node] = nodeLayers.getOrElse(layer, mutable.Set.empty).toSeq
+
     // We kind of emulate what Akka Stream would do itself
     // if we had used `preStart`: we have to buffer all polls
     // until the initialization of all nodes is done. Here
     // we do that by first going through all `NodeHasInit`
     // and then mapping the resulting future to launch the
     // nodes (`launch` will typically poll a node's inputs).
-    private def actLaunch(): Unit = {
+    private def actLaunch(layer: Layer): Unit = {
       logControl(s"${hashCode().toHexString} actLaunch")
-      val futInit: Seq[Future[Unit]] = nodes.iterator.collect {
+      val nodes0 = nodesInLayer(layer)
+      val futInit: Seq[Future[Unit]] = nodes0.iterator.collect {
         case ni: NodeHasInit => ni.initAsync()
       } .toSeq
 
       import config.executionContext
       Future.sequence(futInit).foreach { _ =>
-        nodes.foreach { n =>
+        nodes0.foreach { n =>
           n.launchAsync()
         }
       }
     }
 
-    private def actCancel(): Unit = {
+    private def actCancel(layer: Layer): Unit = {
       logControl(s"${hashCode().toHexString} actCancel")
       val ex = Cancelled()
       statusP.tryFailure(ex)
-      nodes.foreach { n =>
+      val nodes0 = nodesInLayer(layer)
+      nodes0.foreach { n =>
         n.failAsync(ex)
       }
     }
@@ -305,8 +320,8 @@ object Control {
       def receive: Receive = {
         case SetProgress(key, frac) => actSetProgress(key, frac)
         case RemoveNode(n)          => actRemoveNode(n, context, self)
-        case Launch                 => actLaunch()
-        case Cancel                 => actCancel()
+        case Launch(layer)          => actLaunch(layer)
+        case Cancel(layer)          => actCancel(layer)
       }
     }
 
@@ -320,8 +335,13 @@ object Control {
       logControl(s"${hashCode().toHexString} runExpanded")
       mkActor()
       r.run()(config.materializer)
-      _actor ! Launch
+      _actor ! Launch(0)
     }
+
+    private[stream] def launchLayer(layer: Layer): Unit =
+      sync.synchronized {
+        if (_actor != null) _actor ! Launch(layer)
+      }
 
     final def mkRandom(): Random = /* sync.synchronized */ {
       new Random(metaRand.nextLong())
@@ -384,14 +404,22 @@ object Control {
     }
 
     // called during materialization, no sync needed
-    final private[stream] def addNode   (n: Node): Unit = nodes += n
+    final private[stream] def addNode(n: Node): Unit = {
+      val nl = n.layer
+      val nm = nodeLayers.getOrElseUpdate(nl, mutable.Set.empty)
+      nm    += n
+      nodes += n
+    }
+
     // called during run, have to relay using actor
     final private[stream] def removeNode(n: Node): Unit = _actor ! RemoveNode(n)
 
     final def status: Future[Unit] = statusP.future
 
-    final def cancel(): Unit = sync.synchronized {
-      if (_actor != null) _actor ! Cancel
+    final def cancel(): Unit = cancelLayer(0)
+
+    final private[stream] def cancelLayer(layer: Layer): Unit = sync.synchronized {
+      if (_actor != null) _actor ! Cancel(layer)
     }
 
     // XXX TODO --- should be in the actor body
@@ -426,8 +454,8 @@ object Control {
   // ---- actor messages
 
   private final case class RemoveNode(node: Node)
-  private case object      Launch
-  private case object      Cancel
+  private case class Launch(layer: Layer)
+  private case class Cancel(layer: Layer)
   private final case class SetProgress(key: Int, frac: Double)
 }
 trait Control {
@@ -478,6 +506,10 @@ trait Control {
 
   /** Reports the progress for a particular instance. */
   private[stream] def setProgress(key: Int, frac: Double): Unit
+
+  private[stream] def launchLayer(layer: Layer): Unit
+
+  private[stream] def cancelLayer(layer: Layer): Unit
 
   /** Creates a temporary file. The caller is responsible for deleting the file
     * after it is not needed any longer. (The file will still be marked `deleteOnExit`)

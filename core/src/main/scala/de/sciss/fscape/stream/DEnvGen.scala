@@ -21,7 +21,7 @@ import scala.annotation.switch
 
 object DEnvGen {
   def apply(levels: OutD, lengths: OutL, shapes: OutI, curvatures: OutD)(implicit b: Builder): OutD = {
-    val stage0  = new Stage
+    val stage0  = new Stage(b.layer)
     val stage   = b.add(stage0)
     b.connect(levels    , stage.in0)
     b.connect(lengths   , stage.in1)
@@ -34,7 +34,7 @@ object DEnvGen {
 
   private type Shape = FanInShape4[BufD, BufL, BufI, BufD, BufD]
 
-  private final class Stage(implicit ctrl: Control) extends StageImpl[Shape](name) {
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
     val shape = new FanInShape4(
       in0 = InD (s"$name.levels"),
       in1 = InL (s"$name.lengths"),
@@ -43,11 +43,11 @@ object DEnvGen {
       out = OutD(s"$name.out"  )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape)
+    def createLogic(attr: Attributes) = new Logic(shape, layer)
   }
 
-  private final class Logic(shape: Shape)(implicit ctrl: Control)
-    extends NodeImpl(name, shape)
+  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+    extends NodeImpl(name, layer, shape)
       with ChunkImpl[Shape]
       with FilterIn4DImpl[BufD, BufL, BufI, BufD]
     {

@@ -19,7 +19,7 @@ import de.sciss.fscape.stream.impl.{NodeImpl, PollImpl, SinkShape2, StageImpl}
 
 object Progress {
   def apply(in: OutD, trig: OutI, label: String)(implicit b: Builder): Unit = {
-    val stage0  = new Stage(label = label)
+    val stage0  = new Stage(layer = b.layer, label = label)
     val stage   = b.add(stage0)
     b.connect(in  , stage.in0)
     b.connect(trig, stage.in1)
@@ -29,17 +29,17 @@ object Progress {
 
   private type Shape = SinkShape2[BufD, BufI]
 
-  private final class Stage(label: String)(implicit ctrl: Control) extends StageImpl[Shape](name) {
+  private final class Stage(layer: Layer, label: String)(implicit ctrl: Control) extends StageImpl[Shape](name) {
     val shape = SinkShape2(
       in0 = InD(s"$name.in"),
       in1 = InI(s"$name.trig")
     )
 
-    def createLogic(attr: Attributes) = new Logic(label = label, shape = shape)
+    def createLogic(attr: Attributes) = new Logic(layer = layer, shape = shape, label = label)
   }
 
-  private final class Logic(label: String, shape: Shape)(implicit ctrl: Control)
-    extends NodeImpl(name, shape)
+  private final class Logic(shape: Shape, layer: Layer, label: String)(implicit ctrl: Control)
+    extends NodeImpl(name, layer, shape)
       with PollImpl[BufD] {
 
     private[this] val key = ctrl.mkProgress(label)

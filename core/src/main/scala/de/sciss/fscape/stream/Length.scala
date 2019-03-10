@@ -20,7 +20,7 @@ import de.sciss.fscape.stream.impl.{StageImpl, NodeImpl}
 
 object Length {
   def apply(in: OutA)(implicit b: Builder): OutL = {
-    val stage0  = new Stage
+    val stage0  = new Stage(b.layer)
     val stage   = b.add(stage0)
     b.connect(in, stage.in)
     stage.out
@@ -30,17 +30,17 @@ object Length {
 
   private type Shape = FlowShape[BufLike, BufL]
 
-  private final class Stage(implicit ctrl: Control) extends StageImpl[Shape](name) {
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
     val shape = new FlowShape(
       in  = InA (s"$name.in" ),
       out = OutL(s"$name.out")
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape)
+    def createLogic(attr: Attributes) = new Logic(shape, layer)
   }
 
-  private final class Logic(shape: Shape)(implicit ctrl: Control)
-    extends NodeImpl(name, shape) with InHandler with OutHandler {
+  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+    extends NodeImpl(name, layer, shape) with InHandler with OutHandler {
 
     setHandler(shape.in , this)
     setHandler(shape.out, this)

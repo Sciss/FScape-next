@@ -19,21 +19,21 @@ import de.sciss.fscape.stream.impl.{FilterChunkImpl, FilterIn1IImpl, FilterIn1LI
 
 object Hash {
   def fromInt(in: OutI)(implicit b: Builder): OutI = {
-    val stage0  = new StageInt
+    val stage0  = new StageInt(b.layer)
     val stage   = b.add(stage0)
     b.connect(in, stage.in)
     stage.out
   }
 
   def fromLong(in: OutL)(implicit b: Builder): OutL = {
-    val stage0  = new StageLong
+    val stage0  = new StageLong(b.layer)
     val stage   = b.add(stage0)
     b.connect(in, stage.in)
     stage.out
   }
 
   def fromDouble(in: OutD)(implicit b: Builder): OutL = {
-    val stage0  = new StageDouble
+    val stage0  = new StageDouble(b.layer)
     val stage   = b.add(stage0)
     b.connect(in, stage.in)
     stage.out
@@ -43,7 +43,7 @@ object Hash {
 
   private type Shape[BI >: Null <: BufLike, BO >: Null <: BufLike] = FlowShape[BI, BO]
 
-  private final class StageInt(implicit ctrl: Control)
+  private final class StageInt(layer: Layer)(implicit ctrl: Control)
     extends StageImpl[Shape[BufI, BufI]](s"$name.Int") {
 
     val shape = new FlowShape(
@@ -51,10 +51,10 @@ object Hash {
       out = OutI(s"$name.out")
     )
 
-    def createLogic(attr: Attributes): NodeImpl[Hash.Shape[BufI, BufI]] = new IntLogic(shape)
+    def createLogic(attr: Attributes): NodeImpl[Hash.Shape[BufI, BufI]] = new IntLogic(shape, layer)
   }
 
-  private final class StageLong(implicit ctrl: Control)
+  private final class StageLong(layer: Layer)(implicit ctrl: Control)
     extends StageImpl[Shape[BufL, BufL]](s"$name.Long") {
 
     val shape = new FlowShape(
@@ -62,10 +62,10 @@ object Hash {
       out = OutL(s"$name.out")
     )
 
-    def createLogic(attr: Attributes): NodeImpl[Hash.Shape[BufL, BufL]] = new LongLogic(shape)
+    def createLogic(attr: Attributes): NodeImpl[Hash.Shape[BufL, BufL]] = new LongLogic(shape, layer)
   }
 
-  private final class StageDouble(implicit ctrl: Control)
+  private final class StageDouble(layer: Layer)(implicit ctrl: Control)
     extends StageImpl[Shape[BufD, BufL]](s"$name.Double") {
 
     val shape = new FlowShape(
@@ -73,15 +73,15 @@ object Hash {
       out = OutL(s"$name.out")
     )
 
-    def createLogic(attr: Attributes): NodeImpl[Hash.Shape[BufD, BufL]] = new DoubleLogic(shape)
+    def createLogic(attr: Attributes): NodeImpl[Hash.Shape[BufD, BufL]] = new DoubleLogic(shape, layer)
   }
 
   // using code from
   // https://github.com/tnm/murmurhash-java/blob/master/src/main/java/ie/ucd/murmur/MurmurHash.java
   // by Viliam Holub, Public Domain
 
-  private final class IntLogic(shape: Hash.Shape[BufI, BufI])(implicit ctrl: Control)
-    extends LogicBase[BufI, BufI](shape, "Int")
+  private final class IntLogic(shape: Hash.Shape[BufI, BufI], layer: Layer)(implicit ctrl: Control)
+    extends LogicBase[BufI, BufI](shape, layer, "Int")
     with FilterIn1IImpl[BufI] {
 
     private[this] final val seed  = 0x9747b28c
@@ -116,8 +116,8 @@ object Hash {
     }
   }
 
-  private final class LongLogic(shape: Hash.Shape[BufL, BufL])(implicit ctrl: Control)
-    extends LogicBase[BufL, BufL](shape, "Long")
+  private final class LongLogic(shape: Hash.Shape[BufL, BufL], layer: Layer)(implicit ctrl: Control)
+    extends LogicBase[BufL, BufL](shape, layer, "Long")
       with FilterIn1LImpl[BufL] {
 
     private[this] final val seed  = 0xe17a1465
@@ -152,8 +152,8 @@ object Hash {
     }
   }
 
-  private final class DoubleLogic(shape: Hash.Shape[BufD, BufL])(implicit ctrl: Control)
-    extends LogicBase[BufD, BufL](shape, "Double")
+  private final class DoubleLogic(shape: Hash.Shape[BufD, BufL], layer: Layer)(implicit ctrl: Control)
+    extends LogicBase[BufD, BufL](shape, layer, "Double")
       with FilterIn1LImpl[BufD] {
 
     private[this] final val seed  = 0xe17a1465
@@ -189,8 +189,9 @@ object Hash {
   }
 
   private abstract class LogicBase[BI >: Null <: BufLike, BO >: Null <: BufLike](shape: Shape[BI, BO],
-                                                                             tpe: String)
-                                                                            (implicit ctrl: Control)
-    extends NodeImpl[Shape[BI, BO]](s"$name.$tpe", shape)
+                                                                                 layer: Layer,
+                                                                                 tpe: String)
+                                                                                (implicit ctrl: Control)
+    extends NodeImpl[Shape[BI, BO]](s"$name.$tpe", layer, shape)
       with FilterChunkImpl[BI, BO, Shape[BI, BO]]
 }

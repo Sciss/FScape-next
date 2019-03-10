@@ -23,7 +23,7 @@ import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeHasInitImpl, NodeImp
 // that were already read
 object BufferDisk {
   def apply(in: OutD)(implicit b: Builder): OutD = {
-    val stage0  = new Stage
+    val stage0  = new Stage(b.layer)
     val stage   = b.add(stage0)
     b.connect(in, stage.in)
     stage.out
@@ -33,7 +33,7 @@ object BufferDisk {
 
   private type Shape = FlowShape[BufD, BufD]
 
-  private final class Stage(implicit protected val ctrl: Control)
+  private final class Stage(layer: Layer)(implicit protected val ctrl: Control)
     extends BlockingGraphStage[Shape](name) {
 
     val shape = new FlowShape(
@@ -41,11 +41,11 @@ object BufferDisk {
       out = OutD(s"$name.out")
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape)
+    def createLogic(attr: Attributes) = new Logic(shape, layer)
   }
 
-  private final class Logic(shape: Shape)(implicit ctrl: Control)
-    extends NodeImpl(name, shape) with NodeHasInitImpl with InHandler with OutHandler {
+  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+    extends NodeImpl(name, layer, shape) with NodeHasInitImpl with InHandler with OutHandler {
 
     private[this] var af: FileBuffer  = _
     private[this] val bufSize       = ctrl.blockSize
@@ -64,8 +64,10 @@ object BufferDisk {
     override protected def stopped(): Unit = {
       super.stopped()
       buf = null
-      af.dispose()
-      af = null
+      if (af != null) {
+        af.dispose()
+        af = null
+      }
     }
 
     def onPush(): Unit = {

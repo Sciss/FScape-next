@@ -21,7 +21,7 @@ import scala.annotation.tailrec
 
 object Line {
   def apply(start: OutD, end: OutD, length: OutL)(implicit b: Builder): OutD = {
-    val stage0  = new Stage
+    val stage0  = new Stage(b.layer)
     val stage   = b.add(stage0)
     b.connect(start , stage.in0)
     b.connect(end   , stage.in1)
@@ -33,7 +33,7 @@ object Line {
 
   private type Shape = FanInShape3[BufD, BufD, BufL, BufD]
 
-  private final class Stage(implicit ctrl: Control) extends StageImpl[Shape](name) {
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
     val shape = new FanInShape3(
       in0 = InD (s"$name.start" ),
       in1 = InD (s"$name.end"   ),
@@ -41,13 +41,13 @@ object Line {
       out = OutD(s"$name.out"   )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape)
+    def createLogic(attr: Attributes) = new Logic(shape, layer)
   }
 
   // XXX TODO --- we could allow `start` and `end` to change over time,
   // although probably that will not be needed ever
-  private final class Logic(shape: Shape)(implicit ctrl: Control)
-    extends NodeImpl(name, shape)
+  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+    extends NodeImpl(name, layer, shape)
       with GenIn3DImpl[BufD, BufD, BufL] {
 
     private[this] var _init = true

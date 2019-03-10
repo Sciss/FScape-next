@@ -20,7 +20,7 @@ import de.sciss.fscape.stream.impl.{GenChunkImpl, GenIn2IImpl, StageImpl, NodeIm
 // XXX TODO --- should probably poll `period` values only at period boundaries
 object Metro {
   def apply(period: OutL, phase: OutL)(implicit b: Builder): OutI = {
-    val stage0  = new Stage
+    val stage0  = new Stage(b.layer)
     val stage   = b.add(stage0)
     b.connect(period, stage.in0)
     b.connect(phase, stage.in1)
@@ -31,19 +31,19 @@ object Metro {
 
   private type Shape = FanInShape2[BufL, BufL, BufI]
 
-  private final class Stage(implicit ctrl: Control) extends StageImpl[Shape](name) {
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
     val shape = new FanInShape2(
       in0 = InL (s"$name.period"),
       in1 = InL (s"$name.phase"),
       out = OutI(s"$name.out"  )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape)
+    def createLogic(attr: Attributes) = new Logic(shape, layer)
   }
 
   // XXX TODO -- abstract over data type (BufD vs BufI)?
-  private final class Logic(shape: Shape)(implicit ctrl: Control)
-    extends NodeImpl(name, shape)
+  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+    extends NodeImpl(name, layer, shape)
       with GenChunkImpl[BufL, BufI, Shape]
       with GenIn2IImpl[BufL, BufL] {
 

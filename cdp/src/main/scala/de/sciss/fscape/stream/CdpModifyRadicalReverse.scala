@@ -25,7 +25,7 @@ import scala.util.control.NonFatal
 
 object CdpModifyRadicalReverse {
   def apply(in: OutD)(implicit b: Builder): OutD = {
-    val source  = new Stage
+    val source  = new Stage(b.layer)
     val stage   = b.add(source)
     b.connect(in, stage.in)
     stage.out
@@ -35,7 +35,7 @@ object CdpModifyRadicalReverse {
 
   private type Shape = FlowShape[BufD, BufD]
 
-  private final class Stage(implicit ctrl: Control)
+  private final class Stage(layer: Layer)(implicit ctrl: Control)
     extends BlockingGraphStage[Shape](name) {
 
     val shape = FlowShape(
@@ -43,11 +43,11 @@ object CdpModifyRadicalReverse {
       OutD(s"$name.out")
     )
 
-    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
   }
 
-  private final class Logic(shape: Shape)(implicit ctrl: Control)
-    extends NodeImpl(name, shape) with NodeHasInitImpl with InHandler with OutHandler {
+  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+    extends NodeImpl(name, layer, shape) with NodeHasInitImpl with InHandler with OutHandler {
 
     private[this] var afSource      : io.AudioFile  = _
     private[this] var afSink        : io.AudioFile  = _
@@ -102,10 +102,22 @@ object CdpModifyRadicalReverse {
     override protected def stopped(): Unit = {
       logStream(s"postStop() $this")
       buf = null
-      if (afSource != null && afSource.isOpen) afSource.close()
-      if (afSink   != null && afSink  .isOpen) afSink  .close()
-      tmpFileSource.delete()
-      tmpFileSink  .delete()
+      if (afSource != null) {
+        if (afSource.isOpen) afSource.close()
+        afSource = null
+      }
+      if (afSink != null) {
+        if (afSink.isOpen) afSink.close()
+        afSink = null
+      }
+      if (tmpFileSource != null) {
+        tmpFileSource.delete()
+        tmpFileSource = null
+      }
+      if (tmpFileSink != null) {
+        tmpFileSink.delete()
+        tmpFileSink = null
+      }
     }
 
     override def onPush(): Unit =

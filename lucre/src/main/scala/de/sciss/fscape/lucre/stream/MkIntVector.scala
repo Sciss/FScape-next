@@ -26,7 +26,7 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 
 object MkIntVector {
   def apply(in: OutI, ref: OutputRef)(implicit b: Builder): Unit = {
-    val stage0  = new Stage(ref)
+    val stage0  = new Stage(b.layer, ref)
     val stage   = b.add(stage0)
     b.connect(in, stage.in)
   }
@@ -35,16 +35,16 @@ object MkIntVector {
 
   private type Shape = SinkShape[BufI]
 
-  private final class Stage(ref: OutputRef)(implicit ctrl: Control) extends StageImpl[Shape](name) {
+  private final class Stage(layer: Layer, ref: OutputRef)(implicit ctrl: Control) extends StageImpl[Shape](name) {
     val shape = new SinkShape(
       in = InI(s"$name.in")
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, ref)
+    def createLogic(attr: Attributes) = new Logic(shape, layer, ref)
   }
 
-  private final class Logic(shape: Shape, ref: OutputRef)(implicit ctrl: Control)
-    extends NodeImpl(name, shape)
+  private final class Logic(shape: Shape, layer: Layer, ref: OutputRef)(implicit ctrl: Control)
+    extends NodeImpl(name, layer, shape)
       with Sink1Impl[BufI] {
 
     private[this] val builder = Vec.newBuilder[Int]

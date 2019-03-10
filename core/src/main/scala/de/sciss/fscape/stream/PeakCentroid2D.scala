@@ -21,7 +21,7 @@ import de.sciss.numbers
 object PeakCentroid2D {
   def apply(in: OutD, width: OutI, height: OutI, thresh1: OutD, thresh2: OutD, radius: OutI)
            (implicit b: Builder): (OutD, OutD, OutD) = {
-    val stage0  = new Stage
+    val stage0  = new Stage(b.layer)
     val stage   = b.add(stage0)
     b.connect(in     , stage.in0)
     b.connect(width  , stage.in1)
@@ -36,7 +36,7 @@ object PeakCentroid2D {
 
   private type Shape = In6Out3Shape[BufD, BufI, BufI, BufD, BufD, BufI, BufD, BufD, BufD]
 
-  private final class Stage(implicit ctrl: Control) extends StageImpl[Shape](name) {
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
     val shape = In6Out3Shape(
       in0  = InD (s"$name.in"        ),
       in1  = InI (s"$name.width"     ),
@@ -49,12 +49,12 @@ object PeakCentroid2D {
       out2 = OutD(s"$name.peak"      )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape)
+    def createLogic(attr: Attributes) = new Logic(shape, layer)
   }
 
   // XXX TODO -- abstract over data type (BufD vs BufI)?
-  private final class Logic(shape: Shape)(implicit ctrl: Control)
-    extends NodeImpl(name, shape)
+  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+    extends NodeImpl(name, layer, shape)
       with WindowedLogicImpl[Shape]
       with FilterLogicImpl[BufD, Shape]
       with In6Out3Impl[BufD, BufI, BufI, BufD, BufD, BufI, BufD, BufD, BufD] {

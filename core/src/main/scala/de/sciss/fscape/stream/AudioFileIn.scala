@@ -24,7 +24,7 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 
 object AudioFileIn {
   def apply(file: File, numChannels: Int)(implicit b: Builder): Vec[OutD] = {
-    val source  = new Stage(file, numChannels = numChannels)
+    val source  = new Stage(layer = b.layer, f = file, numChannels = numChannels)
     val stage   = b.add(source)
     stage.outlets.toIndexedSeq
   }
@@ -34,17 +34,17 @@ object AudioFileIn {
   private type Shape = UniformSourceShape[BufD]
 
   // similar to internal `UnfoldResourceSource`
-  private final class Stage(f: File, numChannels: Int)(implicit ctrl: Control)
+  private final class Stage(layer: Layer, f: File, numChannels: Int)(implicit ctrl: Control)
     extends BlockingGraphStage[Shape](s"$name(${f.name})") {
 
     val shape = UniformSourceShape(Vector.tabulate(numChannels)(ch => OutD(s"$name.out$ch")))
 
     def createLogic(attr: Attributes): NodeImpl[Shape] =
-      new Logic(shape, f, numChannels = numChannels)
+      new Logic(shape, layer = layer, f = f, numChannels = numChannels)
   }
 
-  private final class Logic(shape: Shape, f: File, numChannels: Int)(implicit ctrl: Control)
-    extends NodeImpl(s"$name(${f.name})", shape) with NodeHasInitImpl with OutHandler {
+  private final class Logic(shape: Shape, layer: Layer, f: File, numChannels: Int)(implicit ctrl: Control)
+    extends NodeImpl(s"$name(${f.name})", layer, shape) with NodeHasInitImpl with OutHandler {
 
     private[this] var af        : io.AudioFile  = _
     private[this] var buf       : io.Frames     = _
@@ -69,7 +69,10 @@ object AudioFileIn {
       logStream(s"postStop() $this")
       buf = null
 //      try {
+      if (af != null) {
         af.close()
+        af = null
+      }
 //      } catch {
 //        case NonFatal(ex) =>  // XXX TODO -- what with this?
 //      }

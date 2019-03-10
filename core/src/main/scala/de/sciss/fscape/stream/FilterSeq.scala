@@ -20,7 +20,7 @@ import de.sciss.fscape.stream.impl.{ChunkImpl, FilterIn2Impl, NodeImpl, StageImp
 object FilterSeq {
   def apply[A, E >: Null <: BufElem[A]](in: Outlet[E], gate: OutI)
                                        (implicit b: Builder, tpe: StreamType[A, E]): Outlet[E] = {
-    val stage0  = new Stage[A, E]
+    val stage0  = new Stage[A, E](b.layer)
     val stage   = b.add(stage0)
     b.connect(in  , stage.in0)
     b.connect(gate, stage.in1)
@@ -31,7 +31,7 @@ object FilterSeq {
 
   private type Shape[B <: BufLike] = FanInShape2[B, BufI, B]
 
-  private final class Stage[A, E >: Null <: BufElem[A]](implicit ctrl: Control, tpe: StreamType[A, E])
+  private final class Stage[A, E >: Null <: BufElem[A]](layer: Layer)(implicit ctrl: Control, tpe: StreamType[A, E])
     extends StageImpl[Shape[E]](name) {
 
     val shape = new FanInShape2(
@@ -40,12 +40,12 @@ object FilterSeq {
       out = Outlet[E](s"$name.out" )
     )
 
-    def createLogic(attr: Attributes) = new Logic[A, E](shape)
+    def createLogic(attr: Attributes) = new Logic[A, E](shape, layer)
   }
 
-  private final class Logic[A, E >: Null <: BufElem[A]](shape: Shape[E])
+  private final class Logic[A, E >: Null <: BufElem[A]](shape: Shape[E], layer: Layer)
                                                        (implicit ctrl: Control, tpe: StreamType[A, E])
-    extends NodeImpl(name, shape)
+    extends NodeImpl(name, layer, shape)
       with FilterIn2Impl[E, BufI, E]
       with ChunkImpl[Shape[E]] {
 

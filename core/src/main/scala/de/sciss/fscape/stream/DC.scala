@@ -20,7 +20,7 @@ import de.sciss.fscape.stream.impl.{GenChunkImpl, GenIn1DImpl, StageImpl, NodeIm
 // XXX TODO --- support OutA
 object DC {
   def apply(in: OutD)(implicit b: Builder): OutD = {
-    val stage0  = new Stage
+    val stage0  = new Stage(b.layer)
     val stage   = b.add(stage0)
     b.connect(in, stage.in)
     stage.out
@@ -30,19 +30,19 @@ object DC {
 
   private type Shape = FlowShape[BufD, BufD]
 
-  private final class Stage(implicit ctrl: Control) extends StageImpl[Shape](name) {
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
 
     val shape = new FlowShape(
       in  = InD (s"$name.in" ),
       out = OutD(s"$name.out")
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape)
+    def createLogic(attr: Attributes) = new Logic(shape, layer)
   }
 
   // XXX TODO -- abstract over data type (BufD vs BufI)?
-  private final class Logic(shape: Shape)(implicit ctrl: Control)
-    extends NodeImpl(name, shape)
+  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+    extends NodeImpl(name, layer, shape)
       with GenChunkImpl[BufD, BufD, Shape]
       with GenIn1DImpl[BufD] {
 

@@ -27,7 +27,7 @@ object AffineTransform2D {
   def apply(in: OutD, widthIn: OutI, heightIn: OutI, widthOut: OutI, heightOut: OutI,
             m00: OutD, m10: OutD, m01: OutD, m11: OutD, m02: OutD, m12: OutD, wrap: OutI,
             rollOff: OutD, kaiserBeta: OutD, zeroCrossings: OutI)(implicit b: Builder): OutD = {
-    val stage0  = new Stage
+    val stage0  = new Stage(b.layer)
     val stage   = b.add(stage0)
     b.connect(in            , stage.in0)
     b.connect(widthIn       , stage.in1)
@@ -51,7 +51,7 @@ object AffineTransform2D {
 
   private type Shape = FanInShape15[BufD, BufI, BufI, BufI, BufI, BufD, BufD, BufD, BufD, BufD, BufD, BufI, BufD, BufD, BufI, BufD]
 
-  private final class Stage(implicit ctrl: Control) extends StageImpl[Shape](name) {
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
     val shape = new FanInShape15(
       in0  = InD (s"$name.in"),
       in1  = InI (s"$name.widthIn"),
@@ -71,12 +71,12 @@ object AffineTransform2D {
       out  = OutD(s"$name.out")
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape)
+    def createLogic(attr: Attributes) = new Logic(shape, layer)
   }
 
   // XXX TODO -- abstract over data type (BufD vs BufI)?
-  private final class Logic(shape: Shape)(implicit ctrl: Control)
-    extends NodeImpl(name, shape)
+  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+    extends NodeImpl(name, layer, shape)
       with DemandFilterLogic[BufD, Shape]
       with Out1LogicImpl[BufD, Shape]
       with Out1DoubleImpl[Shape] {

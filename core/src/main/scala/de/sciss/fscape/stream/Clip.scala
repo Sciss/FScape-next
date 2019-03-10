@@ -20,7 +20,7 @@ import de.sciss.numbers.{DoubleFunctions, IntFunctions}
 
 object Clip {
   def int(in: OutI, lo: OutI, hi: OutI)(implicit b: Builder): OutI = {
-    val stage0  = new StageInt
+    val stage0  = new StageInt(b.layer)
     val stage   = b.add(stage0)
     b.connect(in, stage.in0)
     b.connect(lo, stage.in1)
@@ -29,7 +29,7 @@ object Clip {
   }
 
   def long(in: OutL, lo: OutL, hi: OutL)(implicit b: Builder): OutL = {
-    val stage0  = new StageLong
+    val stage0  = new StageLong(b.layer)
     val stage   = b.add(stage0)
     b.connect(in, stage.in0)
     b.connect(lo, stage.in1)
@@ -38,7 +38,7 @@ object Clip {
   }
 
   def double(in: OutD, lo: OutD, hi: OutD)(implicit b: Builder): OutD = {
-    val stage0  = new StageDouble
+    val stage0  = new StageDouble(b.layer)
     val stage   = b.add(stage0)
     b.connect(in, stage.in0)
     b.connect(lo, stage.in1)
@@ -52,7 +52,7 @@ object Clip {
   private type ShapeLong    = FanInShape3[BufL, BufL, BufL, BufL]
   private type ShapeDouble  = FanInShape3[BufD, BufD, BufD, BufD]
 
-  private final class StageInt(implicit ctrl: Control) extends StageImpl[ShapeInt](name) {
+  private final class StageInt(layer: Layer)(implicit ctrl: Control) extends StageImpl[ShapeInt](name) {
     val shape = new FanInShape3(
       in0 = InI (s"$name.in"),
       in1 = InI (s"$name.lo"),
@@ -60,10 +60,10 @@ object Clip {
       out = OutI(s"$name.out")
     )
 
-    def createLogic(attr: Attributes) = new LogicInt(shape)
+    def createLogic(attr: Attributes) = new LogicInt(shape, layer)
   }
 
-  private final class StageLong(implicit ctrl: Control) extends StageImpl[ShapeLong](name) {
+  private final class StageLong(layer: Layer)(implicit ctrl: Control) extends StageImpl[ShapeLong](name) {
     val shape = new FanInShape3(
       in0 = InL (s"$name.in"),
       in1 = InL (s"$name.lo"),
@@ -71,10 +71,10 @@ object Clip {
       out = OutL(s"$name.out")
     )
 
-    def createLogic(attr: Attributes) = new LogicLong(shape)
+    def createLogic(attr: Attributes) = new LogicLong(shape, layer)
   }
 
-  private final class StageDouble(implicit ctrl: Control) extends StageImpl[ShapeDouble](name) {
+  private final class StageDouble(layer: Layer)(implicit ctrl: Control) extends StageImpl[ShapeDouble](name) {
     val shape = new FanInShape3(
       in0 = InD (s"$name.in"),
       in1 = InD (s"$name.lo"),
@@ -82,25 +82,25 @@ object Clip {
       out = OutD(s"$name.out")
     )
 
-    def createLogic(attr: Attributes) = new LogicDouble(shape)
+    def createLogic(attr: Attributes) = new LogicDouble(shape, layer)
   }
 
-  private final class LogicInt(shape: ShapeInt)(implicit ctrl: Control)
-    extends AbstractClipFoldWrapI(name, shape) {
+  private final class LogicInt(shape: ShapeInt, layer: Layer)(implicit ctrl: Control)
+    extends AbstractClipFoldWrapI(name, layer, shape) {
 
     protected def op(inVal: Int, loVal: Int, hiVal: Int): Int =
       IntFunctions.clip(inVal, loVal, hiVal)
   }
 
-  private final class LogicLong(shape: ShapeLong)(implicit ctrl: Control)
-    extends AbstractClipFoldWrapL(name, shape) {
+  private final class LogicLong(shape: ShapeLong, layer: Layer)(implicit ctrl: Control)
+    extends AbstractClipFoldWrapL(name, layer, shape) {
 
     protected def op(inVal: Long, loVal: Long, hiVal: Long): Long =
       math.max(loVal, math.min(hiVal, inVal)) // cf. Numbers issue #6
   }
 
-  private final class LogicDouble(shape: ShapeDouble)(implicit ctrl: Control)
-    extends AbstractClipFoldWrapD(name, shape) {
+  private final class LogicDouble(shape: ShapeDouble, layer: Layer)(implicit ctrl: Control)
+    extends AbstractClipFoldWrapD(name, layer, shape) {
 
     protected def op(inVal: Double, loVal: Double, hiVal: Double): Double =
       DoubleFunctions.clip(inVal, loVal, hiVal)

@@ -23,7 +23,7 @@ import scala.annotation.tailrec
 // XXX TODO --- we could support other types than Double
 object Slices {
   def apply(in: OutD, spans: OutL)(implicit b: Builder): OutD = {
-    val stage0  = new Stage
+    val stage0  = new Stage(b.layer)
     val stage   = b.add(stage0)
     b.connect(in   , stage.in0)
     b.connect(spans, stage.in1)
@@ -34,7 +34,7 @@ object Slices {
 
   private type Shape = FanInShape2[BufD, BufL, BufD]
 
-  private final class Stage(implicit protected val ctrl: Control)
+  private final class Stage(layer: Layer)(implicit protected val ctrl: Control)
     extends BlockingGraphStage[Shape](name) {
 
     val shape = new FanInShape2(
@@ -43,11 +43,11 @@ object Slices {
       out = OutD(s"$name.out"  )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape)
+    def createLogic(attr: Attributes) = new Logic(shape, layer)
   }
 
-  private final class Logic(shape: Shape)(implicit ctrl: Control)
-    extends NodeImpl(name, shape) with NodeHasInitImpl with OutHandler {
+  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+    extends NodeImpl(name, layer, shape) with NodeHasInitImpl with OutHandler {
 
     private[this] var af: FileBuffer  = _
 
@@ -87,8 +87,10 @@ object Slices {
       super.stopped()
       freeAuxBuffers()
       freeOutputBuffer()
-      af.dispose()
-      af = null
+      if (af != null) {
+        af.dispose()
+        af = null
+      }
     }
 
     private[this] var bufIn1: BufL = _

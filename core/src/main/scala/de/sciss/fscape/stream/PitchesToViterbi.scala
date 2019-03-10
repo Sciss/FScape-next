@@ -20,7 +20,7 @@ import de.sciss.fscape.stream.impl.{DemandAuxInHandler, DemandInOutImpl, DemandP
 object PitchesToViterbi {
   def apply(lags: OutD, strengths: OutD, numIn: OutI, peaks: OutD, maxLag: OutI, voicingThresh: OutD, silenceThresh: OutD,
             octaveCost: OutD, octaveJumpCost: OutD, voicedUnvoicedCost: OutD)(implicit b: Builder): OutD = {
-    val stage0  = new Stage
+    val stage0  = new Stage(b.layer)
     val stage   = b.add(stage0)
     b.connect(lags              , stage.in0)
     b.connect(strengths         , stage.in1)
@@ -39,7 +39,7 @@ object PitchesToViterbi {
 
   private type Shape = FanInShape10[BufD, BufD, BufI, BufD, BufI, BufD, BufD, BufD, BufD, BufD, BufD]
 
-  private final class Stage(implicit ctrl: Control) extends StageImpl[Shape](name) {
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
     val shape = new FanInShape10(
       in0 = InD (s"$name.lags"              ),
       in1 = InD (s"$name.strengths"         ),
@@ -54,11 +54,11 @@ object PitchesToViterbi {
       out = OutD(s"$name.out"               )
     )
 
-    def createLogic(attr: Attributes): NodeImpl[PitchesToViterbi.Shape] = new Logic(shape)
+    def createLogic(attr: Attributes): NodeImpl[PitchesToViterbi.Shape] = new Logic(shape, layer)
   }
 
-  private final class Logic(shape: Shape)(implicit ctrl: Control)
-    extends NodeImpl(name, shape)
+  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+    extends NodeImpl(name, layer, shape)
       with DemandWindowedLogic[Shape]
       with Out1DoubleImpl     [Shape]
       with Out1LogicImpl[BufD, Shape]

@@ -29,7 +29,7 @@ object RepeatWindow {
     * @param num    the number of times each window is repeated
     */
   def apply(in: OutD, size: OutI, num: OutL)(implicit b: Builder): OutD = {
-    val stage0  = new Stage
+    val stage0  = new Stage(b.layer)
     val stage   = b.add(stage0)
     b.connect(in  , stage.in0)
     b.connect(size, stage.in1)
@@ -41,7 +41,7 @@ object RepeatWindow {
 
   private type Shape = FanInShape3[BufD, BufI, BufL, BufD]
 
-  private final class Stage(implicit ctrl: Control) extends StageImpl[Shape](name) {
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
     val shape = new FanInShape3(
       in0 = InD (s"$name.in"   ),
       in1 = InI (s"$name.size" ),
@@ -49,12 +49,12 @@ object RepeatWindow {
       out = OutD(s"$name.out"  )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape)
+    def createLogic(attr: Attributes) = new Logic(shape, layer)
   }
 
   // XXX TODO -- abstract over data type (BufD vs BufI)?
-  private final class Logic(shape: Shape)(implicit ctrl: Control)
-    extends NodeImpl(name, shape)
+  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+    extends NodeImpl(name, layer, shape)
       // with WindowedLogicImpl[Shape]
 //      with FilterLogicImpl[BufD, Shape]
 //      with FilterIn3DImpl[BufD, BufI, BufL]

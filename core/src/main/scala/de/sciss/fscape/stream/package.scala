@@ -24,6 +24,8 @@ package object stream {
 //  implicit def constIntSignal   (i: Int   ): Signal[Int]    = Source.repeat(i) // or better `single`?
 //  implicit def constDoubleSignal(d: Double): Signal[Double] = Source.repeat(d) // or better `single`?
 
+  type Layer = Int
+
   type InI                     = Inlet[BufI]
   type InD                     = Inlet[BufD]
   type InL                     = Inlet[BufL]

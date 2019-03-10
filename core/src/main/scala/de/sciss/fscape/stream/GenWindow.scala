@@ -21,7 +21,7 @@ object GenWindow {
   import graph.GenWindow.{Hann, Shape => WinShape}
 
   def apply(size: OutL, shape: OutI, param: OutD)(implicit b: Builder): OutD = {
-    val stage0  = new Stage
+    val stage0  = new Stage(b.layer)
     val stage   = b.add(stage0) 
     b.connect(size  , stage.in0)
     b.connect(shape , stage.in1)
@@ -33,7 +33,7 @@ object GenWindow {
 
   private type Shape = FanInShape3[BufL, BufI, BufD, BufD]
 
-  private final class Stage(implicit ctrl: Control) extends StageImpl[Shape](name) {
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
 
     val shape = new FanInShape3(
       in0 = InL (s"$name.size" ),
@@ -42,12 +42,12 @@ object GenWindow {
       out = OutD(s"$name.out"  )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape)
+    def createLogic(attr: Attributes) = new Logic(shape, layer)
   }
 
   // XXX TODO -- abstract over data type (BufD vs BufI)?
-  private final class Logic(shape: Shape)(implicit ctrl: Control)
-    extends NodeImpl(name, shape)
+  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+    extends NodeImpl(name, layer, shape)
       with DemandWindowedLogic[Shape]
       with DemandGenIn3D[BufL, BufI, BufD] {
 

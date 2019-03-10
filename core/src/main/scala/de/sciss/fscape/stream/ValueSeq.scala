@@ -19,19 +19,19 @@ import de.sciss.fscape.stream.impl.{ChunkImpl, GenIn0Impl, NodeImpl, StageImpl}
 
 object ValueSeq {
   def int(elems: Array[Int])(implicit b: Builder): OutI = {
-    val stage0  = new Stage[Int, BufI](elems)
+    val stage0  = new Stage[Int, BufI](b.layer, elems)
     val stage   = b.add(stage0)
     stage.out
   }
 
   def long(elems: Array[Long])(implicit b: Builder): OutL = {
-    val stage0  = new Stage[Long, BufL](elems)
+    val stage0  = new Stage[Long, BufL](b.layer, elems)
     val stage   = b.add(stage0)
     stage.out
   }
 
   def double(elems: Array[Double])(implicit b: Builder): OutD = {
-    val stage0  = new Stage[Double, BufD](elems)
+    val stage0  = new Stage[Double, BufD](b.layer, elems)
     val stage   = b.add(stage0)
     stage.out
   }
@@ -40,7 +40,7 @@ object ValueSeq {
 
   private type Shape[A, BufA <: BufLike { type Elem = A }] = SourceShape[BufA]
 
-  private final class Stage[A, BufA >: Null <: BufLike { type Elem = A }](elems: Array[A])
+  private final class Stage[A, BufA >: Null <: BufLike { type Elem = A }](layer: Layer, elems: Array[A])
                                                                   (implicit ctrl: Control, aTpe: StreamType[A, BufA])
     extends StageImpl[Shape[A, BufA]](name) {
 
@@ -48,12 +48,13 @@ object ValueSeq {
       out = Outlet[BufA](s"$name.out")
     )
 
-    def createLogic(attr: Attributes) = new Logic[A, BufA](elems, shape)
+    def createLogic(attr: Attributes) = new Logic[A, BufA](shape, layer, elems)
   }
 
-  private final class Logic[A, BufA >: Null <: BufLike { type Elem = A }](elems: Array[A], shape: Shape[A, BufA])
+  private final class Logic[A, BufA >: Null <: BufLike { type Elem = A }](shape: Shape[A, BufA], layer: Layer,
+                                                                          elems: Array[A])
                                                                  (implicit ctrl: Control, aTpe: StreamType[A, BufA])
-    extends NodeImpl(name, shape)
+    extends NodeImpl(name, layer, shape)
       with ChunkImpl[Shape[A, BufA]]
       with GenIn0Impl[BufA] {
 

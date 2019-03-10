@@ -39,7 +39,7 @@ object ZipWindowN {
     * @param size       the window size. this is clipped to be `&lt;= 1`
     */
   def apply(in: ISeq[OutD], size: OutI)(implicit b: Builder): OutD = {
-    val stage0  = new Stage(numInputs = in.size)
+    val stage0  = new Stage(layer = b.layer, numInputs = in.size)
     val stage   = b.add(stage0)
     (in zip stage.inputs).foreach { case (output, input) =>
       b.connect(output, input)
@@ -64,18 +64,20 @@ object ZipWindowN {
 //    }
   }
 
-  private final class Stage(numInputs: Int)(implicit ctrl: Control) extends StageImpl[Shape]("ZipWindow") {
+  private final class Stage(layer: Layer, numInputs: Int)(implicit ctrl: Control)
+    extends StageImpl[Shape]("ZipWindow") {
+
     val shape = Shape(
       inputs  = Vector.tabulate(numInputs)(idx => InD(s"ZipWindow.in$idx")),
       size    = InI ("ZipWindow.size"),
       out     = OutD("ZipWindow.out" )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape)
+    def createLogic(attr: Attributes) = new Logic(shape, layer)
   }
 
-  private final class Logic(shape: Shape)(implicit ctrl: Control)
-    extends NodeImpl("ZipWindow", shape) {
+  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+    extends NodeImpl("ZipWindow", layer, shape) {
 
     private[this] var bufOut: BufD = _
     private[this] var bufIn1: BufI = _

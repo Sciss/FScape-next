@@ -22,7 +22,7 @@ import scala.annotation.switch
 
 object NormalizeWindow {
   def apply(in: OutD, size: OutI, mode: OutI)(implicit b: Builder): OutD = {
-    val stage0  = new Stage
+    val stage0  = new Stage(b.layer)
     val stage   = b.add(stage0)
     b.connect(in  , stage.in0)
     b.connect(size, stage.in1)
@@ -35,7 +35,7 @@ object NormalizeWindow {
 
   private type Shape = FanInShape3[BufD, BufI, BufI, BufD]
 
-  private final class Stage(implicit ctrl: Control) extends StageImpl[Shape](name) {
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
     val shape = new FanInShape3(
       in0 = InD (s"$name.in"    ),
       in1 = InI (s"$name.size"  ),
@@ -43,11 +43,11 @@ object NormalizeWindow {
       out = OutD(s"$name.out"   )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape)
+    def createLogic(attr: Attributes) = new Logic(shape, layer)
   }
 
-  private final class Logic(shape: Shape)(implicit ctrl: Control)
-    extends NodeImpl(name, shape)
+  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+    extends NodeImpl(name, layer, shape)
       with WindowedLogicImpl[Shape]
       with FilterLogicImpl[BufD, Shape]
       with FilterIn3DImpl[BufD, BufI, BufI] {

@@ -31,7 +31,7 @@ object PriorityQueue {
                                         values: Outlet[V], size: OutI)
                                        (implicit b: Builder, keyTpe: StreamType[A, K],
                                         valueTpe: StreamType[B, V]): Outlet[V] = {
-    val stage0  = new Stage[A, K, B, V]
+    val stage0  = new Stage[A, K, B, V](b.layer)
     val stage   = b.add(stage0)
     b.connect(keys  , stage.in0)
     b.connect(values, stage.in1)
@@ -45,7 +45,8 @@ object PriorityQueue {
     FanInShape3[K, V, BufI, V]
 
   private final class Stage[A, K >: Null <: BufElem[A],
-                            B, V >: Null <: BufElem[B]](implicit ctrl: Control,
+                            B, V >: Null <: BufElem[B]](layer: Layer)
+                                                       (implicit ctrl: Control,
                                                         keyTpe: StreamType[A, K], valueTpe: StreamType[B, V])
     extends StageImpl[Shape[A, K, B, V]](name) {
 
@@ -56,14 +57,14 @@ object PriorityQueue {
       out = Outlet[V](s"$name.out"   )
     )
 
-    def createLogic(attr: Attributes) = new Logic[A, K, B, V](shape)
+    def createLogic(attr: Attributes) = new Logic[A, K, B, V](shape, layer)
   }
 
   private final class Logic[A, K >: Null <: BufElem[A],
-                            B, V >: Null <: BufElem[B]](shape: Shape[A, K, B, V])
+                            B, V >: Null <: BufElem[B]](shape: Shape[A, K, B, V], layer: Layer)
                                                        (implicit ctrl: Control, keyTpe: StreamType[A, K],
                                                         valueTpe: StreamType[B, V])
-    extends NodeImpl(name, shape)
+    extends NodeImpl(name, layer, shape)
       with FilterIn3Impl[K, V, BufI, V] {
 
     import keyTpe.{ordering => keyOrd}

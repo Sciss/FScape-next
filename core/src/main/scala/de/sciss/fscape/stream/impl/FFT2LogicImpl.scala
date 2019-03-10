@@ -108,9 +108,9 @@ trait FFT2LogicImpl extends Node {
   }
 }
 
-abstract class FFT2HalfLogicImpl(name: String, shape: FanInShape4[BufD, BufI, BufI, BufI, BufD])
+abstract class FFT2HalfLogicImpl(name: String, shape: FanInShape4[BufD, BufI, BufI, BufI, BufD], layer: Layer)
                                (implicit ctrl: Control)
-  extends NodeImpl(name, shape)
+  extends NodeImpl(name, layer, shape)
     with FFT2LogicImpl
     with WindowedLogicImpl[FanInShape4[BufD, BufI, BufI, BufI, BufD]]
     with FilterLogicImpl[BufD, FanInShape4[BufD, BufI, BufI, BufI, BufD]]
@@ -143,9 +143,9 @@ abstract class FFT2HalfLogicImpl(name: String, shape: FanInShape4[BufD, BufI, Bu
   }
 }
 
-abstract class FFT2FullLogicImpl(name: String, shape: FanInShape3[BufD, BufI, BufI, BufD])
+abstract class FFT2FullLogicImpl(name: String, shape: FanInShape3[BufD, BufI, BufI, BufD], layer: Layer)
                                 (implicit ctrl: Control)
-  extends NodeImpl(name, shape)
+  extends NodeImpl(name, layer, shape)
     with FFT2LogicImpl
     with WindowedLogicImpl[FanInShape3[BufD, BufI, BufI, BufD]]
     with FilterLogicImpl[BufD, FanInShape3[BufD, BufI, BufI, BufD]]
@@ -173,13 +173,13 @@ abstract class FFT2FullLogicImpl(name: String, shape: FanInShape3[BufD, BufI, Bu
   }
 }
 
-final class Real2FFTStageImpl()(implicit ctrl: Control) extends FFT2HalfStageImpl("Real2FFT") {
-  def createLogic(attr: Attributes) = new Real2FFTLogicImpl(name, shape)
+final class Real2FFTStageImpl(layer: Layer)(implicit ctrl: Control) extends FFT2HalfStageImpl("Real2FFT") {
+  def createLogic(attr: Attributes) = new Real2FFTLogicImpl(name, shape, layer)
 }
 
-final class Real2FFTLogicImpl(name: String, shape: FanInShape4[BufD, BufI, BufI, BufI, BufD])
+final class Real2FFTLogicImpl(name: String, shape: FanInShape4[BufD, BufI, BufI, BufI, BufD], layer: Layer)
                              (implicit ctrl: Control)
-  extends FFT2HalfLogicImpl(name, shape) {
+  extends FFT2HalfLogicImpl(name, shape, layer) {
 
   protected def inSize (nominal: Int): Int = nominal
   protected def outSize(nominal: Int): Int = if (mode == 1) nominal + 2 else nominal
@@ -203,12 +203,13 @@ final class Real2FFTLogicImpl(name: String, shape: FanInShape4[BufD, BufI, BufI,
   }
 }
 
-final class Real2IFFTStageImpl()(implicit ctrl: Control) extends FFT2HalfStageImpl("Real2IFFT") {
-  def createLogic(attr: Attributes) = new Real2IFFTLogicImpl(name, shape)
+final class Real2IFFTStageImpl(layer: Layer)(implicit ctrl: Control) extends FFT2HalfStageImpl("Real2IFFT") {
+  def createLogic(attr: Attributes) = new Real2IFFTLogicImpl(name, shape, layer)
 }
 
-final class Real2IFFTLogicImpl(name: String, shape: FanInShape4[BufD, BufI, BufI, BufI, BufD])(implicit ctrl: Control)
-  extends FFT2HalfLogicImpl(name, shape) {
+final class Real2IFFTLogicImpl(name: String, shape: FanInShape4[BufD, BufI, BufI, BufI, BufD], layer: Layer)
+                              (implicit ctrl: Control)
+  extends FFT2HalfLogicImpl(name, shape, layer) {
 
   protected def inSize (nominal: Int): Int = if (mode == 1) nominal + 2 else nominal
   protected def outSize(nominal: Int): Int = nominal
@@ -228,12 +229,13 @@ final class Real2IFFTLogicImpl(name: String, shape: FanInShape4[BufD, BufI, BufI
   }
 }
 
-final class Real2FullFFTStageImpl()(implicit ctrl: Control) extends FFT2FullStageImpl("Real2FullFFT") {
-  def createLogic(attr: Attributes) = new Real2FullFFT2LogicImpl(name, shape)
+final class Real2FullFFTStageImpl(layer: Layer)(implicit ctrl: Control) extends FFT2FullStageImpl("Real2FullFFT") {
+  def createLogic(attr: Attributes) = new Real2FullFFT2LogicImpl(name, shape, layer)
 }
 
-final class Real2FullFFT2LogicImpl(name: String, shape: FanInShape3[BufD, BufI, BufI, BufD])(implicit ctrl: Control)
-  extends FFT2FullLogicImpl(name, shape) {
+final class Real2FullFFT2LogicImpl(name: String, shape: FanInShape3[BufD, BufI, BufI, BufD], layer: Layer)
+                                  (implicit ctrl: Control)
+  extends FFT2FullLogicImpl(name, shape, layer) {
 
   protected def inSize (nominal: Int): Int = nominal
   protected def outSize(nominal: Int): Int = nominal << 1
@@ -244,12 +246,13 @@ final class Real2FullFFT2LogicImpl(name: String, shape: FanInShape3[BufD, BufI, 
   }
 }
 
-final class Real2FullIFFTStageImpl()(implicit ctrl: Control) extends FFT2FullStageImpl("Real1FullIFFT") {
-  def createLogic(attr: Attributes) = new Real1FullIFFT2LogicImpl(name, shape)
+final class Real2FullIFFTStageImpl(layer: Layer)(implicit ctrl: Control) extends FFT2FullStageImpl("Real1FullIFFT") {
+  def createLogic(attr: Attributes) = new Real1FullIFFT2LogicImpl(name, shape, layer)
 }
 
-final class Real1FullIFFT2LogicImpl(name: String, shape: FanInShape3[BufD, BufI, BufI, BufD])(implicit ctrl: Control)
-  extends FFT2FullLogicImpl(name, shape) {
+final class Real1FullIFFT2LogicImpl(name: String, shape: FanInShape3[BufD, BufI, BufI, BufD], layer: Layer)
+                                   (implicit ctrl: Control)
+  extends FFT2FullLogicImpl(name, shape, layer) {
 
   protected def inSize (nominal: Int): Int = nominal << 1
   protected def outSize(nominal: Int): Int = nominal
@@ -267,12 +270,13 @@ final class Real1FullIFFT2LogicImpl(name: String, shape: FanInShape3[BufD, BufI,
   }
 }
 
-final class Complex2FFTStageImpl()(implicit ctrl: Control) extends FFT2FullStageImpl("Complex2FFT") {
-  def createLogic(attr: Attributes) = new Complex2FFT2LogicImpl(name, shape)
+final class Complex2FFTStageImpl(layer: Layer)(implicit ctrl: Control) extends FFT2FullStageImpl("Complex2FFT") {
+  def createLogic(attr: Attributes) = new Complex2FFT2LogicImpl(name, shape, layer)
 }
 
-final class Complex2FFT2LogicImpl(name: String, shape: FanInShape3[BufD, BufI, BufI, BufD])(implicit ctrl: Control)
-  extends FFT2FullLogicImpl(name, shape) {
+final class Complex2FFT2LogicImpl(name: String, shape: FanInShape3[BufD, BufI, BufI, BufD], layer: Layer)
+                                 (implicit ctrl: Control)
+  extends FFT2FullLogicImpl(name, shape, layer) {
 
   protected def inSize (nominal: Int): Int = nominal << 1
   protected def outSize(nominal: Int): Int = nominal << 1
@@ -283,12 +287,13 @@ final class Complex2FFT2LogicImpl(name: String, shape: FanInShape3[BufD, BufI, B
   }
 }
 
-final class Complex2IFFTStageImpl()(implicit ctrl: Control) extends FFT2FullStageImpl("Complex2IFFT") {
-  def createLogic(attr: Attributes) = new Complex2IFFT2LogicImpl(name, shape)
+final class Complex2IFFTStageImpl(layer: Layer)(implicit ctrl: Control) extends FFT2FullStageImpl("Complex2IFFT") {
+  def createLogic(attr: Attributes) = new Complex2IFFT2LogicImpl(name, shape, layer)
 }
 
-final class Complex2IFFT2LogicImpl(name: String, shape: FanInShape3[BufD, BufI, BufI, BufD])(implicit ctrl: Control)
-  extends FFT2FullLogicImpl(name, shape) {
+final class Complex2IFFT2LogicImpl(name: String, shape: FanInShape3[BufD, BufI, BufI, BufD], layer: Layer)
+                                  (implicit ctrl: Control)
+  extends FFT2FullLogicImpl(name, shape, layer) {
 
   protected def inSize (nominal: Int): Int = nominal << 1
   protected def outSize(nominal: Int): Int = nominal << 1

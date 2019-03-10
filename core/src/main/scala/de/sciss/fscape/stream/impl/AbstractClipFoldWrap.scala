@@ -17,8 +17,8 @@ package impl
 
 import akka.stream.FanInShape3
 
-abstract class AbstractClipFoldWrapI(name: String, shape: FanInShape3[BufI, BufI, BufI, BufI])(implicit ctrl: Control)
-  extends NodeImpl(name, shape)
+abstract class AbstractClipFoldWrapI(name: String, layer: Layer, shape: FanInShape3[BufI, BufI, BufI, BufI])(implicit ctrl: Control)
+  extends NodeImpl(name, layer, shape)
     with FilterChunkImpl[BufI, BufI, FanInShape3[BufI, BufI, BufI, BufI]]
     with FilterIn3Impl[BufI, BufI, BufI, BufI] {
 
@@ -58,8 +58,9 @@ abstract class AbstractClipFoldWrapI(name: String, shape: FanInShape3[BufI, BufI
   }
 }
 
-abstract class AbstractClipFoldWrapL(name: String, shape: FanInShape3[BufL, BufL, BufL, BufL])(implicit ctrl: Control)
-  extends NodeImpl(name, shape)
+abstract class AbstractClipFoldWrapL(name: String, layer: Layer, shape: FanInShape3[BufL, BufL, BufL, BufL])
+                                    (implicit ctrl: Control)
+  extends NodeImpl(name, layer, shape)
     with FilterChunkImpl[BufL, BufL, FanInShape3[BufL, BufL, BufL, BufL]]
     with FilterIn3Impl[BufL, BufL, BufL, BufL] {
 
@@ -99,8 +100,9 @@ abstract class AbstractClipFoldWrapL(name: String, shape: FanInShape3[BufL, BufL
   }
 }
 
-abstract class AbstractClipFoldWrapD(name: String, shape: FanInShape3[BufD, BufD, BufD, BufD])(implicit ctrl: Control)
-  extends NodeImpl(name, shape)
+abstract class AbstractClipFoldWrapD(name: String, layer: Layer, shape: FanInShape3[BufD, BufD, BufD, BufD])
+                                    (implicit ctrl: Control)
+  extends NodeImpl(name, layer, shape)
     with FilterChunkImpl[BufD, BufD, FanInShape3[BufD, BufD, BufD, BufD]]
     with FilterIn3Impl[BufD, BufD, BufD, BufD] {
 

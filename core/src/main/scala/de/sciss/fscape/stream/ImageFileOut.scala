@@ -24,7 +24,7 @@ import scala.collection.immutable.{IndexedSeq => Vec, Seq => ISeq}
 object ImageFileOut {
   def apply(file: File, spec: Spec, in: ISeq[OutD])(implicit b: Builder): Unit = {
     require (spec.numChannels == in.size, s"Channel mismatch (spec has ${spec.numChannels}, in has ${in.size})")
-    val sink = new Stage(file, spec)
+    val sink = new Stage(layer = b.layer, f = file, spec = spec)
     val stage = b.add(sink)
     (in zip stage.inlets).foreach { case (output, input) =>
       b.connect(output, input)
@@ -35,16 +35,16 @@ object ImageFileOut {
 
   private type Shape = UniformSinkShape[BufD]
 
-  private final class Stage(f: File, spec: Spec)(implicit protected val ctrl: Control)
+  private final class Stage(layer: Layer, f: File, spec: Spec)(implicit protected val ctrl: Control)
     extends BlockingGraphStage[Shape](s"$name(${f.name})") {
 
     val shape: Shape = UniformSinkShape[BufD](Vector.tabulate(spec.numChannels)(ch => InD(s"$name.in$ch")))
 
-    def createLogic(attr: Attributes) = new Logic(shape, f, spec)
+    def createLogic(attr: Attributes) = new Logic(shape, layer = layer, f = f, spec = spec)
   }
 
-  private final class Logic(shape: Shape, f: File, protected val spec: Spec)(implicit ctrl: Control)
-    extends NodeImpl(s"$name(${f.name})", shape)
+  private final class Logic(shape: Shape, layer: Layer, f: File, protected val spec: Spec)(implicit ctrl: Control)
+    extends NodeImpl(s"$name(${f.name})", layer, shape)
     with NodeHasInitImpl with ImageFileOutImpl[Shape] {
 
     protected val inlets1: Vec[InD ] = shape.inlets.toIndexedSeq

@@ -22,7 +22,7 @@ import de.sciss.fscape.stream.impl.{Complex2FFTStageImpl, Complex2IFFTStageImpl,
   */
 object Real2FFT {
   def apply(in: OutD, rows: OutI, columns: OutI, mode: OutI)(implicit b: Builder): OutD =
-    new Real2FFTStageImpl().connect(in = in, rows = rows, columns = columns, mode = mode)
+    new Real2FFTStageImpl(b.layer).connect(in = in, rows = rows, columns = columns, mode = mode)
 }
 
 /** Real (positive spectrum) inverse Short Time Fourier Transform.
@@ -30,7 +30,7 @@ object Real2FFT {
   */
 object Real2IFFT {
   def apply(in: OutD, rows: OutI, columns: OutI, mode: OutI)(implicit b: Builder): OutD =
-    new Real2IFFTStageImpl().connect(in = in, rows = rows, columns = columns, mode = mode)
+    new Real2IFFTStageImpl(b.layer).connect(in = in, rows = rows, columns = columns, mode = mode)
 }
 
 /** Real (full spectrum) forward Short Time Fourier Transform.
@@ -40,7 +40,7 @@ object Real2IFFT {
   */
 object Real2FullFFT {
   def apply(in: OutD, rows: OutI, columns: OutI)(implicit b: Builder): OutD =
-    new Real2FullFFTStageImpl().connect(in = in, rows = rows, columns = columns)
+    new Real2FullFFTStageImpl(b.layer).connect(in = in, rows = rows, columns = columns)
 }
 
 /** Real (full spectrum) inverse Short Time Fourier Transform.
@@ -50,7 +50,7 @@ object Real2FullFFT {
   */
 object Real2FullIFFT {
   def apply(in: OutD, rows: OutI, columns: OutI)(implicit b: Builder): OutD =
-    new Real2FullIFFTStageImpl().connect(in = in, rows = rows, columns = columns)
+    new Real2FullIFFTStageImpl(b.layer).connect(in = in, rows = rows, columns = columns)
 }
 
 /** Complex forward Short Time Fourier Transform.
@@ -58,7 +58,7 @@ object Real2FullIFFT {
   */
 object Complex2FFT {
   def apply(in: OutD, rows: OutI, columns: OutI)(implicit b: Builder): OutD =
-    new Complex2FFTStageImpl().connect(in = in, rows = rows, columns = columns)
+    new Complex2FFTStageImpl(b.layer).connect(in = in, rows = rows, columns = columns)
 }
 
 /** Complex inverse Short Time Fourier Transform.
@@ -66,5 +66,5 @@ object Complex2FFT {
   */
 object Complex2IFFT {
   def apply(in: OutD, rows: OutI, columns: OutI)(implicit b: Builder): OutD =
-    new Complex2IFFTStageImpl().connect(in = in, rows = rows, columns = columns)
+    new Complex2IFFTStageImpl(b.layer).connect(in = in, rows = rows, columns = columns)
 }

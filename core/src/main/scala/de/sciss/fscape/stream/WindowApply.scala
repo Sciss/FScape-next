@@ -23,7 +23,7 @@ import scala.annotation.switch
 object WindowApply {
   def apply[A, BufA >: Null <: BufElem[A]](in: Outlet[BufA], size: OutI, index: OutI, mode: OutI)
                                           (implicit b: Builder, aTpe: StreamType[A, BufA]): Outlet[BufA] = {
-    val stage0  = new Stage[A, BufA]
+    val stage0  = new Stage[A, BufA](b.layer)
     val stage   = b.add(stage0)
     b.connect(in    , stage.in0)
     b.connect(size  , stage.in1)
@@ -38,7 +38,8 @@ object WindowApply {
   private type Shape[A, BufA >: Null <: BufElem[A]] =
     FanInShape4[BufA, BufI, BufI, BufI, BufA]
 
-  private final class Stage[A, BufA >: Null <: BufElem[A]](implicit ctrl: Control, aTpe: StreamType[A, BufA])
+  private final class Stage[A, BufA >: Null <: BufElem[A]](layer: Layer)
+                                                          (implicit ctrl: Control, aTpe: StreamType[A, BufA])
     extends StageImpl[Shape[A, BufA]](name) {
 
     val shape = new FanInShape4(
@@ -49,12 +50,12 @@ object WindowApply {
       out = Outlet[BufA](s"$name.out"  )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape)
+    def createLogic(attr: Attributes) = new Logic(shape, layer)
   }
 
-  private final class Logic[A, BufA >: Null <: BufElem[A]](shape: Shape[A, BufA])
+  private final class Logic[A, BufA >: Null <: BufElem[A]](shape: Shape[A, BufA], layer: Layer)
                                                           (implicit ctrl: Control, aTpe: StreamType[A, BufA])
-    extends NodeImpl(name, shape)
+    extends NodeImpl(name, layer, shape)
       with DemandWindowedLogic[Shape[A, BufA]]
       with DemandFilterIn4[BufA, BufI, BufI, BufI, BufA] {
 

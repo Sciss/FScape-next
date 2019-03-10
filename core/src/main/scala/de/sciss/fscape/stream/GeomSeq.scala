@@ -21,7 +21,7 @@ object GeomSeq {
   def apply[A, E >: Null <: BufElem[A]](start: Outlet[E], grow: Outlet[E], length: OutL)
                                        (implicit b: Builder, tpe: StreamType[A, E],
                                         num: Numeric[A]): Outlet[E] = {
-    val stage0  = new Stage[A, E]
+    val stage0  = new Stage[A, E](b.layer)
     val stage   = b.add(stage0)
     b.connect(start , stage.in0)
     b.connect(grow  , stage.in1)
@@ -33,7 +33,8 @@ object GeomSeq {
 
   private type Shape[A, E >: Null <: BufElem[A]] = FanInShape3[E, E, BufL, E]
 
-  private final class Stage[A, E >: Null <: BufElem[A]](implicit ctrl: Control, tpe: StreamType[A, E],
+  private final class Stage[A, E >: Null <: BufElem[A]](layer: Layer)
+                                                       (implicit ctrl: Control, tpe: StreamType[A, E],
                                                         num: Numeric[A])
     extends StageImpl[Shape[A, E]](name) {
 
@@ -44,13 +45,13 @@ object GeomSeq {
       out = Outlet[E](s"$name.out"   )
     )
 
-    def createLogic(attr: Attributes) = new Logic[A, E](shape)
+    def createLogic(attr: Attributes) = new Logic[A, E](shape, layer)
   }
 
-  private final class Logic[A, E >: Null <: BufElem[A]](shape: Shape[A, E])
+  private final class Logic[A, E >: Null <: BufElem[A]](shape: Shape[A, E], layer: Layer)
                                                        (implicit ctrl: Control, tpe: StreamType[A, E],
                                                         num: Numeric[A])
-    extends AbstractSeqGen[A, E](name, shape) {
+    extends AbstractSeqGen[A, E](name, layer, shape) {
 
     protected def inc(a: A, b: A): A = num.times(a, b)
   }

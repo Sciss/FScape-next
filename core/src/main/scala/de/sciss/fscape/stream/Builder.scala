@@ -18,9 +18,15 @@ import akka.stream.scaladsl.GraphDSL
 import akka.stream.{Graph, Inlet, Outlet, Shape}
 
 object Builder {
-  def apply()(implicit dsl: GraphDSL.Builder[NotUsed], ctrl: Control): Builder = new Impl(ctrl)
+  def apply()(implicit dsl: GraphDSL.Builder[NotUsed], ctrl: Control): Settable = new Impl(ctrl)
 
-  private final class Impl(val control: Control)(implicit b: GraphDSL.Builder[NotUsed]) extends Builder {
+  trait Settable extends Builder {
+    def layer_=(value: Int): Unit
+  }
+
+  private final class Impl(val control: Control)(implicit b: GraphDSL.Builder[NotUsed]) extends Settable {
+    var layer = 0
+
     def add[S <: Shape](graph: Graph[S, _]): S = b.add(graph)
 
     def dsl: GraphDSL.Builder[NotUsed] = b
@@ -38,6 +44,8 @@ object Builder {
 }
 trait Builder {
   def control: Control
+
+  def layer: Layer
 
   def dsl: GraphDSL.Builder[NotUsed]
 

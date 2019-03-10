@@ -27,7 +27,7 @@ object TakeRight {
 
   def apply[A, Buf >: Null <: BufElem[A]](in: Outlet[Buf], length: OutI)
                                          (implicit b: Builder, aTpe: StreamType[A, Buf]): Outlet[Buf] = {
-    val stage0  = new Stage[A, Buf]
+    val stage0  = new Stage[A, Buf](b.layer)
     val stage   = b.add(stage0)
     b.connect(in    , stage.in0)
     b.connect(length, stage.in1)
@@ -38,7 +38,8 @@ object TakeRight {
 
   private type Shape[A, Buf >: Null <: BufElem[A]] = FanInShape2[Buf, BufI, Buf]
 
-  private final class Stage[A, Buf >: Null <: BufElem[A]](implicit ctrl: Control, aTpe: StreamType[A, Buf])
+  private final class Stage[A, Buf >: Null <: BufElem[A]](layer: Layer)
+                                                         (implicit ctrl: Control, aTpe: StreamType[A, Buf])
     extends StageImpl[Shape[A, Buf]](name) {
 
     val shape = new FanInShape2(
@@ -47,12 +48,12 @@ object TakeRight {
       out = Outlet[Buf](s"$name.out"   )
     )
 
-    def createLogic(attr: Attributes): NodeImpl[TakeRight.Shape[A, Buf]] = new Logic(shape)
+    def createLogic(attr: Attributes): NodeImpl[TakeRight.Shape[A, Buf]] = new Logic(shape, layer)
   }
 
-  private final class Logic[A, Buf >: Null <: BufElem[A]](shape: Shape[A, Buf])(implicit ctrl: Control,
-                                                                                aTpe: StreamType[A, Buf])
-    extends NodeImpl(name, shape)
+  private final class Logic[A, Buf >: Null <: BufElem[A]](shape: Shape[A, Buf], layer: Layer)
+                                                         (implicit ctrl: Control, aTpe: StreamType[A, Buf])
+    extends NodeImpl(name, layer, shape)
       with FilterIn2Impl[Buf, BufI, Buf] {
 
     private[this] var len     : Int       = _

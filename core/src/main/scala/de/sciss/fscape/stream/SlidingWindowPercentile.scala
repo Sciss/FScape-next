@@ -27,7 +27,7 @@ import scala.collection.mutable
  */
 object SlidingWindowPercentile {
   def apply(in: OutD, winSize: OutI, medianLen: OutI, frac: OutD, interp: OutI)(implicit b: Builder): OutD = {
-    val stage0  = new Stage
+    val stage0  = new Stage(b.layer)
     val stage   = b.add(stage0)
     b.connect(in        , stage.in0)
     b.connect(winSize   , stage.in1)
@@ -44,7 +44,7 @@ object SlidingWindowPercentile {
 //  private final val lessThanOne = java.lang.Double.longBitsToDouble(0x3fefffffffffffffL)
   private final val lessThanOne = java.lang.Math.nextDown(1.0)
 
-  private final class Stage(implicit ctrl: Control) extends StageImpl[Shape](name) {
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
     val shape = new FanInShape5(
       in0 = InD (s"$name.in"        ),
       in1 = InI (s"$name.winSize"   ),
@@ -54,7 +54,7 @@ object SlidingWindowPercentile {
       out = OutD(s"$name.out"       )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape)
+    def createLogic(attr: Attributes) = new Logic(shape, layer)
   }
 
   private final class Pixel {
@@ -67,8 +67,8 @@ object SlidingWindowPercentile {
     val pqHi  = new mutable.PriorityQueueWithRemove[Double]
   }
 
-  private final class Logic(shape: Shape)(implicit ctrl: Control)
-    extends NodeImpl(name, shape)
+  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+    extends NodeImpl(name, layer, shape)
       with FilterLogicImpl[BufD, Shape]
       with WindowedLogicImpl[Shape]
       with FilterIn5DImpl[BufD, BufI, BufI, BufD, BufI] {

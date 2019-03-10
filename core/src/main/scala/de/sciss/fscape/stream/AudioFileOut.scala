@@ -27,7 +27,7 @@ import scala.util.control.NonFatal
 object AudioFileOut {
   def apply(file: File, spec: AudioFileSpec, in: ISeq[OutD])(implicit b: Builder): OutL = {
     require (spec.numChannels == in.size, s"Channel mismatch (spec has ${spec.numChannels}, in has ${in.size})")
-    val sink = new Stage(file, spec)
+    val sink = new Stage(layer = b.layer, f = file, spec = spec)
     val stage = b.add(sink)
     (in zip stage.inlets).foreach { case (output, input) =>
       b.connect(output, input)
@@ -39,7 +39,7 @@ object AudioFileOut {
 
   private type Shape = UniformFanInShape[BufD, BufL]
 
-  private final class Stage(f: File, spec: io.AudioFileSpec)(implicit protected val ctrl: Control)
+  private final class Stage(layer: Layer, f: File, spec: io.AudioFileSpec)(implicit protected val ctrl: Control)
     extends BlockingGraphStage[Shape](s"$name(${f.name})") {
 
     val shape: Shape = UniformFanInShape[BufD, BufL](
@@ -47,12 +47,12 @@ object AudioFileOut {
       Vector.tabulate(spec.numChannels)(ch => InD(s"$name.in$ch")): _*
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, f, spec)
+    def createLogic(attr: Attributes) = new Logic(shape, layer = layer, file = f, spec = spec)
   }
 
-  private final class Logic(shape: Shape, protected val file: File, protected val spec: io.AudioFileSpec)
+  private final class Logic(shape: Shape, layer: Layer, protected val file: File, protected val spec: io.AudioFileSpec)
                            (implicit ctrl: Control)
-    extends NodeImpl(s"$name(${file.name})", shape) with AbstractLogic {
+    extends NodeImpl(s"$name(${file.name})", layer, shape) with AbstractLogic {
   }
 
   trait AbstractLogic extends NodeHasInitImpl with OutHandler { logic: GraphStageLogic =>
@@ -123,7 +123,10 @@ object AudioFileOut {
         ch += 1
       }
       // try {
+      if (af != null) {
         af.close()
+        af = null
+      }
         // resultP.trySuccess(af.numFrames)
       // } catch {
       //   case NonFatal(ex) => resultP.tryFailure(ex)

@@ -25,7 +25,7 @@ import de.sciss.lucre.stm.Sys
 import de.sciss.serial.DataOutput
 
 trait AbstractUGenGraphBuilder[S <: Sys[S]]
-  extends UGenGraph.BuilderLike with UGenGraphBuilder with IO[S] { builder =>
+  extends UGenGraph.Basic with UGenGraphBuilder with IO[S] { builder =>
 
   // ---- abstract ----
 
@@ -65,20 +65,13 @@ trait AbstractUGenGraphBuilder[S <: Sys[S]]
 
   final def tryBuild(g: Graph)(implicit tx: S#Tx, ctrl: Control): State[S] = {
     this.tx = tx
-    var g0 = g
-    while (g0.nonEmpty) {
-      g0 = Graph {
-        g0.sources.foreach { source =>
-          source.force(this)
-        }
-      }
-    }
+    expandNested(g)
     tryBuild()
   }
 
   private def tryBuild()(implicit ctrl: Control): State[S] =
     try {
-      val iUGens = UGenGraph.indexUGens(ugens)
+      val iUGens = indexUGens()
       new Complete[S] {
         private def calcStructure(): Long = {
           // val t1 = System.currentTimeMillis()

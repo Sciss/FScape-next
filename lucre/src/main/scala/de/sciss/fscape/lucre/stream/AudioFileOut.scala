@@ -18,7 +18,7 @@ import akka.stream.stage.{GraphStageLogic, InHandler, OutHandler}
 import de.sciss.file._
 import de.sciss.fscape.logStream
 import de.sciss.fscape.stream.impl.{BlockingGraphStage, In3UniformFanInShape, NodeImpl}
-import de.sciss.fscape.stream.{BufD, BufI, BufL, Builder, Control, InD, InI, OutD, OutI, OutL}
+import de.sciss.fscape.stream.{BufD, BufI, BufL, Builder, Control, InD, InI, Layer, OutD, OutI, OutL}
 import de.sciss.synth.io
 import de.sciss.fscape.lucre.graph.{AudioFileOut => AF}
 
@@ -28,7 +28,7 @@ import scala.util.control.NonFatal
 object AudioFileOut {
   def apply(file: File, fileType: OutI, sampleFormat: OutI, sampleRate: OutD, in: ISeq[OutD])
            (implicit b: Builder): OutL = {
-    val stage0  = new Stage(file, numChannels = in.size)
+    val stage0  = new Stage(layer = b.layer, f = file, numChannels = in.size)
     val stage   = b.add(stage0)
     b.connect(fileType    , stage.in0)
     b.connect(sampleFormat, stage.in1)
@@ -43,7 +43,7 @@ object AudioFileOut {
 
   private type Shape = In3UniformFanInShape[BufI, BufI, BufD, BufD, BufL]
 
-  private final class Stage(f: File, numChannels: Int)(implicit protected val ctrl: Control)
+  private final class Stage(layer: Layer, f: File, numChannels: Int)(implicit protected val ctrl: Control)
     extends BlockingGraphStage[Shape](s"$name(${f.name})") {
 
     val shape: Shape = In3UniformFanInShape(
@@ -54,12 +54,12 @@ object AudioFileOut {
       OutL(s"$name.out")
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, f, numChannels = numChannels)
+    def createLogic(attr: Attributes) = new Logic(shape, layer, f, numChannels = numChannels)
   }
 
-  private final class Logic(shape: Shape, file: File, numChannels: Int)
+  private final class Logic(shape: Shape, layer: Layer, file: File, numChannels: Int)
                            (implicit ctrl: Control)
-    extends NodeImpl(s"$name(${file.name})", shape)
+    extends NodeImpl(s"$name(${file.name})", layer, shape)
       with OutHandler { logic: GraphStageLogic =>
 
     // ---- impl ----

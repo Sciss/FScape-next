@@ -20,9 +20,9 @@ import akka.stream.FanInShape3
 import scala.annotation.tailrec
 
 // XXX TODO --- we could support dynamic `step` updates
-abstract class AbstractSeqGen[A, E >: Null <: BufElem[A]](name: String, shape: FanInShape3[E, E, BufL, E])
+abstract class AbstractSeqGen[A, E >: Null <: BufElem[A]](name: String, layer: Layer, shape: FanInShape3[E, E, BufL, E])
                                                      (implicit ctrl: Control, tpe: StreamType[A, E])
-  extends NodeImpl(name, shape)
+  extends NodeImpl(name, layer, shape)
     with GenIn3Impl[E, E, BufL, E] {
 
   // ---- abstract ----
