@@ -9,8 +9,8 @@ object IfThenTest extends App {
     import graph._
     DC(0).take(10000).poll(0, "zero")
     val p1: GE = 1
-    val p2: GE = 1
-    val p3: GE = 0
+    val p2: GE = 0
+    val p3: GE = 1
     If (p1) Then {
       DC(1).take(20000)poll(0, "one")
       If (p2) Then {

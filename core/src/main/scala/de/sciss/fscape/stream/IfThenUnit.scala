@@ -44,7 +44,7 @@ object IfThenUnit {
   }
 
   private final class Logic(shape: Shape, layer: Layer, branchLayers: ISeq[Layer])(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape) {
+    extends NodeImpl(name, layer, shape) { node =>
 
     override def completeAsync(): Unit = {
       branchLayers.foreach { bl =>
@@ -61,6 +61,9 @@ object IfThenUnit {
     private class InHandlerImpl(in: InI, ch: Int) extends InHandler {
       def onPush(): Unit = {
         val b = grab(in)
+
+        // println(s"IF-THEN-UNIT ${node.hashCode().toHexString} onPush($ch); numIns = $numIns, pending = $pending")
+
         if (b.size > 0 && !condDone(ch)) {
           condDone(ch) = true
           val v: Int = b.buf(0)
@@ -98,7 +101,8 @@ object IfThenUnit {
     }
 
     private def process(selBranchIdx: Int): Unit = {
-      logStream(s"process() $this")
+      logStream(s"process($selBranchIdx) $this")
+      // println(s"IF-THEN-UNIT ${node.hashCode().toHexString} process($selBranchIdx)")
 
       var ch = 0
       val it = branchLayers.iterator

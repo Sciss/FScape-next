@@ -38,8 +38,8 @@ object Then {
     def loop(t: Then[Any], res: List[Case]): List[Case] = {
       val layer = b.expandNested(t.branch)
       val res1  = Case(t.cond, layer) :: res
-      e match {
-        case hd: ElseOrElseIfThen[Any] => loop(hd, res1)
+      t match {
+        case hd: ElseOrElseIfThen[Any] => loop(hd.pred, res1)
         case _ => res1
       }
     }
@@ -93,8 +93,9 @@ sealed trait IfThenLike[+A] extends IfOrElseIfThen[A] with Lazy.Expander[Unit] {
   }
 
   final protected def makeUGens(implicit b: UGenGraph.Builder): Unit = {
-    val layer = b.expandNested(branch)
-    Then.SourceUnit(Then.Case(cond, layer) :: Nil)
+    val cases = Then.gather(this)
+    // println(s"cases = $cases")
+    Then.SourceUnit(cases)
   }
 }
 
@@ -115,7 +116,7 @@ sealed trait ElseOrElseIfThen[+A] extends Then[A] {
 }
 
 final case class ElseIfThen[+A](pred: IfOrElseIfThen[A], cond: GE, branch: Graph, result: A)
-  extends IfThenLike[A]
+  extends IfThenLike[A] with ElseOrElseIfThen[A]
 
 object Else {
   object Result extends LowPri {
@@ -161,7 +162,7 @@ final case class ElseUnit(pred: IfOrElseIfThen[Any], branch: Graph)
 
   protected def makeUGens(implicit b: UGenGraph.Builder): Unit = {
     val cases = Then.gather(this)
-    println(s"cases = $cases")
+    // println(s"cases = $cases")
     Then.SourceUnit(cases)
   }
 }
