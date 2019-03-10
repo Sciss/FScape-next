@@ -49,7 +49,7 @@ final class ProcessInHandlerImpl[A, S <: Shape](in: Inlet[A], logic: FullInOutIm
     } // may lead to `flushOut`
     else {
       if (!logic.isInAvailable(in)) {
-        println(s"Invalid process $in")
+        logStream(s"Invalid process $in")
         logic.completeStage()
       }
     }
@@ -112,7 +112,7 @@ final class AuxInHandlerImpl[A, S <: Shape](in: Inlet[A], logic: FullInOutImpl[S
     if (logic.inValid || logic.isInAvailable(in)) {
       testRead()
     } else {
-      println(s"Invalid aux $in")
+      logStream(s"Invalid aux $in")
       logic.completeStage()
     }
   }

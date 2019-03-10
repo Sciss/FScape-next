@@ -90,7 +90,7 @@ object ImageFileSeqOut {
         if (_inValid0 || isAvailable(in0)) {
           testRead()
         } else {
-          println(s"Invalid aux $in0")
+          logStream(s"Invalid aux $in0")
           completeStage()
         }
       }

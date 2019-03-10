@@ -80,7 +80,7 @@ object Resample {
         if (_inMainValid) process() // may lead to `flushOut`
         else {
           if (!isAvailable(in0)) {
-            println(s"Invalid process $in0")
+            logStream(s"Invalid process $in0")
             completeStage()
           }
         }

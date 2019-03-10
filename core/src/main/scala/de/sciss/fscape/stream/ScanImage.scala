@@ -180,7 +180,7 @@ object ScanImage {
         if (inValid) {
           process()
         } else if (!isAvailable(shape.in0)) {
-          println(s"Invalid process ${shape.in0}")
+          logStream(s"Invalid process ${shape.in0}")
           completeStage()
         }
       }
@@ -251,7 +251,7 @@ object ScanImage {
             // updateAux1Ended()
             if (_aux1CanRead) process()
           } else {
-            println(s"Invalid aux $in")
+            logStream(s"Invalid aux $in")
             completeStage()
           }
         }
@@ -390,7 +390,7 @@ object ScanImage {
             updateXYEnded()
             if (_aux2CanRead || _xyEnded) process()  // may lead to `flushOut`
           } else {
-            println(s"Invalid aux $in")
+            logStream(s"Invalid aux $in")
             completeStage()
           }
         }

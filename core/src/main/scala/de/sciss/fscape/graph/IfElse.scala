@@ -16,11 +16,9 @@ package de.sciss.fscape.graph
 import de.sciss.fscape
 import de.sciss.fscape.UGen.Aux
 import de.sciss.fscape.UGenSource.unwrap
-import de.sciss.fscape.stream.{Builder, StreamIn}
+import de.sciss.fscape.stream.{Builder, StreamIn, StreamOut}
 import de.sciss.fscape.{GE, Graph, Lazy, UGen, UGenGraph, UGenIn, UGenInLike, UGenSource, stream}
-import de.sciss.synth.io.AudioFileSpec
 
-import scala.collection.immutable
 import scala.collection.immutable.{IndexedSeq => Vec}
 
 final case class If(cond: GE) {
@@ -33,6 +31,37 @@ final case class If(cond: GE) {
   }
 }
 
+object Then {
+  private[fscape] case class Case(cond: GE, branchLayer: Int)
+
+  private[fscape] def gather[A](e: Then[Any])(implicit b: UGenGraph.Builder): List[Case] = {
+    def loop(t: Then[Any], res: List[Case]): List[Case] = {
+      val layer = b.expandNested(t.branch)
+      val res1  = Case(t.cond, layer) :: res
+      e match {
+        case hd: ElseOrElseIfThen[Any] => loop(hd, res1)
+        case _ => res1
+      }
+    }
+
+    loop(e, Nil)
+  }
+
+  case class SourceUnit(cases: List[Case]) extends UGenSource.ZeroOut {
+    protected def makeUGens(implicit b: UGenGraph.Builder): Unit =
+      unwrap(this, cases.iterator.map(_.cond.expand).toIndexedSeq)
+
+    protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit =
+      UGen.ZeroOut(this, args, aux = cases.map(c => Aux.Int(c.branchLayer)))
+
+    private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit = {
+      val cond = (args.iterator zip cases.iterator).map { case (cond0, Case(_, bl)) =>
+        (cond0.toInt, bl)
+      } .toVector
+      stream.IfThenUnit(cond)
+    }
+  }
+}
 sealed trait Then[+A] extends Lazy {
   def cond  : GE
   def branch: Graph
@@ -57,49 +86,19 @@ sealed trait IfOrElseIfThen[+A] extends Then[A] {
   }
 }
 
-sealed trait IfThenLike[+A] extends IfOrElseIfThen[A] {
-  def ElseIf (cond: GE): ElseIf[A] = {
+sealed trait IfThenLike[+A] extends IfOrElseIfThen[A] with Lazy.Expander[Unit] {
+  final def ElseIf (cond: GE): ElseIf[A] = {
     Graph.builder.removeLazy(this)
     new ElseIf(this, cond)
   }
-}
 
-object IfThen {
-  case class WithRef(cond: GE, branchLayer: Int) extends UGenSource.ZeroOut {
-    protected def makeUGens(implicit b: UGenGraph.Builder): Unit =
-      unwrap(this, Vector(cond.expand))
-
-    protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit =
-      UGen.ZeroOut(this, args, aux = Aux.Int(branchLayer) :: Nil)
-
-    private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit = {
-      val Vec(cond) = args
-      // println(s"layer = $layer")
-      stream.IfThen(cond = cond.toInt, branchLayer = branchLayer)
-    }
-  }
-}
-
-final case class IfThen[+A](cond: GE, branch: Graph, result: A)
-  extends IfThenLike[A] with Lazy.Expander[Unit] {
-
-
-//  protected def makeUGens(implicit b: UGenGraph.Builder): Unit =
-//    unwrap(this, Vector(cond.expand))
-//
-//  protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit =
-//    UGen.ZeroOut(this, inputs = args, aux = Aux.String(label) :: Nil)
-//
-//  private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit = {
-//    val Vec(cond) = args
-//
-//  }
-
-  protected def makeUGens(implicit b: UGenGraph.Builder): Unit = {
+  final protected def makeUGens(implicit b: UGenGraph.Builder): Unit = {
     val layer = b.expandNested(branch)
-    IfThen.WithRef(cond, layer)
+    Then.SourceUnit(Then.Case(cond, layer) :: Nil)
   }
 }
+
+final case class IfThen[+A](cond: GE, branch: Graph, result: A) extends IfThenLike[A]
 
 final case class ElseIf[+A](pred: IfOrElseIfThen[A], cond: GE) {
   def Then [B >: A](branch: => B): ElseIfThen[B] = {
@@ -116,12 +115,7 @@ sealed trait ElseOrElseIfThen[+A] extends Then[A] {
 }
 
 final case class ElseIfThen[+A](pred: IfOrElseIfThen[A], cond: GE, branch: Graph, result: A)
-  extends IfOrElseIfThen[A] with ElseOrElseIfThen[A] {
-
-  def ElseIf (cond: GE): ElseIf[A] = new ElseIf(this, cond)
-
-  private[fscape] def force(b: UGenGraph.Builder): Unit = ???
-}
+  extends IfThenLike[A]
 
 object Else {
   object Result extends LowPri {
@@ -161,15 +155,42 @@ sealed trait ElseLike[+A] extends ElseOrElseIfThen[A] {
 }
 
 final case class ElseUnit(pred: IfOrElseIfThen[Any], branch: Graph)
-  extends ElseLike[Any] {
+  extends ElseLike[Any] with Lazy.Expander[Unit] {
 
   def result: Any = ()
 
-  private[fscape] def force(b: UGenGraph.Builder): Unit = ???
+  protected def makeUGens(implicit b: UGenGraph.Builder): Unit = {
+    val cases = Then.gather(this)
+    println(s"cases = $cases")
+    Then.SourceUnit(cases)
+  }
 }
 
+object ElseGE {
+  case class WithRef(cond: GE, branchLayer: Int) extends UGenSource.SingleOut {
+    protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
+      unwrap(this, Vector(cond.expand))
+
+    protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
+      UGen.SingleOut(this, args, aux = Aux.Int(branchLayer) :: Nil)
+
+    private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: Builder): StreamOut = {
+      val Vec(cond) = args
+      // println(s"layer = $layer")
+      // stream.IfThen(cond = cond.toInt, branchLayer = branchLayer)
+      ???
+    }
+  }
+}
 final case class ElseGE(pred: IfOrElseIfThen[GE], branch: Graph, result: GE)
   extends ElseLike[GE] with GE.Lazy {
 
-  protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = ???
+  protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = {
+    val layer = b.expandNested(branch)
+    pred match {
+      case IfThen     (condP, branchP, resP)        =>
+      case ElseIfThen (predP, condP, branchP, resP) =>
+    }
+    ElseGE.WithRef(cond, layer)
+  }
 }

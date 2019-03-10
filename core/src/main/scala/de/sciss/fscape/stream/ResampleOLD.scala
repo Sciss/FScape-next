@@ -142,7 +142,7 @@ object ResampleOLD {
         if (_inAuxValid || isAvailable(in)) {
           testRead()
         } else {
-          println(s"Invalid aux $in")
+          logStream(s"Invalid aux $in")
           completeStage()
         }
       }
@@ -168,7 +168,7 @@ object ResampleOLD {
         if (_inMainValid) process() // may lead to `flushOut`
         else {
           if (!isAvailable(shape.in0)) {
-            println(s"Invalid process ${shape.in0}")
+            logStream(s"Invalid process ${shape.in0}")
             completeStage()
           }
         }

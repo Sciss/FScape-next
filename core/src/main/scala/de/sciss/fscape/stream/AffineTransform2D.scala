@@ -201,7 +201,7 @@ object AffineTransform2D {
         } // may lead to `flushOut`
         else {
           if (!isAvailable(shape.in0)) {
-            println(s"Invalid process ${shape.in0}")
+            logStream(s"Invalid process ${shape.in0}")
             completeStage()
           }
         }
@@ -299,7 +299,7 @@ object AffineTransform2D {
             // updateAux1Ended()
             if (_aux1CanRead) process()
           } else {
-            println(s"Invalid aux $in")
+            logStream(s"Invalid aux $in")
             completeStage()
           }
         }
@@ -460,7 +460,7 @@ object AffineTransform2D {
             updateAux2Ended()
             if (_aux2CanRead) process()
           } else {
-            println(s"Invalid aux $in")
+            logStream(s"Invalid aux $in")
             completeStage()
           }
         }

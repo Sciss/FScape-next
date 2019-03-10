@@ -40,6 +40,13 @@ abstract class NodeImpl[+S <: Shape](protected final val name: String, val layer
     }
     async.invoke(())
   }
+
+  def completeAsync(): Unit = {
+    val async = getAsyncCallback { _: Unit =>
+      completeStage()
+    }
+    async.invoke(())
+  }
 }
 
 trait NodeHasInitImpl extends NodeHasInit {

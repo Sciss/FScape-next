@@ -431,7 +431,7 @@ object GimpSlur {
         if (logic.aux1InValid || logic.isInAvailable(in)) {
           testRead()
         } else {
-          println(s"Invalid aux $in")
+          logStream(s"Invalid aux $in")
           logic.completeStage()
         }
       }
@@ -460,7 +460,7 @@ object GimpSlur {
           if (!hasMore && aux2InRemain == 0) kernelRemain = 0   // keep going with previous
           testRead()
         } else {
-          println(s"Invalid aux $in")
+          logStream(s"Invalid aux $in")
           logic.completeStage()
         }
       }
@@ -484,7 +484,7 @@ object GimpSlur {
         } // may lead to `flushOut`
         else {
           if (!logic.isInAvailable(in)) {
-            println(s"Invalid process $in")
+            logStream(s"Invalid process $in")
             logic.completeStage()
           }
         }

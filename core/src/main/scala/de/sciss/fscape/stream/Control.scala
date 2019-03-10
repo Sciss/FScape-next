@@ -306,11 +306,19 @@ object Control {
       }
     }
 
-    private def actCancel(layer: Layer): Unit = {
+    private def actComplete(layer: Layer): Unit = {
+      logControl(s"${hashCode().toHexString} actComplete")
+      val nodes0 = nodesInLayer(layer)
+      nodes0.foreach { n =>
+        n.completeAsync()
+      }
+    }
+
+    private def actCancel(): Unit = {
       logControl(s"${hashCode().toHexString} actCancel")
       val ex = Cancelled()
       statusP.tryFailure(ex)
-      val nodes0 = nodesInLayer(layer)
+      val nodes0 = nodes
       nodes0.foreach { n =>
         n.failAsync(ex)
       }
@@ -321,7 +329,8 @@ object Control {
         case SetProgress(key, frac) => actSetProgress(key, frac)
         case RemoveNode(n)          => actRemoveNode(n, context, self)
         case Launch(layer)          => actLaunch(layer)
-        case Cancel(layer)          => actCancel(layer)
+        case Complete(layer)        => actComplete(layer)
+        case Cancel                 => actCancel()
       }
     }
 
@@ -416,10 +425,12 @@ object Control {
 
     final def status: Future[Unit] = statusP.future
 
-    final def cancel(): Unit = cancelLayer(0)
+    final def cancel(): Unit = sync.synchronized {
+      if (_actor != null) _actor ! Complete
+    }
 
-    final private[stream] def cancelLayer(layer: Layer): Unit = sync.synchronized {
-      if (_actor != null) _actor ! Cancel(layer)
+    final private[stream] def completeLayer(layer: Layer): Unit = sync.synchronized {
+      if (_actor != null) _actor ! Complete(layer)
     }
 
     // XXX TODO --- should be in the actor body
@@ -455,7 +466,8 @@ object Control {
 
   private final case class RemoveNode(node: Node)
   private case class Launch(layer: Layer)
-  private case class Cancel(layer: Layer)
+  private case class Complete(layer: Layer)
+  private case object Cancel
   private final case class SetProgress(key: Int, frac: Double)
 }
 trait Control {
@@ -509,7 +521,7 @@ trait Control {
 
   private[stream] def launchLayer(layer: Layer): Unit
 
-  private[stream] def cancelLayer(layer: Layer): Unit
+  private[stream] def completeLayer(layer: Layer): Unit
 
   /** Creates a temporary file. The caller is responsible for deleting the file
     * after it is not needed any longer. (The file will still be marked `deleteOnExit`)

@@ -34,7 +34,7 @@ final class DemandProcessInHandler[A, S <: Shape](in: Inlet[A], logic: DemandInO
     } // may lead to `flushOut`
     else {
       if (!logic.isInAvailable(in)) {
-        println(s"Invalid process $in")
+        logStream(s"Invalid process $in")
         logic.completeStage()
       }
     }

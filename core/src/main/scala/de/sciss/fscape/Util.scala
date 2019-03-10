@@ -85,6 +85,15 @@ object Util {
     fill(buf, off = off, len = len, value = 0)
 
   /** Fills buffer with a constant value. */
+  def fill(buf: Array[Boolean], off: Int, len: Int, value: Boolean): Unit = {
+    var i     = off
+    val stop  = i + len
+    while (i < stop) {
+      buf(i) = value
+      i += 1
+    }
+  }
+  /** Fills buffer with a constant value. */
   def fill(buf: Array[Int], off: Int, len: Int, value: Int): Unit = {
     var i     = off
     val stop  = i + len

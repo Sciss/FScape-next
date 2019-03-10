@@ -30,6 +30,8 @@ trait Node {
 
   def launchAsync(): Unit
 
+  def completeAsync(): Unit
+
   def failAsync(ex: Exception): Unit
 
   def shape: Shape
