@@ -1,5 +1,5 @@
 /*
- *  IfThenUnit.scala
+ *  IfThenGE.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2019 Hanns Holger Rutz. All rights reserved.
@@ -14,39 +14,46 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.Attributes
+
 import akka.stream.stage.InHandler
-import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl, UniformSinkShape}
+import akka.stream.{Attributes, Inlet, Outlet}
+import de.sciss.fscape.stream.impl.{BiformFanInShape, NodeImpl, StageImpl}
 
 import scala.collection.immutable.{Seq => ISeq}
 
-object IfThenUnit {
+object IfThenGE {
   /**
-    * @param cases  tuples of (cond, layer)
+    * @param cases  tuples of (cond, layer, result/branch-sink)
     */
-  def apply(cases: ISeq[(OutI, Layer)])(implicit b: Builder): Unit = {
-    val stage0  = new Stage(b.layer, branchLayers = cases.map(_._2))
+  def apply[A, E >: Null <: BufElem[A]](cases: ISeq[(OutI, Layer, Outlet[E])])(implicit b: Builder): Outlet[E] = {
+    val stage0  = new Stage[A, E](b.layer, branchLayers = cases.map(_._2))
     val stage   = b.add(stage0)
-    cases.zipWithIndex.foreach { case (c, i) =>
-      b.connect(c._1, stage.inlets(i))
+    cases.zipWithIndex.foreach { case ((c, _, o), i) =>
+      b.connect(c, stage.ins1(i))
+      b.connect(o, stage.ins2(i))
     }
+    stage.out
   }
 
-  private final val name = "IfThenUnit"
+  private final val name = "IfThenGE"
 
-  private type Shape = UniformSinkShape[BufI]
+  private type Shape[A, E >: Null <: BufElem[A]] = BiformFanInShape[BufI, E, E]
 
-  private final class Stage(thisLayer: Layer, branchLayers: ISeq[Layer])(implicit ctrl: Control)
-    extends StageImpl[Shape](name) {
+  private final class Stage[A, E >: Null <: BufElem[A]](thisLayer: Layer, branchLayers: ISeq[Layer])
+                                                       (implicit ctrl: Control)
+    extends StageImpl[Shape[A, E]](name) {
 
-    val shape: Shape = UniformSinkShape(
-      Vector.tabulate(branchLayers.size)(i => InI(s"$name.cond${i+1}"))
+    val shape: Shape = BiformFanInShape(
+      ins1 = Vector.tabulate(branchLayers.size)(i => InI      (s"$name.cond${i+1}")),
+      ins2 = Vector.tabulate(branchLayers.size)(i => Inlet[E] (s"$name.branch${i+1}")),
+      out  = Outlet[E](s"$name.out")
     )
 
     def createLogic(attr: Attributes) = new Logic(shape, layer = thisLayer, branchLayers = branchLayers)
   }
 
-  private final class Logic(shape: Shape, layer: Layer, branchLayers: ISeq[Layer])(implicit ctrl: Control)
+  private final class Logic[A, E >: Null <: BufElem[A]](shape: Shape[A, E], layer: Layer,
+                                                        branchLayers: ISeq[Layer])(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape) { node =>
 
     override def completeAsync(): Unit = {
@@ -61,7 +68,7 @@ object IfThenUnit {
     private[this] val condArr   = new Array[Boolean](numIns)
     private[this] val condDone  = new Array[Boolean](numIns)
 
-    private class InHandlerImpl(in: InI, ch: Int) extends InHandler {
+    private class CondInHandlerImpl(in: InI, ch: Int) extends InHandler {
       def onPush(): Unit = {
         val b = grab(in)
 
@@ -98,10 +105,12 @@ object IfThenUnit {
     {
       var ch = 0
       while (ch < numIns) {
-        new InHandlerImpl(shape.inlets(ch), ch)
+        new CondInHandlerImpl(shape.ins1(ch), ch)
         ch += 1
       }
     }
+
+    ??? // set handlers for branchOuts
 
     private def process(selBranchIdx: Int): Unit = {
       logStream(s"process($selBranchIdx) $this")

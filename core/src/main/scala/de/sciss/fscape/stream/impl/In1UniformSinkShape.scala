@@ -30,11 +30,4 @@ final case class In1UniformSinkShape[In0, In1](in0: Inlet[In0], inlets1: ISeq[In
 
   def deepCopy(): In1UniformSinkShape[In0, In1] =
     In1UniformSinkShape(in0.carbonCopy(), inlets1.map(_.carbonCopy()))
-
-  def copyFromPorts(inlets: ISeq[Inlet[_]], outlets: ISeq[Outlet[_]]): In1UniformSinkShape[In0, In1] = {
-    require(inlets.size == this.inlets1.size + 1, s"number of inlets [${inlets.size}] does not match [${this.inlets1.size + 1}]")
-    require(outlets.isEmpty, s"number of outlets [${outlets.size}] does not match [0]")
-    val ISeq(in0c, in1c @ _*) = inlets
-    In1UniformSinkShape(in0c.asInstanceOf[Inlet[In0]], in1c.asInstanceOf[ISeq[Inlet[In1]]])
-  }
 }

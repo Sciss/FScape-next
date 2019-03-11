@@ -33,17 +33,4 @@ final case class In3UniformFanInShape[In0, In1, In2, In3, Out](in0    :      Inl
   def deepCopy(): In3UniformFanInShape[In0, In1, In2, In3, Out] =
     In3UniformFanInShape(in0.carbonCopy(), in1.carbonCopy(), in2.carbonCopy(), inlets3.map(_.carbonCopy()),
       out.carbonCopy())
-
-  def copyFromPorts(inlets : ISeq[Inlet [_]],
-                    outlets: ISeq[Outlet[_]]): In3UniformFanInShape[In0, In1, In2, In3, Out] = {
-    require(inlets.size  == this.inlets3.size + 3, s"number of inlets [${inlets.size}] does not match [${this.inlets.size}]")
-    require(outlets.size == 1, s"number of outlets [${outlets.size}] does not match [${this.outlets.size}]")
-    In3UniformFanInShape(
-      inlets (0).asInstanceOf[          Inlet [In0]],
-      inlets (1).asInstanceOf[          Inlet [In1]],
-      inlets (2).asInstanceOf[          Inlet [In2]],
-      inlets.drop(3).asInstanceOf[ISeq[ Inlet [In3]]],
-      outlets(0).asInstanceOf[          Outlet[Out]]
-    )
-  }
 }

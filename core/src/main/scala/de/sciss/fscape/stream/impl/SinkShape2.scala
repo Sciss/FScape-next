@@ -27,10 +27,4 @@ final case class SinkShape2[In0, In1](in0: Inlet[In0], in1: Inlet[In1])
   def outlets: ISeq[Outlet[_]] = Vector.empty
 
   def deepCopy(): SinkShape2[In0, In1] = SinkShape2(in0.carbonCopy(), in1.carbonCopy())
-
-  def copyFromPorts(inlets: ISeq[Inlet[_]], outlets: ISeq[Outlet[_]]): SinkShape2[In0, In1] = {
-    require(inlets.size == 2, s"number of inlets [${inlets.size}] does not match [2]")
-    require(outlets.isEmpty, s"number of outlets [${outlets.size}] does not match [0]")
-    SinkShape2(inlets(0).asInstanceOf[Inlet[In0]], inlets(1).asInstanceOf[Inlet[In1]])
-  }
 }

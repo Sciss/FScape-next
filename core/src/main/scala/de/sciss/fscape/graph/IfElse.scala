@@ -16,7 +16,7 @@ package de.sciss.fscape.graph
 import de.sciss.fscape
 import de.sciss.fscape.UGen.Aux
 import de.sciss.fscape.UGenSource.unwrap
-import de.sciss.fscape.stream.{Builder, StreamIn, StreamOut}
+import de.sciss.fscape.stream.{BufD, BufI, BufL, StreamIn, StreamOut}
 import de.sciss.fscape.{GE, Graph, Lazy, UGen, UGenGraph, UGenIn, UGenInLike, UGenSource, stream}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -32,12 +32,13 @@ final case class If(cond: GE) {
 }
 
 object Then {
-  private[fscape] case class Case(cond: GE, branchLayer: Int)
+  private[fscape] case class UnitCase (cond: GE, branchLayer: Int)
+  private[fscape] case class GECase   (cond: GE, branchLayer: Int, branchOut: GE)
 
-  private[fscape] def gather[A](e: Then[Any])(implicit b: UGenGraph.Builder): List[Case] = {
-    def loop(t: Then[Any], res: List[Case]): List[Case] = {
+  private[fscape] def gatherUnit[A](e: Then[Any])(implicit b: UGenGraph.Builder): List[UnitCase] = {
+    def loop(t: Then[Any], res: List[UnitCase]): List[UnitCase] = {
       val layer = b.expandNested(t.branch)
-      val res1  = Case(t.cond, layer) :: res
+      val res1  = UnitCase(t.cond, layer) :: res
       t match {
         case hd: ElseOrElseIfThen[Any] => loop(hd.pred, res1)
         case _ => res1
@@ -47,7 +48,20 @@ object Then {
     loop(e, Nil)
   }
 
-  case class SourceUnit(cases: List[Case]) extends UGenSource.ZeroOut {
+  private[fscape] def gatherGE[A](e: Then[GE])(implicit b: UGenGraph.Builder): List[GECase] = {
+    def loop(t: Then[GE], res: List[GECase]): List[GECase] = {
+      val layer = b.expandNested(t.branch)
+      val res1  = GECase(t.cond, layer, t.result) :: res
+      t match {
+        case hd: ElseOrElseIfThen[GE] => loop(hd.pred, res1)
+        case _ => res1
+      }
+    }
+
+    loop(e, Nil)
+  }
+
+  case class SourceUnit(cases: List[UnitCase]) extends UGenSource.ZeroOut {
     protected def makeUGens(implicit b: UGenGraph.Builder): Unit =
       unwrap(this, cases.iterator.map(_.cond.expand).toIndexedSeq)
 
@@ -55,10 +69,40 @@ object Then {
       UGen.ZeroOut(this, args, aux = cases.map(c => Aux.Int(c.branchLayer)))
 
     private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit = {
-      val cond = (args.iterator zip cases.iterator).map { case (cond0, Case(_, bl)) =>
+      val cond = (args.iterator zip cases.iterator).map { case (cond0, UnitCase(_, bl)) =>
         (cond0.toInt, bl)
       } .toVector
       stream.IfThenUnit(cond)
+    }
+  }
+
+  case class GEUnit(cases: List[GECase]) extends UGenSource.SingleOut {
+    protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
+      unwrap(this, cases.iterator.flatMap(c => c.cond.expand :: c.branchOut.expand :: Nil).toIndexedSeq)
+
+    protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
+      UGen.SingleOut(this, args, aux = cases.map(c => Aux.Int(c.branchLayer)))
+
+    private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
+      val (cond, outs) = args.grouped(2).toSeq.unzip({ case Seq(c, o) => (c, o) })
+      val layers  = cases.map(_.branchLayer)
+      val condT   = cond.map(_.toInt)
+
+      if (outs.forall(_.isInt)) {
+        val outsT = outs.map(_.toInt)
+        val cases = (condT, layers, outsT).zipped.toList
+        stream.IfThenGE[Int, BufI](cases)
+
+      } else if (outs.forall(o => o.isInt || o.isLong)) {
+        val outsT = outs.map(_.toLong)
+        val cases = (condT, layers, outsT).zipped.toList
+        stream.IfThenGE[Long, BufL](cases)
+
+      } else {
+        val outsT = outs.map(_.toDouble)
+        val cases = (condT, layers, outsT).zipped.toList
+        stream.IfThenGE[Double, BufD](cases)
+      }
     }
   }
 }
@@ -66,16 +110,6 @@ sealed trait Then[+A] extends Lazy {
   def cond  : GE
   def branch: Graph
   def result: A
-
-//  private[synth] final def force(b: UGenGraph.Builder): Unit = UGenGraph.builder match {
-//    case nb: NestedUGenGraphBuilder => visit(nb)
-//    case _ => sys.error(s"Cannot expand modular IfGE outside of NestedUGenGraphBuilder")
-//  }
-
-//  private[fscape] def force(b: UGenGraph.Builder): Unit = visit(b)
-//
-//  private[fscape] final def visit(b: UGenGraph.Builder): UGenGraph.ExpIfCase =
-//    b.visit(ref, b.expandIfCase(this))
 }
 
 sealed trait IfOrElseIfThen[+A] extends Then[A] {
@@ -93,7 +127,7 @@ sealed trait IfThenLike[+A] extends IfOrElseIfThen[A] with Lazy.Expander[Unit] {
   }
 
   final protected def makeUGens(implicit b: UGenGraph.Builder): Unit = {
-    val cases = Then.gather(this)
+    val cases = Then.gatherUnit(this)
     // println(s"cases = $cases")
     Then.SourceUnit(cases)
   }
@@ -161,37 +195,18 @@ final case class ElseUnit(pred: IfOrElseIfThen[Any], branch: Graph)
   def result: Any = ()
 
   protected def makeUGens(implicit b: UGenGraph.Builder): Unit = {
-    val cases = Then.gather(this)
+    val cases = Then.gatherUnit(this)
     // println(s"cases = $cases")
     Then.SourceUnit(cases)
   }
 }
 
-object ElseGE {
-  case class WithRef(cond: GE, branchLayer: Int) extends UGenSource.SingleOut {
-    protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
-      unwrap(this, Vector(cond.expand))
-
-    protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
-      UGen.SingleOut(this, args, aux = Aux.Int(branchLayer) :: Nil)
-
-    private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: Builder): StreamOut = {
-      val Vec(cond) = args
-      // println(s"layer = $layer")
-      // stream.IfThen(cond = cond.toInt, branchLayer = branchLayer)
-      ???
-    }
-  }
-}
 final case class ElseGE(pred: IfOrElseIfThen[GE], branch: Graph, result: GE)
   extends ElseLike[GE] with GE.Lazy {
 
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = {
-    val layer = b.expandNested(branch)
-    pred match {
-      case IfThen     (condP, branchP, resP)        =>
-      case ElseIfThen (predP, condP, branchP, resP) =>
-    }
-    ElseGE.WithRef(cond, layer)
+    val cases = Then.gatherGE(this)
+    // println(s"cases = $cases")
+    Then.GEUnit(cases)
   }
 }

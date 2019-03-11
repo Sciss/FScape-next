@@ -56,3 +56,14 @@ are using `Lazy.Expander` and thus `Graph.builder.addLazy(this)`. Expansion is t
 to `StreamOut`. The latter produces `Node` which upon `createLogic` of its parent graph stage calls
 `control.addNode`, which would be the place to collect the nodes into branch specific collections, so that we
 can then call a kind of "launch"; probably using `getAsyncCallback`.
+
+## `ElseGE`
+
+So how to get from `ElseUnit` to `ElseGE`? In the former, we "forgot" about the branch graphs. We waited for the
+predicate to be decidable and then either launched or completed (stopped) the layers associated with the branches.
+
+In the latter, we'll collect the `result: GE` fields and handle their streams into the `IfThenGE` graph stage logic.
+The crucial timing bit will be when to `pull` the selected branch's result after having launched it. If that happens
+too early, we might not have initialised the branch yet. Probably we should create a resulting `Future[Unit]` from
+`launchLayer`, or pass it a call-back function. As was confirmed on the Akka gitter, it is allowed to install
+handlers at any point.
