@@ -67,10 +67,17 @@ object BroadcastBuf {
 //    }
 
     def onPush(): Unit = {
+      logStream(s"onPush() $this")
       if (pendingCount == 0) process()
     }
 
+    override def onUpstreamFinish(): Unit = {
+      logStream(s"onUpstreamFinish() $this")
+      checkProcess() // super.onUpstreamFinish()
+    }
+
     private def process(): Unit = {
+      logStream(s"process() $this")
       pendingCount  = sinksRunning
       val buf       = grab(shape.in)
 
@@ -99,7 +106,11 @@ object BroadcastBuf {
     }
 
     private def checkProcess(): Unit =
-      if (pendingCount == 0 && isAvailable(shape.in)) process()
+      if (isAvailable(shape.in)) {
+        if (pendingCount == 0) process()
+      } else if (isClosed(shape.in)) {
+        completeStage()
+      }
 
     {
       var idx = 0
@@ -108,12 +119,14 @@ object BroadcastBuf {
         val idx0 = idx // fix for OutHandler
         setHandler(out, new OutHandler {
           def onPull(): Unit = {
+            logStream(s"onPull() $this.$out")
             pending(idx0) = false
             pendingCount -= 1
             checkProcess()
           }
 
           override def onDownstreamFinish(): Unit = {
+            logStream(s"onDownstreamFinish() $this.$out")
             if (eagerCancel) {
               logStream(s"completeStage() $self")
               completeStage()

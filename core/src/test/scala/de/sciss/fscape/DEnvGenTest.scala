@@ -1,6 +1,9 @@
 package de.sciss.fscape
 
 object DEnvGenTest extends App {
+  showStreamLog   = true
+  showControlLog  = true
+
   val g = Graph {
     import graph._
     val levels    = Seq[GE](0.0, -1.0, 1.0, 0.1)
@@ -18,5 +21,7 @@ object DEnvGenTest extends App {
     Plot1D(env, size = lengths.sum, label = "env")
   }
 
-  stream.Control().run(g)
+  val cfg = stream.Control.Config()
+  cfg.useAsync = false
+  stream.Control(cfg).run(g)
 }

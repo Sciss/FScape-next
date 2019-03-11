@@ -70,6 +70,7 @@ trait ChunkImpl[S <: Shape] extends FullInOutImpl[S] {
 
     val flushOut = shouldComplete()
     if (!outSent && (outRemain == 0 || flushOut) && canWrite) {
+      // logStream(s"writeOuts($outOff) $this - flushOut $flushOut")
       writeOuts(outOff)
       outSent     = true
       stateChange = true

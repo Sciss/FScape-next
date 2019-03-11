@@ -20,6 +20,7 @@ import akka.actor.{Actor, ActorContext, ActorRef, ActorSystem, Props}
 import akka.stream.{ActorMaterializer, Materializer}
 import de.sciss.file.File
 
+import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.language.implicitConversions
@@ -216,8 +217,8 @@ object Control {
     private[this] val queueD      = new ConcurrentLinkedQueue[BufD]
     private[this] val queueI      = new ConcurrentLinkedQueue[BufI]
     private[this] val queueL      = new ConcurrentLinkedQueue[BufL]
-    private[this] val nodes       = mutable.Set.empty[Node]
-    private[this] val nodeLayers  = mutable.Map.empty[Layer, mutable.Set[Node]]
+    private[this] val nodes       = mutable.Buffer.empty[Node]
+    private[this] val nodeLayers  = mutable.Map.empty[Layer, mutable.Buffer[Node]]
     private[this] val sync        = new AnyRef
     private[this] val statusP     = Promise[Unit]()
     private[this] var _actor      = null : ActorRef
@@ -257,9 +258,13 @@ object Control {
 
     private def actRemoveNode(n: Node, context: ActorContext, self: ActorRef): Unit = {
       val nl = n.layer
-      if (nodes.remove(n)) {
+      val ni = nodes.indexOf(n)
+      if (ni >= 0) {
+        nodes.remove(ni)
         val nm = nodeLayers(nl)
-        if (nm.remove(n)) {
+        val nmi = nm.indexOf(n)
+        if (nmi >= 0) {
+          nm.remove(nmi)
           if (nm.isEmpty) {
             nodeLayers.remove(nl)
           }
@@ -283,7 +288,10 @@ object Control {
       }
     }
 
-    private def nodesInLayer(layer: Layer): Seq[Node] = nodeLayers.getOrElse(layer, mutable.Set.empty).toSeq
+    private def nodesInLayer(layer: Layer): Vec[Node] = nodeLayers.get(layer) match {
+      case Some(buf) => buf.toIndexedSeq
+      case None => Vector.empty
+    }
 
     // We kind of emulate what Akka Stream would do itself
     // if we had used `preStart`: we have to buffer all polls
@@ -415,7 +423,7 @@ object Control {
     // called during materialization, no sync needed
     final private[stream] def addNode(n: Node): Unit = {
       val nl = n.layer
-      val nm = nodeLayers.getOrElseUpdate(nl, mutable.Set.empty)
+      val nm = nodeLayers.getOrElseUpdate(nl, mutable.Buffer.empty)
       nm    += n
       nodes += n
     }
