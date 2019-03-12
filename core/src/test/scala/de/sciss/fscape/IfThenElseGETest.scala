@@ -5,14 +5,19 @@ import de.sciss.fscape.gui.SimpleGUI
 import scala.swing.Swing
 
 object IfThenElseGETest extends App {
+//  showStreamLog = true
+
   val g = Graph {
     import graph._
-    DC(0).take(10000).poll(0, "zero")
+    (0: GE).poll(0, "zero")
     val p1: GE = 1
+    val dc1 = DC(1)
     val out = If (p1) Then {
-      DC(1)
+      dc1
+//      DC(1)
     } Else {
-      DC(2)
+      (1234: GE).poll(0, "test")
+      2: GE // DC(2)
     }
     out.take(1000).poll(0, "out")
   }

@@ -109,6 +109,10 @@ object GraphObj extends expr.impl.ExprTypeImpl[Graph, GraphObj] {
           if (o.isDefined) writeElem(o.get, out, ref)
         case xs: Seq[_] =>  // 'X'. either indexed seq or var arg (e.g. wrapped array)
           writeElemSeq(xs, out, ref)
+        case y: Graph =>  // important to handle Graph explicitly, as `apply` is overloaded!
+          out.writeByte('Y')
+          writeIdentifiedGraph(y, out, ref)
+        // important: `Product` must come after all other types that might _also_ be a `Product`
         case p: Product =>
           writeProduct(p, out, ref) // 'P' or '<'
         case i: Int =>
@@ -133,11 +137,11 @@ object GraphObj extends expr.impl.ExprTypeImpl[Graph, GraphObj] {
 
     def write(v: Graph, out: DataOutput): Unit = {
       out.writeShort(SER_VERSION)
-      writeNew(v, out)
+      val ref = new RefMapOut
+      writeIdentifiedGraph(v, out, ref)
     }
 
-    private def writeNew(v: Graph, out: DataOutput): Unit = {
-      val ref = new RefMapOut
+    private def writeIdentifiedGraph(v: Graph, out: DataOutput, ref: RefMapOut): Unit = {
       writeElemSeq(v.sources, out, ref)
 //      val ctl = v.controlProxies
 //      out.writeByte('T')
@@ -210,6 +214,7 @@ object GraphObj extends expr.impl.ExprTypeImpl[Graph, GraphObj] {
 //        case 'R' => MaybeRate(in.readByte())
         case 'O' => if (in.readBoolean()) Some(readElem(in, ref)) else None
         case 'X' => readIdentifiedSeq(in, ref)
+        case 'Y' => readIdentifiedGraph  (in, ref)
         case 'P' => readIdentifiedProduct(in, ref)
         case '<' =>
           val id = in.readInt()
@@ -226,12 +231,11 @@ object GraphObj extends expr.impl.ExprTypeImpl[Graph, GraphObj] {
     def read(in: DataInput): Graph = {
       val cookie  = in.readShort()
       require(cookie == SER_VERSION, s"Unexpected cookie $cookie")
-      val res2  = readNew(in)
-      res2
+      val ref = new RefMapIn
+      readIdentifiedGraph(in, ref)
     }
 
-    private def readNew(in: DataInput): Graph = {
-      val ref     = new RefMapIn
+    private def readIdentifiedGraph(in: DataInput, ref: RefMapIn): Graph = {
       val b1 = in.readByte()
       require(b1 == 'X')    // expecting sequence
       val numSources  = in.readInt()

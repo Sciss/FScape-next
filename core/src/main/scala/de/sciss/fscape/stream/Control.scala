@@ -434,7 +434,7 @@ object Control {
     final def status: Future[Unit] = statusP.future
 
     final def cancel(): Unit = sync.synchronized {
-      if (_actor != null) _actor ! Complete
+      if (_actor != null) _actor ! Cancel
     }
 
     final private[stream] def completeLayer(layer: Layer): Unit = sync.synchronized {

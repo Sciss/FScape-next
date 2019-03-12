@@ -15,7 +15,7 @@ package de.sciss.fscape
 package stream
 
 
-import akka.stream.stage.InHandler
+import akka.stream.stage.{InHandler, OutHandler}
 import akka.stream.{Attributes, Inlet, Outlet}
 import de.sciss.fscape.stream.impl.{BiformFanInShape, NodeImpl, StageImpl}
 
@@ -63,13 +63,17 @@ object IfThenGE {
       super.completeAsync()
     }
 
-    private[this] val numIns    = branchLayers.size
-    private[this] var pending   = numIns
-    private[this] val condArr   = new Array[Boolean](numIns)
-    private[this] val condDone  = new Array[Boolean](numIns)
+    private[this] val numIns        = branchLayers.size
+    private[this] var pending       = numIns
+    private[this] val condArr       = new Array[Boolean](numIns)
+    private[this] val condDone      = new Array[Boolean](numIns)
+    private[this] var selBranchIdx  = -1
+    private[this] var selBranch: Inlet[E] = null
+    private[this] val out           = shape.out
 
     private class CondInHandlerImpl(in: InI, ch: Int) extends InHandler {
       def onPush(): Unit = {
+        logStream(s"onPush() $node.$in")
         val b = grab(in)
 
         // println(s"IF-THEN-UNIT ${node.hashCode().toHexString} onPush($ch); numIns = $numIns, pending = $pending")
@@ -77,9 +81,12 @@ object IfThenGE {
         if (b.size > 0 && !condDone(ch)) {
           condDone(ch) = true
           val v: Int = b.buf(0)
+          b.release()
           val cond = v > 0
           condArr(ch) = cond
           pending -= 1
+          // logStream(s"condDone($ch). pending = $pending")
+
           // either all conditions have been evaluated,
           // or this one became true and all the previous
           // have been resolved
@@ -93,27 +100,114 @@ object IfThenGE {
             prevDone
           })) {
             Util.fill(condDone, 0, numIns, value = true)  // make sure the handlers won't fire twice
-            process(condArr.indexOf(true))
+            selBranchIdx  = condArr.indexOf(true)
+            pending       = 0
+            if (selBranchIdx >= 0) selBranch = shape.ins2(selBranchIdx)
+            branchSelected()
           }
+        } else {
+          b.release()
         }
+
         tryPull(in)
+      }
+
+      override def onUpstreamFinish(): Unit = {
+        logStream(s"onUpstreamFinish() $node.$in")
+        // if we made the decision, ignore,
+        // otherwise shut down including branches
+        if (selBranchIdx < 0) {
+          completeAll()
+          super.onUpstreamFinish()
+        }
       }
 
       setHandler(in, this)
     }
 
-    {
+    private class BranchInHandlerImpl(in: Inlet[E], ch: Int) extends InHandler {
+      def onPush(): Unit = {
+        logStream(s"onPush() $node.$in")
+        if (ch == selBranchIdx) {
+          if (isAvailable(out)) {
+            pump()
+          }
+
+        } else {
+          // should not happen, but if so, just discard
+          val b = grab(in)
+          b.release()
+        }
+      }
+
+      override def onUpstreamFinish(): Unit = {
+        logStream(s"onUpstreamFinish() $node.$in")
+        if (ch == selBranchIdx && !isAvailable(in)) {
+          // N.B.: we do not shut down the branches,
+          // because it's their business if they want
+          // to keep running sinks after the branch
+          // output signal finishes.
+          //
+          // completeAll()
+          super.onUpstreamFinish()
+        }
+      }
+
+      setHandler(in, this)
+    }
+
+    private object OutHandlerImpl extends OutHandler {
+      def onPull(): Unit = {
+        logStream(s"onPull() $node")
+        if (selBranch != null && isAvailable(selBranch)) {
+          pump()
+        }
+      }
+
+      // N.B.: see BranchInHandlerImpl for the same reasons
+
+//      override def onDownstreamFinish(): Unit = {
+//        completeAll()
+//        super.onDownstreamFinish()
+//      }
+    }
+
+    private def completeAll(): Unit = {
+      logStream(s"completeAll() $this")
       var ch = 0
+      val it = branchLayers.iterator
       while (ch < numIns) {
-        new CondInHandlerImpl(shape.ins1(ch), ch)
+        val branchLayer = it.next()
+        ctrl.completeLayer(branchLayer)
         ch += 1
       }
     }
 
-    ??? // set handlers for branchOuts
+    {
+      var ch = 0
+      while (ch < numIns) {
+        new CondInHandlerImpl   (shape.ins1(ch), ch)
+        new BranchInHandlerImpl (shape.ins2(ch), ch)
+        ch += 1
+      }
+      setHandler(out, OutHandlerImpl)
+    }
 
-    private def process(selBranchIdx: Int): Unit = {
-      logStream(s"process($selBranchIdx) $this")
+    private def pump(): Unit = {
+      val b = grab(selBranch)
+      push(out, b)
+      if (isClosed(selBranch)) {
+        // N.B.: see BranchInHandlerImpl for the same reasons
+        //
+        // ctrl.completeLayer(branchLayers(selBranchIdx))
+        completeStage()
+      } else {
+        tryPull(selBranch)
+      }
+    }
+
+    private def branchSelected(): Unit = {
+      logStream(s"branchSelected($selBranchIdx) $this")
       // println(s"IF-THEN-UNIT ${node.hashCode().toHexString} process($selBranchIdx)")
 
       var ch = 0
@@ -125,11 +219,18 @@ object IfThenGE {
           ctrl.launchLayer(branchLayer)
         } else {
           ctrl.completeLayer(branchLayer)
+          // XXX TODO --- theoretically we should wait for the init
+          // of the selected branch to be complete (using perhaps a `Future`),
+          // followed by a tryPull on the `selBranch`. Since currently all streams
+          // poll their inputs we should get data pushed out anyways.
+          // But in the future this could pose a problem.
         }
         ch += 1
       }
 
-      completeStage()
+      if (selBranch == null || isClosed(selBranch)) {
+        completeStage()
+      }
     }
   }
 }
