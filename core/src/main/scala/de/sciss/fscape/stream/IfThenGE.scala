@@ -20,6 +20,7 @@ import akka.stream.{Attributes, Inlet, Outlet}
 import de.sciss.fscape.stream.impl.{BiformFanInShape, NodeImpl, StageImpl}
 
 import scala.collection.immutable.{Seq => ISeq}
+import scala.concurrent.Future
 
 object IfThenGE {
   /**
@@ -54,13 +55,15 @@ object IfThenGE {
 
   private final class Logic[A, E >: Null <: BufElem[A]](shape: Shape[A, E], layer: Layer,
                                                         branchLayers: ISeq[Layer])(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape) { node =>
+    extends NodeImpl(name, layer, shape) { self =>
 
-    override def completeAsync(): Unit = {
-      branchLayers.foreach { bl =>
+    override def completeAsync(): Future[Unit] = {
+      val futBranch = branchLayers.map { bl =>
         ctrl.completeLayer(bl)
       }
-      super.completeAsync()
+      val futSuper = super.completeAsync()
+      import ctrl.config.executionContext
+      Future.sequence(futBranch :+ futSuper).map(_ => ())
     }
 
     private[this] val numIns        = branchLayers.size
@@ -73,7 +76,7 @@ object IfThenGE {
 
     private class CondInHandlerImpl(in: InI, ch: Int) extends InHandler {
       def onPush(): Unit = {
-        logStream(s"onPush() $node.$in")
+        logStream(s"onPush() $self.${in.s}")
         val b = grab(in)
 
         // println(s"IF-THEN-UNIT ${node.hashCode().toHexString} onPush($ch); numIns = $numIns, pending = $pending")
@@ -113,7 +116,7 @@ object IfThenGE {
       }
 
       override def onUpstreamFinish(): Unit = {
-        logStream(s"onUpstreamFinish() $node.$in")
+        logStream(s"onUpstreamFinish() $self.${in.s}")
         // if we made the decision, ignore,
         // otherwise shut down including branches
         if (selBranchIdx < 0) {
@@ -127,7 +130,7 @@ object IfThenGE {
 
     private class BranchInHandlerImpl(in: Inlet[E], ch: Int) extends InHandler {
       def onPush(): Unit = {
-        logStream(s"onPush() $node.$in")
+        logStream(s"onPush() $self.${in.s}")
         if (ch == selBranchIdx) {
           if (isAvailable(out)) {
             pump()
@@ -141,7 +144,7 @@ object IfThenGE {
       }
 
       override def onUpstreamFinish(): Unit = {
-        logStream(s"onUpstreamFinish() $node.$in")
+        logStream(s"onUpstreamFinish() $self.${in.s}")
         if (ch == selBranchIdx && !isAvailable(in)) {
           // N.B.: we do not shut down the branches,
           // because it's their business if they want
@@ -158,7 +161,7 @@ object IfThenGE {
 
     private object OutHandlerImpl extends OutHandler {
       def onPull(): Unit = {
-        logStream(s"onPull() $node")
+        logStream(s"onPull() $self")
         if (selBranch != null && isAvailable(selBranch)) {
           pump()
         }
@@ -173,7 +176,7 @@ object IfThenGE {
     }
 
     private def completeAll(): Unit = {
-      logStream(s"completeAll() $this")
+      logStream(s"completeAll() $self")
       var ch = 0
       val it = branchLayers.iterator
       while (ch < numIns) {
@@ -207,29 +210,38 @@ object IfThenGE {
     }
 
     private def branchSelected(): Unit = {
-      logStream(s"branchSelected($selBranchIdx) $this")
+      logStream(s"branchSelected($selBranchIdx) $self")
       // println(s"IF-THEN-UNIT ${node.hashCode().toHexString} process($selBranchIdx)")
 
       var ch = 0
       val it = branchLayers.iterator
+      var done: Future[Unit] = null
       while (ch < numIns) {
         val cond = ch == selBranchIdx
         val branchLayer = it.next()
         if (cond) {
-          ctrl.launchLayer(branchLayer)
+          // we set `done` here which completes as
+          // the launch is complete.
+          done = ctrl.launchLayer(branchLayer)
         } else {
           ctrl.completeLayer(branchLayer)
-          // XXX TODO --- theoretically we should wait for the init
-          // of the selected branch to be complete (using perhaps a `Future`),
-          // followed by a tryPull on the `selBranch`. Since currently all streams
-          // poll their inputs we should get data pushed out anyways.
-          // But in the future this could pose a problem.
         }
         ch += 1
       }
 
       if (selBranch == null || isClosed(selBranch)) {
         completeStage()
+      } else if (isAvailable(selBranch) && isAvailable(out)) {
+        // either we can immediately grab data...
+        pump()
+      } else if (done != null) {
+        // ...or we have to wait for the launch to be complete,
+        // and then try to pull the branch output.
+        val async = getAsyncCallback { _: Unit =>
+          tryPull(selBranch)
+        }
+        import ctrl.config.executionContext
+        done.foreach(_ => async.invoke(()))
       }
     }
   }

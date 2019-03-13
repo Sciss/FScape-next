@@ -299,7 +299,7 @@ object Control {
     // we do that by first going through all `NodeHasInit`
     // and then mapping the resulting future to launch the
     // nodes (`launch` will typically poll a node's inputs).
-    private def actLaunch(layer: Layer): Unit = {
+    private def actLaunch(layer: Layer, done: Promise[Unit]): Unit = {
       logControl(s"${hashCode().toHexString} actLaunch")
       val nodes0 = nodesInLayer(layer)
       val futInit: Seq[Future[Unit]] = nodes0.iterator.collect {
@@ -307,19 +307,24 @@ object Control {
       } .toSeq
 
       import config.executionContext
-      Future.sequence(futInit).foreach { _ =>
-        nodes0.foreach { n =>
+      val futLaunch: Future[Unit] = Future.sequence(futInit).flatMap { _ =>
+        val inner = nodes0.map { n =>
           n.launchAsync()
         }
+        Future.sequence(inner).map(_ => ())
       }
+      done.tryCompleteWith(futLaunch)
     }
 
-    private def actComplete(layer: Layer): Unit = {
+    private def actComplete(layer: Layer, done: Promise[Unit]): Unit = {
       logControl(s"${hashCode().toHexString} actComplete")
       val nodes0 = nodesInLayer(layer)
-      nodes0.foreach { n =>
+      val futComplete = nodes0.map { n =>
         n.completeAsync()
       }
+      import config.executionContext
+      val futUnit = Future.sequence(futComplete).map(_ => ())
+      done.tryCompleteWith(futUnit)
     }
 
     private def actCancel(): Unit = {
@@ -334,10 +339,10 @@ object Control {
 
     private final class ActorImpl extends Actor {
       def receive: Receive = {
-        case SetProgress(key, frac) => actSetProgress(key, frac)
-        case RemoveNode(n)          => actRemoveNode(n, context, self)
-        case Launch(layer)          => actLaunch(layer)
-        case Complete(layer)        => actComplete(layer)
+        case SetProgress(key, frac) => actSetProgress (key, frac)
+        case RemoveNode (n)         => actRemoveNode  (n, context, self)
+        case Launch     (layer, p)  => actLaunch      (layer, p)
+        case Complete   (layer, p)  => actComplete    (layer, p)
         case Cancel                 => actCancel()
       }
     }
@@ -352,12 +357,20 @@ object Control {
       logControl(s"${hashCode().toHexString} runExpanded")
       mkActor()
       r.run()(config.materializer)
-      _actor ! Launch(0)
+      _actor ! Launch(0, Promise[Unit]())
     }
 
-    private[stream] def launchLayer(layer: Layer): Unit =
+    private[stream] def launchLayer(layer: Layer): Future[Unit] =
       sync.synchronized {
-        if (_actor != null) _actor ! Launch(layer)
+        if (_actor != null) {
+//          implicit val timeOut: Timeout = Timeout(1L, TimeUnit.HOURS)
+//          _actor.ask(Launch(layer)).mapTo[Unit]
+          val p = Promise[Unit]()
+          _actor ! Launch(layer, p)
+          p.future
+        } else {
+          Future.failed[Unit](new IllegalStateException("actor not yet created"))
+        }
       }
 
     final def mkRandom(): Random = /* sync.synchronized */ {
@@ -437,8 +450,14 @@ object Control {
       if (_actor != null) _actor ! Cancel
     }
 
-    final private[stream] def completeLayer(layer: Layer): Unit = sync.synchronized {
-      if (_actor != null) _actor ! Complete(layer)
+    final private[stream] def completeLayer(layer: Layer): Future[Unit] = sync.synchronized {
+      if (_actor != null) {
+        val p = Promise[Unit]()
+        _actor ! Complete(layer, p)
+        p.future
+      } else {
+        Future.failed[Unit](new IllegalStateException("actor not yet created"))
+      }
     }
 
     // XXX TODO --- should be in the actor body
@@ -473,8 +492,8 @@ object Control {
   // ---- actor messages
 
   private final case class RemoveNode(node: Node)
-  private case class Launch(layer: Layer)
-  private case class Complete(layer: Layer)
+  private case class  Launch  (layer: Layer, done: Promise[Unit])
+  private case class  Complete(layer: Layer, done: Promise[Unit])
   private case object Cancel
   private final case class SetProgress(key: Int, frac: Double)
 }
@@ -527,9 +546,9 @@ trait Control {
   /** Reports the progress for a particular instance. */
   private[stream] def setProgress(key: Int, frac: Double): Unit
 
-  private[stream] def launchLayer(layer: Layer): Unit
+  private[stream] def launchLayer(layer: Layer): Future[Unit]
 
-  private[stream] def completeLayer(layer: Layer): Unit
+  private[stream] def completeLayer(layer: Layer): Future[Unit]
 
   /** Creates a temporary file. The caller is responsible for deleting the file
     * after it is not needed any longer. (The file will still be marked `deleteOnExit`)

@@ -28,9 +28,9 @@ trait Node {
 
   def layer: Layer
 
-  def launchAsync(): Unit
+  def launchAsync(): Future[Unit]
 
-  def completeAsync(): Unit
+  def completeAsync(): Future[Unit]
 
   def failAsync(ex: Exception): Unit
 

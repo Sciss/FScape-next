@@ -27,11 +27,14 @@ abstract class NodeImpl[+S <: Shape](protected final val name: String, val layer
 
   override def toString = s"$name-L@${hashCode.toHexString}"
 
-  final def launchAsync(): Unit = {
+  final def launchAsync(): Future[Unit] = {
     val async = getAsyncCallback { _: Unit =>
+      logStream(s"$this - launchAsync")
       shape.inlets.foreach(pull(_))
     }
-    async.invoke(())
+
+    implicit val ex: ExecutionContext = control.config.executionContext
+    async.invokeWithFeedback(()).map(_ => ())
   }
 
   final def failAsync(ex: Exception): Unit = {
@@ -41,11 +44,14 @@ abstract class NodeImpl[+S <: Shape](protected final val name: String, val layer
     async.invoke(())
   }
 
-  def completeAsync(): Unit = {
+  def completeAsync(): Future[Unit] = {
     val async = getAsyncCallback { _: Unit =>
+      logStream(s"$this - completeAsync")
       completeStage()
     }
-    async.invoke(())
+
+    implicit val ex: ExecutionContext = control.config.executionContext
+    async.invokeWithFeedback(()).map(_ => ())
   }
 }
 
@@ -56,6 +62,7 @@ trait NodeHasInitImpl extends NodeHasInit {
 
   final def initAsync(): Future[Unit] = {
     val async = getAsyncCallback { _: Unit =>
+      logStream(s"$this - initAsync")
       init()
     }
 

@@ -19,6 +19,7 @@ import akka.stream.{Attributes, Inlet, Outlet, UniformFanOutShape}
 import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
+import scala.concurrent.Future
 
 object BroadcastBuf {
   def apply[B <: BufLike](in: Outlet[B], numOutputs: Int)(implicit b: Builder): Vec[Outlet[B]] = {
@@ -65,6 +66,11 @@ object BroadcastBuf {
 //      println(s"BROADCAST $NUM")
 //      super.onUpstreamFinish()
 //    }
+
+    // XXX TODO --- broad cast are synthetic elements, they
+    // may connect two layers, so we should not include them in
+    // explicit shut down (?)
+    override def completeAsync(): Future[Unit] = Future.unit // super.completeAsync()
 
     def onPush(): Unit = {
       logStream(s"onPush() $this")
@@ -119,14 +125,14 @@ object BroadcastBuf {
         val idx0 = idx // fix for OutHandler
         setHandler(out, new OutHandler {
           def onPull(): Unit = {
-            logStream(s"onPull() $this.$out")
+            logStream(s"onPull() $self.${out.s}")
             pending(idx0) = false
             pendingCount -= 1
             checkProcess()
           }
 
           override def onDownstreamFinish(): Unit = {
-            logStream(s"onDownstreamFinish() $this.$out")
+            logStream(s"onDownstreamFinish() $self.${out.s}")
             if (eagerCancel) {
               logStream(s"completeStage() $self")
               completeStage()

@@ -19,6 +19,7 @@ import akka.stream.stage.InHandler
 import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl, UniformSinkShape}
 
 import scala.collection.immutable.{Seq => ISeq}
+import scala.concurrent.Future
 
 object IfThenUnit {
   /**
@@ -49,11 +50,13 @@ object IfThenUnit {
   private final class Logic(shape: Shape, layer: Layer, branchLayers: ISeq[Layer])(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape) { node =>
 
-    override def completeAsync(): Unit = {
-      branchLayers.foreach { bl =>
+    override def completeAsync(): Future[Unit] = {
+      val futBranch = branchLayers.map { bl =>
         ctrl.completeLayer(bl)
       }
-      super.completeAsync()
+      val futSuper = super.completeAsync()
+      import ctrl.config.executionContext
+      Future.sequence(futBranch :+ futSuper).map(_ => ())
     }
 
     private[this] val numIns    = branchLayers.size
