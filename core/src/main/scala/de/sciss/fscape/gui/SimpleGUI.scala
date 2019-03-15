@@ -24,7 +24,12 @@ object SimpleGUI {
   def apply(ctrl: Control): SimpleGUI = {
     val txtCancelled = "Cancelled."
     val lbCancelled = new Label(txtCancelled)
-    lbCancelled.preferredSize = lbCancelled.preferredSize
+    lbCancelled.preferredSize = {
+      val d = lbCancelled.preferredSize
+//      d.width = (d.width * 1.5).toInt
+      d.width *= 2
+      d
+    }
     lbCancelled.text = null
 
     var finished = false
@@ -47,8 +52,9 @@ object SimpleGUI {
           case Failure(Cancelled()) => txtCancelled
           case Failure(ex)          =>
             ex.printStackTrace()
-            s"Error: ${ex.getCause}"
+            s"Error: ${ex.getMessage}"
         }
+        lbCancelled.tooltip = lbCancelled.text
       }
     }
 

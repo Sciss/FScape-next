@@ -214,7 +214,6 @@ sealed trait UGenIn extends UGenInLike {
 
 package graph {
 
-  import akka.stream.scaladsl
   import de.sciss.fscape.stream.{BufD, BufI, BufL, OutD, OutI, OutL, StreamIn}
 
   object UGenInGroup {
@@ -254,9 +253,13 @@ package graph {
 
     def value: Any
 
-    def toDouble(implicit b: stream.Builder): OutD = b.add(scaladsl.Source.single(BufD(doubleValue))).out
-    def toInt   (implicit b: stream.Builder): OutI = b.add(scaladsl.Source.single(BufI(intValue   ))).out
-    def toLong  (implicit b: stream.Builder): OutL = b.add(scaladsl.Source.single(BufL(longValue  ))).out
+//    def toDouble(implicit b: stream.Builder): OutD = b.add(scaladsl.Source.single(BufD(doubleValue))).out
+//    def toInt   (implicit b: stream.Builder): OutI = b.add(scaladsl.Source.single(BufI(intValue   ))).out
+//    def toLong  (implicit b: stream.Builder): OutL = b.add(scaladsl.Source.single(BufL(longValue  ))).out
+
+    def toDouble(implicit b: stream.Builder): OutD = stream.Constant[Double , BufD](BufD(doubleValue))
+    def toInt   (implicit b: stream.Builder): OutI = stream.Constant[Int    , BufI](BufI(intValue   ))
+    def toLong  (implicit b: stream.Builder): OutL = stream.Constant[Long   , BufL](BufL(longValue  ))
   }
   object ConstantI {
     final val C0  = new ConstantI(0)

@@ -17,14 +17,15 @@ package stream
 import java.util.concurrent.ConcurrentLinkedQueue
 
 import akka.actor.{Actor, ActorContext, ActorRef, ActorSystem, Props}
-import akka.stream.{ActorMaterializer, Materializer}
+import akka.stream.Supervision.Stop
+import akka.stream.{ActorAttributes, ActorMaterializer, Materializer}
 import de.sciss.file.File
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.language.implicitConversions
-import scala.util.{Random, Success}
+import scala.util.{Failure, Random, Success, Try}
 
 object Control {
   trait ConfigLike {
@@ -202,6 +203,8 @@ object Control {
     protected def expand(graph: Graph): UGenGraph = UGenGraph.build(graph)(this)
   }
 
+  final val Ok: Try[Unit] = Success(())
+
   private[fscape] trait AbstractImpl extends Control {
     // ---- abstract ----
 
@@ -256,6 +259,12 @@ object Control {
       }
     }
 
+    private[this] var tryResult = Ok
+
+    private def actNodeFailed(n: Node, ex: Throwable): Unit = if (tryResult.isSuccess) {
+      tryResult = Failure(ex)
+    }
+
     private def actRemoveNode(n: Node, context: ActorContext, self: ActorRef): Unit = {
       val nl = n.layer
       val ni = nodes.indexOf(n)
@@ -272,10 +281,9 @@ object Control {
           Console.err.println(s"Warning: node $n was not registered with Control layers")
         }
 
-        // XXX TODO --- check for error other than `Cancelled` --- how?
         if (nodes.isEmpty) {
           logControl(s"${hashCode().toHexString} actRemoveNode complete")
-          /* val ok = */ statusP.tryComplete(Success(()))
+          /* val ok = */ statusP.tryComplete(tryResult)
           // if (!ok) logControl(s"${hashCode().toHexString} promise already completed")
           sync.synchronized {
             context.stop(self)
@@ -344,6 +352,7 @@ object Control {
         case Launch     (layer, p)  => actLaunch      (layer, p)
         case Complete   (layer, p)  => actComplete    (layer, p)
         case Cancel                 => actCancel()
+        case NodeFailed  (n, ex)    => actNodeFailed  (n, ex)
       }
     }
 
@@ -354,6 +363,10 @@ object Control {
 
     final def runExpanded(ugens: UGenGraph): Unit = {
       val r = ugens.runnable
+//      val r = r0.withAttributes(ActorAttributes.supervisionStrategy { ex =>
+//        println("Woopa dooopa")
+//        Stop
+//      })
       logControl(s"${hashCode().toHexString} runExpanded")
       mkActor()
       r.run()(config.materializer)
@@ -444,6 +457,8 @@ object Control {
     // called during run, have to relay using actor
     final private[stream] def removeNode(n: Node): Unit = _actor ! RemoveNode(n)
 
+    final private[stream] def nodeFailed(n: Node, ex: Throwable): Unit = _actor ! NodeFailed(n, ex)
+
     final def status: Future[Unit] = statusP.future
 
     final def cancel(): Unit = sync.synchronized {
@@ -492,6 +507,7 @@ object Control {
   // ---- actor messages
 
   private final case class RemoveNode(node: Node)
+  private final case class NodeFailed(node: Node, ex: Throwable)
   private case class  Launch  (layer: Layer, done: Promise[Unit])
   private case class  Complete(layer: Layer, done: Promise[Unit])
   private case object Cancel
@@ -539,6 +555,8 @@ trait Control {
 
   /** Removes a finished node of a stage logic. */
   private[stream] def removeNode(n: Node): Unit
+
+  private[stream] def nodeFailed(n: Node, ex: Throwable): Unit
 
   /** Registers a progress reporter. */
   private[stream] def mkProgress(label: String): Int

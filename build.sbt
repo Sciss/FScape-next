@@ -31,7 +31,7 @@ lazy val deps = new {
     val optional        = "1.0.0"
     val scalaChart      = "0.7.0"
     val swingPlus       = "0.4.0"
-    val akka            = "2.5.21"
+    val akka            = "2.5.19"  // "2.5.21" has broken printDebugDump
   }
   val lucre = new {
     val fileCache       = "0.5.0"

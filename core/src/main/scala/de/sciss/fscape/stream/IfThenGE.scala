@@ -238,7 +238,7 @@ object IfThenGE {
         // ...or we have to wait for the launch to be complete,
         // and then try to pull the branch output.
         val async = getAsyncCallback { _: Unit =>
-          tryPull(selBranch)
+          if (!hasBeenPulled(selBranch)) tryPull(selBranch)
         }
         import ctrl.config.executionContext
         done.foreach(_ => async.invoke(()))

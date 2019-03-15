@@ -49,6 +49,9 @@ trait Node {
   /** Calls `stopped` and then removes the node from the control. */
   override final def postStop(): Unit = {
     stopped()
+    logStream(s"$this - postStop()")
+    val tr = akka.stream.sciss.Util.findFailure(this)
+    if (tr.isFailure) control.nodeFailed(this, tr.failed.get)
     control.removeNode(this)
   }
 

@@ -66,14 +66,19 @@ object Length {
 
     def onPull(): Unit = {
       logStream(s"onPull() $this")
-      if (isClosed(shape.in)) writeAndFinish()
+      if (isClosed(shape.in) /*&& !isAvailable(shape.in)*/) writeAndFinish()
+    }
+
+    override def onDownstreamFinish(): Unit = {
+      logStream(s"onDownstreamFinish() $this")
+      super.onDownstreamFinish()
     }
 
     private def writeAndFinish(): Unit = {
+      logStream(s"push and completeStage() $this")
       val buf     = ctrl.borrowBufL()
       buf.size    = 1
       buf.buf(0)  = framesRead
-      logStream(s"push and completeStage() $this")
       push(shape.out, buf)
       completeStage()
     }
