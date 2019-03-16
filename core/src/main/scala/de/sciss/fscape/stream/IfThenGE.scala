@@ -35,16 +35,16 @@ object IfThenGE {
     // registers itself in the correct layer and can be shut down.
     val stage0  = new Stage[A, E](numOutputs = numOutputs, thisLayer = b.layer, branchLayers = cases.map(_._2))
     val stage   = b.add(stage0)
-    cases.zipWithIndex.foreach { case ((cond, branchLayer, branchOutSeq), idx) =>
+    cases.zipWithIndex.foreach { case ((cond, branchLayer, branchOutSeq), bi) =>
       require (branchOutSeq.size == numOutputs, s"${branchOutSeq.size} != $numOutputs")
-      b.connect(cond, stage.ins1(idx))
-      branchOutSeq.zipWithIndex.foreach { case (branchOut, j) =>
-        val name    = if (numOutputs == 1) s"Branch(${idx+1})" else s"Branch(${idx+1},${j + 1})"
-        val idxOut  = idx * numOutputs + j
+      b.connect(cond, stage.ins1(bi))
+      branchOutSeq.zipWithIndex.foreach { case (branchOut, ch) =>
+        val name    = if (numOutputs == 1) s"Branch(${bi+1})" else s"Branch(${bi+1},${ch + 1})"
+        val idx2    = bi * numOutputs + ch
         val bStage0 = new BranchStage[E](name, branchLayer)
         val bStage  = b.add(bStage0)
         b.connect(branchOut , bStage.in)
-        b.connect(bStage.out, stage.ins2(idxOut))
+        b.connect(bStage.out, stage.ins2(idx2))
       }
     }
     stage.outlets.toIndexedSeq
@@ -139,7 +139,7 @@ object IfThenGE {
       shape.ins1.foreach(pull)
     }
 
-    private class CondInHandlerImpl(in: InI, ch: Int) extends InHandler {
+    private class CondInHandlerImpl(in: InI, branchIdx: Int) extends InHandler {
 
       override def toString: String = s"$self.CondInHandlerImpl($in)"
 
@@ -149,12 +149,12 @@ object IfThenGE {
 
         // println(s"IF-THEN-UNIT ${node.hashCode().toHexString} onPush($ch); numIns = $numIns, pending = $pending")
 
-        if (b.size > 0 && !condDone(ch)) {
-          condDone(ch) = true
+        if (b.size > 0 && !condDone(branchIdx)) {
+          condDone(branchIdx) = true
           val v: Int = b.buf(0)
           b.release()
           val cond = v != 0
-          condArr(ch) = cond
+          condArr(branchIdx) = cond
           pending -= 1
           // logStream(s"condDone($ch). pending = $pending")
 
@@ -164,7 +164,7 @@ object IfThenGE {
           if (pending == 0 || (cond && {
             var i = 0
             var prevDone = true
-            while (prevDone && i <= ch) {
+            while (prevDone && i <= branchIdx) {
               prevDone &= condDone(i)
               i += 1
             }
@@ -265,10 +265,11 @@ object IfThenGE {
     {
       var bi = 0
       while (bi < numBranches) {
-        new CondInHandlerImpl   (shape.ins1(bi), bi)
+        new CondInHandlerImpl(shape.ins1(bi), bi)
         var ch = 0
         while (ch < numOutputs) {
-          new BranchInHandlerImpl(shape.ins2(bi), branchIdx = bi, ch = ch)
+          val idx2 = bi * numOutputs + ch
+          new BranchInHandlerImpl(shape.ins2(idx2), branchIdx = bi, ch = ch)
           ch += 1
         }
         bi += 1
