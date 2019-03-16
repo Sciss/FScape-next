@@ -60,13 +60,6 @@ object BroadcastBuf {
 
     setHandler(shape.in, this)
 
-//    private var NUM = 0L
-//
-//    override def onUpstreamFinish(): Unit = {
-//      println(s"BROADCAST $NUM")
-//      super.onUpstreamFinish()
-//    }
-
     // XXX TODO --- broad cast are synthetic elements, they
     // may connect two layers, so we should not include them in
     // explicit shut down (?)
@@ -121,7 +114,8 @@ object BroadcastBuf {
           pending(idx) = false
           pendingCount -= 1
           if (pendingCount == 0) {
-            // N.B.: Since we do not proactively pull the input,
+            // N.B.: Since we might not have proactively pulled the input
+            // (which may happen if the node spans across layers),
             // we have to check that condition here and
             // issue the pull if necessary
             if         (isAvailable(shape.in)) process()

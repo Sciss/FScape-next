@@ -11,14 +11,15 @@ object IfThenDebug extends App {
     import graph._
     val sig0  = ArithmSeq(length = 4000) // DC(1234).take(4000)
     val sig   = If (0: GE) Then {
-      (0: GE).poll(1, "COND is 1")
+//      (0: GE).poll(1, "COND is 1")
       sig0
     } Else {
-      (0: GE).poll(0, "COND is NOT 1")
+//      (0: GE).poll(0, "COND is NOT 1")
       sig0 + 1
     }
 
-    RunningSum(sig).last.poll(0, "sum")
+//    RunningSum(sig).last.poll(0, "sum")
+    Length(sig).poll(0, "len")
   }
 
   val config      = stream.Control.Config()

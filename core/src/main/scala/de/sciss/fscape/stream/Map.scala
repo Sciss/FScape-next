@@ -15,7 +15,7 @@ package de.sciss.fscape.stream
 
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
 import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
-import de.sciss.fscape.stream
+import de.sciss.fscape.{logStream, stream}
 
 object Map {
   def apply[A, B](in: Outlet[A], name: String)(fun: A => B)(implicit b: stream.Builder): Outlet[B] = {
@@ -41,19 +41,33 @@ object Map {
   }
 
   private final class Logic[A, B](name: String, shape: Shape[A, B], fun: A => B)
-    extends GraphStageLogic(shape) with InHandler with OutHandler {
+    extends GraphStageLogic(shape) with InHandler with OutHandler { self =>
 
     override def toString = s"$name@${hashCode().toHexString}"
 
     import shape.{in, out}
 
     override def onPush(): Unit = {
+      logStream(s"onPush() $self")
       val a = grab(in)
       val b = fun(a)
       push(out, b)
     }
 
-    override def onPull(): Unit = pull(in)
+    override def onPull(): Unit = {
+      logStream(s"onPull() $self")
+      pull(in)
+    }
+
+    override def onUpstreamFinish(): Unit = {
+      logStream(s"onUpstreamFinish() $self")
+      super.onUpstreamFinish()
+    }
+
+    override def onDownstreamFinish(): Unit = {
+      logStream(s"onDownstreamFinish() $self")
+      super.onDownstreamFinish()
+    }
 
     setHandlers(in, out, this)
   }

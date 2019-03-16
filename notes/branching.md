@@ -67,3 +67,38 @@ The crucial timing bit will be when to `pull` the selected branch's result after
 too early, we might not have initialised the branch yet. Probably we should create a resulting `Future[Unit]` from
 `launchLayer`, or pass it a call-back function. As was confirmed on the Akka gitter, it is allowed to install
 handlers at any point.
+
+--------
+
+## 16-Mar-2019
+
+This graph:
+
+```
+  val g = Graph {
+    import graph._
+    val sig0  = ArithmSeq(length = 4000)
+    val sig   = If (0: GE) Then {
+      sig0
+    } Else {
+      sig0 + 1
+    }
+
+    Length(sig).poll(0, "len")
+  }
+```
+
+The problem is that we do _not_ have `sig0` in the first layer of the `IfThenGE`, which means that the
+`completeLayer` call does nothing. In turn, the `sig0` is still "connected" to the first branch through the
+synthetic broad-cast-buf. Currently, the broad-cast-buf will not deliver if not all outputs have been pulled.
+So we get into a deadlock.
+
+In the actual example, we do have an intermediate `Map` (long-to-double), and that is currently not a `NodeImpl`
+and thus also not shut down. A quick solution is to have `Map` obey `NodeImpl`, but in reality we need to handle
+the case where that intermediate element is not inserted, and thus one of the if-then-else branches is connected
+directly to a broad-cast-buf, which in the current architecture cannot be registered as `NodeImpl`.
+
+Therefore, because shitty Akka does not expose API to close particular connections, but only to complete an entire
+node, we would have to insert forwarder flows (piping one input to one output) at each branch, so that these
+pipes can be shut down if needed. We would still have to call `completeLayer` because there may be closed sub-graphs,
+e.g. polling and other side effects.
