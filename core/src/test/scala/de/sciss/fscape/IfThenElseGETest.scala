@@ -5,7 +5,7 @@ import de.sciss.fscape.gui.SimpleGUI
 import scala.swing.Swing
 
 object IfThenElseGETest extends App {
-  showStreamLog = true
+//  showStreamLog = true
 
   val g = Graph {
     import graph._

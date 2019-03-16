@@ -17,8 +17,7 @@ package stream
 import java.util.concurrent.ConcurrentLinkedQueue
 
 import akka.actor.{Actor, ActorContext, ActorRef, ActorSystem, Props}
-import akka.stream.Supervision.Stop
-import akka.stream.{ActorAttributes, ActorMaterializer, Materializer}
+import akka.stream.{ActorMaterializer, Materializer}
 import de.sciss.file.File
 
 import scala.collection.immutable.{IndexedSeq => Vec}

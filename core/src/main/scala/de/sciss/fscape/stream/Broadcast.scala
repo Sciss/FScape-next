@@ -1,5 +1,5 @@
 /*
- *  BroadcastBuf.scala
+ *  Broadcast.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2019 Hanns Holger Rutz. All rights reserved.
@@ -21,10 +21,10 @@ import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.Future
 
-object BroadcastBuf {
+object Broadcast {
   def apply[B <: BufLike](in: Outlet[B], numOutputs: Int)(implicit b: Builder): Vec[Outlet[B]] = {
     // N.B. `eagerCancel` means that if we have out-degree two and
-    // any of the two sinks closes, the entire `BroadcastBuf` closes.
+    // any of the two sinks closes, the entire `Broadcast` closes.
     // This is usually _not_ what we want. We want to be able to
     // keep feeding the remaining sink.
     val stage0 = new Stage[B](layer = b.layer, numOutputs = numOutputs, eagerCancel = false)
@@ -33,7 +33,7 @@ object BroadcastBuf {
     stage.outlets.toIndexedSeq
   }
 
-  private final val name = "BroadcastBuf"
+  private final val name = "Broadcast"
 
   private type Shape[B <: BufLike] = UniformFanOutShape[B, B]
 

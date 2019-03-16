@@ -27,17 +27,17 @@ object StreamTest extends App {
   val blockSize = 1024
   val config = Control.Config()
   config.blockSize = blockSize
-  implicit val system = ActorSystem()
+  implicit val system: ActorSystem = ActorSystem()
   config.materializer = ActorMaterializer(
     ActorMaterializerSettings(system)
     //      .withInputBuffer(
     //        initialSize = 1024,
     //        maxSize     = 1024)
   )
-  implicit val ctrl = Control(config)
+  implicit val ctrl: Control = Control(config)
 
   lazy val graphFFT = GraphDSL.create() { implicit dsl =>
-    implicit val b = Builder()
+    implicit val b: Builder = Builder()
 
     val in      = AudioFileIn(file = fIn, numChannels = 1).head
     val size    = b.add(Source.single(BufI(65536))).out
@@ -49,7 +49,7 @@ object StreamTest extends App {
   }
 
   lazy val graphWin = GraphDSL.create() { implicit dsl =>
-    implicit val b = Builder()
+    implicit val b: Builder = Builder()
 
     val in      = AudioFileIn(file = fIn, numChannels = 1).head
     val fftSize = 32768 // 8192
@@ -107,7 +107,7 @@ object StreamTest extends App {
 //  }
 
   lazy val graphOLD = GraphDSL.create() { implicit dsl =>
-    implicit val b = Builder()
+    implicit val b: Builder = Builder()
 
     // 'analysis'
 //    val in          = DiskIn(file = fIn)
@@ -173,10 +173,10 @@ object StreamTest extends App {
     val ccr = +1; val cci = -1
     val car = +1; val cai = -1
 
-    val aInB        = BroadcastBuf(aIn, 2)
-    val bInB        = BroadcastBuf(bIn, 2)
-    val cInB        = BroadcastBuf(cIn, 2)
-    val dInB        = BroadcastBuf(dIn, 2)
+    val aInB        = Broadcast(aIn, 2)
+    val bInB        = Broadcast(bIn, 2)
+    val cInB        = Broadcast(cIn, 2)
+    val dInB        = Broadcast(dIn, 2)
 
     import graph.BinaryOp.{Plus, Times}
     val am1         = BinaryOp(op = Times, in1 = aInB(0), in2 = const(crr))
@@ -218,7 +218,7 @@ object StreamTest extends App {
   }
 
   lazy val graphMONO = GraphDSL.create() { implicit dsl =>
-    implicit val b = Builder()
+    implicit val b: Builder = Builder()
 
     import graph.BinaryOp.{Max, Times}
 
@@ -277,7 +277,7 @@ object StreamTest extends App {
   }
 
   lazy val _graph = GraphDSL.create() { implicit dsl =>
-    implicit val b = Builder()
+    implicit val b: Builder = Builder()
 
     import graph.BinaryOp.{Max, Times}
 
@@ -296,7 +296,7 @@ object StreamTest extends App {
     val cep1        = BinaryOp      (in1 = cep0, in2  = const(1.0/fftSize), op = Times)
 
     val coefs       = Vector(CepCoef.One, CepCoef.Two)
-    val cepB        = BroadcastBuf(in = cep1, numOutputs = 2)
+    val cepB        = Broadcast(in = cep1, numOutputs = 2)
     val sig         = (coefs zip cepB).map { case (coef, cep) =>
       import coef._
       val cepOut      = FoldCepstrum  (in = cep, size = const(fftSize),

@@ -284,7 +284,7 @@ object StreamIn {
 
     private def alloc()(implicit b: Builder): OutD = {
       require(remain > 0)
-      if (broad == null) broad = BroadcastBuf(peer, numSinks)
+      if (broad == null) broad = Broadcast(peer, numSinks)
       remain -= 1
       val head +: tail = broad
       broad = tail
@@ -302,7 +302,7 @@ object StreamIn {
 
     private def alloc()(implicit b: Builder): OutI = {
       require(remain > 0)
-      if (broad == null) broad = BroadcastBuf(peer, numSinks)
+      if (broad == null) broad = Broadcast(peer, numSinks)
       remain -= 1
       val head +: tail = broad
       broad = tail
@@ -320,7 +320,7 @@ object StreamIn {
 
     private def alloc()(implicit b: Builder): OutL = {
       require(remain > 0)
-      if (broad == null) broad = BroadcastBuf(peer, numSinks)
+      if (broad == null) broad = Broadcast(peer, numSinks)
       remain -= 1
       val head +: tail = broad
       broad = tail
