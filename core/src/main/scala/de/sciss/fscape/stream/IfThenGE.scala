@@ -16,7 +16,7 @@ package stream
 
 
 import akka.stream.stage.{InHandler, OutHandler}
-import akka.stream.{Attributes, Inlet, Outlet}
+import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
 import de.sciss.fscape.stream.impl.{BiformFanInShape, NodeImpl, StageImpl}
 
 import scala.collection.immutable.{Seq => ISeq}
@@ -27,11 +27,22 @@ object IfThenGE {
     * @param cases  tuples of (cond, layer, result/branch-sink)
     */
   def apply[A, E >: Null <: BufElem[A]](cases: ISeq[(OutI, Layer, Outlet[E])])(implicit b: Builder): Outlet[E] = {
-    val stage0  = new Stage[A, E](b.layer, branchLayers = cases.map(_._2))
+    // we insert dummy pipe elements here and replace thus the cases' outlets.
+    // that way we ensure that we have elements placed in the correct layer, even
+    // if the branch just references outer layers. also, the branch-logic then
+    // registers itself in the correct layer and can be shut down.
+    val cases1 = cases.zipWithIndex.map {
+      case ((cond, branchLayer, branchOut), idx) =>
+        val bStage0 = new BranchStage[E](s"Branch(${idx+1})", branchLayer)
+        val bStage  = b.add(bStage0)
+        b.connect(branchOut, bStage.in)
+        (cond, branchLayer, bStage.out) // replace by our own output now
+    }
+    val stage0  = new Stage[A, E](b.layer, branchLayers = cases1.map(_._2))
     val stage   = b.add(stage0)
-    cases.zipWithIndex.foreach { case ((c, _, o), i) =>
-      b.connect(c, stage.ins1(i))
-      b.connect(o, stage.ins2(i))
+    cases1.zipWithIndex.foreach { case ((cond, _, branchOut), idx) =>
+      b.connect(cond      , stage.ins1(idx))
+      b.connect(branchOut , stage.ins2(idx))
     }
     stage.out
   }
@@ -39,6 +50,8 @@ object IfThenGE {
   private final val name = "IfThenGE"
 
   private type Shape[A, E >: Null <: BufElem[A]] = BiformFanInShape[BufI, E, E]
+
+  private type BranchShape[A] = FlowShape[A, A]
 
   private final class Stage[A, E >: Null <: BufElem[A]](thisLayer: Layer, branchLayers: ISeq[Layer])
                                                        (implicit ctrl: Control)
@@ -51,6 +64,42 @@ object IfThenGE {
     )
 
     def createLogic(attr: Attributes) = new Logic(shape, layer = thisLayer, branchLayers = branchLayers)
+  }
+
+  private final class BranchStage[A](name: String, layer: Layer)(implicit control: Control)
+    extends StageImpl[BranchShape[A]](name) {
+
+    val shape: Shape = FlowShape[A, A](
+      in  = Inlet [A](s"$name.in"),
+      out = Outlet[A](s"$name.out")
+    )
+
+    def createLogic(inheritedAttributes: Attributes): NodeImpl[Shape] = new BranchLogic[A](name, layer, shape)
+  }
+
+  // A simple no-op pipe, so we have a handle we can shut down
+  private final class BranchLogic[A](name: String, layer: Layer, shape: BranchShape[A])(implicit control: Control)
+    extends NodeImpl(name, layer, shape) with InHandler with OutHandler { self =>
+
+    override def toString = s"$name@${hashCode().toHexString}"
+
+    private def pump(): Unit = {
+      val a = grab(shape.in)
+      push(shape.out, a)
+      tryPull(shape.in)
+    }
+
+    override def onPush(): Unit =
+      if (isAvailable(shape.out)) {
+        pump()
+      }
+
+    override def onPull(): Unit =
+      if (isAvailable(shape.in)) {
+        pump()
+      }
+
+    setHandlers(shape.in, shape.out, this)
   }
 
   private final class Logic[A, E >: Null <: BufElem[A]](shape: Shape[A, E], layer: Layer,

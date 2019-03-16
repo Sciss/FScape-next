@@ -105,10 +105,17 @@ object BroadcastBuf {
       }
       buf.release()
 
-      tryPull(shape.in)
+      if (!isClosed(shape.in)) {
+        pull(shape.in)
+      } else {
+        completeStage()
+      }
     }
 
     private final class OutHandlerImpl(out: Outlet[B], idx: Int) extends OutHandler {
+
+      override def toString: String = s"$self.${out.s}"
+
       private def decPendingAndCheck(): Unit = {
         if (pending(idx)) {
           pending(idx) = false

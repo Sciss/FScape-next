@@ -35,6 +35,9 @@ import akka.stream.{Inlet, Outlet, Shape}
   */
 final class ProcessInHandlerImpl[A, S <: Shape](in: Inlet[A], logic: FullInOutImpl[S])
   extends InHandler {
+
+  override def toString: String = s"ProcessInHandlerImpl($in)"
+
   def onPush(): Unit = {
     logStream(s"onPush($in)")
     logic.updateCanRead()
