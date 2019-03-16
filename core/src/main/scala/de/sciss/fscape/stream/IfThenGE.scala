@@ -137,12 +137,13 @@ object IfThenGE {
     extends NodeImpl(name, layer, shape) { self =>
 
     private[this] val numBranches   = branchLayers.size
-    private[this] var pending       = numBranches
+    private[this] var condPending   = numBranches   // missing for all conditions to have been presented
     private[this] val condArr       = new Array[Boolean](numBranches)
     private[this] val condDone      = new Array[Boolean](numBranches)
     private[this] var selBranchIdx  = -1
     private[this] var selIn : Array[Inlet [E]] = null
     private[this] val outs  : Array[Outlet[E]] = shape.outlets.toArray
+    private[this] var selBranchChans = numOutputs  // number of selected branch channels alive
 
     override def completeAsync(): Future[Unit] = {
       val futBranch = branchLayers.map { bl =>
@@ -175,13 +176,13 @@ object IfThenGE {
           b.release()
           val cond = v != 0
           condArr(branchIdx) = cond
-          pending -= 1
+          condPending -= 1
           // logStream(s"condDone($ch). pending = $pending")
 
           // either all conditions have been evaluated,
           // or this one became true and all the previous
           // have been resolved
-          if (pending == 0 || (cond && {
+          if (condPending == 0 || (cond && {
             var i = 0
             var prevDone = true
             while (prevDone && i <= branchIdx) {
@@ -192,7 +193,7 @@ object IfThenGE {
           })) {
             Util.fill(condDone, 0, numBranches, value = true)  // make sure the handlers won't fire twice
             selBranchIdx  = condArr.indexOf(true)
-            pending       = 0
+            condPending       = 0
             if (selBranchIdx >= 0) {
               selIn = Array.tabulate(numOutputs)(ch => shape.ins2(selBranchIdx * numOutputs + ch))
             }
@@ -238,13 +239,16 @@ object IfThenGE {
       override def onUpstreamFinish(): Unit = {
         logStream(s"onUpstreamFinish() $self.${in.s}")
         if (branchIdx == selBranchIdx && !isAvailable(in)) {
-          // N.B.: we do not shut down the branches,
-          // because it's their business if they want
-          // to keep running sinks after the branch
-          // output signal finishes.
-          //
-          // completeAll()
-          super.onUpstreamFinish()
+          selBranchChans -= 1
+          if (selBranchChans == 0) {
+            // N.B.: we do not shut down the branches,
+            // because it's their business if they want
+            // to keep running sinks after the branch
+            // output signal finishes.
+            //
+            // completeAll()
+            super.onUpstreamFinish()
+          }
         }
       }
 
