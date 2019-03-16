@@ -102,3 +102,25 @@ Therefore, because shitty Akka does not expose API to close particular connectio
 node, we would have to insert forwarder flows (piping one input to one output) at each branch, so that these
 pipes can be shut down if needed. We would still have to call `completeLayer` because there may be closed sub-graphs,
 e.g. polling and other side effects.
+
+--------
+
+## MCE
+
+Because we can have "closed" sub-graphs within a branch, there is really no way we could propagate MCE to outer 
+levels. Like
+
+```
+   val sig1: GE = DC(Seq(1, 2))
+   val sig2: GE = DC(Seq(1, 2))
+   if (1: GE) Then { sig1 } Else {
+     (123: GE).poll(0, "Henlo)
+     sig2
+   }
+```
+
+Surely we don't want the poll to be instantiated two times. On the other hand, having multi-channel conditions for
+the `If` is difficult to understand. We should _forbid_ that possibility, by either dropping all channels but the 
+first, or by reducing the channels (if necessary) using an AND or OR operator. This must be documented as a
+convention. If one _really_ wants mce, one could still use a `Seq.tabulate` and then have multiple `If` elements
+generated inside.

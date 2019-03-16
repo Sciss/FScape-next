@@ -10,7 +10,7 @@ object IfThenElseGETest extends App {
   val g = Graph {
     import graph._
 //    (0: GE).poll(0, "zero")
-    val p1: GE = 1
+    val p1: GE = 0
     val dc1 = DC(1)
     val out = If (p1) Then {
       dc1

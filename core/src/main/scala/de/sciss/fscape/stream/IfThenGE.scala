@@ -17,53 +17,63 @@ package stream
 
 import akka.stream.stage.{InHandler, OutHandler}
 import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
-import de.sciss.fscape.stream.impl.{BiformFanInShape, NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.{BiformShape, NodeImpl, StageImpl}
 
-import scala.collection.immutable.{Seq => ISeq}
+import scala.collection.immutable.{IndexedSeq => Vec, Seq => ISeq}
 import scala.concurrent.Future
 
 object IfThenGE {
   /**
     * @param cases  tuples of (cond, layer, result/branch-sink)
+    *               the branch-sinks must all have the same size, equal to `numOutputs`
     */
-  def apply[A, E >: Null <: BufElem[A]](cases: ISeq[(OutI, Layer, Outlet[E])])(implicit b: Builder): Outlet[E] = {
+  def apply[A, E >: Null <: BufElem[A]](numOutputs: Int, cases: ISeq[(OutI, Layer, Vec[Outlet[E]])])
+                                       (implicit b: Builder): Vec[Outlet[E]] = {
     // we insert dummy pipe elements here and replace thus the cases' outlets.
     // that way we ensure that we have elements placed in the correct layer, even
     // if the branch just references outer layers. also, the branch-logic then
     // registers itself in the correct layer and can be shut down.
-    val cases1 = cases.zipWithIndex.map {
-      case ((cond, branchLayer, branchOut), idx) =>
-        val bStage0 = new BranchStage[E](s"Branch(${idx+1})", branchLayer)
-        val bStage  = b.add(bStage0)
-        b.connect(branchOut, bStage.in)
-        (cond, branchLayer, bStage.out) // replace by our own output now
-    }
-    val stage0  = new Stage[A, E](b.layer, branchLayers = cases1.map(_._2))
+    val stage0  = new Stage[A, E](numOutputs = numOutputs, thisLayer = b.layer, branchLayers = cases.map(_._2))
     val stage   = b.add(stage0)
-    cases1.zipWithIndex.foreach { case ((cond, _, branchOut), idx) =>
-      b.connect(cond      , stage.ins1(idx))
-      b.connect(branchOut , stage.ins2(idx))
+    cases.zipWithIndex.foreach { case ((cond, branchLayer, branchOutSeq), idx) =>
+      require (branchOutSeq.size == numOutputs, s"${branchOutSeq.size} != $numOutputs")
+      b.connect(cond, stage.ins1(idx))
+      branchOutSeq.zipWithIndex.foreach { case (branchOut, j) =>
+        val name    = if (numOutputs == 1) s"Branch(${idx+1})" else s"Branch(${idx+1},${j + 1})"
+        val idxOut  = idx * numOutputs + j
+        val bStage0 = new BranchStage[E](name, branchLayer)
+        val bStage  = b.add(bStage0)
+        b.connect(branchOut , bStage.in)
+        b.connect(bStage.out, stage.ins2(idxOut))
+      }
     }
-    stage.out
+    stage.outlets.toIndexedSeq
   }
 
   private final val name = "IfThenGE"
 
-  private type Shape[A, E >: Null <: BufElem[A]] = BiformFanInShape[BufI, E, E]
+  private type Shape[A, E >: Null <: BufElem[A]] = BiformShape[BufI, E, E]
 
   private type BranchShape[A] = FlowShape[A, A]
 
-  private final class Stage[A, E >: Null <: BufElem[A]](thisLayer: Layer, branchLayers: ISeq[Layer])
+  private final class Stage[A, E >: Null <: BufElem[A]](numOutputs: Int,
+                                                        thisLayer: Layer, branchLayers: ISeq[Layer])
                                                        (implicit ctrl: Control)
     extends StageImpl[Shape[A, E]](name) {
 
-    val shape: Shape = BiformFanInShape(
-      ins1 = Vector.tabulate(branchLayers.size)(i => InI      (s"$name.cond${i+1}")),
-      ins2 = Vector.tabulate(branchLayers.size)(i => Inlet[E] (s"$name.branch${i+1}")),
-      out  = Outlet[E](s"$name.out")
+    val shape: Shape = BiformShape(
+      ins1 = Vector.tabulate(branchLayers.size)(i => InI(s"$name.cond${i+1}")),
+      ins2 = Vector.tabulate(branchLayers.size * numOutputs) { i =>
+        val branchIdx = i / numOutputs
+        val channel   = i % numOutputs
+        val inletName = if (numOutputs == 1) s"$name.branch${i+1}" else s"$name.branch${branchIdx+1}_${channel + 1}"
+        Inlet[E](inletName)
+      },
+      outlets = Vector.tabulate(numOutputs)(i => Outlet[E](s"$name.out${i+1}"))
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer = thisLayer, branchLayers = branchLayers)
+    def createLogic(attr: Attributes): NodeImpl[Shape] =
+      new Logic[A, E](numOutputs = numOutputs, shape = shape, layer = thisLayer, branchLayers = branchLayers)
   }
 
   private final class BranchStage[A](name: String, layer: Layer)(implicit control: Control)
@@ -102,17 +112,17 @@ object IfThenGE {
     setHandlers(shape.in, shape.out, this)
   }
 
-  private final class Logic[A, E >: Null <: BufElem[A]](shape: Shape[A, E], layer: Layer,
+  private final class Logic[A, E >: Null <: BufElem[A]](numOutputs: Int, shape: Shape[A, E], layer: Layer,
                                                         branchLayers: ISeq[Layer])(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape) { self =>
 
-    private[this] val numIns        = branchLayers.size
-    private[this] var pending       = numIns
-    private[this] val condArr       = new Array[Boolean](numIns)
-    private[this] val condDone      = new Array[Boolean](numIns)
+    private[this] val numBranches   = branchLayers.size
+    private[this] var pending       = numBranches
+    private[this] val condArr       = new Array[Boolean](numBranches)
+    private[this] val condDone      = new Array[Boolean](numBranches)
     private[this] var selBranchIdx  = -1
-    private[this] var selBranch: Inlet[E] = null
-    private[this] val out           = shape.out
+    private[this] var selIn : Array[Inlet [E]] = null
+    private[this] val outs  : Array[Outlet[E]] = shape.outlets.toArray
 
     override def completeAsync(): Future[Unit] = {
       val futBranch = branchLayers.map { bl =>
@@ -143,7 +153,7 @@ object IfThenGE {
           condDone(ch) = true
           val v: Int = b.buf(0)
           b.release()
-          val cond = v > 0
+          val cond = v != 0
           condArr(ch) = cond
           pending -= 1
           // logStream(s"condDone($ch). pending = $pending")
@@ -160,10 +170,12 @@ object IfThenGE {
             }
             prevDone
           })) {
-            Util.fill(condDone, 0, numIns, value = true)  // make sure the handlers won't fire twice
+            Util.fill(condDone, 0, numBranches, value = true)  // make sure the handlers won't fire twice
             selBranchIdx  = condArr.indexOf(true)
             pending       = 0
-            if (selBranchIdx >= 0) selBranch = shape.ins2(selBranchIdx)
+            if (selBranchIdx >= 0) {
+              selIn = Array.tabulate(numOutputs)(ch => shape.ins2(selBranchIdx * numOutputs + ch))
+            }
             branchSelected()
           }
         } else {
@@ -186,14 +198,14 @@ object IfThenGE {
       setHandler(in, this)
     }
 
-    private class BranchInHandlerImpl(in: Inlet[E], ch: Int) extends InHandler {
+    private class BranchInHandlerImpl(in: Inlet[E], branchIdx: Int, ch: Int) extends InHandler {
       override def toString: String = s"$self.BranchInHandlerImpl($in)"
 
       def onPush(): Unit = {
         logStream(s"onPush() $self.${in.s}")
-        if (ch == selBranchIdx) {
-          if (isAvailable(out)) {
-            pump()
+        if (branchIdx == selBranchIdx) {
+          if (isAvailable(outs(ch))) {
+            pump(ch)
           }
 
         } else {
@@ -205,7 +217,7 @@ object IfThenGE {
 
       override def onUpstreamFinish(): Unit = {
         logStream(s"onUpstreamFinish() $self.${in.s}")
-        if (ch == selBranchIdx && !isAvailable(in)) {
+        if (branchIdx == selBranchIdx && !isAvailable(in)) {
           // N.B.: we do not shut down the branches,
           // because it's their business if they want
           // to keep running sinks after the branch
@@ -219,13 +231,13 @@ object IfThenGE {
       setHandler(in, this)
     }
 
-    private object OutHandlerImpl extends OutHandler {
-      override def toString: String = s"$self.OutHandlerImpl"
+    private final class OutHandlerImpl(ch: Int) extends OutHandler {
+      override def toString: String = s"$self.OutHandlerImpl($ch)"
 
       def onPull(): Unit = {
         logStream(s"onPull() $self")
-        if (selBranch != null && isAvailable(selBranch)) {
-          pump()
+        if (selIn != null && isAvailable(selIn(ch))) {
+          pump(ch)
         }
       }
 
@@ -235,13 +247,15 @@ object IfThenGE {
 //        completeAll()
 //        super.onDownstreamFinish()
 //      }
+
+      setHandler(outs(ch), this)
     }
 
     private def completeAll(): Unit = {
       logStream(s"completeAll() $self")
       var ch = 0
       val it = branchLayers.iterator
-      while (ch < numIns) {
+      while (ch < numBranches) {
         val branchLayer = it.next()
         ctrl.completeLayer(branchLayer)
         ch += 1
@@ -249,26 +263,34 @@ object IfThenGE {
     }
 
     {
+      var bi = 0
+      while (bi < numBranches) {
+        new CondInHandlerImpl   (shape.ins1(bi), bi)
+        var ch = 0
+        while (ch < numOutputs) {
+          new BranchInHandlerImpl(shape.ins2(bi), branchIdx = bi, ch = ch)
+          ch += 1
+        }
+        bi += 1
+      }
       var ch = 0
-      while (ch < numIns) {
-        new CondInHandlerImpl   (shape.ins1(ch), ch)
-        new BranchInHandlerImpl (shape.ins2(ch), ch)
+      while (ch < numOutputs) {
+        new OutHandlerImpl(ch)
         ch += 1
       }
-      setHandler(out, OutHandlerImpl)
     }
 
-    private def pump(): Unit = {
+    private def pump(ch: Int): Unit = {
       logStream(s"pump() $self")
-      val b = grab(selBranch)
-      push(out, b)
-      if (isClosed(selBranch)) {
+      val b = grab(selIn(ch))
+      push(outs(ch), b)
+      if (isClosed(selIn(ch))) {
         // N.B.: see BranchInHandlerImpl for the same reasons
         //
         // ctrl.completeLayer(branchLayers(selBranchIdx))
         completeStage()
       } else {
-        tryPull(selBranch)
+        tryPull(selIn(ch))
       }
     }
 
@@ -276,11 +298,11 @@ object IfThenGE {
       logStream(s"branchSelected($selBranchIdx) $self")
       // println(s"IF-THEN-UNIT ${node.hashCode().toHexString} process($selBranchIdx)")
 
-      var ch = 0
+      var bi = 0
       val it = branchLayers.iterator
       var done: Future[Unit] = null
-      while (ch < numIns) {
-        val cond = ch == selBranchIdx
+      while (bi < numBranches) {
+        val cond = bi == selBranchIdx
         val branchLayer = it.next()
         if (cond) {
           // we set `done` here which completes as
@@ -289,26 +311,36 @@ object IfThenGE {
         } else {
           ctrl.completeLayer(branchLayer)
         }
-        ch += 1
+        bi += 1
       }
 
-      if (selBranch == null || isClosed(selBranch)) {
-        completeStage()
-      } else if (isAvailable(selBranch) && isAvailable(out)) {
-        // either we can immediately grab data...
-        pump()
-      } else if (done != null) {
-        // ...or we have to wait for the launch to be complete,
-        // and then try to pull the branch output.
-        val async = getAsyncCallback { _: Unit =>
-          val hbp = hasBeenPulled(selBranch)
-          // logStream(s"launchLayer done (2/2) - has been pulled? $hbp - $self")
-          if (!hbp) tryPull(selBranch)
-        }
-        import ctrl.config.executionContext
-        done.foreach { _ =>
-          logStream(s"launchLayer done - $self")
-          async.invoke(())
+      if (selIn == null) completeStage()
+      else {
+        var ch = 0
+        while (ch < numOutputs) {
+          val in  = selIn (ch)
+          val out = outs  (ch)
+          if (isClosed(in)) {
+            completeStage()
+          } else if (isAvailable(in) && isAvailable(out)) {
+            // either we can immediately grab data...
+            pump(ch)
+          } else if (done != null) {
+            // ...or we have to wait for the launch to be complete,
+            // and then try to pull the branch output.
+            val async = getAsyncCallback { _: Unit =>
+              val hbp = hasBeenPulled(in)
+              // logStream(s"launchLayer done (2/2) - has been pulled? $hbp - $self")
+              if (!hbp) tryPull(in)
+            }
+            import ctrl.config.executionContext
+            done.foreach { _ =>
+              logStream(s"launchLayer done - $self")
+              async.invoke(())
+            }
+          }
+
+          ch += 1
         }
       }
     }

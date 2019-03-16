@@ -73,7 +73,7 @@ object IfThenUnit {
         if (b.size > 0 && !condDone(ch)) {
           condDone(ch) = true
           val v: Int = b.buf(0)
-          val cond = v > 0
+          val cond = v != 0
           condArr(ch) = cond
           pending -= 1
           // either all conditions have been evaluated,

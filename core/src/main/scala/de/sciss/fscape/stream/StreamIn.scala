@@ -370,6 +370,7 @@ object StreamOut {
   implicit def fromInt      (peer:     OutI ):     StreamOut  = new StreamOutI(peer)
   implicit def fromIntVec   (peer: Vec[OutI]): Vec[StreamOut] = peer.map(new StreamOutI(_))
   implicit def fromLong     (peer:     OutL ):     StreamOut  = new StreamOutL(peer)
+  implicit def fromLongVec  (peer: Vec[OutL]): Vec[StreamOut] = peer.map(new StreamOutL(_))
 
   private final class StreamOutD(peer: OutD) extends StreamOut {
     override def toString = s"StreamOut($peer)"
