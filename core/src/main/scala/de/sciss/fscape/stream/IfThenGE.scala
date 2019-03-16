@@ -253,12 +253,12 @@ object IfThenGE {
         // and then try to pull the branch output.
         val async = getAsyncCallback { _: Unit =>
           val hbp = hasBeenPulled(selBranch)
-          logStream(s"launchLayer done (2/2) - has been pulled? $hbp - $self")
+          // logStream(s"launchLayer done (2/2) - has been pulled? $hbp - $self")
           if (!hbp) tryPull(selBranch)
         }
         import ctrl.config.executionContext
         done.foreach { _ =>
-          logStream(s"launchLayer done (1/2) - $self")
+          logStream(s"launchLayer done - $self")
           async.invoke(())
         }
       }

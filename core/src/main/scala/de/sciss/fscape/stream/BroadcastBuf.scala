@@ -79,7 +79,11 @@ object BroadcastBuf {
 
     override def onUpstreamFinish(): Unit = {
       logStream(s"onUpstreamFinish() $this")
-      checkProcess() // super.onUpstreamFinish()
+      if (isAvailable(shape.in)) {
+        if (pendingCount == 0) process()
+      } else {
+        completeStage()
+      }
     }
 
     private def process(): Unit = {
@@ -111,46 +115,51 @@ object BroadcastBuf {
       tryPull(shape.in)
     }
 
-    private def checkProcess(): Unit =
-      if (isAvailable(shape.in)) {
-        if (pendingCount == 0) process()
-      } else if (isClosed(shape.in)) {
-        completeStage()
+    private final class OutHandlerImpl(out: Outlet[B], idx: Int) extends OutHandler {
+      private def decPendingAndCheck(): Unit = {
+        if (pending(idx)) {
+          pending(idx) = false
+          pendingCount -= 1
+          if (pendingCount == 0) {
+            // N.B.: Since we do not proactively pull the input,
+            // we have to check that condition here and
+            // issue the pull if necessary
+            if         (isAvailable(shape.in)) process()
+            else if (!hasBeenPulled(shape.in)) tryPull(shape.in)
+          }
+        }
       }
+
+      def onPull(): Unit = {
+        logStream(s"onPull() $self.${out.s}")
+        decPendingAndCheck()
+      }
+
+      override def onDownstreamFinish(): Unit = {
+        logStream(s"onDownstreamFinish() $self.${out.s}")
+        if (eagerCancel) {
+          logStream(s"completeStage() $self")
+          completeStage()
+        }
+        else {
+          sinksRunning -= 1
+          if (sinksRunning == 0) {
+            logStream(s"completeStage() $self")
+            completeStage()
+          } else {
+            decPendingAndCheck()
+          }
+        }
+      }
+
+      setHandler(out, this)
+    }
 
     {
       var idx = 0
       while (idx < numOutputs) {
         val out = shape.out(idx)
-        val idx0 = idx // fix for OutHandler
-        setHandler(out, new OutHandler {
-          def onPull(): Unit = {
-            logStream(s"onPull() $self.${out.s}")
-            pending(idx0) = false
-            pendingCount -= 1
-            checkProcess()
-          }
-
-          override def onDownstreamFinish(): Unit = {
-            logStream(s"onDownstreamFinish() $self.${out.s}")
-            if (eagerCancel) {
-              logStream(s"completeStage() $self")
-              completeStage()
-            }
-            else {
-              sinksRunning -= 1
-              if (sinksRunning == 0) {
-                logStream(s"completeStage() $self")
-                completeStage()
-              }
-              else if (pending(idx0)) {
-                pending(idx0) = false
-                pendingCount -= 1
-                checkProcess()
-              }
-            }
-          }
-        })
+        new OutHandlerImpl(out, idx)
         idx += 1
       }
     }
