@@ -57,6 +57,14 @@ object IfThenGE {
                                                         branchLayers: ISeq[Layer])(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape) { self =>
 
+    private[this] val numIns        = branchLayers.size
+    private[this] var pending       = numIns
+    private[this] val condArr       = new Array[Boolean](numIns)
+    private[this] val condDone      = new Array[Boolean](numIns)
+    private[this] var selBranchIdx  = -1
+    private[this] var selBranch: Inlet[E] = null
+    private[this] val out           = shape.out
+
     override def completeAsync(): Future[Unit] = {
       val futBranch = branchLayers.map { bl =>
         ctrl.completeLayer(bl)
@@ -66,15 +74,16 @@ object IfThenGE {
       Future.sequence(futBranch :+ futSuper).map(_ => ())
     }
 
-    private[this] val numIns        = branchLayers.size
-    private[this] var pending       = numIns
-    private[this] val condArr       = new Array[Boolean](numIns)
-    private[this] val condDone      = new Array[Boolean](numIns)
-    private[this] var selBranchIdx  = -1
-    private[this] var selBranch: Inlet[E] = null
-    private[this] val out           = shape.out
+    // only poll the condition inlets
+    override protected def launch(): Unit = {
+      logStream(s"$this - launch")
+      shape.ins1.foreach(pull)
+    }
 
     private class CondInHandlerImpl(in: InI, ch: Int) extends InHandler {
+
+      override def toString: String = s"$self.CondInHandlerImpl($in)"
+
       def onPush(): Unit = {
         logStream(s"onPush() $self.${in.s}")
         val b = grab(in)
@@ -129,6 +138,8 @@ object IfThenGE {
     }
 
     private class BranchInHandlerImpl(in: Inlet[E], ch: Int) extends InHandler {
+      override def toString: String = s"$self.BranchInHandlerImpl($in)"
+
       def onPush(): Unit = {
         logStream(s"onPush() $self.${in.s}")
         if (ch == selBranchIdx) {
@@ -160,6 +171,8 @@ object IfThenGE {
     }
 
     private object OutHandlerImpl extends OutHandler {
+      override def toString: String = s"$self.OutHandlerImpl"
+
       def onPull(): Unit = {
         logStream(s"onPull() $self")
         if (selBranch != null && isAvailable(selBranch)) {
@@ -197,6 +210,7 @@ object IfThenGE {
     }
 
     private def pump(): Unit = {
+      logStream(s"pump() $self")
       val b = grab(selBranch)
       push(out, b)
       if (isClosed(selBranch)) {
@@ -238,10 +252,15 @@ object IfThenGE {
         // ...or we have to wait for the launch to be complete,
         // and then try to pull the branch output.
         val async = getAsyncCallback { _: Unit =>
-          if (!hasBeenPulled(selBranch)) tryPull(selBranch)
+          val hbp = hasBeenPulled(selBranch)
+          logStream(s"launchLayer done (2/2) - has been pulled? $hbp - $self")
+          if (!hbp) tryPull(selBranch)
         }
         import ctrl.config.executionContext
-        done.foreach(_ => async.invoke(()))
+        done.foreach { _ =>
+          logStream(s"launchLayer done (1/2) - $self")
+          async.invoke(())
+        }
       }
     }
   }

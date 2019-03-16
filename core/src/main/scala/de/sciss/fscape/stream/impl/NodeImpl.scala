@@ -29,12 +29,16 @@ abstract class NodeImpl[+S <: Shape](protected final val name: String, val layer
 
   final def launchAsync(): Future[Unit] = {
     val async = getAsyncCallback { _: Unit =>
-      logStream(s"$this - launchAsync")
-      shape.inlets.foreach(pull(_))
+      launch()
     }
 
     implicit val ex: ExecutionContext = control.config.executionContext
     async.invokeWithFeedback(()).map(_ => ())
+  }
+
+  protected def launch(): Unit = {
+    logStream(s"$this - launch")
+    shape.inlets.foreach(pull(_))
   }
 
   final def failAsync(ex: Exception): Unit = {

@@ -9,8 +9,8 @@ object IfThenDebug extends App {
 
   val g = Graph {
     import graph._
-    val sig0  = ArithmSeq(length = 4000) // DC(1234).take(4000)
-    val videoIn   = If (1: GE) Then {
+    val sig0    = ArithmSeq(length = 4000) // DC(1234).take(4000)
+    val videoIn = If (1: GE) Then {
 //      (0: GE).poll(0, "resampleIn is 1")
       sig0
     } Else {

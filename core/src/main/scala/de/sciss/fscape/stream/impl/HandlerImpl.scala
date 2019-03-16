@@ -97,6 +97,8 @@ final class EquivalentInHandlerImpl[A, S <: Shape](in: Inlet[A], logic: FullInOu
 final class AuxInHandlerImpl[A, S <: Shape](in: Inlet[A], logic: FullInOutImpl[S])
   extends InHandler {
 
+  override def toString: String = s"AuxInHandlerImpl($in)"
+
   def onPush(): Unit = {
     logStream(s"onPush($in)")
     testRead()
@@ -122,6 +124,8 @@ final class AuxInHandlerImpl[A, S <: Shape](in: Inlet[A], logic: FullInOutImpl[S
 
 final class ProcessOutHandlerImpl[A, S <: Shape](out: Outlet[A], logic: InOutImpl[S])
   extends OutHandler {
+
+  override def toString: String = s"ProcessOutHandlerImpl($out)"
 
   def onPull(): Unit = {
     logStream(s"onPull($out)")
