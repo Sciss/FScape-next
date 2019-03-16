@@ -87,7 +87,7 @@ object StreamIn {
       require(!exhausted)
       exhausted = true
       val ctrl = builder.control
-      builder.map(peer) { bufD =>
+      builder.map(peer, "D.toInt") { bufD =>
         val bufI = ctrl.borrowBufI()
         val sz = bufD.size
         bufI.size = sz
@@ -108,7 +108,7 @@ object StreamIn {
       require(!exhausted)
       exhausted = true
       val ctrl = builder.control
-      builder.map(peer) { bufD =>
+      builder.map(peer, "D.toLong") { bufD =>
         val bufL = ctrl.borrowBufL()
         val sz = bufD.size
         bufL.size = sz
@@ -163,7 +163,7 @@ object StreamIn {
       require(!exhausted)
       exhausted = true
       val ctrl = builder.control
-      builder.map(peer) { bufI =>
+      builder.map(peer, "I.toLong") { bufI =>
         val bufL = ctrl.borrowBufL()
         val sz = bufI.size
         bufL.size = sz
@@ -184,7 +184,7 @@ object StreamIn {
       require(!exhausted)
       exhausted = true
       val ctrl = builder.control
-      builder.map(peer) { bufI =>
+      builder.map(peer, "I.toDouble") { bufI =>
         val bufD = ctrl.borrowBufD()
         val sz = bufI.size
         bufD.size = sz
@@ -239,7 +239,7 @@ object StreamIn {
       require(!exhausted)
       exhausted = true
       val ctrl = builder.control
-      builder.map(peer) { bufL =>
+      builder.map(peer, "L.toInt") { bufL =>
         val bufI = ctrl.borrowBufI()
         val sz = bufL.size
         bufI.size = sz
@@ -260,7 +260,7 @@ object StreamIn {
       require(!exhausted)
       exhausted = true
       val ctrl = builder.control
-      builder.map(peer) { bufL =>
+      builder.map(peer, "L.toDouble") { bufL =>
         val bufD = ctrl.borrowBufD()
         val sz = bufL.size
         bufD.size = sz
