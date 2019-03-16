@@ -96,18 +96,38 @@ object IfThenGE {
     private def pump(): Unit = {
       val a = grab(shape.in)
       push(shape.out, a)
-      tryPull(shape.in)
+      if (!isClosed(shape.in)) {
+        pull(shape.in)
+      } else {
+        completeStage()
+      }
     }
 
-    override def onPush(): Unit =
-      if (isAvailable(shape.out)) {
+    override def onPush(): Unit = {
+      val ok = isAvailable(shape.out)
+      logStream(s"$this - onPush() $ok")
+      if (ok) {
         pump()
       }
+    }
 
-    override def onPull(): Unit =
-      if (isAvailable(shape.in)) {
+    override def onPull(): Unit = {
+      val ok = isAvailable(shape.in)
+      logStream(s"$this - onPull() $ok")
+      if (ok) {
         pump()
       }
+    }
+
+    override def onUpstreamFinish(): Unit = {
+      logStream(s"$this - onUpstreamFinish")
+      if (!isAvailable(shape.in)) super.onUpstreamFinish()
+    }
+
+    override def onDownstreamFinish(): Unit = {
+      logStream(s"$this - onDownstreamFinish")
+      super.onDownstreamFinish()
+    }
 
     setHandlers(shape.in, shape.out, this)
   }
