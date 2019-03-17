@@ -109,7 +109,6 @@ object FScapeRunnerImpl extends Runner.Factory {
       cfg.progressReporter = { p =>
         progress.push(p.total)
       }
-      import universe.genContext
       val r: Rendering[S] = obj.run(cfg)
       renderRef.swap(Some(r)).foreach(_.dispose())
       obsRef   .swap(Disposable.empty) .dispose()

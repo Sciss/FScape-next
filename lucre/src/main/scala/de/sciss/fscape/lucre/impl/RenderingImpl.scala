@@ -11,9 +11,7 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape
-package lucre
-package impl
+package de.sciss.fscape.lucre.impl
 
 import de.sciss.file._
 import de.sciss.filecache
@@ -21,16 +19,17 @@ import de.sciss.filecache.TxnProducer
 import de.sciss.fscape.lucre.FScape.Rendering
 import de.sciss.fscape.lucre.FScape.Rendering.State
 import de.sciss.fscape.lucre.UGenGraphBuilder.{MissingIn, OutputResult}
+import de.sciss.fscape.lucre.{Cache, FScape, OutputGenView, UGenGraphBuilder}
 import de.sciss.fscape.stream.Control
 import de.sciss.lucre.event.impl.{DummyObservableImpl, ObservableImpl}
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Disposable, Obj, Sys, TxnLike}
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer}
-import de.sciss.synth.proc.{GenContext, GenView, Universe}
+import de.sciss.synth.proc.{GenView, Universe}
 
-import scala.concurrent.{Future, Promise}
 import scala.concurrent.stm.{Ref, TMap, atomic}
+import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 

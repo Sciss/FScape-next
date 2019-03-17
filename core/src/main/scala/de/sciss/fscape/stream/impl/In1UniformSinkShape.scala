@@ -11,14 +11,11 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape
-package stream
-package impl
+package de.sciss.fscape.stream.impl
 
 import akka.stream.{Inlet, Outlet, Shape}
 
 import scala.collection.immutable.{Seq => ISeq}
-import scala.language.existentials
 
 /** A generalized Sink shape with one individual inlet and multiple uniform inlets. */
 final case class In1UniformSinkShape[In0, In1](in0: Inlet[In0], inlets1: ISeq[Inlet[In1]])

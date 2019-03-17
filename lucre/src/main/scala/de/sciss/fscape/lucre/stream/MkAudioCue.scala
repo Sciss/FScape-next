@@ -11,9 +11,7 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape
-package lucre
-package stream
+package de.sciss.fscape.lucre.stream
 
 import akka.stream.{Attributes, UniformFanInShape}
 import de.sciss.file._
@@ -33,7 +31,7 @@ object MkAudioCue {
     require (spec.numChannels == in.size, s"Channel mismatch (spec has ${spec.numChannels}, in has ${in.size})")
     val sink = new Stage(layer = b.layer, ref = ref, f = file, spec = spec)
     val stage = b.add(sink)
-    (in zip stage.inSeq).foreach { case (output, input) =>
+    (in zip stage.inlets).foreach { case (output, input) =>
       b.connect(output, input)
     }
     stage.out

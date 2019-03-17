@@ -35,7 +35,7 @@ lazy val deps = new {
   }
   val lucre = new {
     val fileCache       = "0.5.0"
-    val soundProcesses  = "3.25.0"
+    val soundProcesses  = "3.26.0-SNAPSHOT"
   }
   val test = new {
     val kollFlitz       = "0.2.3"
@@ -99,9 +99,10 @@ lazy val lucre = project.withId(s"$baseNameL-lucre").in(file("lucre"))
   .settings(
     description := s"Bridge from $baseName to SoundProcesses",
     libraryDependencies ++= Seq(
-      "de.sciss"      %% "soundprocesses-core" % deps.lucre.soundProcesses,
-      "de.sciss"      %% "filecache-txn"       % deps.lucre.fileCache,
-      "de.sciss"      %% "lucre-bdb"           % deps.test.lucre     % Test
+      "de.sciss"        %% "soundprocesses-core" % deps.lucre.soundProcesses,
+      "de.sciss"        %% "filecache-txn"       % deps.lucre.fileCache,
+      "org.scala-lang"  %  "scala-reflect"       % scalaVersion.value,
+      "de.sciss"        %% "lucre-bdb"           % deps.test.lucre     % Test
     ),
     mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-lucre" % mimaVersion)
   )

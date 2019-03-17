@@ -111,8 +111,11 @@ object FScape extends Obj.Type {
   // ---- Code ----
 
   object Code extends proc.Code.Type {
-    final val id    = 4
-    final val name  = "FScape Graph"
+    final val id = 4
+
+    final val prefix    = "FScape"
+    final val humanName = "FScape Graph"
+
     type Repr = Code
 
     def docBaseSymbol: String = "de.sciss.fscape.graph"
@@ -142,19 +145,19 @@ object FScape extends Obj.Type {
   final case class Code(source: String) extends proc.Code {
     type In     = Unit
     type Out    = fscape.Graph
-    def id: Int = Code.id
 
-    def compileBody()(implicit compiler: proc.Code.Compiler): Future[Unit] =
-      CodeImpl.compileBody[In, Out, Unit, Code](this)
+    def tpe: proc.Code.Type = Code
+
+    def compileBody()(implicit compiler: proc.Code.Compiler): Future[Unit] = {
+      import scala.reflect.runtime.universe._
+      CodeImpl.compileBody[In, Out, Unit, Code](this, typeTag[Unit])
+    }
 
     def execute(in: In)(implicit compiler: proc.Code.Compiler): Out =
       Graph {
-        CodeImpl.compileThunk[Unit](this, execute = true)
+        import scala.reflect.runtime.universe._
+        CodeImpl.compileThunk[Unit](this, typeTag[Unit], execute = true)
       }
-
-    def contextName: String = Code.name
-
-    def docBaseSymbol: String = Code.docBaseSymbol
 
     def prelude : String = "object Main {\n"
 

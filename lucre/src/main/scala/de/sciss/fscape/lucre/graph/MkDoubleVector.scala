@@ -11,19 +11,18 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape
-package lucre
-package graph
+package de.sciss.fscape.lucre.graph
 
 import de.sciss.fscape.UGen.Aux
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.lucre.FScape.Output
+import de.sciss.fscape.lucre.UGenGraphBuilder
 import de.sciss.fscape.lucre.UGenGraphBuilder.OutputRef
-import de.sciss.fscape.stream
 import de.sciss.fscape.stream.StreamIn
+import de.sciss.fscape.{GE, Lazy, UGen, UGenGraph, UGenIn, UGenSource, lucre, stream}
 import de.sciss.lucre.expr.DoubleVector
 import de.sciss.lucre.stm.{Obj, Sys, Workspace}
-import de.sciss.serial.{DataInput, Serializer}
+import de.sciss.serial.DataInput
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 

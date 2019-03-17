@@ -5,7 +5,6 @@ import akka.stream.impl.fusing.GraphInterpreter
 import akka.stream.impl.fusing.GraphInterpreter.Connection
 import akka.stream.stage.GraphStageLogic
 import akka.stream.{ActorMaterializer, Materializer}
-import akka.stream.testkit.scaladsl.StreamTestKit
 import akka.testkit.TestProbe
 
 import scala.concurrent.ExecutionContext
