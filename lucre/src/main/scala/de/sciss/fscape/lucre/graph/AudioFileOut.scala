@@ -60,6 +60,8 @@ object AudioFileOut {
     case other => sys.error(s"Unexpected audio file type id $other")
   }
 
+  def maxFileTypeId: Int = 4
+
   /** Recovers a sample format from an id. Throws an exception if the id is invalid. */
   def sampleFormat(id: Int): SampleFormat = (id: @switch) match {
     case 0 => SampleFormat.Int16
@@ -71,6 +73,8 @@ object AudioFileOut {
     case 6 => SampleFormat.Int8
     case other => sys.error(s"Unexpected sample format id $other")
   }
+
+  def maxSampleFormatId: Int = 6
 
   final case class WithFile(file: File, in: GE, fileType: GE,
                             sampleFormat: GE, sampleRate: GE)

@@ -19,6 +19,7 @@ import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer}
 import javax.imageio.ImageIO
 
 import scala.annotation.switch
+import scala.collection.immutable.{IndexedSeq => Vec}
 
 object ImageFile {
   object Type {
@@ -26,20 +27,37 @@ object ImageFile {
       override def productPrefix = s"ImageFile$$Type$$PNG$$"    // serialization
 
       final val id = 0
+
+      val extension = "png"
+
+      val extensions: Vec[String] = Vector("png")
     }
     case object JPG extends Type {
       override def productPrefix = s"ImageFile$$Type$$JPG$$"    // serialization
 
       final val id = 1
+
+      val extension = "jpg"
+
+      val extensions: Vec[String] = Vector("jpg", "jpeg")
     }
 
     def apply(id: Int): Type = id match {
       case PNG.id => PNG
       case JPG.id => JPG
     }
+
+    val writable: Vec[Type] = Vector(PNG, JPG)
+    def readable: Vec[Type] = writable
   }
   sealed trait Type {
     def id: Int
+
+    /** @return  the default extension (period not included) */
+    def extension: String
+
+    /** @return  a list of alternative extensions, including the default `extension` */
+    def extensions: Vec[String]
   }
 
   object SampleFormat {

@@ -11,17 +11,16 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape
-package lucre
-package graph
+package de.sciss.fscape.lucre.graph
 
 import de.sciss.file.File
 import de.sciss.fscape.UGen.Aux
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.graph.ImageFile.{SampleFormat, Type}
+import de.sciss.fscape.lucre.UGenGraphBuilder
 import de.sciss.fscape.lucre.UGenGraphBuilder.Input
-import de.sciss.fscape.stream
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
+import de.sciss.fscape.{GE, Lazy, UGen, UGenGraph, UGenIn, UGenInLike, UGenSource, lucre, stream}
 
 import scala.annotation.switch
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -40,6 +39,8 @@ object ImageFileOut {
     case other => sys.error(s"Unexpected audio file type id $other")
   }
 
+  def maxFileTypeId: Int = Type.JPG.id
+
   /** Recovers a sample format from an id. Throws an exception if the id is invalid. */
   def sampleFormat(id: Int): SampleFormat = (id: @switch) match {
     case SampleFormat.Int8  .id => SampleFormat.Int8
@@ -48,18 +49,20 @@ object ImageFileOut {
     case other => sys.error(s"Unexpected sample format id $other")
   }
 
+  def maxSampleFormatId: Int = SampleFormat.Float.id
+
   final case class WithFile(file: File, in: GE, width: GE, height: GE, fileType: GE,
                             sampleFormat: GE, quality: GE)
-    extends UGenSource.SingleOut {
+    extends UGenSource.ZeroOut {
 
-    protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
+    protected def makeUGens(implicit b: UGenGraph.Builder): Unit =
       unwrap(this, width.expand +: height.expand +: fileType.expand +: sampleFormat.expand +: quality.expand +:
         in.expand.outputs)
 
-    protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
-      UGen.SingleOut(this, args, aux = Aux.FileOut(file) :: Nil, isIndividual = true, hasSideEffect = true)
+    protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit =
+      UGen.ZeroOut(this, args, aux = Aux.FileOut(file) :: Nil, isIndividual = true)
 
-    private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
+    private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit = {
       val width +: height +: fileType +: sampleFormat +: quality +: in = args
       lucre.stream.ImageFileOut(file = file, width = width.toInt, height = height.toInt,
         fileType = fileType.toInt, sampleFormat = sampleFormat.toInt, quality = quality.toInt,
@@ -92,11 +95,11 @@ object ImageFileOut {
   */
 final case class ImageFileOut(key: String, in: GE, width: GE, height: GE, fileType: GE = 0,
                               sampleFormat: GE = 0, quality: GE = 80)
-  extends GE.Lazy {
+  extends Lazy.Expander[Unit] {
 
-  protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = {
+  protected def makeUGens(implicit b: UGenGraph.Builder): Unit = {
     val ub = UGenGraphBuilder.get(b)
-    ub.requestInput(Input.Attribute(key)).peer.fold[UGenInLike] {
+    ub.requestInput(Input.Attribute(key)).peer.fold[Unit] {
       sys.error(s"Missing Attribute $key")
     } {
 //      case a: ImageCue =>

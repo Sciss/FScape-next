@@ -21,6 +21,7 @@ import de.sciss.fscape.stream.impl.{BlockingGraphStage, In3UniformFanInShape, No
 import de.sciss.fscape.stream.{BufD, BufI, BufL, Builder, Control, InD, InI, Layer, OutD, OutI, OutL}
 import de.sciss.synth.io
 import de.sciss.fscape.lucre.graph.{AudioFileOut => AF}
+import de.sciss.synth.io.AudioFileType
 
 import scala.collection.immutable.{Seq => ISeq}
 import scala.util.control.NonFatal
@@ -98,7 +99,12 @@ object AudioFileOut {
         val buf = grab(shape.in0)
         if (buf.size > 0 && fileType < 0) {
           logStream("AudioFileOut: fileType")
-          fileType = math.max(0, math.min(4, buf.buf(0)))
+          val _fileType = math.min(AF.maxFileTypeId, buf.buf(0))
+          fileType = if (_fileType >= 0) _fileType else {
+            val ext = file.extL
+            val tpe = AudioFileType.writable.find(_.extensions.contains(ext)).getOrElse(AudioFileType.AIFF)
+            AF.id(tpe)
+          }
           updateSpec()
           if (canProcess) process()
         }
@@ -117,7 +123,7 @@ object AudioFileOut {
         val buf = grab(shape.in1)
         if (buf.size > 0 && sampleFormat < 0) {
           logStream("AudioFileOut: sampleFormat")
-          sampleFormat = math.max(0, math.min(6, buf.buf(0)))
+          sampleFormat = math.max(0, math.min(AF.maxSampleFormatId, buf.buf(0)))
           updateSpec()
           if (canProcess) process()
         }
