@@ -18,7 +18,7 @@ import akka.stream.Attributes
 import akka.stream.stage.InHandler
 import de.sciss.file._
 import de.sciss.fscape.graph.ImageFile.Spec
-import de.sciss.fscape.stream.impl.{BlockingGraphStage, ImageFileOutImpl, In1UniformSinkShape, NodeImpl}
+import de.sciss.fscape.stream.impl.{BlockingGraphStage, ImageFileOutImpl, In1UniformSinkShape, NodeHasInitImpl, NodeImpl}
 
 import scala.collection.immutable.{IndexedSeq => Vec, Seq => ISeq}
 
@@ -50,9 +50,9 @@ object ImageFileSeqOut {
 
   private final class Logic(shape: Shape, layer: Layer, template: File, val spec: Spec)(implicit ctrl: Control)
     extends NodeImpl(s"$name(${template.name})", layer, shape)
-    with ImageFileOutImpl[Shape] { logic =>
+    with NodeHasInitImpl with ImageFileOutImpl[Shape] { logic =>
 
-    protected val inlets1: Vec[InD] = shape.inlets1.toIndexedSeq
+    protected val inletsImg: Vec[InD] = shape.inlets1.toIndexedSeq
     private[this] val in0 = shape.in0
 
     private[this] var bufIn0: BufI = _
@@ -69,6 +69,11 @@ object ImageFileSeqOut {
 
     private[this] var inOff1        = 0
     private[this] var inRemain1     = 0
+
+    override protected def init(): Unit = {
+      super.init()
+      initSpec(spec)
+    }
 
     // ---- set handlers ----
 
@@ -127,7 +132,7 @@ object ImageFileSeqOut {
       }
 
     /** Called when all of `inlets1` are ready. */
-    protected def process1(): Unit = {
+    protected def processImg(): Unit = {
       _canRead1 = true
       process()
     }

@@ -11,22 +11,22 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape
-package stream
-package impl
+package de.sciss.fscape.stream.impl
 
 import java.awt.Transparency
 import java.awt.color.ColorSpace
 import java.awt.image.{BandedSampleModel, BufferedImage, ComponentColorModel, DataBuffer, Raster}
-import javax.imageio.plugins.jpeg.JPEGImageWriteParam
-import javax.imageio.stream.FileImageOutputStream
-import javax.imageio.{IIOImage, ImageIO, ImageTypeSpecifier, ImageWriteParam, ImageWriter}
 
 import akka.stream.Shape
 import akka.stream.stage.InHandler
 import de.sciss.file.File
 import de.sciss.fscape.graph.ImageFile
 import de.sciss.fscape.graph.ImageFile.{SampleFormat, Type}
+import de.sciss.fscape.logStream
+import de.sciss.fscape.stream.{BufD, InD}
+import javax.imageio.plugins.jpeg.JPEGImageWriteParam
+import javax.imageio.stream.FileImageOutputStream
+import javax.imageio.{IIOImage, ImageIO, ImageTypeSpecifier, ImageWriteParam, ImageWriter}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
@@ -36,70 +36,71 @@ trait ImageFileOutImpl[S <: Shape] extends InHandler {
 
   // ---- abstract ----
 
-  protected def inlets1     : Vec[InD]
-  protected def spec        : ImageFile.Spec
+  protected def inletsImg: Vec[InD]
 
-  /** Called when all of `inlets1` are ready. */
-  protected def process1(): Unit
+  /** Called when all of `inletsImg` are ready. */
+  protected def processImg(): Unit
 
   // ---- impl ----
 
-  private[this]   val numChannels   : Int             = spec.numChannels
-  private[this]   val bufIns1       : Array[BufD]     = new Array[BufD](numChannels)
-  protected final val numFrames     : Int             = spec.width * spec.height
+  private[this]   var numChannels   : Int             = _
+  private[this]   var bufImg        : Array[BufD]     = _
+  protected final var numFrames     : Int             = _
   protected final var framesWritten : Int             = _
+  protected final var gain          : Double          = _
 
   private[this] var imagesWritten = 0
   private[this] var pushed        = 0
 
 //  private /* [this] */ val resultP = Promise[Long]()
 
-  private[this] val (dataType, gain) = spec.sampleFormat match {
-    case SampleFormat.Int8  => DataBuffer.TYPE_BYTE   ->   255.0
-    case SampleFormat.Int16 => DataBuffer.TYPE_USHORT -> 65535.0
-    case SampleFormat.Float => DataBuffer.TYPE_FLOAT  ->     1.0 // XXX TODO --- currently not supported by ImageIO?
-  }
+  protected final def initSpec(spec: ImageFile.Spec): Unit = {
+    numChannels = spec.numChannels
+    numFrames   = spec.width * spec.height
+    bufImg      = new Array[BufD](numChannels)
+    val (dataType, _gain) = spec.sampleFormat match {
+      case SampleFormat.Int8  => DataBuffer.TYPE_BYTE   ->   255.0
+      case SampleFormat.Int16 => DataBuffer.TYPE_USHORT -> 65535.0
+      case SampleFormat.Float => DataBuffer.TYPE_FLOAT  ->     1.0 // XXX TODO --- currently not supported by ImageIO?
+    }
+    gain    = _gain
+    pixBuf  = new Array(numChannels * spec.width)
 
-  private[this]   var pixBuf: Array[Double]   = new Array(numChannels * spec.width)
-  protected final var img   : BufferedImage   = {
     val sm        = new BandedSampleModel(dataType, spec.width, spec.height, spec.numChannels)
     val r         = Raster.createWritableRaster(sm, null)
     val cs        = ColorSpace.getInstance(if (numChannels == 1) ColorSpace.CS_GRAY else ColorSpace.CS_sRGB)
     val hasAlpha  = numChannels == 4
     val cm        = new ComponentColorModel(cs, hasAlpha, false, Transparency.TRANSLUCENT, dataType)
-    new BufferedImage(cm, r, false, null)
-  }
+    img = new BufferedImage(cm, r, false, null)
 
-  private[this] val imgParam: ImageWriteParam = spec.fileType match {
-    case Type.PNG => null
-    case Type.JPG =>
-      val p = new JPEGImageWriteParam(null)
-      p.setCompressionMode(ImageWriteParam.MODE_EXPLICIT)
-      p.setCompressionQuality(spec.quality * 0.01f)
-      p
-  }
-
-  private[this] val writer: ImageWriter = {
-    val fmtName = spec.fileType match {
-      case Type.PNG => "png"
-      case Type.JPG => "jpg"
+    imgParam = spec.fileType match {
+      case Type.PNG => null
+      case Type.JPG =>
+        val p = new JPEGImageWriteParam(null)
+        p.setCompressionMode(ImageWriteParam.MODE_EXPLICIT)
+        p.setCompressionQuality(spec.quality * 0.01f)
+        p
     }
 
-    val it = ImageIO.getImageWriters(ImageTypeSpecifier.createFromRenderedImage(img), fmtName)
-    if (!it.hasNext) throw new IllegalArgumentException(s"No image writer for $spec")
-    it.next()
+    writer = {
+      val fmtName = spec.fileType match {
+        case Type.PNG => "png"
+        case Type.JPG => "jpg"
+      }
+
+      val it = ImageIO.getImageWriters(ImageTypeSpecifier.createFromRenderedImage(img), fmtName)
+      if (!it.hasNext) throw new IllegalArgumentException(s"No image writer for $spec")
+      it.next()
+    }
   }
 
-  // ---- Leaf
+  // holds one line of pixels
+  private[this]   var pixBuf: Array[Double]   = _
 
-//  private[this] val asyncCancel = getAsyncCallback[Unit] { _ =>
-//    val ex = Cancelled()
-//    if (resultP.tryFailure(ex)) failStage(ex)
-//  }
-//
-//  def result: Future[Any] = resultP.future
-//
-//  def cancel(): Unit = asyncCancel.invoke(())
+  protected final var img   : BufferedImage   = _
+
+  private[this] var imgParam: ImageWriteParam = _
+  private[this] var writer: ImageWriter = _
 
   // ---- StageLogic and handlers
 
@@ -107,7 +108,7 @@ trait ImageFileOutImpl[S <: Shape] extends InHandler {
     pushed += 1
     if (pushed == numChannels) {
       pushed = 0
-      process1()
+      processImg()
     }
   }
 
@@ -155,7 +156,7 @@ trait ImageFileOutImpl[S <: Shape] extends InHandler {
     val nb      = numChannels
     val g       = gain
     while (ch < nb) {
-      val b = bufIns1(ch).buf
+      val b = bufImg(ch).buf
       var i = ch
       var j = offIn
       while (j < offOut) {
@@ -211,10 +212,11 @@ trait ImageFileOutImpl[S <: Shape] extends InHandler {
     )
 
     var ch = 0
-    while (ch < numChannels) {
-      bufIns1(ch).release()
-      bufIns1(ch) = null
-      pull(inlets1(ch))
+    val nb = numChannels
+    while (ch < nb) {
+      bufImg(ch).release()
+      bufImg(ch) = null
+      pull(inletsImg(ch))
       ch += 1
     }
 
@@ -225,9 +227,10 @@ trait ImageFileOutImpl[S <: Shape] extends InHandler {
   protected final def readIns1(): Int = {
     var ch    = 0
     var chunk = 0
-    while (ch < numChannels) {
-      val bufIn = grab(inlets1(ch))
-      bufIns1(ch)  = bufIn
+    val nb = numChannels
+    while (ch < nb) {
+      val bufIn = grab(inletsImg(ch))
+      bufImg(ch)  = bufIn
       chunk       = if (ch == 0) bufIn.size else math.min(chunk, bufIn.size)
       ch += 1
     }
@@ -237,17 +240,12 @@ trait ImageFileOutImpl[S <: Shape] extends InHandler {
 
   protected final def freeInputBuffers(): Unit = {
     var i = 0
-    while (i < bufIns1.length) {
-      if (bufIns1(i) != null) {
-        bufIns1(i).release()
-        bufIns1(i) = null
+    while (i < bufImg.length) {
+      if (bufImg(i) != null) {
+        bufImg(i).release()
+        bufImg(i) = null
       }
       i += 1
     }
   }
-
-//  override def onUpstreamFailure(ex: Throwable): Unit = {
-//    resultP.failure(ex)
-//    super.onUpstreamFailure(ex)
-//  }
 }

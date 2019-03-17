@@ -47,16 +47,17 @@ object ImageFileOut {
     extends NodeImpl(s"$name(${f.name})", layer, shape)
     with NodeHasInitImpl with ImageFileOutImpl[Shape] {
 
-    protected val inlets1: Vec[InD ] = shape.inlets.toIndexedSeq
+    protected val inletsImg: Vec[InD ] = shape.inlets.toIndexedSeq
 
     shape.inlets.foreach(setHandler(_, this))
 
     override protected def init(): Unit = {
       super.init()
+      initSpec(spec)
       openImage(f)
     }
 
-    protected def process1(): Unit = {
+    protected def processImg(): Unit = {
       val chunk = readIns1()
       if (chunk > 0) {
         processChunk(inOff = 0, chunk = chunk)
