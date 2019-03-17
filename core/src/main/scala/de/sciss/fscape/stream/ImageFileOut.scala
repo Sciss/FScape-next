@@ -51,6 +51,8 @@ object ImageFileOut {
 
     shape.inlets.foreach(setHandler(_, this))
 
+    protected def numChannels: Int = spec.numChannels
+
     override protected def init(): Unit = {
       super.init()
       initSpec(spec)
@@ -58,7 +60,7 @@ object ImageFileOut {
     }
 
     protected def processImg(): Unit = {
-      val chunk = readIns1()
+      val chunk = readImgInlets()
       if (chunk > 0) {
         processChunk(inOff = 0, chunk = chunk)
       }

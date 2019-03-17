@@ -41,10 +41,12 @@ trait ImageFileOutImpl[S <: Shape] extends InHandler {
   /** Called when all of `inletsImg` are ready. */
   protected def processImg(): Unit
 
+  protected def numChannels: Int
+
   // ---- impl ----
 
-  private[this]   var numChannels   : Int             = _
-  private[this]   var bufImg        : Array[BufD]     = _
+  private[this] val bufImg = new Array[BufD](numChannels)
+
   protected final var numFrames     : Int             = _
   protected final var framesWritten : Int             = _
   protected final var gain          : Double          = _
@@ -55,9 +57,8 @@ trait ImageFileOutImpl[S <: Shape] extends InHandler {
 //  private /* [this] */ val resultP = Promise[Long]()
 
   protected final def initSpec(spec: ImageFile.Spec): Unit = {
-    numChannels = spec.numChannels
+    require (numChannels == spec.numChannels)
     numFrames   = spec.width * spec.height
-    bufImg      = new Array[BufD](numChannels)
     val (dataType, _gain) = spec.sampleFormat match {
       case SampleFormat.Int8  => DataBuffer.TYPE_BYTE   ->   255.0
       case SampleFormat.Int16 => DataBuffer.TYPE_USHORT -> 65535.0
@@ -123,14 +124,17 @@ trait ImageFileOutImpl[S <: Shape] extends InHandler {
 
   override protected def stopped(): Unit = {
     logStream(s"$this - postStop()")
-    closeImage()
+    if (writer != null) {
+      closeImage()
+      writer.dispose()
+      writer = null
+    }
     pixBuf = null
     if (img != null) {
       img.flush()
       img = null
     }
     freeInputBuffers()
-    writer.dispose()
 //    resultP.trySuccess(numFrames.toLong * imagesWritten)
   }
 
@@ -224,7 +228,7 @@ trait ImageFileOutImpl[S <: Shape] extends InHandler {
 //    if (framesWritten == numFrames) completeStage()
   }
 
-  protected final def readIns1(): Int = {
+  protected final def readImgInlets(): Int = {
     var ch    = 0
     var chunk = 0
     val nb = numChannels

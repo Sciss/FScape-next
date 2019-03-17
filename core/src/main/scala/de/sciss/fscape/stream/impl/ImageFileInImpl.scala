@@ -194,15 +194,20 @@ trait ImageFileInImpl[S <: Shape] extends OutHandler {
     }
   }
 
-  override final def onDownstreamFinish(): Unit =
+  override final def onDownstreamFinish(): Unit = {
+    logStream(s"onDownstreamFinish() $this")
     if (shape.outlets.forall(isClosed(_))) {
       logStream(s"completeStage() $this")
       completeStage()
     }
+  }
 
   protected final def canWrite: Boolean =
     shape.outlets.forall(out => isClosed(out) || isAvailable(out))
 
-  override final def onPull(): Unit =
-    if (numChannels == 1 || canWrite) process()
+  override final def onPull(): Unit = {
+    val ok = numChannels == 1 || canWrite
+    logStream(s"onPull() - $ok - $this")
+    if (ok) process()
+  }
 }

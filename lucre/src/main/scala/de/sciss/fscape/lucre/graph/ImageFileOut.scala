@@ -19,8 +19,8 @@ import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.graph.ImageFile.{SampleFormat, Type}
 import de.sciss.fscape.lucre.UGenGraphBuilder
 import de.sciss.fscape.lucre.UGenGraphBuilder.Input
-import de.sciss.fscape.stream.{StreamIn, StreamOut}
-import de.sciss.fscape.{GE, Lazy, UGen, UGenGraph, UGenIn, UGenInLike, UGenSource, lucre, stream}
+import de.sciss.fscape.stream.StreamIn
+import de.sciss.fscape.{GE, Lazy, UGen, UGenGraph, UGenIn, UGenSource, lucre, stream}
 
 import scala.annotation.switch
 import scala.collection.immutable.{IndexedSeq => Vec}

@@ -210,7 +210,7 @@ object IfThenGE {
         logStream(s"onUpstreamFinish() $self.${in.s}")
         // if we made the decision, ignore,
         // otherwise shut down including branches
-        if (selBranchIdx < 0) {
+        if (!condDone(branchIdx) && selBranchIdx < 0) {
           completeAll()
           super.onUpstreamFinish()
         }

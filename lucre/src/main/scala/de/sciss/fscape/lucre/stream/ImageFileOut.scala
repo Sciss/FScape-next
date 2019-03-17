@@ -60,7 +60,7 @@ object ImageFileOut {
     def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer, f, numChannels = numChannels)
   }
 
-  private final class Logic(shape: Shape, layer: Layer, f: File, numChannels: Int)
+  private final class Logic(shape: Shape, layer: Layer, f: File, protected val numChannels: Int)
                            (implicit ctrl: Control)
     extends NodeImpl(s"$name(${f.name})", layer, shape)
       with ImageFileOutImpl[Shape] { self =>
@@ -130,7 +130,7 @@ object ImageFileOut {
 
     protected def processImg(): Unit = {
       if (specReady) {
-        val chunk = readIns1()
+        val chunk = readImgInlets()
         if (chunk > 0) {
           processChunk(inOff = 0, chunk = chunk)
         }

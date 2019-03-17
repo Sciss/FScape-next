@@ -52,6 +52,8 @@ object ImageFileSeqOut {
     extends NodeImpl(s"$name(${template.name})", layer, shape)
     with NodeHasInitImpl with ImageFileOutImpl[Shape] { logic =>
 
+    protected def numChannels: Int = spec.numChannels
+
     protected val inletsImg: Vec[InD] = shape.inlets1.toIndexedSeq
     private[this] val in0 = shape.in0
 
@@ -158,7 +160,7 @@ object ImageFileSeqOut {
       }
 
       if (shouldRead1) {
-        inRemain1     = readIns1()
+        inRemain1     = readImgInlets()
         inOff1        = 0
         _canRead1     = false
         stateChange   = true
