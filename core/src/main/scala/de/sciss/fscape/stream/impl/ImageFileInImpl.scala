@@ -26,7 +26,7 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.util.control.NonFatal
 
 /** Common building block for `ImageFileIn` and `ImageFileSeqIn` */
-trait ImageFileInImpl[S <: Shape] extends OutHandler {
+trait ImageFileInImpl[S <: Shape] extends NodeHasInitImpl with OutHandler {
   _: NodeImpl[S] =>
 
   // ---- abstract ----
@@ -206,7 +206,7 @@ trait ImageFileInImpl[S <: Shape] extends OutHandler {
     shape.outlets.forall(out => isClosed(out) || isAvailable(out))
 
   override final def onPull(): Unit = {
-    val ok = numChannels == 1 || canWrite
+    val ok = isInitialized && (numChannels == 1 || canWrite)
     logStream(s"onPull() - $ok - $this")
     if (ok) process()
   }

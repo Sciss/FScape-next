@@ -57,6 +57,11 @@ object ImageFileIn {
       openImage(f)
     }
 
+    override protected def launch(): Unit = {
+      super.launch()
+      onPull()  // needed for asynchronous logic
+    }
+
     protected def freeInputBuffers(): Unit = ()
 
     protected def process(): Unit = {

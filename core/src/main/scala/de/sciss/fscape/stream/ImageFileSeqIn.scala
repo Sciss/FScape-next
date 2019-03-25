@@ -78,6 +78,12 @@ object ImageFileSeqIn {
     @inline
     private[this] def shouldRead = inRemain == 0 && _canRead
 
+
+    override protected def launch(): Unit = {
+      super.launch()
+      onPull()  // needed for asynchronous logic
+    }
+
     @tailrec
     protected def process(): Unit = {
       logStream(s"process() $this")

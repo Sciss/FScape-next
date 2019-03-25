@@ -14,7 +14,7 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.stage.{GraphStageLogic, InHandler, OutHandler}
+import akka.stream.stage.{InHandler, OutHandler}
 import akka.stream.{Attributes, UniformFanInShape}
 import de.sciss.file._
 import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeHasInitImpl, NodeImpl}
@@ -52,16 +52,20 @@ object AudioFileOut {
 
   private final class Logic(shape: Shape, layer: Layer, protected val file: File, protected val spec: io.AudioFileSpec)
                            (implicit ctrl: Control)
-    extends NodeImpl(s"$name(${file.name})", layer, shape) with AbstractLogic {
-  }
+    extends AbstractLogic(s"$name(${file.name})", layer, shape)
 
-  trait AbstractLogic extends NodeHasInitImpl with OutHandler { logic: GraphStageLogic =>
+  abstract class AbstractLogic(name: String, layer: Layer, shape: Shape)(implicit control: Control)
+    extends NodeImpl[Shape](name, layer, shape)
+    with NodeHasInitImpl with OutHandler {
+
+    logic: NodeImpl[Shape] =>
+
     // ---- abstract ----
 
     protected def file : File
     protected def spec : io.AudioFileSpec
 
-    def shape: Shape
+//    def shape: Shape
 
     // ---- impl ----
 
@@ -92,7 +96,7 @@ object AudioFileOut {
     private final class InH(in: InD /* , ch: Int */) extends InHandler {
       def onPush(): Unit = {
         pushed += 1
-        if (pushed == numChannels && isAvailable(shape.out)) process()
+        if (canProcess) process()
       }
 
       override def onUpstreamFinish(): Unit = {
@@ -114,6 +118,11 @@ object AudioFileOut {
       af = io.AudioFile.openWrite(file, spec)
     }
 
+    override protected def launch(): Unit = {
+      super.launch()
+      onPull()  // needed for asynchronous logic
+    }
+
     override protected def stopped(): Unit = {
       logStream(s"$this - postStop()")
       buf = null
@@ -133,8 +142,15 @@ object AudioFileOut {
       // }
     }
 
+    private def canProcess: Boolean =
+      pushed == numChannels && (isClosed(shape.out) || isAvailable(shape.out))
+
     final def onPull(): Unit =
-      if (pushed == numChannels) process()
+      if (isInitialized && canProcess) process()
+
+    // we do not care if the consumer of the frame information closes early.
+    override def onDownstreamFinish(): Unit =
+      onPull()
 
     private def process(): Unit = {
 //      logStream(s"process() $this")

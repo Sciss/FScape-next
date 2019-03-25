@@ -21,7 +21,7 @@ import akka.stream.stage.GraphStageLogic
 import scala.concurrent.{ExecutionContext, Future}
 
 abstract class NodeImpl[+S <: Shape](protected final val name: String, val layer: Layer,
-                                     final val shape: S)
+                                     final override val shape: S)
                                     (implicit final protected val control: Control)
   extends GraphStageLogic(shape) with Node {
 
@@ -63,12 +63,17 @@ abstract class NodeImpl[+S <: Shape](protected final val name: String, val layer
 trait NodeHasInitImpl extends NodeHasInit {
   _: GraphStageLogic =>
 
+  private[this] var _init = false
+
   protected def init(): Unit = ()
+
+  protected final def isInitialized: Boolean = _init
 
   final def initAsync(): Future[Unit] = {
     val async = getAsyncCallback { _: Unit =>
       logStream(s"$this - initAsync")
       init()
+      _init = true
     }
 
     implicit val ex: ExecutionContext = control.config.executionContext

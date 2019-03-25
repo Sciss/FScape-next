@@ -83,6 +83,11 @@ object Slices {
       af = FileBuffer()
     }
 
+    override protected def launch(): Unit = {
+      super.launch()
+      if (isAvailable(shape.out)) onPull()  // needed for asynchronous logic
+    }
+
     override protected def stopped(): Unit = {
       super.stopped()
       freeAuxBuffers()
@@ -226,7 +231,7 @@ object Slices {
 
     def onPull(): Unit = {
       logStream(s"onPull(${shape.out})")
-      process()
+      if (isInitialized) process()
     }
   }
 }

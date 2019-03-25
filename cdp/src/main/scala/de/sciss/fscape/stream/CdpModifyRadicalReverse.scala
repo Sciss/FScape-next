@@ -88,6 +88,11 @@ object CdpModifyRadicalReverse {
       bufSize     = ctrl.blockSize
     }
 
+    override protected def launch(): Unit = {
+      super.launch()
+      onPull()  // needed for asynchronous logic
+    }
+
     override def onUpstreamFinish(): Unit = {
       proceedToCdp()
 //      if (isAvailable(shape.in)) {
@@ -124,7 +129,7 @@ object CdpModifyRadicalReverse {
       if (state == 0) processSink()
 
     override def onPull(): Unit =
-      if (state == 1) processSource()
+      if (/*isInitialized &&*/ state == 1) processSource()
 
     private def checkBuf(chunk: Int): Unit =
       if (buf == null || buf(0).length < chunk) buf = afSink.buffer(chunk)

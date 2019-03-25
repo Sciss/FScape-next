@@ -65,6 +65,11 @@ object AudioFileIn {
       buf         = af.buffer(bufSize)
     }
 
+    override protected def launch(): Unit = {
+      super.launch()
+      onPull()  // needed for asynchronous logic
+    }
+
     override protected def stopped(): Unit = {
       logStream(s"postStop() $this")
       buf = null
@@ -85,7 +90,9 @@ object AudioFileIn {
       }
 
     override def onPull(): Unit =
-      if (numChannels == 1 || shape.outlets.forall(out => isClosed(out) || isAvailable(out))) process()
+      if (isInitialized && (numChannels == 1 || shape.outlets.forall(out => isClosed(out) || isAvailable(out)))) {
+        process()
+      }
 
     private def process(): Unit = {
       val chunk = math.min(bufSize, af.numFrames - framesRead).toInt

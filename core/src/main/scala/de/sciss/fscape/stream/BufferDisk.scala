@@ -61,6 +61,11 @@ object BufferDisk {
       af = FileBuffer()
     }
 
+    override protected def launch(): Unit = {
+      super.launch()
+      if (isAvailable(shape.out)) onPull()  // needed for asynchronous logic
+    }
+
     override protected def stopped(): Unit = {
       super.stopped()
       buf = null
@@ -88,7 +93,7 @@ object BufferDisk {
       if (isAvailable(shape.out)) onPull()
     }
 
-    def onPull(): Unit = {
+    def onPull(): Unit = if (isInitialized) {
       val inputDone   = isClosed(shape.in) && !isAvailable(shape.in)
       val framesAvail = framesWritten - framesRead
       if (!inputDone && framesAvail < bufSize) return

@@ -16,7 +16,7 @@ package stream
 
 import akka.stream.stage.InHandler
 import akka.stream.{Attributes, SinkShape}
-import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeImpl}
+import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 
 object DebugOut {
   def apply(in: OutD)(implicit b: Builder): Unit = {
@@ -30,7 +30,7 @@ object DebugOut {
     private type Shape = SinkShape[BufD]
 
   private final class Stage(layer: Layer)(implicit protected val ctrl: Control)
-    extends BlockingGraphStage[Shape](s"$name") {
+    extends StageImpl[Shape](s"$name") {
 
     val shape: Shape = SinkShape[BufD](InD(s"$name.in"))
 

@@ -116,6 +116,11 @@ trait ImageFileOutImpl[S <: Shape] extends InHandler {
     }
   }
 
+  override def onUpstreamFinish(): Unit = {
+    logStream(s"$this - onUpstreamFinish()")
+    super.onUpstreamFinish()
+  }
+
   /** Resets `framesWritten`. */
   protected final def openImage(f: File): Unit = {
     closeImage()

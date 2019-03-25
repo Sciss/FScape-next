@@ -17,7 +17,7 @@ import akka.stream.{Attributes, UniformFanInShape}
 import de.sciss.file._
 import de.sciss.fscape.lucre.FScape.Output
 import de.sciss.fscape.lucre.UGenGraphBuilder.OutputRef
-import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeImpl}
+import de.sciss.fscape.stream.impl.BlockingGraphStage
 import de.sciss.fscape.stream.{BufD, BufL, Builder, Control, InD, Layer, OutD, OutL, AudioFileOut => _AudioFileOut}
 import de.sciss.serial.DataOutput
 import de.sciss.synth.io
@@ -56,7 +56,12 @@ object MkAudioCue {
   private final class Logic(shape: Shape, layer: Layer, ref: OutputRef, protected val file: File,
                             protected val spec: io.AudioFileSpec)
                            (implicit ctrl: Control)
-    extends NodeImpl(s"$name(${file.name})", layer, shape) with _AudioFileOut.AbstractLogic {
+    extends _AudioFileOut.AbstractLogic(s"$name(${file.name})", layer, shape) {
+
+    protected override def launch(): Unit = {
+      super.launch()
+      onPull()  // needed for asynchronous logic
+    }
 
     override protected def stopped(): Unit = {
       super.stopped()

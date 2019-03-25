@@ -62,6 +62,11 @@ object Control {
     def executionContext: ExecutionContext
 
     def progressReporter: ProgressReporter
+
+    /** For debugging purposes, we can provide a future to suspend the
+      * launching of nodes until that future is completed
+      */
+    def debugWaitLaunch: Option[Future[Unit]]
   }
 
   object Config {
@@ -77,7 +82,8 @@ object Control {
                           materializer0     : Materializer,
                           executionContext0 : ExecutionContext,
                           progressReporter  : ProgressReporter,
-                          terminateActors   : Boolean
+                          terminateActors   : Boolean,
+                          debugWaitLaunch   : Option[Future[Unit]]
                          )
     extends ConfigLike {
 
@@ -95,6 +101,7 @@ object Control {
       b.executionContext  = executionContext
       b.progressReporter  = progressReporter
       b.terminateActors   = terminateActors
+      b.debugWaitLaunch   = debugWaitLaunch
       b
     }
   }
@@ -166,6 +173,8 @@ object Control {
 
     var progressReporter: ProgressReporter = NoReport
 
+    var debugWaitLaunch = Option.empty[Future[Unit]]
+
     def build = Config(
       blockSize         = blockSize,
       nodeBufferSize    = nodeBufferSize,
@@ -175,7 +184,8 @@ object Control {
       terminateActors   = terminateActors,
       materializer0     = materializer,
       executionContext0 = executionContext,
-      progressReporter  = progressReporter
+      progressReporter  = progressReporter,
+      debugWaitLaunch   = debugWaitLaunch
     )
   }
 
@@ -310,14 +320,19 @@ object Control {
     private def actLaunch(layer: Layer, done: Promise[Unit]): Unit = {
       logControl(s"${hashCode().toHexString} actLaunch")
       val nodes0 = nodesInLayer(layer)
-      val futInit: Seq[Future[Unit]] = nodes0.iterator.collect {
+      val futInit0: List[Future[Unit]] = nodes0.iterator.collect {
         case ni: NodeHasInit => ni.initAsync()
-      } .toSeq
+      } .toList
 
-      logControl(s"${hashCode().toHexString} actLaunch. # NodeHasInit = ${futInit.size}")
+      logControl(s"${hashCode().toHexString} actLaunch. # NodeHasInit = ${futInit0.size}")
 
       import config.executionContext
-      val futLaunch: Future[Unit] = Future.sequence(futInit).flatMap { _ =>
+      val futInit1 = config.debugWaitLaunch match {
+        case Some(futWait)  => futWait :: futInit0
+        case None           => futInit0
+      }
+      val futInit   = Future.sequence(futInit1)
+      val futLaunch: Future[Unit] = futInit.flatMap { _ =>
         logControl(s"${hashCode().toHexString} actLaunch. launchAsync()")
         val inner = nodes0.map { n =>
           n.launchAsync()

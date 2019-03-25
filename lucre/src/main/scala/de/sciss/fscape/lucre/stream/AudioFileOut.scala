@@ -92,7 +92,7 @@ object AudioFileOut {
     }
 
     private def canProcess: Boolean =
-      afValid && pushed == numChannels && isAvailable(shape.out)
+      afValid && pushed == numChannels && (isClosed(shape.out) || isAvailable(shape.out))
 
     setHandler(shape.in0, new InHandler {
       def onPush(): Unit = {
@@ -203,6 +203,10 @@ object AudioFileOut {
     def onPull(): Unit =
       if (canProcess) process()
 
+    // we do not care if the consumer of the frame information closes early.
+    override def onDownstreamFinish(): Unit =
+      onPull()
+
     private def process(): Unit = {
       //      logStream(s"process() $this")
       logStream(s"process() $this")
@@ -256,7 +260,7 @@ object AudioFileOut {
         j += 1
       }
       bufOut.size = chunk
-      push(shape.out, bufOut)
+      if (!isClosed(shape.out)) push(shape.out, bufOut)
 
       if (shouldStop) {
         _isSuccess = true
