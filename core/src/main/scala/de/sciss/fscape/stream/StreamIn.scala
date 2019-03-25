@@ -14,9 +14,7 @@
 package de.sciss.fscape
 package stream
 
-import akka.NotUsed
 import akka.stream.Outlet
-import akka.stream.scaladsl.{GraphDSL, Sink}
 
 import scala.annotation.switch
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -377,9 +375,7 @@ object StreamOut {
 
     def toIn(numChildren: Int)(implicit b: stream.Builder): StreamIn = (numChildren: @switch) match {
       case 0 =>
-        implicit val dsl: GraphDSL.Builder[NotUsed] = b.dsl
-        import GraphDSL.Implicits._
-        peer ~> Sink.ignore
+        SinkIgnore(peer)
         StreamIn.unused
       case 1 => StreamIn.singleD(peer)
       case _ => StreamIn.multiD (peer, numChildren)
@@ -391,9 +387,7 @@ object StreamOut {
 
     def toIn(numChildren: Int)(implicit b: stream.Builder): StreamIn = (numChildren: @switch) match {
       case 0 =>
-        implicit val dsl: GraphDSL.Builder[NotUsed] = b.dsl
-        import GraphDSL.Implicits._
-        peer ~> Sink.ignore
+        SinkIgnore(peer)
         StreamIn.unused
       case 1 => StreamIn.singleI(peer)
       case _ => StreamIn.multiI (peer, numChildren)
@@ -405,9 +399,7 @@ object StreamOut {
 
     def toIn(numChildren: Int)(implicit b: stream.Builder): StreamIn = (numChildren: @switch) match {
       case 0 =>
-        implicit val dsl: GraphDSL.Builder[NotUsed] = b.dsl
-        import GraphDSL.Implicits._
-        peer ~> Sink.ignore
+        SinkIgnore(peer)
         StreamIn.unused
       case 1 => StreamIn.singleL(peer)
       case _ => StreamIn.multiL (peer, numChildren)

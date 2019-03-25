@@ -112,12 +112,12 @@ object AudioFileOut {
   *                     pointing to an `Artifact` or `AudioCue`
   * @param in           the signal to write
   * @param fileType     a file type id as given by `AudioFileOut.id()`. The default
-  *                     is `0` (AIFF).
+  *                     is `-1` (auto-detect).
   * @param sampleFormat a sample format id as given by `AudioFileOut.id()`. The default
   *                     is `2` (32-bit Float).
   * @param sampleRate   the nominal sample-rate of the file. The default is `44100`.
   */
-final case class AudioFileOut(key: String, in: GE, fileType: GE = 0, sampleFormat: GE = 2, sampleRate: GE = 44100.0)
+final case class AudioFileOut(key: String, in: GE, fileType: GE = -1, sampleFormat: GE = 2, sampleRate: GE = 44100.0)
   extends GE.Lazy {
 
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = {

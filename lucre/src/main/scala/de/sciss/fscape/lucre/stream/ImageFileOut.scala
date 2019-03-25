@@ -14,12 +14,10 @@
 package de.sciss.fscape.lucre.stream
 
 import akka.stream.Attributes
-import akka.stream.stage.InHandler
 import de.sciss.file._
 import de.sciss.fscape.graph.ImageFile
-import de.sciss.fscape.logStream
-import de.sciss.fscape.lucre.graph.{ImageFileOut => IF}
-import de.sciss.fscape.stream.impl.{BlockingGraphStage, ImageFileOutImpl, In5UniformSinkShape, NodeImpl}
+import de.sciss.fscape.lucre.stream.impl.ImageFileOutReadsSpec
+import de.sciss.fscape.stream.impl.{BlockingGraphStage, ImageFileSingleOutImpl, In5UniformSinkShape, NodeImpl}
 import de.sciss.fscape.stream.{BufD, BufI, Builder, Control, InD, InI, Layer, OutD, OutI}
 import de.sciss.synth.UGenSource.Vec
 
@@ -63,84 +61,17 @@ object ImageFileOut {
   private final class Logic(shape: Shape, layer: Layer, f: File, protected val numChannels: Int)
                            (implicit ctrl: Control)
     extends NodeImpl(s"$name(${f.name})", layer, shape)
-      with ImageFileOutImpl[Shape] { self =>
+      with ImageFileSingleOutImpl[Shape] with ImageFileOutReadsSpec[Shape] { self =>
 
-    protected val inletsImg: Vec[InD ] = shape.inlets5.toIndexedSeq
+    protected val inletsImg: Vec[InD] = shape.inlets5.toIndexedSeq
 
-    shape.inlets5.foreach(setHandler(_, this))
+    setImageInHandlers()
+    setSpecHandlers(inWidth = shape.in0, inHeight = shape.in1, inType = shape.in2,
+      inFormat = shape.in3, inQuality = shape.in4, fileOrTemplate = f)
 
-    private[this] var width       : Int = _
-    private[this] var height      : Int = _
-    private[this] var fileType    : ImageFile.Type = _
-    private[this] var sampleFormat: ImageFile.SampleFormat = _
-    private[this] var quality     : Int = _
-
-    private[this] var specDataRem     = 5
-    private[this] var imgInletsReady  = false
-
-    @inline private[this] def specReady: Boolean = specDataRem == 0
-
-    private def mkSpec(): Unit = {
-      val spec = ImageFile.Spec(fileType = fileType, sampleFormat = sampleFormat, width = width, height = height,
-        numChannels = numChannels, quality = quality)
-      initSpec(spec)
+    override protected def initSpec(spec: ImageFile.Spec): Unit = {
+      super.initSpec(spec)
       openImage(f)
-      if (imgInletsReady) processImg()
-    }
-
-    private final class SpecInHandler(in: InI)(set: Int => Unit) extends InHandler {
-      private[this] var done = false
-
-      override def toString: String = s"$self.$in"
-
-      def onPush(): Unit = {
-        val b = grab(in)
-        if (!done && b.size > 0) {
-          val i = b.buf(0)
-          set(i)
-          done = true
-          specDataRem -= 1
-          if (specReady) mkSpec()
-        }
-        b.release()
-      }
-
-      override def onUpstreamFinish(): Unit = {
-        if (specDataRem > 0) super.onUpstreamFinish()
-      }
-
-      setHandler(in, this)
-    }
-
-    new SpecInHandler(shape.in0)(w => width   = math.max(1, w))
-    new SpecInHandler(shape.in1)(h => height  = math.max(1, h))
-    new SpecInHandler(shape.in2)({ i =>
-      fileType = if (i < 0) {
-        val ext = f.extL
-        ImageFile.Type.writable.find(_.extensions.contains(ext)).getOrElse(ImageFile.Type.PNG)
-      } else {
-        ImageFile.Type(math.min(IF.maxFileTypeId, i))
-      }
-    })
-    new SpecInHandler(shape.in3)({ i =>
-      sampleFormat =
-        ImageFile.SampleFormat(math.max(0, math.min(IF.maxSampleFormatId, i)))
-    })
-    new SpecInHandler(shape.in4)(q => quality = math.max(0, math.min(100, q)))
-
-    protected def processImg(): Unit = {
-      if (specReady) {
-        val chunk = readImgInlets()
-        if (chunk > 0) {
-          processChunk(inOff = 0, chunk = chunk)
-        }
-        if (framesWritten == numFrames) {
-          logStream(s"completeStage() $this")
-          completeStage()
-        }
-      } else {
-        imgInletsReady = true
-      }
     }
   }
 }

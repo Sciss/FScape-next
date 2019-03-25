@@ -15,7 +15,7 @@ package de.sciss.fscape
 package graph
 
 import de.sciss.fscape.UGenSource.unwrap
-import de.sciss.fscape.stream.{BufD, BufL, StreamIn, StreamOut}
+import de.sciss.fscape.stream.{BufD, BufI, BufL, StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
@@ -41,7 +41,9 @@ final case class ArithmSeq(start: GE = 0, step: GE = 1, length: GE = Long.MaxVal
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
     val Vec(start, step, length) = args
 
-    if ((start.isInt || start.isLong) && (step.isInt || step.isLong)) {
+    if (start.isInt && step.isInt) {
+      stream.ArithmSeq[Int   , BufI](start = start.toInt   , step = step.toInt   , length = length.toLong)
+    } else if ((start.isInt || start.isLong) && (step.isInt || step.isLong)) {
       stream.ArithmSeq[Long  , BufL](start = start.toLong  , step = step.toLong  , length = length.toLong)
     } else {
       stream.ArithmSeq[Double, BufD](start = start.toDouble, step = step.toDouble, length = length.toLong)

@@ -54,9 +54,12 @@ trait ImageFileOutImpl[S <: Shape] extends InHandler {
   private[this] var imagesWritten = 0
   private[this] var pushed        = 0
 
-//  private /* [this] */ val resultP = Promise[Long]()
+  protected final def setImageInHandlers(): Unit =
+    inletsImg.foreach(setHandler(_, this))
 
-  protected final def initSpec(spec: ImageFile.Spec): Unit = {
+  //  private /* [this] */ val resultP = Promise[Long]()
+
+  protected def initSpec(spec: ImageFile.Spec): Unit = {
     require (numChannels == spec.numChannels)
     numFrames   = spec.width * spec.height
     val (dataType, _gain) = spec.sampleFormat match {

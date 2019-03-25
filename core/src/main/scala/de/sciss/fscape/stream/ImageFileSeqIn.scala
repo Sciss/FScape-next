@@ -18,6 +18,7 @@ import akka.stream.stage.InHandler
 import akka.stream.{Attributes, UniformFanOutShape}
 import de.sciss.file._
 import de.sciss.fscape.stream.impl.{BlockingGraphStage, ImageFileInImpl, NodeImpl}
+import de.sciss.fscape.graph.ImageFileSeqIn.formatTemplate
 
 import scala.annotation.tailrec
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -89,8 +90,7 @@ object ImageFileSeqIn {
       }
 
       if (framesRemain == 0 && inRemain > 0) {
-        val name      = template.name.format(bufIn0.buf(inOff))
-        val f         = template.parentOption.fold(file(name))(_ / name)
+        val f = formatTemplate(template, bufIn0.buf(inOff))
         openImage(f)
         framesRemain  = numFrames
         inOff        += 1

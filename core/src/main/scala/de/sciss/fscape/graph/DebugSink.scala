@@ -13,10 +13,8 @@
 
 package de.sciss.fscape.graph
 
-import akka.NotUsed
-import akka.stream.scaladsl.{GraphDSL, Sink}
 import de.sciss.fscape.UGenSource.unwrap
-import de.sciss.fscape.stream.StreamIn
+import de.sciss.fscape.stream.{SinkIgnore, StreamIn}
 import de.sciss.fscape.{GE, UGen, UGenGraph, UGenIn, UGenSource, stream}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -38,8 +36,6 @@ case class DebugSink(in: GE) extends UGenSource.ZeroOut {
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit = {
     val Vec(in) = args
     val peer = in.toAny
-    implicit val dsl: GraphDSL.Builder[NotUsed] = b.dsl
-    import GraphDSL.Implicits._
-    peer ~> Sink.ignore
+    SinkIgnore(peer)
   }
 }

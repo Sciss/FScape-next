@@ -17,7 +17,7 @@ package stream
 import akka.stream.Attributes
 import de.sciss.file._
 import de.sciss.fscape.graph.ImageFile.Spec
-import de.sciss.fscape.stream.impl.{BlockingGraphStage, ImageFileOutImpl, NodeHasInitImpl, NodeImpl, UniformSinkShape}
+import de.sciss.fscape.stream.impl.{BlockingGraphStage, ImageFileSingleOutImpl, NodeHasInitImpl, NodeImpl, UniformSinkShape}
 
 import scala.collection.immutable.{IndexedSeq => Vec, Seq => ISeq}
 
@@ -45,11 +45,13 @@ object ImageFileOut {
 
   private final class Logic(shape: Shape, layer: Layer, f: File, protected val spec: Spec)(implicit ctrl: Control)
     extends NodeImpl(s"$name(${f.name})", layer, shape)
-    with NodeHasInitImpl with ImageFileOutImpl[Shape] {
+    with NodeHasInitImpl with ImageFileSingleOutImpl[Shape] {
 
-    protected val inletsImg: Vec[InD ] = shape.inlets.toIndexedSeq
+    protected val inletsImg: Vec[InD] = shape.inlets.toIndexedSeq
 
-    shape.inlets.foreach(setHandler(_, this))
+    setImageInHandlers()
+
+    protected def specReady: Boolean = true
 
     protected def numChannels: Int = spec.numChannels
 
@@ -57,17 +59,6 @@ object ImageFileOut {
       super.init()
       initSpec(spec)
       openImage(f)
-    }
-
-    protected def processImg(): Unit = {
-      val chunk = readImgInlets()
-      if (chunk > 0) {
-        processChunk(inOff = 0, chunk = chunk)
-      }
-      if (framesWritten == numFrames) {
-        logStream(s"completeStage() $this")
-        completeStage()
-      }
     }
   }
 }

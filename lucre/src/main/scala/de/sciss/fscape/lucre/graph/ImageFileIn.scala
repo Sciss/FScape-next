@@ -25,7 +25,7 @@ object ImageFileIn {
     override def productPrefix = s"ImageFileIn$$Width"
 
     protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = {
-      val (_, spec) = ImageFileIn.getSpec(key, b)
+      val (_, spec) = ImageFileIn.getSpec(key)
       spec.width
     }
   }
@@ -34,12 +34,12 @@ object ImageFileIn {
     override def productPrefix = s"ImageFileIn$$Height"
 
     protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = {
-      val (_, spec) = ImageFileIn.getSpec(key, b)
+      val (_, spec) = ImageFileIn.getSpec(key)
       spec.height
     }
   }
 
-  private def getSpec(key: String, b: UGenGraph.Builder): (File, ImageFile.Spec) = {
+  private def getSpec(key: String)(implicit b: UGenGraph.Builder): (File, ImageFile.Spec) = {
     val ub  = UGenGraphBuilder.get(b)
     val res = ub.requestInput(Input.Attribute(key)).peer
       .fold[(File, ImageFile.Spec)](sys.error(s"ImageFileIn missing attribute $key")) {
@@ -53,7 +53,7 @@ object ImageFileIn {
 }
 final case class ImageFileIn(key: String) extends GE.Lazy {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = {
-    val (f, spec) = ImageFileIn.getSpec(key, b)
+    val (f, spec) = ImageFileIn.getSpec(key)
     fscape.graph.ImageFileIn(file = f, numChannels = spec.numChannels)
   }
 
