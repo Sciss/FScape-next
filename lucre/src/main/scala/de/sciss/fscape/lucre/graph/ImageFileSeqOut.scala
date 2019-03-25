@@ -43,12 +43,12 @@ object ImageFileSeqOut {
   def maxSampleFormatId: Int = ImageFileOut.maxSampleFormatId
 
   final case class WithFile(template: File, in: GE, width: GE, height: GE, fileType: GE,
-                            sampleFormat: GE, quality: GE)
+                            sampleFormat: GE, quality: GE, indices: GE)
     extends UGenSource.ZeroOut {
 
     protected def makeUGens(implicit b: UGenGraph.Builder): Unit =
       unwrap(this, width.expand +: height.expand +: fileType.expand +: sampleFormat.expand +: quality.expand +:
-        in.expand.outputs)
+        indices.expand +: in.expand.outputs)
 
     protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit =
       UGen.ZeroOut(this, args, aux = Aux.FileOut(template) :: Nil, isIndividual = true)
@@ -101,7 +101,7 @@ final case class ImageFileSeqOut(key: String, in: GE, width: GE, height: GE, fil
 
       case f: File =>
         ImageFileSeqOut.WithFile(template = f, in = in, width = width, height = height, fileType = fileType,
-          sampleFormat = sampleFormat, quality = quality)
+          sampleFormat = sampleFormat, quality = quality, indices = indices)
 
       case other =>
         sys.error(s"$this - requires Artifact value, found $other")

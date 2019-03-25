@@ -178,7 +178,7 @@ trait ImageFileInImpl[S <: Shape] extends OutHandler {
       val bufOut  = bufOuts(ch)
       if (bufOut != null) {
         if (isClosed(out)) {
-          println(s"Wowowo - $out closed")
+          // println(s"Wowowo - $out closed")
           bufOut.release()
         } else {
           if (chunk > 0) {

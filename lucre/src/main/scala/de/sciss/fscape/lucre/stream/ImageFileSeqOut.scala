@@ -47,6 +47,8 @@ object ImageFileSeqOut {
   private final class Stage(layer: Layer, template: File, numChannels: Int)(implicit protected val ctrl: Control)
     extends BlockingGraphStage[Shape](s"$name(${template.name})") {
 
+    require (numChannels > 0)
+
     val shape: Shape = In6UniformSinkShape(
       InI (s"$name.width"       ),
       InI (s"$name.height"      ),

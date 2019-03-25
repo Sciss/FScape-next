@@ -261,6 +261,7 @@ object Control {
     private[this] var tryResult = Ok
 
     private def actNodeFailed(n: Node, ex: Throwable): Unit = if (tryResult.isSuccess) {
+      logControl(s"actNodeFailed($n, $ex)")
       tryResult = Failure(ex)
     }
 
@@ -313,8 +314,11 @@ object Control {
         case ni: NodeHasInit => ni.initAsync()
       } .toSeq
 
+      logControl(s"${hashCode().toHexString} actLaunch. # NodeHasInit = ${futInit.size}")
+
       import config.executionContext
       val futLaunch: Future[Unit] = Future.sequence(futInit).flatMap { _ =>
+        logControl(s"${hashCode().toHexString} actLaunch. launchAsync()")
         val inner = nodes0.map { n =>
           n.launchAsync()
         }
@@ -337,7 +341,7 @@ object Control {
     private def actCancel(): Unit = {
       logControl(s"${hashCode().toHexString} actCancel")
       val ex = Cancelled()
-      statusP.tryFailure(ex)
+//      statusP.tryFailure(ex)
       val nodes0 = nodes
       nodes0.foreach { n =>
         n.failAsync(ex)

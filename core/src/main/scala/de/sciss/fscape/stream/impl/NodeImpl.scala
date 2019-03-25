@@ -38,7 +38,8 @@ abstract class NodeImpl[+S <: Shape](protected final val name: String, val layer
 
   protected def launch(): Unit = {
     logStream(s"$this - launch")
-    shape.inlets.foreach(pull(_))
+    // N.B.: `tryPull` not `pull`, because now the graph interpreter may have processed some nodes already
+    shape.inlets.foreach(tryPull(_))
   }
 
   final def failAsync(ex: Exception): Unit = {

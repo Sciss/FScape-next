@@ -2,7 +2,7 @@ package de.sciss.fscape.stream
 
 import akka.stream.stage.InHandler
 import akka.stream.{Attributes, Inlet, Outlet, SinkShape}
-import de.sciss.fscape.stream
+import de.sciss.fscape.{logStream, stream}
 import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 
 object SinkIgnore {
@@ -29,6 +29,13 @@ object SinkIgnore {
 
     setHandler(shape.in, this)
 
+    override protected def launch(): Unit = {
+      logStream(s"$this - launch")
+      completeStage()
+      // super.launch()
+    }
+
+    // should never get here
     def onPush(): Unit = {
       val buf = grab(shape.in)
       buf.release()
