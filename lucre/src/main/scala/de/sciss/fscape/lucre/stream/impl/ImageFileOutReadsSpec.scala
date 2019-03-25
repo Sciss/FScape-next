@@ -35,7 +35,7 @@ trait ImageFileOutReadsSpec[S <: Shape] extends ImageFileOutImpl[S] {
 
     override def toString: String = s"$logic.$in"
 
-    def onPush(): Unit = {
+    def onPush(): Unit = if (isInitialized) {
       val b = grab(in)
       if (!done && b.size > 0) {
         val i = b.buf(0)
@@ -47,18 +47,26 @@ trait ImageFileOutReadsSpec[S <: Shape] extends ImageFileOutImpl[S] {
       b.release()
     }
 
+    def checkPushed(): Unit =
+      if (isAvailable(in)) onPush()
+
     override def onUpstreamFinish(): Unit = {
-      if (specDataRem > 0) super.onUpstreamFinish()
+      if (!done && !isAvailable(in)) super.onUpstreamFinish()
     }
 
     setHandler(in, this)
   }
 
+  private[this] val specHandlers = new Array[SpecInHandler](5)
+
+  protected final def checkSpecPushed(): Unit =
+    specHandlers.foreach(_.checkPushed())
+
   protected final def setSpecHandlers(inWidth: InI, inHeight: InI, inType: InI, inFormat: InI, inQuality: InI,
                                       fileOrTemplate: File): Unit = {
-    new SpecInHandler(inWidth )(w => width   = math.max(1, w))
-    new SpecInHandler(inHeight)(h => height  = math.max(1, h))
-    new SpecInHandler(inType)({ i =>
+    val s0 = new SpecInHandler(inWidth )(w => width   = math.max(1, w))
+    val s1 = new SpecInHandler(inHeight)(h => height  = math.max(1, h))
+    val s2 = new SpecInHandler(inType)({ i =>
       fileType = if (i < 0) {
         val ext = fileOrTemplate.extL
         ImageFile.Type.writable.find(_.extensions.contains(ext)).getOrElse(ImageFile.Type.PNG)
@@ -66,10 +74,15 @@ trait ImageFileOutReadsSpec[S <: Shape] extends ImageFileOutImpl[S] {
         ImageFile.Type(math.min(IF.maxFileTypeId, i))
       }
     })
-    new SpecInHandler(inFormat)({ i =>
+    val s3 = new SpecInHandler(inFormat)({ i =>
       sampleFormat =
         ImageFile.SampleFormat(math.max(0, math.min(IF.maxSampleFormatId, i)))
     })
-    new SpecInHandler(inQuality)(q => quality = math.max(0, math.min(100, q)))
+    val s4 = new SpecInHandler(inQuality)(q => quality = math.max(0, math.min(100, q)))
+    specHandlers(0) = s0
+    specHandlers(1) = s1
+    specHandlers(2) = s2
+    specHandlers(3) = s3
+    specHandlers(4) = s4
   }
 }

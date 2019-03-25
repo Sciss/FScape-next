@@ -50,14 +50,19 @@ trait ImageFileSeqOutImpl[S <: Shape] extends ImageFileOutImpl[S] {
   // ---- handlers ----
 
   private object IndicesHandler extends InHandler {
-    def onPush(): Unit = {
+    def onPush(): Unit = if (isInitialized) {
       logStream(s"onPush($inletIndices)")
       testRead()
     }
 
+    def checkPushed(): Unit =
+      if (isAvailable(inletIndices)) {
+        onPush()
+      }
+
     private def testRead(): Unit = {
       updateCanReadIndices()
-      if (_canReadIndices) process()
+      if (_canReadIndices && specReady) process()
     }
 
     override def onUpstreamFinish(): Unit = {
@@ -73,6 +78,9 @@ trait ImageFileSeqOutImpl[S <: Shape] extends ImageFileOutImpl[S] {
 
   protected final def setIndicesHandler(): Unit =
     setHandler(inletIndices, IndicesHandler)
+
+  protected final def checkIndicesPushed(): Unit =
+    IndicesHandler.checkPushed()
 
   // ----
 

@@ -140,13 +140,13 @@ object Broadcast {
         logStream(s"onDownstreamFinish() $self.${out.s}")
         if (eagerCancel) {
           logStream(s"completeStage() $self")
-          completeStage()
+          super.onDownstreamFinish()
         }
         else {
           sinksRunning -= 1
           if (sinksRunning == 0) {
             logStream(s"completeStage() $self")
-            completeStage()
+            super.onDownstreamFinish()
           } else {
             decPendingAndCheck()
           }

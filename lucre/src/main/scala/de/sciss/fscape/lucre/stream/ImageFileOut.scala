@@ -73,5 +73,11 @@ object ImageFileOut {
       super.initSpec(spec)
       openImage(f)
     }
+
+    override protected def launch(): Unit = {
+      super.launch()
+      checkImagePushed()
+      checkSpecPushed()
+    }
   }
 }

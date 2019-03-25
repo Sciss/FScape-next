@@ -31,7 +31,7 @@ import javax.imageio.{IIOImage, ImageIO, ImageTypeSpecifier, ImageWriteParam, Im
 import scala.collection.immutable.{IndexedSeq => Vec}
 
 /** Common building block for `ImageFileOut` and `ImageFileSeqOut` */
-trait ImageFileOutImpl[S <: Shape] extends InHandler {
+trait ImageFileOutImpl[S <: Shape] extends NodeHasInitImpl with InHandler {
   logic: NodeImpl[S] =>
 
   // ---- abstract ----
@@ -110,11 +110,14 @@ trait ImageFileOutImpl[S <: Shape] extends InHandler {
 
   override def onPush(): Unit = {
     pushed += 1
-    if (pushed == numChannels) {
+    checkImagePushed()
+  }
+
+  protected final def checkImagePushed(): Unit =
+    if (pushed == numChannels && isInitialized) {
       pushed = 0
       processImg()
     }
-  }
 
   override def onUpstreamFinish(): Unit = {
     logStream(s"$this - onUpstreamFinish()")

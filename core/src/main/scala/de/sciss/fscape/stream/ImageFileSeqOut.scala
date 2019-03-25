@@ -63,6 +63,12 @@ object ImageFileSeqOut {
       initSpec(spec)
     }
 
+    override protected def launch(): Unit = {
+      super.launch()
+      checkImagePushed()
+      checkIndicesPushed()
+    }
+
     setImageInHandlers()
     setIndicesHandler()
   }

@@ -222,10 +222,12 @@ object IfThenGE {
     private class BranchInHandlerImpl(in: Inlet[E], branchIdx: Int, ch: Int) extends InHandler {
       override def toString: String = s"$self.BranchInHandlerImpl($in)"
 
+      private[this] val out = outs(ch)
+
       def onPush(): Unit = {
         logStream(s"onPush() $self.${in.s}")
         if (branchIdx == selBranchIdx) {
-          if (isAvailable(outs(ch))) {
+          if (isAvailable(out) || isClosed(out)) {
             pump(ch)
           }
 
@@ -265,12 +267,16 @@ object IfThenGE {
         }
       }
 
-      // N.B.: see BranchInHandlerImpl for the same reasons
+      // N.B.: see BranchInHandlerImpl for the same reasons (?)
 
-//      override def onDownstreamFinish(): Unit = {
-//        completeAll()
-//        super.onDownstreamFinish()
-//      }
+      override def onDownstreamFinish(): Unit = {
+        val all = shape.outlets.forall(isClosed(_)) // IntelliJ highlight bug
+        logStream(s"onDownstreamFinish() $self - $all")
+        if (all) {
+          completeAll()
+          super.onDownstreamFinish()
+        }
+      }
 
       setHandler(outs(ch), this)
     }
@@ -306,16 +312,22 @@ object IfThenGE {
     }
 
     private def pump(ch: Int): Unit = {
-      logStream(s"pump() $self")
-      val b = grab(selIn(ch))
-      push(outs(ch), b)
-      if (isClosed(selIn(ch))) {
+      logStream(s"pump($ch) $self")
+      val _selIn = selIn(ch)
+      val b = grab(_selIn)
+      val _out = outs(ch)
+      if (isClosed(_out)) {
+        b.release()
+      } else {
+        push(outs(ch), b)
+      }
+      if (isClosed(_selIn)) {
         // N.B.: see BranchInHandlerImpl for the same reasons
         //
         // ctrl.completeLayer(branchLayers(selBranchIdx))
         completeStage()
       } else {
-        tryPull(selIn(ch))
+        tryPull(_selIn)
       }
     }
 

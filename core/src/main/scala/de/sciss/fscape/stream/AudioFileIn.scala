@@ -67,6 +67,7 @@ object AudioFileIn {
 
     override protected def launch(): Unit = {
       super.launch()
+      super.launch()
       onPull()  // needed for asynchronous logic
     }
 
@@ -83,11 +84,15 @@ object AudioFileIn {
 //      }
     }
 
-    override def onDownstreamFinish(): Unit =
-      if (shape.outlets.forall(out => isClosed(out))) {
-        logStream(s"completeStage() $this")
-        completeStage()
+    override def onDownstreamFinish(): Unit = {
+      val all = shape.outlets.forall(out => isClosed(out))
+      logStream(s"completeStage() $this - $all")
+      if (all) {
+        super.onDownstreamFinish()
+      } else {
+        onPull()
       }
+    }
 
     override def onPull(): Unit =
       if (isInitialized && (numChannels == 1 || shape.outlets.forall(out => isClosed(out) || isAvailable(out)))) {

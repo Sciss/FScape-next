@@ -57,13 +57,6 @@ object UnzipWindowN {
 
     override def deepCopy(): Shape =
       Shape(in0.carbonCopy(), in1.carbonCopy(), outlets.map(_.carbonCopy()))
-
-//    override def copyFromPorts(inlets: ISeq[Inlet[_]], outlets: ISeq[Outlet[_]]): Shape = {
-//      require(inlets .size == this.inlets .size, s"number of inlets [${inlets.size}] does not match [${this.inlets.size}]")
-//      require(outlets.size == this.outlets.size, s"number of outlets [${outlets.size}] does not match [${this.outlets.size}]")
-//      Shape(inlets(0).asInstanceOf[Inlet[BufD]], inlets(1).asInstanceOf[Inlet[BufI]],
-//        outlets.asInstanceOf[ISeq[OutD]])
-//    }
   }
 
   private final class Stage(layer: Layer, numOutputs: Int)(implicit ctrl: Control) extends StageImpl[Shape](name) {
@@ -120,8 +113,13 @@ object UnzipWindowN {
       }
 
       override def onDownstreamFinish(): Unit = {
-        logStream(s"onDownstreamFinish($let)")
-        super.onDownstreamFinish()
+        val all = shape.outlets.forall(out => isClosed(out))
+        logStream(s"onDownstreamFinish() $let - $all")
+        if (all) {
+          super.onDownstreamFinish()
+        } else {
+          process()
+        }
       }
     }
 
@@ -229,8 +227,8 @@ object UnzipWindowN {
       var idx = 0
       while (idx < numOutputs) {
         val out = outputs(idx)
-        if (!out.sent && (out.remain == 0 || flush) && isAvailable(out.let)) {
-          if (out.off > 0) {
+        if (!out.sent && (out.remain == 0 || flush) && (isClosed(out.let) || isAvailable(out.let))) {
+          if (out.off > 0 && isAvailable(out.let)) {
             out.buf.size = out.off
             push(out.let, out.buf)
           } else {

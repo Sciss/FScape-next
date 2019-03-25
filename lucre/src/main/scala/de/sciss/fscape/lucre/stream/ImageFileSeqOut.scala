@@ -70,6 +70,13 @@ object ImageFileSeqOut {
     protected val inletsImg   : Vec[InD]  = shape.inlets6.toIndexedSeq
     protected val inletIndices:     InI   = shape.in5
 
+    override protected def launch(): Unit = {
+      super.launch()
+      checkImagePushed()
+      checkSpecPushed()
+      checkIndicesPushed()
+    }
+
     setImageInHandlers()
     setIndicesHandler()
     setSpecHandlers(inWidth = shape.in0, inHeight = shape.in1, inType = shape.in2,

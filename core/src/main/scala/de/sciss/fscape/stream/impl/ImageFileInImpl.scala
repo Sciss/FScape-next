@@ -195,10 +195,12 @@ trait ImageFileInImpl[S <: Shape] extends NodeHasInitImpl with OutHandler {
   }
 
   override final def onDownstreamFinish(): Unit = {
-    logStream(s"onDownstreamFinish() $this")
-    if (shape.outlets.forall(isClosed(_))) {
-      logStream(s"completeStage() $this")
-      completeStage()
+    val all = shape.outlets.forall(isClosed(_))
+    logStream(s"onDownstreamFinish() $this - $all")
+    if (all) {
+      super.onDownstreamFinish()
+    } else {
+      onPull()
     }
   }
 
