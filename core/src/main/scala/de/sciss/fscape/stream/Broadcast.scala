@@ -50,6 +50,9 @@ object Broadcast {
       new Logic(shape = shape, layer = layer, eagerCancel = eagerCancel)
   }
 
+  // not available in Scala 2.11
+  private val futureUnit: Future[Unit] = Future.successful(())
+
   private final class Logic[B <: BufLike](shape: Shape[B], layer: Layer, eagerCancel: Boolean)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape) with InHandler { self =>
 
@@ -63,7 +66,7 @@ object Broadcast {
     // XXX TODO --- broad cast are synthetic elements, they
     // may connect two layers, so we should not include them in
     // explicit shut down (?)
-    override def completeAsync(): Future[Unit] = Future.unit // super.completeAsync()
+    override def completeAsync(): Future[Unit] = futureUnit // super.completeAsync()
 
     def onPush(): Unit = {
       logStream(s"onPush() $this")
