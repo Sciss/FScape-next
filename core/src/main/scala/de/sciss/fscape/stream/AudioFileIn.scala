@@ -94,8 +94,11 @@ object AudioFileIn {
       }
     }
 
+    private def canWrite: Boolean =
+      shape.outlets.forall(out => isClosed(out) || isAvailable(out))
+
     override def onPull(): Unit =
-      if (isInitialized && (numChannels == 1 || shape.outlets.forall(out => isClosed(out) || isAvailable(out)))) {
+      if (isInitialized && canWrite) {
         process()
       }
 

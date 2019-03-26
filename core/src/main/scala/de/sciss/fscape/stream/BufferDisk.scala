@@ -63,7 +63,7 @@ object BufferDisk {
 
     override protected def launch(): Unit = {
       super.launch()
-      if (isAvailable(shape.out)) onPull()  // needed for asynchronous logic
+      onPull()  // needed for asynchronous logic
     }
 
     override protected def stopped(): Unit = {
@@ -90,10 +90,10 @@ object BufferDisk {
         bufIn.release()
       }
 
-      if (isAvailable(shape.out)) onPull()
+      onPull()
     }
 
-    def onPull(): Unit = if (isInitialized) {
+    def onPull(): Unit = if (isInitialized && isAvailable(shape.out)) {
       val inputDone   = isClosed(shape.in) && !isAvailable(shape.in)
       val framesAvail = framesWritten - framesRead
       if (!inputDone && framesAvail < bufSize) return
@@ -119,7 +119,7 @@ object BufferDisk {
     // in closed
     override def onUpstreamFinish(): Unit = {
       logStream(s"onUpstreamFinish(${shape.in}); read = $framesRead; written = $framesWritten")
-      if (isAvailable(shape.out)) onPull()
+      onPull()
     }
   }
 }

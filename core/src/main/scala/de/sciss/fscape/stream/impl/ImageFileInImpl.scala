@@ -208,7 +208,7 @@ trait ImageFileInImpl[S <: Shape] extends NodeHasInitImpl with OutHandler {
     shape.outlets.forall(out => isClosed(out) || isAvailable(out))
 
   override final def onPull(): Unit = {
-    val ok = isInitialized && (numChannels == 1 || canWrite)
+    val ok = isInitialized && canWrite
     logStream(s"onPull() - $ok - $this")
     if (ok) process()
   }

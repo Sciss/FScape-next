@@ -85,7 +85,7 @@ object Slices {
 
     override protected def launch(): Unit = {
       super.launch()
-      if (isAvailable(shape.out)) onPull()  // needed for asynchronous logic
+      onPull()  // needed for asynchronous logic
     }
 
     override protected def stopped(): Unit = {
@@ -230,8 +230,9 @@ object Slices {
     }
 
     def onPull(): Unit = {
-      logStream(s"onPull(${shape.out})")
-      if (isInitialized) process()
+      val ok = isInitialized && isAvailable(shape.out)
+      logStream(s"onPull(${shape.out}) - $ok")
+      if (ok) process()
     }
   }
 }

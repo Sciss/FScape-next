@@ -129,7 +129,7 @@ object CdpModifyRadicalReverse {
       if (state == 0) processSink()
 
     override def onPull(): Unit =
-      if (/*isInitialized &&*/ state == 1) processSource()
+      if (/*isInitialized &&*/ state == 1 && isAvailable(shape.out)) processSource()
 
     private def checkBuf(chunk: Int): Unit =
       if (buf == null || buf(0).length < chunk) buf = afSink.buffer(chunk)
@@ -175,7 +175,7 @@ object CdpModifyRadicalReverse {
       } catch {
         case NonFatal(ex) => failStage(ex)
       }
-      if (isAvailable(shape.out)) onPull()
+      onPull()
     }
 
     private def processCdp(): Unit = {
