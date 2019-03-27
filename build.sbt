@@ -35,7 +35,7 @@ lazy val deps = new {
   }
   val lucre = new {
     val fileCache       = "0.5.0"
-    val soundProcesses  = "3.26.0-SNAPSHOT"
+    val soundProcesses  = "3.26.0"
   }
   val test = new {
     val kollFlitz       = "0.2.3"
