@@ -17,12 +17,11 @@ import de.sciss.fscape.GE
 import de.sciss.fscape.graph.{AudioFileIn => _, AudioFileOut => _, _}
 import de.sciss.fscape.lucre.FScape
 import de.sciss.lucre.stm.Sys
-import de.sciss.synth.proc.Implicits._
 import de.sciss.synth.proc.Widget
 
 import scala.Predef.{any2stringadd => _}
 
-object ChangeGain {
+object ChangeGainModule extends Module {
   val name = "Change Gain"
 
   /**
@@ -72,7 +71,6 @@ object ChangeGain {
         sampleFormat = smpFmt, sampleRate = sr)
       mkProgress(written, "write")
     }
-    f.name = name
     f
   }
 
@@ -82,6 +80,7 @@ object ChangeGain {
     val w = Widget[S]()
     import de.sciss.synth.proc.MacroImplicits._
     w.setGraph {
+      // version: 29-Mar-2019
       val r     = Runner("run")
       val in    = PathField()
       in.value <--> Artifact("run:in")
@@ -140,6 +139,7 @@ object ChangeGain {
 
       val ggRender  = Button(" Render ")
       val ggCancel  = Button(" X ")
+      ggCancel.tooltip = "Cancel Rendering"
       val pb        = ProgressBar()
       ggRender.clicked ---> r.run
       ggCancel.clicked ---> r.stop
@@ -164,7 +164,6 @@ object ChangeGain {
       bp.border = Border.Empty(8, 8, 0, 4)
       bp
     }
-    w.name = name
     w
   }
 }

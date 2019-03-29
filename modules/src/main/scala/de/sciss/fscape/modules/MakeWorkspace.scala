@@ -1,10 +1,22 @@
+/*
+ *  MakeWorkspace.scala
+ *  (FScape)
+ *
+ *  Copyright (c) 2001-2019 Hanns Holger Rutz. All rights reserved.
+ *
+ *  This software is published under the GNU Affero General Public License v3+
+ *
+ *
+ *  For further information, please contact Hanns Holger Rutz at
+ *  contact@sciss.de
+ */
+
 package de.sciss.fscape.modules
 
-import de.sciss.synth.proc.{Durable, SoundProcesses, Widget, Workspace}
 import de.sciss.file._
 import de.sciss.fscape.lucre.FScape
-import de.sciss.lucre.expr.BooleanObj
 import de.sciss.lucre.stm.store.BerkeleyDB
+import de.sciss.synth.proc.{Durable, SoundProcesses, Widget, Workspace}
 
 object MakeWorkspace {
   type S = Durable
@@ -18,18 +30,19 @@ object MakeWorkspace {
     FScape        .init()
     Widget        .init()
 
+    val modules = Seq(
+      ChangeGainModule, LimiterModule
+    )
+
     val dir = userHome / "mellite" / "sessions" / "FScape-modules.mllt"
     require (!dir.exists())
     val ds  = BerkeleyDB.factory(dir)
     val ws  = Workspace.Durable.empty(dir, ds)
     ws.cursor.step { implicit tx =>
-      val r   = ws.root
-      val fsc = ChangeGain    [S]()
-      val ui  = ChangeGain.ui [S]()
-      ui.attr.put("run"       , fsc)
-      ui.attr.put("edit-mode" , BooleanObj.newVar(false))
-      r.addLast(fsc)
-      r.addLast(ui)
+      val r = ws.root
+      modules.foreach { m =>
+        m.add(r)
+      }
       ws.dispose()
     }
   }

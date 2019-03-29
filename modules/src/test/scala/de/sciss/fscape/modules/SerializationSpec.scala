@@ -44,6 +44,6 @@ class SerializationSpec extends fixture.FlatSpec with Matchers {
     }
 
   "Chain Gain" should "be serializable" in { implicit cursor =>
-    makeTest { implicit tx => ChangeGain[S]() }
+    makeTest { implicit tx => ChangeGainModule[S]() }
   }
 }
