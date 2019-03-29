@@ -130,6 +130,8 @@ object GraphObj extends expr.impl.ExprTypeImpl[Graph, GraphObj] {
         case d: Double =>
           out.writeByte('D')
           out.writeDouble(d)
+        case _: Unit =>
+          out.writeByte('U')
         case f: File =>
           out.writeByte('f')
           out.writeUTF(f.getPath)
@@ -224,6 +226,7 @@ object GraphObj extends expr.impl.ExprTypeImpl[Graph, GraphObj] {
         case 'B' => in.readBoolean()
         case 'F' => in.readFloat()
         case 'D' => in.readDouble()
+        case 'U' => ()
         case 'f' => new File(in.readUTF())
       }
     }

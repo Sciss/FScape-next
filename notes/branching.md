@@ -124,3 +124,22 @@ the `If` is difficult to understand. We should _forbid_ that possibility, by eit
 first, or by reducing the channels (if necessary) using an AND or OR operator. This must be documented as a
 convention. If one _really_ wants mce, one could still use a `Seq.tabulate` and then have multiple `If` elements
 generated inside.
+
+---------
+
+# 30-Mar-2019
+
+We need to be able to "fail late" with the lucre based UGens For example, if we have
+
+```
+If (cond) Then {
+  AudioFileIn("key")
+} Else {
+  DC(0.0)
+}
+```
+
+Then we want `"key"` only to be looked up if `cond` is fulfilled. The easiest would
+be to look it up eagerly, like we do now, but defer the error to `init` of the stream.
+
+This is for example for the imaginary input of _Fourier Translation_.

@@ -31,7 +31,7 @@ object MakeWorkspace {
     Widget        .init()
 
     val modules = Seq(
-      ChangeGainModule, LimiterModule
+      ChangeGainModule, LimiterModule, TapeSpeedModule
     )
 
     val dir = userHome / "mellite" / "sessions" / "FScape-modules.mllt"
