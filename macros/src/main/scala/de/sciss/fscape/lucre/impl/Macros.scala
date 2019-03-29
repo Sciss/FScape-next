@@ -26,11 +26,11 @@ object Macros {
                                         (implicit tt: c.WeakTypeTag[S]): c.Expr[Unit] = {
     import c.universe._
 
-    val source      = mkSource(c)("proc", body.tree)
+    val source      = mkSource(c)("fscape", body.tree)
     val sourceExpr  = c.Expr[String](Literal(Constant(source)))
     reify {
       val ext           = c.prefix.splice.asInstanceOf[MacroImplicits.FScapeMacroOps[S]]
-      implicit val txc  = tx.splice // don't bloody annotate the type with `S#Tx`, it will break scalac
+      implicit val txc  = tx.splice // N.B.: don't annotate the type with `S#Tx`, it will break scalac
       val p             = ext.`this`
       p.graph()         = GraphObj.newConst[S](Graph(body.splice))
       val code          = FScape.Code(sourceExpr.splice)

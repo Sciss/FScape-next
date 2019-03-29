@@ -2,7 +2,7 @@ lazy val baseName   = "FScape"
 lazy val baseNameL  = baseName.toLowerCase
 lazy val gitRepo    = "FScape-next"
 
-lazy val projectVersion = "2.23.0"
+lazy val projectVersion = "2.23.1-SNAPSHOT"
 lazy val mimaVersion    = "2.23.0"
 
 lazy val baseDescription = "An audio rendering library"
@@ -35,11 +35,14 @@ lazy val deps = new {
   }
   val lucre = new {
     val fileCache       = "0.5.0"
-    val soundProcesses  = "3.27.0"
+    val soundProcesses  = "3.27.1-SNAPSHOT"
+  }
+  val modules = new {
+    val lucre           = "3.11.0"
+    val lucreSwing      = "1.15.0"
   }
   val test = new {
     val kollFlitz       = "0.2.3"
-    val lucre           = "3.11.0"
     val scalaTest       = "3.0.7"
     val scopt           = "3.7.1"
   }
@@ -102,7 +105,7 @@ lazy val lucre = project.withId(s"$baseNameL-lucre").in(file("lucre"))
       "de.sciss"        %% "soundprocesses-core" % deps.lucre.soundProcesses,
       "de.sciss"        %% "filecache-txn"       % deps.lucre.fileCache,
       "org.scala-lang"  %  "scala-reflect"       % scalaVersion.value,
-      "de.sciss"        %% "lucre-bdb"           % deps.test.lucre     % Test
+      "de.sciss"        %% "lucre-bdb"           % deps.modules.lucre % Test
     ),
     mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-lucre" % mimaVersion)
   )
@@ -119,13 +122,28 @@ lazy val macros = project.withId(s"$baseNameL-macros").in(file("macros"))
     mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-macros" % mimaVersion)
   )
 
+lazy val modules = project.withId(s"$baseNameL-modules").in(file("modules"))
+  .dependsOn(macros)
+  .settings(commonSettings)
+  .settings(testSettings)
+  .settings(
+    description := s"Bringing $baseName v1 modules to the next generation",
+    scalacOptions += "-Yrangepos",  // this is needed to extract source code
+    libraryDependencies ++= Seq(
+      "de.sciss" %% "lucre-bdb"             % deps.modules.lucre,
+      "de.sciss" %% "lucreswing"            % deps.modules.lucreSwing,
+      "de.sciss" %% "soundprocesses-views"  % deps.lucre.soundProcesses,
+    ),
+//    mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-modules" % mimaVersion)
+  )
+
 lazy val cdp = project.withId(s"$baseNameL-cdp").in(file("cdp"))
   .dependsOn(core)
   .settings(commonSettings)
   .settings(testSettings)
   .settings(
-    description := s"Bridge from $baseName to Composers Desktop Project"
-    // mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-cdp" % mimaVersion)
+    description := s"Bridge from $baseName to Composers Desktop Project",
+    mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-cdp" % mimaVersion)
   )
 
 // ---- publishing ----

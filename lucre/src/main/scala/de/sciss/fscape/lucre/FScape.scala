@@ -45,7 +45,7 @@ object FScape extends Obj.Type {
     FScapeRunnerImpl.init()
   }
 
-  def apply[S <: Sys[S]](implicit tx: S#Tx): FScape[S] = Impl[S]
+  def apply[S <: Sys[S]]()(implicit tx: S#Tx): FScape[S] = Impl[S]
 
   def read[S <: Sys[S]](in: DataInput, access: S#Acc)(implicit tx: S#Tx): FScape[S] = Impl.read(in, access)
 

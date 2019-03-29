@@ -83,6 +83,8 @@ object BinaryOp {
 
     def name: String = plainName.capitalize
 
+//    protected[fscape] def make1(a: UGenIn, b: UGenIn): UGenIn
+
     def make(a: GE, b: GE): GE = (a, b) match {
       case (av: Constant, bv: Constant) => apply(av, bv)
       case _ => BinaryOp(op.id, a, b)
