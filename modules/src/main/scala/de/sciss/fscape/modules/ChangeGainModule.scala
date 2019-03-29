@@ -28,10 +28,11 @@ object ChangeGainModule extends Module {
     * Attributes:
     *
     * - `"in"`: audio file input
-    * - `"gain-type"`: either `0` (normalized) or `1` (relative)
-    * - `"gain-db"`: gain factor with respect to gain-type (headroom or factor), in decibels
+    * - `"out"`: audio file output
     * - `"out-type"`: audio file output type (AIFF: 0, Wave: 1, Wave64: 2, IRCAM: 3, NeXT: 4)
     * - `"out-format"`: audio file output sample format (Int16: 0, Int24: 1, Float: 2, Int32: 3, Double: 4, UInt8: 5, Int8: 6)
+    * - `"gain-type"`: either `0` (normalized) or `1` (relative)
+    * - `"gain-db"`: gain factor with respect to gain-type (headroom or factor), in decibels
     */
   def apply[S <: Sys[S]]()(implicit tx: S#Tx): FScape[S] = {
     import de.sciss.fscape.lucre.graph.Ops._

@@ -27,10 +27,14 @@ object LimiterModule extends Module {
     * Attributes:
     *
     * - `"in"`: audio file input
-    * - `"gain-type"`: either `0` (normalized) or `1` (relative)
-    * - `"gain-db"`: gain factor with respect to gain-type (headroom or factor), in decibels
+    * - `"out"`: audio file output
     * - `"out-type"`: audio file output type (AIFF: 0, Wave: 1, Wave64: 2, IRCAM: 3, NeXT: 4)
     * - `"out-format"`: audio file output sample format (Int16: 0, Int24: 1, Float: 2, Int32: 3, Double: 4, UInt8: 5, Int8: 6)
+    * - `"gain-db"`: input boost factor (before entering limiter), in decibels
+    * - `"ceil-db"`: limiter clipping level, in decibels
+    * - `"atk-ms"`: limiter attack time in milliseconds, with respect to -60 dB point
+    * - `"rls-ms"`: limiter release time in milliseconds, with respect to -60 dB point
+    * - `"sync-chans"`: whether to synchronise limiter gain control across input channels (1) or not (0)
     */
   def apply[S <: Sys[S]]()(implicit tx: S#Tx): FScape[S] = {
     import de.sciss.fscape.lucre.graph.Ops._
@@ -57,10 +61,11 @@ object LimiterModule extends Module {
       val in    = in0 * boostAmt
       val gain0 = Limiter(in, attack = atkFrames, release = rlsFrames,
         ceiling = ceilAmt)
+      val inBuf = BufferMemory(in, atkFrames + rlsFrames)
       val gain  = If (syncChans sig_== 0) Then { gain0 } Else {
         Reduce.max(gain0)
       }
-      val sig   = in * gain
+      val sig   = inBuf * gain
       val written = AudioFileOut("out", sig, fileType = fileType,
         sampleFormat = smpFmt, sampleRate = sr)
       Progress(written / numFrames, Metro(sr) | Metro(numFrames - 1))
@@ -120,7 +125,7 @@ object LimiterModule extends Module {
       ggRls.max  = 60 * 60 * 1000.0
       ggRls.value <--> "run:rls-ms".attr(200.0)
 
-      val ggSync = CheckBox()
+      val ggSync = CheckBox("Synchronize Channels")
       ggSync.selected <--> "run:sync-chans".attr(true)
 
       def mkLabel(text: String) = {
@@ -141,9 +146,9 @@ object LimiterModule extends Module {
         mkLabel("Output:"), left(out),
         Label(" "), left(ggOutType, ggOutFmt),
         Label(" "), Label(" "),
-        mkLabel("Boost:"  ), left(ggBoost, mkLabel("  Attack [-60 dB]:" ), ggAtk),
-        mkLabel("Ceiling:"), left(ggCeil , mkLabel("Release [-60 dB]:"), ggRls),
-        mkLabel("Synchronize Channels:"), ggSync,
+        mkLabel("Boost:"  ), left(ggBoost, mkLabel("    Attack [-60 dB]:" ), ggAtk),
+        mkLabel("Ceiling:"), left(ggCeil , mkLabel("  Release [-60 dB]:"), ggRls),
+        mkLabel(" "), ggSync,
       )
       p.columns = 2
       p.hGap    = 8
