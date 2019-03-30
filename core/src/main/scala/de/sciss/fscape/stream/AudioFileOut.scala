@@ -188,7 +188,7 @@ object AudioFileOut {
       } catch {
         case NonFatal(ex) =>
 //          resultP.failure(ex)
-          failStage(ex)
+          notifyFail(ex)
       } finally {
         ch = 0
         while (ch < numChannels) {

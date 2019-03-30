@@ -19,7 +19,7 @@ import de.sciss.fscape.lucre.FScape
 import de.sciss.lucre.stm.Sys
 import de.sciss.synth.proc.Widget
 
-import scala.Predef.{any2stringadd => _, _}
+import scala.Predef.{any2stringadd => _}
 
 object FourierTranslationModule extends Module {
   val name = "Fourier Translation"
@@ -59,8 +59,8 @@ object FourierTranslationModule extends Module {
       val inIsComplex   = "complex-in"  .attr(0).clip(0, 1)
       val outIsComplex  = "complex-out" .attr(0).clip(0, 1)
       val dir           = "direction"   .attr(0).clip(0, 1)
-      val dirFFT        = dir * -2 + 1  // bwd = -1, fwd = +1
-      val numFramesOut  = (numFramesIn + lenMode).nextPowerOfTwo / (lenMode + 1)
+      val dirFFT        = dir * -2 + (1: GE)  // bwd = -1, fwd = +1
+      val numFramesOut  = (numFramesIn + lenMode).nextPowerOfTwo / (lenMode + (1: GE))
       val numFramesInT  = numFramesIn min numFramesOut
       val gainAmt       = gainDb.dbAmp
 
@@ -123,7 +123,7 @@ object FourierTranslationModule extends Module {
     val w = Widget[S]()
     import de.sciss.synth.proc.MacroImplicits._
     w.setGraph {
-      // version: 29-Mar-2019
+      // version: 30-Mar-2019
       val r     = Runner("run")
       val in    = PathField()
       in.value <--> Artifact("run:in")
@@ -131,6 +131,7 @@ object FourierTranslationModule extends Module {
       val inIm  = PathField()
       inIm.value <--> Artifact("run:in-imag")
       val ggInIsComplex = CheckBox("Input [Im]:")
+      ggInIsComplex.selected <--> "run:complex-in".attr(false)
       inIm.enabled = ggInIsComplex.selected() // XXX TODO doesn't work
 
       val out   = PathField()
@@ -140,6 +141,7 @@ object FourierTranslationModule extends Module {
       outIm.mode = PathField.Save
       outIm.value <--> Artifact("run:out-imag")
       val ggOutIsComplex = CheckBox("Output [Im]:")
+      ggOutIsComplex.selected <--> "run:complex-out".attr(false)
       outIm.enabled = ggOutIsComplex.selected() // XXX TODO doesn't work
 
       val ggOutType = ComboBox(

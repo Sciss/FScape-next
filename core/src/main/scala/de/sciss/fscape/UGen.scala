@@ -163,6 +163,20 @@ object UGen {
       }
     }
 
+    final case class Long(peer: scala.Long) extends Aux {
+      def write(out: DataOutput): Unit = {
+        out.writeByte(4)
+        out.writeLong(peer)
+      }
+    }
+
+    final case class Double(peer: scala.Double) extends Aux {
+      def write(out: DataOutput): Unit = {
+        out.writeByte(5)
+        out.writeDouble(peer)
+      }
+    }
+
     final case class AudioFileSpec(peer: de.sciss.synth.io.AudioFileSpec) extends Aux {
       def write(out: DataOutput): Unit = {
         out.writeByte(10)

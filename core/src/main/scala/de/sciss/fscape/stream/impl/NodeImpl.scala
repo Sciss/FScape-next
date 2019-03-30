@@ -49,6 +49,11 @@ abstract class NodeImpl[+S <: Shape](protected final val name: String, val layer
     async.invoke(())
   }
 
+  protected final def notifyFail(ex: Throwable): Unit = {
+    control.nodeFailed(this, ex)
+    failStage(ex)
+  }
+
   def completeAsync(): Future[Unit] = {
     val async = getAsyncCallback { _: Unit =>
       logStream(s"$this - completeAsync")

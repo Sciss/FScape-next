@@ -17,19 +17,20 @@ import akka.stream.Attributes
 import akka.stream.stage.{GraphStageLogic, InHandler, OutHandler}
 import de.sciss.file._
 import de.sciss.fscape.logStream
-import de.sciss.fscape.stream.impl.{BlockingGraphStage, In3UniformFanInShape, NodeImpl}
+import de.sciss.fscape.stream.impl.{BlockingGraphStage, In3UniformFanInShape, NodeHasInitImpl, NodeImpl}
 import de.sciss.fscape.stream.{BufD, BufI, BufL, Builder, Control, InD, InI, Layer, OutD, OutI, OutL}
 import de.sciss.synth.io
 import de.sciss.fscape.lucre.graph.{AudioFileOut => AF}
 import de.sciss.synth.io.AudioFileType
 
 import scala.collection.immutable.{Seq => ISeq}
+import scala.util.{Failure, Success, Try}
 import scala.util.control.NonFatal
 
 object AudioFileOut {
-  def apply(file: File, fileType: OutI, sampleFormat: OutI, sampleRate: OutD, in: ISeq[OutD])
+  def apply(fileTr: Try[File], fileType: OutI, sampleFormat: OutI, sampleRate: OutD, in: ISeq[OutD])
            (implicit b: Builder): OutL = {
-    val stage0  = new Stage(layer = b.layer, f = file, numChannels = in.size)
+    val stage0  = new Stage(layer = b.layer, fileTr = fileTr, numChannels = in.size)
     val stage   = b.add(stage0)
     b.connect(fileType    , stage.in0)
     b.connect(sampleFormat, stage.in1)
@@ -44,8 +45,8 @@ object AudioFileOut {
 
   private type Shape = In3UniformFanInShape[BufI, BufI, BufD, BufD, BufL]
 
-  private final class Stage(layer: Layer, f: File, numChannels: Int)(implicit protected val ctrl: Control)
-    extends BlockingGraphStage[Shape](s"$name(${f.name})") {
+  private final class Stage(layer: Layer, fileTr: Try[File], numChannels: Int)(implicit protected val ctrl: Control)
+    extends BlockingGraphStage[Shape](s"$name(${fileTr.fold(ex => s"${ex.getClass}(${ex.getMessage})", _.name)})") {
 
     val shape: Shape = In3UniformFanInShape(
       InI (s"$name.fileType"    ),
@@ -55,18 +56,19 @@ object AudioFileOut {
       OutL(s"$name.out")
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer, f, numChannels = numChannels)
+    def createLogic(attr: Attributes) = new Logic(shape, layer, fileTr, name = name, numChannels = numChannels)
   }
 
-  private final class Logic(shape: Shape, layer: Layer, file: File, numChannels: Int)
+  private final class Logic(shape: Shape, layer: Layer, fileTr: Try[File], name: String, numChannels: Int)
                            (implicit ctrl: Control)
-    extends NodeImpl(s"$name(${file.name})", layer, shape)
+    extends NodeImpl(name, layer, shape) with NodeHasInitImpl
       with OutHandler { logic: GraphStageLogic =>
 
     // ---- impl ----
 
-    private[this] var af      : io.AudioFile = _
-    private[this] var buf     : io.Frames = _
+    private[this] var af      : io.AudioFile  = _
+    private[this] var buf     : io.Frames     = _
+    private[this] var file    : File          = _
 
     private[this] var pushed        = 0
     private[this] val bufIns        = new Array[BufD](numChannels)
@@ -81,6 +83,21 @@ object AudioFileOut {
     private[this] var sampleFormat  = -1
     private[this] var sampleRate    = -1.0
     private[this] var afValid       = false
+
+    override protected def init(): Unit = {
+      super.init()
+      logStream(s"init() $this")
+      fileTr match {
+        case Success(f) => file = f
+        case Failure(ex) =>
+          notifyFail(ex)
+      }
+    }
+
+    override protected def launch(): Unit = {
+      super.launch()
+      onPull()  // needed for asynchronous logic
+    }
 
     private def updateSpec(): Unit = {
       if (fileType >= 0 && sampleFormat >= 0 && sampleRate >= 0) {
@@ -101,8 +118,8 @@ object AudioFileOut {
           logStream("AudioFileOut: fileType")
           val _fileType = math.min(AF.maxFileTypeId, buf.buf(0))
           fileType = if (_fileType >= 0) _fileType else {
-            val ext = file.extL
-            val tpe = AudioFileType.writable.find(_.extensions.contains(ext)).getOrElse(AudioFileType.AIFF)
+            val ext   = file.extL
+            val tpe   = AudioFileType.writable.find(_.extensions.contains(ext)).getOrElse(AudioFileType.AIFF)
             AF.id(tpe)
           }
           updateSpec()
@@ -243,7 +260,7 @@ object AudioFileOut {
       } catch {
         case NonFatal(ex) =>
           //          resultP.failure(ex)
-          failStage(ex)
+          notifyFail(ex)
       } finally {
         ch = 0
         while (ch < numChannels) {
