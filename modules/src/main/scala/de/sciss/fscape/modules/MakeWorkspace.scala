@@ -25,14 +25,17 @@ object MakeWorkspace {
     run()
   }
 
+  def list: List[Module] =
+    List(
+      ModChangeGain, ModLimiter, ModTapeSpeed, ModFourierTranslation, ModMakeLoop
+    )
+
   def run(): Unit = {
     SoundProcesses.init()
     FScape        .init()
     Widget        .init()
 
-    val modules = Seq(
-      ChangeGainModule, LimiterModule, TapeSpeedModule, FourierTranslationModule, MakeLoopModule
-    )
+    val modules = list
 
     val dir = userHome / "mellite" / "sessions" / "FScape-modules.mllt"
     require (!dir.exists())

@@ -35,11 +35,11 @@ lazy val deps = new {
   }
   val lucre = new {
     val fileCache       = "0.5.0"
-    val soundProcesses  = "3.27.1-SNAPSHOT"
+    val lucre           = "3.11.1"
+    val soundProcesses  = "3.27.1"
   }
   val modules = new {
-    val lucre           = "3.11.0"
-    val lucreSwing      = "1.15.0"
+    val lucreSwing      = "1.15.1"
   }
   val test = new {
     val kollFlitz       = "0.2.3"
@@ -102,10 +102,12 @@ lazy val lucre = project.withId(s"$baseNameL-lucre").in(file("lucre"))
   .settings(
     description := s"Bridge from $baseName to SoundProcesses",
     libraryDependencies ++= Seq(
+      "de.sciss"        %% "lucre-core"          % deps.lucre.lucre,
+      "de.sciss"        %% "lucre-expr"          % deps.lucre.lucre,
       "de.sciss"        %% "soundprocesses-core" % deps.lucre.soundProcesses,
       "de.sciss"        %% "filecache-txn"       % deps.lucre.fileCache,
       "org.scala-lang"  %  "scala-reflect"       % scalaVersion.value,
-      "de.sciss"        %% "lucre-bdb"           % deps.modules.lucre % Test
+      "de.sciss"        %% "lucre-bdb"           % deps.lucre.lucre % Test
     ),
     mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-lucre" % mimaVersion)
   )
@@ -130,9 +132,11 @@ lazy val modules = project.withId(s"$baseNameL-modules").in(file("modules"))
     description := s"Bringing $baseName v1 modules to the next generation",
     scalacOptions += "-Yrangepos",  // this is needed to extract source code
     libraryDependencies ++= Seq(
-      "de.sciss" %% "lucre-bdb"             % deps.modules.lucre,
-      "de.sciss" %% "lucreswing"            % deps.modules.lucreSwing,
-      "de.sciss" %% "soundprocesses-views"  % deps.lucre.soundProcesses,
+      "de.sciss"  %% "lucre-core"           % deps.lucre.lucre,
+      "de.sciss"  %% "lucre-expr"           % deps.lucre.lucre,
+      "de.sciss"  %% "lucre-bdb"            % deps.lucre.lucre,
+      "de.sciss"  %% "lucreswing"           % deps.modules.lucreSwing,
+      "de.sciss"  %% "soundprocesses-views" % deps.lucre.soundProcesses,
     ),
 //    mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-modules" % mimaVersion)
   )

@@ -42,7 +42,7 @@ object AudioFileIn {
       makeUGen(Vector.empty)
 
     protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike = {
-      val aux = tr.fold(_ => Nil, Aux.Long(_) :: Nil)
+      val aux = tr.toOption.fold(List.empty[Aux])(Aux.Long(_) :: Nil)  // Try#fold requires Scala 2.12
       UGen.SingleOut(this, args, aux = aux)
     }
 
@@ -69,7 +69,7 @@ object AudioFileIn {
       makeUGen(Vector.empty)
 
     protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike = {
-      val aux = tr.fold(_ => Nil, Aux.Double(_) :: Nil)
+      val aux = tr.toOption.fold(List.empty[Aux])(Aux.Double(_) :: Nil)   // Try#fold requires Scala 2.12
       UGen.SingleOut(this, args, aux = aux)
     }
 
@@ -112,7 +112,7 @@ object AudioFileIn {
     }
 
     private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: SBuilder): Vec[StreamOut] = {
-      val numCh = cueTr.fold(_ => 1, _.spec.numChannels)
+      val numCh = cueTr.toOption.fold(1)(_.spec.numChannels)  // Try#fold requires Scala 2.12
       stream.AudioFileIn(cueTr, numChannels = numCh)
     }
 

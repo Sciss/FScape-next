@@ -43,7 +43,9 @@ class SerializationSpec extends fixture.FlatSpec with Matchers {
       assert(g === g1)
     }
 
-  "Chain Gain" should "be serializable" in { implicit cursor =>
-    makeTest { implicit tx => ChangeGainModule[S]() }
+  MakeWorkspace.list.foreach { m =>
+    m.name should "be serializable" in { implicit cursor =>
+      makeTest { implicit tx => m.apply[S]() }
+    }
   }
 }

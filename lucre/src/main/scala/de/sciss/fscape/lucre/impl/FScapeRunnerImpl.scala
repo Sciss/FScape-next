@@ -25,7 +25,9 @@ import de.sciss.lucre.{stm, synth}
 import de.sciss.synth.proc.impl.BasicRunnerImpl
 import de.sciss.synth.proc.{ObjViewBase, Runner, TimeRef}
 
+import scala.concurrent.ExecutionException
 import scala.concurrent.stm.Ref
+import scala.util.Failure
 
 object FScapeRunnerImpl extends Runner.Factory {
   final val prefix          = "FScape"
@@ -104,6 +106,7 @@ object FScapeRunnerImpl extends Runner.Factory {
 
     def run(timeRef: TimeRef.Option, target: Unit)(implicit tx: S#Tx): Unit = {
       val obj = objH()
+      messages.current = Nil
       state = Runner.Running
       val cfg = Control.Config()
       cfg.progressReporter = { p =>
@@ -114,6 +117,19 @@ object FScapeRunnerImpl extends Runner.Factory {
       obsRef   .swap(Disposable.empty) .dispose()
       val newObs = r.reactNow { implicit tx => {
         case Rendering.Completed =>
+          r.result match {
+            case Some(Failure(ex0)) =>
+              val ex    = ex0 match {
+                case cc: ExecutionException => cc.getCause
+                case _                      => ex0
+              }
+//              val clz   = ex.getClass.getName
+//              val mTxt  = if (ex.getMessage == null) clz else s"$clz - ${ex.getMessage}"
+              val mTxt  = ex.toString
+              val m     = Runner.Message(System.currentTimeMillis(), Runner.Message.Error, mTxt)
+              messages.current = m :: Nil
+            case _ =>
+          }
           state = Runner.Stopped
         case _ =>
       }}

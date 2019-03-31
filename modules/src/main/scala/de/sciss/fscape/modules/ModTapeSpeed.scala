@@ -1,5 +1,5 @@
 /*
- *  TapeSpeedModule.scala
+ *  ModTapeSpeed.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2019 Hanns Holger Rutz. All rights reserved.
@@ -20,7 +20,7 @@ import de.sciss.synth.proc.Widget
 
 import scala.Predef.{any2stringadd => _}
 
-object TapeSpeedModule extends Module {
+object ModTapeSpeed extends Module {
   val name = "Tape Speed"
 
   /**
@@ -101,12 +101,16 @@ object TapeSpeedModule extends Module {
 
   def ui[S <: Sys[S]]()(implicit tx: S#Tx): Widget[S] = {
     import de.sciss.lucre.expr.ExOps._
+    import de.sciss.lucre.expr.graph._
     import de.sciss.lucre.swing.graph._
     val w = Widget[S]()
     import de.sciss.synth.proc.MacroImplicits._
     w.setGraph {
-      // version: 29-Mar-2019
+      // version: 31-Mar-2019
       val r     = Runner("run")
+      val m     = r.messages
+      m.changed.filter(m.nonEmpty) ---> Println(m.mkString("\n"))
+
       val in    = PathField()
       in.value <--> Artifact("run:in")
       val out   = PathField()

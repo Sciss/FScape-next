@@ -27,7 +27,12 @@ import scala.util.{Failure, Success, Try}
 
 object AudioFileIn {
   def apply(cueTr: Try[AudioCue], numChannels: Int)(implicit b: stream.Builder): Vec[OutD] = {
-    val source  = new Stage(layer = b.layer, cueTr = cueTr, numChannels = numChannels)
+    val name0   = cueTr match {
+      case Success(c)   => c.artifact.name
+      case Failure(ex)  => s"${ex.getClass}(${ex.getMessage})"
+    }
+    val name1   = s"$name($name0)"
+    val source  = new Stage(layer = b.layer, cueTr = cueTr, numChannels = numChannels, name = name1)
     val stage   = b.add(source)
     stage.outlets.toIndexedSeq
   }
@@ -37,8 +42,9 @@ object AudioFileIn {
   private type Shape = UniformSourceShape[BufD]
 
   // similar to internal `UnfoldResourceSource`
-  private final class Stage(layer: Layer, cueTr: Try[AudioCue], numChannels: Int)(implicit ctrl: Control)
-    extends BlockingGraphStage[Shape](s"$name(${cueTr.fold(_ => "???", _.artifact.name)})") {
+  private final class Stage(layer: Layer, cueTr: Try[AudioCue], numChannels: Int, name: String)
+                           (implicit ctrl: Control)
+    extends BlockingGraphStage[Shape](name) {
 
     val shape = UniformSourceShape(Vector.tabulate(numChannels)(ch => OutD(s"$name.out$ch")))
 

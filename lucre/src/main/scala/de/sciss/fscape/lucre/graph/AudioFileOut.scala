@@ -85,7 +85,7 @@ object AudioFileOut {
       unwrap(this, sampleRate.expand +: sampleFormat.expand +: fileType.expand +: in.expand.outputs)
 
     protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike = {
-      val aux = fileTr.fold(_ => Nil, Aux.FileOut(_) :: Nil)
+      val aux = fileTr.toOption.fold(List.empty[Aux])(Aux.FileOut(_) :: Nil)  // Try#fold requires Scala 2.12
       UGen.SingleOut(this, args, aux = aux, isIndividual = true, hasSideEffect = true)
     }
 

@@ -30,7 +30,12 @@ import scala.util.control.NonFatal
 object AudioFileOut {
   def apply(fileTr: Try[File], fileType: OutI, sampleFormat: OutI, sampleRate: OutD, in: ISeq[OutD])
            (implicit b: Builder): OutL = {
-    val stage0  = new Stage(layer = b.layer, fileTr = fileTr, numChannels = in.size)
+    val name0   = fileTr match {
+      case Success(f)   => f.name
+      case Failure(ex)  => s"${ex.getClass}(${ex.getMessage})"
+    }
+    val name1   = s"$name($name0)"
+    val stage0  = new Stage(layer = b.layer, fileTr = fileTr, numChannels = in.size, name = name1)
     val stage   = b.add(stage0)
     b.connect(fileType    , stage.in0)
     b.connect(sampleFormat, stage.in1)
@@ -45,8 +50,9 @@ object AudioFileOut {
 
   private type Shape = In3UniformFanInShape[BufI, BufI, BufD, BufD, BufL]
 
-  private final class Stage(layer: Layer, fileTr: Try[File], numChannels: Int)(implicit protected val ctrl: Control)
-    extends BlockingGraphStage[Shape](s"$name(${fileTr.fold(ex => s"${ex.getClass}(${ex.getMessage})", _.name)})") {
+  private final class Stage(layer: Layer, fileTr: Try[File], name: String, numChannels: Int)
+                           (implicit protected val ctrl: Control)
+    extends BlockingGraphStage[Shape](name) {
 
     val shape: Shape = In3UniformFanInShape(
       InI (s"$name.fileType"    ),

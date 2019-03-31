@@ -380,7 +380,11 @@ object UGenGraphBuilder {
     def cacheFiles: List[File]
   }
 
-  final case class MissingIn(input: String) extends ControlThrowable
+  final case class MissingIn(input: String) extends ControlThrowable {
+    override def getMessage: String = input
+
+    override def toString: String = s"UGenGraphBuilder.MissingIn: $input"
+  }
 
   // -----------------
 
