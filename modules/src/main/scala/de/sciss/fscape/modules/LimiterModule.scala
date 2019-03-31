@@ -142,8 +142,8 @@ object LimiterModule extends Module {
       }
 
       val p = GridPanel(
-        mkLabel("Input:" ), left(in),
-        mkLabel("Output:"), left(out),
+        mkLabel("Input:" ), in,
+        mkLabel("Output:"), out,
         Label(" "), left(ggOutType, ggOutFmt),
         Label(" "), Label(" "),
         mkLabel("Boost:"  ), left(ggBoost, mkLabel("    Attack [-60 dB]:" ), ggAtk),

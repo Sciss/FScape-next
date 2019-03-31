@@ -164,8 +164,8 @@ object TapeSpeedModule extends Module {
       }
 
       val p = GridPanel(
-        mkLabel("Input:" ), left(in),
-        mkLabel("Output:"), left(out),
+        mkLabel("Input:" ), in,
+        mkLabel("Output:"), out,
         Label(" "), left(ggOutType, ggOutFmt),
         mkLabel("Gain:"), left(ggGain, ggGainType),
         Label(" "), Empty(),

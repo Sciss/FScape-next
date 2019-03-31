@@ -191,10 +191,10 @@ object FourierTranslationModule extends Module {
       }
 
       val p = GridPanel(
-        mkLabel("Input [Re]:" ), left(in),
-        ggInIsComplex, left(inIm),
-        mkLabel("Output [Re]:"), left(out),
-        ggOutIsComplex, left(outIm),
+        mkLabel("Input [Re]:" ), in,
+        ggInIsComplex, inIm,
+        mkLabel("Output [Re]:"), out,
+        ggOutIsComplex, outIm,
         Label(" "), left(ggOutType, ggOutFmt),
         mkLabel("Gain:"), left(ggGain, ggGainType),
         Label(" "), Empty(),

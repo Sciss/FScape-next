@@ -128,8 +128,8 @@ object ChangeGainModule extends Module {
       }
 
       val p = GridPanel(
-        mkLabel("Input:" ), left(in),
-        mkLabel("Output:"), left(out),
+        mkLabel("Input:" ), in,
+        mkLabel("Output:"), out,
         Label(" "), left(ggOutType, ggOutFmt),
         Label(" "), Empty(),
         mkLabel("Gain:"), left(ggGain, ggGainType),
