@@ -129,7 +129,7 @@ object ModFourierTranslation extends Module {
       val m     = r.messages
       m.changed.filter(m.nonEmpty) ---> Println(m.mkString("\n"))
 
-      val in    = PathField()
+      val in    = AudioFileIn()
       in.value <--> Artifact("run:in")
 
       val inIm  = PathField()

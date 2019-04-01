@@ -85,7 +85,8 @@ object Broadcast {
     private def process(): Unit = {
       logStream(s"process() $this")
       pendingCount  = sinksRunning
-      val buf       = grab(shape.in)
+      val in        = shape.in
+      val buf       = grab(in)
 
 //      NUM += buf.size
 
@@ -108,8 +109,10 @@ object Broadcast {
       }
       buf.release()
 
-      if (!isClosed(shape.in)) {
-        pull(shape.in)
+      if (!isClosed(in)) {
+        if (!hasBeenPulled(in)) { // WTF ???
+          pull(in)
+        }
       } else {
         completeStage()
       }
@@ -128,8 +131,9 @@ object Broadcast {
             // (which may happen if the node spans across layers),
             // we have to check that condition here and
             // issue the pull if necessary
-            if         (isAvailable(shape.in)) process()
-            else if (!hasBeenPulled(shape.in)) tryPull(shape.in)
+            val in = shape.in
+            if         (isAvailable(in)) process()
+            else if (!hasBeenPulled(in)) tryPull(in)
           }
         }
       }

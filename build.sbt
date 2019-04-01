@@ -38,13 +38,14 @@ lazy val deps = new {
     val lucre           = "3.11.1"
     val soundProcesses  = "3.27.1"
   }
-  val modules = new {
-    val lucreSwing      = "1.15.1"
+  val views = new {
+    val lucreSwing      = "1.15.2-SNAPSHOT"
   }
   val test = new {
     val kollFlitz       = "0.2.3"
     val scalaTest       = "3.0.7"
     val scopt           = "3.7.1"
+    val submin          = "0.2.5"
   }
 }
 
@@ -57,8 +58,8 @@ lazy val testSettings = Seq(
 // ---- projects ----
 
 lazy val root = project.withId(baseNameL).in(file("."))
-  .aggregate(core, lucre, macros, cdp, modules)
-  .dependsOn(core, lucre, macros, cdp, modules)
+  .aggregate(core, lucre, macros, cdp, modules, views)
+  .dependsOn(core, lucre, macros, cdp, modules, views)
   .settings(commonSettings)
   .settings(
     name := baseName,
@@ -124,8 +125,21 @@ lazy val macros = project.withId(s"$baseNameL-macros").in(file("macros"))
     mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-macros" % mimaVersion)
   )
 
+lazy val views = project.withId(s"$baseNameL-views").in(file("views"))
+  .dependsOn(lucre)
+  .settings(commonSettings)
+  .settings(
+    description := s"Widget elements for $baseName",
+    libraryDependencies ++= Seq(
+      "de.sciss"  %% "lucreswing" % deps.views.lucreSwing,
+      "de.sciss"  %% "lucre-bdb"  % deps.lucre.lucre    % Test,
+      "de.sciss"  %  "submin"     % deps.test.submin    % Test
+    ),
+//    mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-views" % mimaVersion)
+  )
+
 lazy val modules = project.withId(s"$baseNameL-modules").in(file("modules"))
-  .dependsOn(macros)
+  .dependsOn(macros, views)
   .settings(commonSettings)
   .settings(testSettings)
   .settings(
@@ -135,7 +149,7 @@ lazy val modules = project.withId(s"$baseNameL-modules").in(file("modules"))
       "de.sciss"  %% "lucre-core"           % deps.lucre.lucre,
       "de.sciss"  %% "lucre-expr"           % deps.lucre.lucre,
       "de.sciss"  %% "lucre-bdb"            % deps.lucre.lucre,
-      "de.sciss"  %% "lucreswing"           % deps.modules.lucreSwing,
+      "de.sciss"  %% "lucreswing"           % deps.views.lucreSwing,
       "de.sciss"  %% "soundprocesses-views" % deps.lucre.soundProcesses,
     ),
 //    mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-modules" % mimaVersion)
