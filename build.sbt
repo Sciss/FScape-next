@@ -57,8 +57,8 @@ lazy val testSettings = Seq(
 // ---- projects ----
 
 lazy val root = project.withId(baseNameL).in(file("."))
-  .aggregate(core, lucre, macros, cdp)
-  .dependsOn(core, lucre, macros, cdp)
+  .aggregate(core, lucre, macros, cdp, modules)
+  .dependsOn(core, lucre, macros, cdp, modules)
   .settings(commonSettings)
   .settings(
     name := baseName,
