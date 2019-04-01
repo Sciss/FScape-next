@@ -17,12 +17,12 @@ import de.sciss.audiowidgets.AxisFormat
 import de.sciss.desktop
 import de.sciss.desktop.TextFieldWithPaint
 import de.sciss.file.File
-import de.sciss.lucre.expr.ExOps._
-import de.sciss.lucre.expr.{Ex, Model}
+import de.sciss.lucre.expr.graph.Constant
+import de.sciss.lucre.expr.{Ex, IExpr, Model}
 import de.sciss.lucre.stm.Sys
-import de.sciss.lucre.swing.graph.impl.{ComponentExpandedImpl, ComponentImpl}
+import de.sciss.lucre.swing.graph.impl.{ComponentExpandedImpl, ComponentImpl, PathFieldValueExpandedImpl}
 import de.sciss.lucre.swing.impl.ComponentHolder
-import de.sciss.lucre.swing.{View, deferTx}
+import de.sciss.lucre.swing.{Graph, View, deferTx}
 import de.sciss.synth.io.{AudioFile, AudioFileSpec, SampleFormat}
 
 import scala.swing.event.ValueChanged
@@ -51,36 +51,67 @@ object AudioFileIn {
     txt
   }
 
-  private final class Expanded[S <: Sys[S]](protected val w: Impl /* AudioFileIn */) extends View[S]
-    with ComponentHolder[scala.swing.Panel] with ComponentExpandedImpl[S] {
+  private final class Expanded[S <: Sys[S]](protected val w: AudioFileIn) extends View[S]
+    with ComponentHolder[Peer] with ComponentExpandedImpl[S] {
 
-    type C = scala.swing.Panel
+    type C = Peer
 
     override def init()(implicit tx: S#Tx, ctx: Ex.Context[S]): this.type = {
-      val pfx: View.T[S, desktop.PathField]     = w.pathField   .expand[S]
-//      val fmx: View.T[S, scala.swing.TextField] = w.formatField .expand[S]
+      val valueOpt  = ctx.getProperty[Ex[File   ]](w, PathField.keyValue).map(_.expand[S].value)
+      val titleOpt  = ctx.getProperty[Ex[String ]](w, PathField.keyTitle).map(_.expand[S].value)
 
       deferTx {
-        val pfc = pfx.component
-//        val fmc = fmx.component
-        val fmc = new TextFieldWithPaint(27)
-//        val d0  = pfc.textField.preferredSize
-//        val d1  = fmc.preferredSize
-//        d1.width = d0.width
-//        fmc.preferredSize = d1
-        fmc.editable  = false
-        fmc.focusable = false
-        val fb = new scala.swing.BoxPanel(Orientation.Horizontal)
-        fb.contents += fmc
-        fb.contents += Swing.HStrut(pfc.button.preferredSize.width)
-        val c = new scala.swing.BoxPanel(Orientation.Vertical) {
+        val c: Peer = new scala.swing.BoxPanel(Orientation.Vertical) with Peer {
+          private[this] val fmc = {
+            val res = new TextFieldWithPaint(27)
+            res.editable  = false
+            res.focusable = false
+            res
+          }
+
+          def updateFormat(): Unit =
+            pathField.valueOption match {
+              case Some(f) =>
+                try {
+                  val spec  = AudioFile.readSpec(f)
+                  fmc.text  = formatSpec(spec)
+                  fmc.paint = None
+                } catch {
+                  case NonFatal(ex) =>
+                    fmc.text  = ex.toString
+                    fmc.paint = Some(TextFieldWithPaint.RedOverlay)
+                }
+              case None =>
+                fmc.text  = ""
+                fmc.paint = None
+            }
+
+          val pathField: desktop.PathField = {
+            val res = new desktop.PathField
+            valueOpt.foreach(res.value = _)
+            titleOpt.foreach(res.title = _)
+            res.reactions += {
+              case ValueChanged(_) => updateFormat()
+            }
+            res
+          }
+
+          updateFormat()
+
+          private[this] val fb = {
+            val res = new scala.swing.BoxPanel(Orientation.Horizontal)
+            res.contents += fmc
+            res.contents += Swing.HStrut(pathField.button.preferredSize.width)
+            res
+          }
+
           override lazy val peer: javax.swing.JPanel = {
             val p = new javax.swing.JPanel with SuperMixin {
               override def getBaseline(width: Int, height: Int): Int = {
-                val pfj = pfc.peer
+                val pfj = pathField.peer
                 val d   = pfj.getPreferredSize
-                val res = pfc.peer.getBaseline(d.width, d.height)
-                res + pfc.peer.getY
+                val res = pfj.getBaseline(d.width, d.height)
+                res + pfj.getY
               }
             }
             val l = new javax.swing.BoxLayout(p, Orientation.Vertical.id)
@@ -88,31 +119,8 @@ object AudioFileIn {
             p
           }
 
-          contents += pfc
-          contents += fb // fmc
-        }
-
-        def updateFormat(): Unit =
-          pfc.valueOption match {
-            case Some(f) =>
-              try {
-                val spec  = AudioFile.readSpec(f)
-                fmc.text  = formatSpec(spec)
-                fmc.paint = None
-              } catch {
-                case NonFatal(ex) =>
-                  fmc.text  = ex.toString
-                  fmc.paint = Some(TextFieldWithPaint.RedOverlay)
-              }
-            case None =>
-              fmc.text  = ""
-              fmc.paint = None
-          }
-
-        updateFormat()
-
-        pfc.reactions += {
-          case ValueChanged(_) => updateFormat()
+          contents += pathField
+          contents += fb
         }
 
         component = c
@@ -121,40 +129,56 @@ object AudioFileIn {
     }
   }
 
+  final case class Value(w: AudioFileIn) extends Ex[File] {
+    override def productPrefix: String = s"AudioFileIn$$Value" // serialization
+
+    def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, File] = {
+      import ctx.{cursor, targets}
+      val ws        = w.expand[S]
+      val valueOpt  = ctx.getProperty[Ex[File]](w, PathField.keyValue)
+      val value0    = valueOpt.fold[File](PathField.defaultValue)(_.expand[S].value)
+      new PathFieldValueExpandedImpl[S](ws.component.pathField, value0).init()
+    }
+  }
+
+  final case class Title(w: AudioFileIn) extends Ex[String] {
+    override def productPrefix: String = s"AudioFileIn$$Title" // serialization
+
+    def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, String] = {
+      val valueOpt = ctx.getProperty[Ex[String]](w, PathField.keyTitle)
+      valueOpt.getOrElse(Constant("Select Audio Input File")).expand[S]
+    }
+  }
+
   private final case class Impl() extends AudioFileIn with ComponentImpl { w =>
     override def productPrefix: String = "AudioFileIn" // serialization
-
-    private[this] val pf = {
-      val res   = PathField()
-      res.title = "Select Audio Input File"
-      res
-    }
-
-//    private[this] val fmt = {
-//      val res       = TextField(12)
-////      res.editable  = false
-////      res.focusable = false
-//      res
-//    }
-
-    def pathField   : PathField = pf
-//    def formatField : TextField = fmt
 
     protected def mkControl[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): Repr[S] =
       new Expanded[S](this).init()
 
-    def value: Model[File] = pf.value
+    object value extends Model[File] {
+      def apply(): Ex[File] = Value(w)
 
-    def title: Ex[String] = pf.title
+      def update(value: Ex[File]): Unit = {
+        val b = Graph.builder
+        b.putProperty(w, PathField.keyValue, value)
+      }
+    }
 
-    def title_=(value: Ex[String]): Unit = pf.title = value
+    def title: Ex[String] = Title(this)
+
+    def title_=(value: Ex[String]): Unit = {
+      val b = Graph.builder
+      b.putProperty(this, PathField.keyTitle, value)
+    }
+  }
+
+  trait Peer extends scala.swing.Panel {
+    def pathField: desktop.PathField
   }
 }
 trait AudioFileIn extends Component {
-  type C = scala.swing.Panel
-
-//  def pathField   : PathField
-//  def formatField : TextField
+  type C = AudioFileIn.Peer
 
   var title : Ex[String]
   def value : Model[File]

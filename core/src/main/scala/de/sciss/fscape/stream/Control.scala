@@ -113,13 +113,19 @@ object Control {
     /** The default internal node buffer size is 65536. */
     var nodeBufferSize: Int = 65536
 
-    /** The default behavior is to isolate blocking nodes
-      * into a separate graph. This should usually be the case.
-      * It can be disabled for debugging purposes, for example
+    /** The default behavior is ''not'' to isolate blocking nodes
+      * into a separate graph.
+      * This is due to multiple problems of Akka Stream polling
+      * nodes at async boundaries in an unpredictable way.
+      *
+      * Once this behavior has been rectified,
+      * the setting should be rather `true` by default.
+      *
+      * The setting should also be left disabled for debugging purposes, for example
       * in order to allow the debug printer to create an entire
       * GraphViz representation.
       */
-    var useAsync: Boolean = true
+    var useAsync: Boolean = false // true
 
     private[this] var _seed = Option.empty[Long]
     private[this] lazy val defaultSeed: Long = System.currentTimeMillis()

@@ -47,7 +47,7 @@ object ModFourierTranslation extends Module {
     val f = FScape[S]()
     import de.sciss.fscape.lucre.MacroImplicits._
     f.setGraph {
-      // version: 29-Mar-2019
+      // version: 01-Apr-2019
       val in0           = AudioFileIn("in")
       val sr            = in0.sampleRate
       val numFramesIn   = in0.numFrames
@@ -55,10 +55,10 @@ object ModFourierTranslation extends Module {
       val smpFmt        = "out-format"  .attr(2)
       val gainType      = "gain-type"   .attr(1)
       val gainDb        = "gain-db"     .attr(0.0)
-      val lenMode       = "len-mode"    .attr(0).clip(0, 1)
-      val inIsComplex   = "complex-in"  .attr(0).clip(0, 1)
-      val outIsComplex  = "complex-out" .attr(0).clip(0, 1)
-      val dir           = "direction"   .attr(0).clip(0, 1)
+      val lenMode       = "len-mode"    .attr(0).clip()
+      val inIsComplex   = "complex-in"  .attr(0).clip()
+      val outIsComplex  = "complex-out" .attr(0).clip()
+      val dir           = "direction"   .attr(0).clip()
       val dirFFT        = dir * -2 + (1: GE)  // bwd = -1, fwd = +1
       val numFramesOut  = (numFramesIn + lenMode).nextPowerOfTwo / (lenMode + (1: GE))
       val numFramesInT  = numFramesIn min numFramesOut
@@ -97,9 +97,12 @@ object ModFourierTranslation extends Module {
 
       If (outIsComplex) Then {
         val fftN      = applyGain(fft)
-        val fftNU     = UnzipWindow(fftN)
-        val outN      = fftNU.out(0)
-        val outImagN  = fftNU.out(1)
+        // XXX TODO --- this doesn't play nicely with mce
+        // val fftNU     = UnzipWindow(fftN)
+        // val outN      = fftNU.out(0)
+        // val outImagN  = fftNU.out(1)
+        val outN      = ResizeWindow(fftN, 2, start = 0, stop = -1)
+        val outImagN  = ResizeWindow(fftN, 2, start = 1, stop =  0)
         val writtenRe = AudioFileOut("out", outN, fileType = fileType,
           sampleFormat = smpFmt, sampleRate = sr)
         mkProgress(writtenRe, "write-real")
@@ -108,7 +111,10 @@ object ModFourierTranslation extends Module {
         mkProgress(writtenIm, "write-imag")
 
       } Else {
-        val outN = applyGain(fft.complex.real)
+        // XXX TODO --- this doesn't play nicely with mce
+        // val outN    = applyGain(fft.complex.real)
+        val re      = ResizeWindow(fft, 2, start = 0, stop = -1)
+        val outN    = applyGain(re)
         val written = AudioFileOut("out", outN, fileType = fileType,
           sampleFormat = smpFmt, sampleRate = sr)
         mkProgress(written, "write")
@@ -124,7 +130,7 @@ object ModFourierTranslation extends Module {
     val w = Widget[S]()
     import de.sciss.synth.proc.MacroImplicits._
     w.setGraph {
-      // version: 31-Mar-2019
+      // version: 01-Apr-2019
       val r     = Runner("run")
       val m     = r.messages
       m.changed.filter(m.nonEmpty) ---> Println(m.mkString("\n"))
@@ -194,11 +200,18 @@ object ModFourierTranslation extends Module {
         f
       }
 
+      def right(c: Component*): Component = {
+        val f = FlowPanel(c: _*)
+        f.align = Align.Trailing
+        f.vGap = 0
+        f
+      }
+
       val p = GridPanel(
         mkLabel("Input [Re]:" ), in,
-        ggInIsComplex, inIm,
+        right(ggInIsComplex), inIm,
         mkLabel("Output [Re]:"), out,
-        ggOutIsComplex, outIm,
+        right(ggOutIsComplex), outIm,
         Label(" "), left(ggOutType, ggOutFmt),
         mkLabel("Gain:"), left(ggGain, ggGainType),
         Label(" "), Empty(),

@@ -30,6 +30,8 @@ import scala.concurrent.stm.Ref
 import scala.util.Failure
 
 object FScapeRunnerImpl extends Runner.Factory {
+  var DEBUG_USE_ASYNC = false // fuck you Akka, completely intrusive behaviour when using async
+
   final val prefix          = "FScape"
   def humanName : String    = prefix
   def tpe       : Obj.Type  = FScape
@@ -112,6 +114,7 @@ object FScapeRunnerImpl extends Runner.Factory {
       cfg.progressReporter = { p =>
         progress.push(p.total)
       }
+      cfg.useAsync = DEBUG_USE_ASYNC
       val r: Rendering[S] = obj.run(cfg)
       renderRef.swap(Some(r)).foreach(_.dispose())
       obsRef   .swap(Disposable.empty) .dispose()
