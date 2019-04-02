@@ -20,34 +20,42 @@ import de.sciss.lucre.expr.{Ex, IExpr, Model}
 import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.swing.graph.impl.{ComponentImpl, FileInExpandedImpl, PathFieldValueExpandedImpl}
 import de.sciss.lucre.swing.{Graph, PanelWithPathField}
-import de.sciss.synth.io.{AudioFile, AudioFileSpec, SampleFormat}
+import de.sciss.synth.io
+import de.sciss.synth.io.{AudioFile, AudioFileSpec}
 
 object AudioFileIn {
   def apply(): AudioFileIn = Impl()
 
   private lazy val timeFmt = AxisFormat.Time(hours = false, millis = true)
 
-  def formatSpec(spec: AudioFileSpec): String = {
-    val smp     = spec.sampleFormat
-    val smpTpe  = smp match {
-      case SampleFormat.Float | SampleFormat.Double => "float"
-      case _ => "int"
-    }
+  def specToString(spec: AudioFileSpec): String = {
+    import spec._
+    val smpFmt  = formatToString(sampleFormat)
     val channels = spec.numChannels match {
       case 1 => "mono"
       case 2 => "stereo"
       case n => s"$n-chan."
     }
-    val sr  = f"${spec.sampleRate/1000}%1.1f"
-    val dur = timeFmt.format(spec.numFrames.toDouble / spec.sampleRate)
-    val txt = s"${spec.fileType.name}, $channels ${smp.bitsPerSample}-bit $smpTpe $sr kHz, $dur"
+    val sr  = f"${sampleRate/1000}%1.1f"
+    val dur = timeFmt.format(numFrames.toDouble / sampleRate)
+    val txt = s"${fileType.name}, $channels $smpFmt $sr kHz, $dur"
+    txt
+  }
+
+  def formatToString(smp: io.SampleFormat): String = {
+    val smpTpe = smp match {
+      case io.SampleFormat.Float | io.SampleFormat.Double => "float"
+      case io.SampleFormat.UInt8                          => "uint"
+      case _                                              => "int"
+    }
+    val txt = s"${smp.bitsPerSample}-bit $smpTpe"
     txt
   }
 
   private final class Expanded[S <: Sys[S]](protected val w: AudioFileIn) extends FileInExpandedImpl[S] {
     protected def mkFormat(f: File): String = {
       val spec = AudioFile.readSpec(f)
-      formatSpec(spec)
+      specToString(spec)
     }
   }
 

@@ -35,6 +35,8 @@ object ImageFile {
       val extension = "png"
 
       val extensions: Vec[String] = Vector("png")
+
+      val isLossy = false
     }
     case object JPG extends Type {
       override def productPrefix = s"ImageFile$$Type$$JPG$$"    // serialization
@@ -46,6 +48,8 @@ object ImageFile {
       val extension = "jpg"
 
       val extensions: Vec[String] = Vector("jpg", "jpeg")
+
+      val isLossy = true
     }
 
     def apply(id: Int): Type = id match {
@@ -66,6 +70,8 @@ object ImageFile {
 
     /** @return  a list of alternative extensions, including the default `extension` */
     def extensions: Vec[String]
+
+    def isLossy: Boolean
   }
 
   object SampleFormat {

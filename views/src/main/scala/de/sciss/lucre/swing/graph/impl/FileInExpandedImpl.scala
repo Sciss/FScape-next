@@ -66,6 +66,7 @@ trait FileInExpandedImpl[S <: Sys[S]]
           val res = new desktop.PathField
           valueOpt.foreach(res.value = _)
           titleOpt.foreach(res.title = _)
+          res.listenTo(res)
           res.reactions += {
             case ValueChanged(_) => updateFormat()
           }

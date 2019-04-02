@@ -26,7 +26,7 @@ lazy val commonSettings = Seq(
 
 lazy val deps = new {
   val main = new {
-    val audioFile       = "1.5.1"
+    val audioFile       = "1.5.2"
     val dsp             = "1.3.1"
     val fileUtil        = "1.1.3"
     val numbers         = "0.2.0"

@@ -130,7 +130,7 @@ object ModFourierTranslation extends Module {
     val w = Widget[S]()
     import de.sciss.synth.proc.MacroImplicits._
     w.setGraph {
-      // version: 01-Apr-2019
+      // version: 02-Apr-2019
       val r     = Runner("run")
       val m     = r.messages
       m.changed.filter(m.nonEmpty) ---> Println(m.mkString("\n"))
@@ -144,29 +144,17 @@ object ModFourierTranslation extends Module {
       ggInIsComplex.selected <--> "run:complex-in".attr(false)
       inIm.enabled = ggInIsComplex.selected() // XXX TODO doesn't work
 
-      val out   = PathField()
-      out.mode  = PathField.Save
-      out.value <--> Artifact("run:out")
+      val out   = AudioFileOut()
+      out.value         <--> Artifact("run:out")
+      out.fileType      <--> "run:out-type".attr(0)
+      out.sampleFormat  <--> "run:out-format".attr(2)
+
       val outIm  = PathField()
       outIm.mode = PathField.Save
       outIm.value <--> Artifact("run:out-imag")
       val ggOutIsComplex = CheckBox("Output [Im]:")
       ggOutIsComplex.selected <--> "run:complex-out".attr(false)
       outIm.enabled = ggOutIsComplex.selected() // XXX TODO doesn't work
-
-      val ggOutType = ComboBox(
-        List("AIFF", "Wave", "Wave64", "IRCAM", "Snd")
-      )
-      ggOutType.index <--> "run:out-type".attr(0)
-
-      val ggOutFmt = ComboBox(List(
-        "16-bit int",
-        "24-bit int",
-        "32-bit float",
-        "32-bit int",
-        "64-bit float"
-      ))
-      ggOutFmt.index <--> "run:out-format".attr(2)
 
       val ggGain = DoubleField()
       ggGain.unit = "dB"
@@ -194,16 +182,17 @@ object ModFourierTranslation extends Module {
       }
 
       def left(c: Component*): Component = {
-        val f = FlowPanel(c: _*)
+        val f   = FlowPanel(c: _*)
         f.align = Align.Leading
-        f.vGap = 0
+        f.vGap  = 0
         f
       }
 
       def right(c: Component*): Component = {
-        val f = FlowPanel(c: _*)
+        val f   = FlowPanel(c: _*)
         f.align = Align.Trailing
-        f.vGap = 0
+        f.hGap  = 0
+        f.vGap  = 0
         f
       }
 
@@ -212,7 +201,6 @@ object ModFourierTranslation extends Module {
         right(ggInIsComplex), inIm,
         mkLabel("Output [Re]:"), out,
         right(ggOutIsComplex), outIm,
-        Label(" "), left(ggOutType, ggOutFmt),
         mkLabel("Gain:"), left(ggGain, ggGainType),
         Label(" "), Empty(),
         mkLabel("Direction:"), left(ggDir),

@@ -82,30 +82,17 @@ object ModChangeGain extends Module {
     val w = Widget[S]()
     import de.sciss.synth.proc.MacroImplicits._
     w.setGraph {
-      // version: 31-Mar-2019
+      // version: 02-Apr-2019
       val r     = Runner("run")
       val m     = r.messages
       m.changed.filter(m.nonEmpty) ---> Println(m.mkString("\n"))
 
       val in    = AudioFileIn()
       in.value <--> Artifact("run:in")
-      val out   = PathField()
-      out.mode  = PathField.Save
-      out.value <--> Artifact("run:out")
-
-      val ggOutType = ComboBox(
-        List("AIFF", "Wave", "Wave64", "IRCAM", "Snd")
-      )
-      ggOutType.index <--> "run:out-type".attr(0)
-
-      val ggOutFmt = ComboBox(List(
-        "16-bit int",
-        "24-bit int",
-        "32-bit float",
-        "32-bit int",
-        "64-bit float"
-      ))
-      ggOutFmt.index <--> "run:out-format".attr(2)
+      val out   = AudioFileOut()
+      out.value         <--> Artifact("run:out")
+      out.fileType      <--> "run:out-type".attr(0)
+      out.sampleFormat  <--> "run:out-format".attr(2)
 
       val ggGain = DoubleField()
       ggGain.unit = "dB"
@@ -134,7 +121,6 @@ object ModChangeGain extends Module {
       val p = GridPanel(
         mkLabel("Input:" ), in,
         mkLabel("Output:"), out,
-        Label(" "), left(ggOutType, ggOutFmt),
         Label(" "), Empty(),
         mkLabel("Gain:"), left(ggGain, ggGainType),
       )

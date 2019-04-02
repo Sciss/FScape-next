@@ -1,5 +1,5 @@
 /*
- *  AudioFileOut.scala
+ *  ImageFileOut.scala
  *  (LucreSwing)
  *
  *  Copyright (c) 2014-2019 Hanns Holger Rutz. All rights reserved.
@@ -14,25 +14,24 @@
 package de.sciss.lucre.swing.graph
 
 import de.sciss.file.File
+import de.sciss.fscape.graph.ImageFile
 import de.sciss.lucre.expr.graph.Constant
 import de.sciss.lucre.expr.{Ex, IExpr, Model}
 import de.sciss.lucre.stm.Sys
-import de.sciss.lucre.swing.graph.impl.{AudioFileOutExpandedImpl, ComboBoxIndexExpandedImpl, ComboBoxValueExpandedImpl, ComponentImpl, PathFieldValueExpandedImpl}
+import de.sciss.lucre.swing.graph.impl.{ComboBoxIndexExpandedImpl, ComponentImpl, ImageFileOutExpandedImpl, PathFieldValueExpandedImpl, SpinnerValueExpandedImpl}
 import de.sciss.lucre.swing.{Graph, PanelWithPathField}
-import de.sciss.swingplus.{ComboBox => _ComboBox}
-import de.sciss.synth.io
-import de.sciss.synth.io.AudioFileType
+import de.sciss.swingplus.{Spinner, ComboBox => _ComboBox}
 
-object AudioFileOut {
+object ImageFileOut {
   def apply(pathFieldVisible    : Boolean = true,
             fileTypeVisible     : Boolean = true,
             sampleFormatVisible : Boolean = true,
-            sampleRateVisible   : Boolean = false): AudioFileOut =
+            qualityVisible      : Boolean = true): ImageFileOut =
     Impl(pathFieldVisible = pathFieldVisible, fileTypeVisible = fileTypeVisible,
-      sampleFormatVisible = sampleFormatVisible, sampleRateVisible = sampleRateVisible)
+      sampleFormatVisible = sampleFormatVisible, qualityVisible = qualityVisible)
 
-  final case class Value(w: AudioFileOut) extends Ex[File] {
-    override def productPrefix: String = s"AudioFileOut$$Value" // serialization
+  final case class Value(w: ImageFileOut) extends Ex[File] {
+    override def productPrefix: String = s"ImageFileOut$$Value" // serialization
 
     def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, File] = {
       import ctx.{cursor, targets}
@@ -43,44 +42,44 @@ object AudioFileOut {
     }
   }
 
-  final case class FileType(w: AudioFileOut) extends Ex[Int] {
-    override def productPrefix: String = s"AudioFileOut$$FileType" // serialization
+  final case class FileType(w: ImageFileOut) extends Ex[Int] {
+    override def productPrefix: String = s"ImageFileOut$$FileType" // serialization
 
     def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, Int] = {
       import ctx.{cursor, targets}
       val ws        = w.expand[S]
       val valueOpt  = ctx.getProperty[Ex[Int]](w, keyFileType)
       val value0    = valueOpt.fold[Int](defaultFileType)(_.expand[S].value)
-      new ComboBoxIndexExpandedImpl[S, AudioFileType](ws.component.fileTypeComboBox, value0).init()
+      new ComboBoxIndexExpandedImpl[S, ImageFile.Type](ws.component.fileTypeComboBox, value0).init()
     }
   }
 
-  final case class SampleFormat(w: AudioFileOut) extends Ex[Int] {
-    override def productPrefix: String = s"AudioFileOut$$SampleFormat" // serialization
+  final case class SampleFormat(w: ImageFileOut) extends Ex[Int] {
+    override def productPrefix: String = s"ImageFileOut$$SampleFormat" // serialization
 
     def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, Int] = {
       import ctx.{cursor, targets}
       val ws        = w.expand[S]
       val valueOpt  = ctx.getProperty[Ex[Int]](w, keySampleFormat)
       val value0    = valueOpt.fold[Int](defaultSampleFormat)(_.expand[S].value)
-      new ComboBoxIndexExpandedImpl[S, io.SampleFormat](ws.component.sampleFormatComboBox, value0).init()
+      new ComboBoxIndexExpandedImpl[S, ImageFile.SampleFormat](ws.component.sampleFormatComboBox, value0).init()
     }
   }
 
-  final case class SampleRate(w: AudioFileOut) extends Ex[Double] {
-    override def productPrefix: String = s"AudioFileOut$$SampleRate" // serialization
+  final case class Quality(w: ImageFileOut) extends Ex[Int] {
+    override def productPrefix: String = s"ImageFileOut$$Quality" // serialization
 
-    def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, Double] = {
+    def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, Int] = {
       import ctx.{cursor, targets}
       val ws        = w.expand[S]
-      val valueOpt  = ctx.getProperty[Ex[Double]](w, keySampleRate)
-      val value0    = valueOpt.fold[Double](defaultSampleRate)(_.expand[S].value)
-      new ComboBoxValueExpandedImpl[S, Double](ws.component.sampleRateComboBox, value0).init()
+      val valueOpt  = ctx.getProperty[Ex[Int]](w, keyQuality)
+      val value0    = valueOpt.fold[Int](defaultQuality)(_.expand[S].value)
+      new SpinnerValueExpandedImpl[S, Int](ws.component.qualityField, value0).init()
     }
   }
 
-  final case class Title(w: AudioFileOut) extends Ex[String] {
-    override def productPrefix: String = s"AudioFileOut$$Title" // serialization
+  final case class Title(w: ImageFileOut) extends Ex[String] {
+    override def productPrefix: String = s"ImageFileOut$$Title" // serialization
 
     def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, String] = {
       val valueOpt = ctx.getProperty[Ex[String]](w, PathField.keyTitle)
@@ -91,17 +90,17 @@ object AudioFileOut {
   private final case class Impl(pathFieldVisible    : Boolean,
                                 fileTypeVisible     : Boolean,
                                 sampleFormatVisible : Boolean,
-                                sampleRateVisible   : Boolean)
-    extends AudioFileOut with ComponentImpl { w =>
+                                qualityVisible      : Boolean)
+    extends ImageFileOut with ComponentImpl { w =>
 
-    override def productPrefix: String = "AudioFileOut" // serialization
+    override def productPrefix: String = "ImageFileOut" // serialization
 
     protected def mkControl[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): Repr[S] =
-      new AudioFileOutExpandedImpl[S](this,
+      new ImageFileOutExpandedImpl[S](this,
         pathFieldVisible    = pathFieldVisible,
         fileTypeVisible     = fileTypeVisible,
         sampleFormatVisible = sampleFormatVisible,
-        sampleRateVisible   = sampleRateVisible
+        qualityVisible      = qualityVisible
       ).init()
 
     object value extends Model[File] {
@@ -131,12 +130,12 @@ object AudioFileOut {
       }
     }
 
-    object sampleRate extends Model[Double] {
-      def apply(): Ex[Double] = SampleRate(w)
+    object quality extends Model[Int] {
+      def apply(): Ex[Int] = Quality(w)
 
-      def update(value: Ex[Double]): Unit = {
+      def update(value: Ex[Int]): Unit = {
         val b = Graph.builder
-        b.putProperty(w, keySampleRate, value)
+        b.putProperty(w, keyQuality, value)
       }
     }
 
@@ -150,26 +149,26 @@ object AudioFileOut {
 
   private[graph] final val keyFileType          = "fileType"
   private[graph] final val keySampleFormat      = "sampleFormat"
-  private[graph] final val keySampleRate        = "sampleRate"
+  private[graph] final val keyQuality           = "quality"
 
-  private[graph] final val defaultFileType      = 0 // AIFF
-  private[graph] final val defaultSampleFormat  = 1 // int24
-  private[graph] final val defaultSampleRate    = 44100.0
-  private[graph] final val defaultTitle         = "Select Audio Output File"
+  private[graph] final val defaultFileType      = 0 // PNG
+  private[graph] final val defaultSampleFormat  = 0 // int8
+  private[graph] final val defaultQuality       = 90
+  private[graph] final val defaultTitle         = "Select Image Output File"
 
   abstract class Peer extends PanelWithPathField {
-    def fileTypeComboBox    : _ComboBox[AudioFileType]
-    def sampleFormatComboBox: _ComboBox[io.SampleFormat]
-    def sampleRateComboBox  : _ComboBox[Double]
+    def fileTypeComboBox    : _ComboBox[ImageFile.Type]
+    def sampleFormatComboBox: _ComboBox[ImageFile.SampleFormat]
+    def qualityField        : Spinner
   }
 }
-trait AudioFileOut extends Component {
-  type C = AudioFileOut.Peer
+trait ImageFileOut extends Component {
+  type C = ImageFileOut.Peer
 
   var title       : Ex[String]
   def value       : Model[File]
 
   def fileType    : Model[Int]
   def sampleFormat: Model[Int]
-  def sampleRate  : Model[Double]
+  def quality     : Model[Int]
 }

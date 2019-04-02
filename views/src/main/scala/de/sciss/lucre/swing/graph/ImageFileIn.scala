@@ -25,13 +25,10 @@ import de.sciss.lucre.swing.{Graph, PanelWithPathField}
 object ImageFileIn {
   def apply(): ImageFileIn = Impl()
 
-  def formatSpec(spec: ImageFile.Spec): String = {
+  def specToString(spec: ImageFile.Spec): String = {
     import spec._
 
-    val isFloat = sampleFormat match {
-      case SampleFormat.Float => "float"
-      case _                  => "int"
-    }
+    val smpFmt = formatToString(sampleFormat)
     val channels = numChannels match {
       case 1 => "grayscale"
       case 3 => "RGB"
@@ -39,14 +36,24 @@ object ImageFileIn {
       case n => s"$n-chan."
     }
     val size = s"$width\u00D7$height"
-    val txt = s"${fileType.name}, $channels ${sampleFormat.bitsPerSample}-$isFloat, $size"
+    val txt = s"${fileType.name}, $channels $smpFmt, $size"
     txt
   }
+
+  def formatToString(smp: SampleFormat): String = {
+    val smpTpe = smp match {
+      case SampleFormat.Float => "float"
+      case _                  => "int"
+    }
+    val txt = s"${smp.bitsPerSample}-bit $smpTpe"
+    txt
+  }
+
 
   private final class Expanded[S <: Sys[S]](protected val w: ImageFileIn) extends FileInExpandedImpl[S] {
     protected def mkFormat(f: File): String = {
       val spec = ImageFile.readSpec(f)
-      formatSpec(spec)
+      specToString(spec)
     }
   }
 
