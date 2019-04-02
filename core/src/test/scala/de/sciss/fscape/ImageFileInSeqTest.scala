@@ -9,7 +9,11 @@ object ImageFileInSeqTest extends App {
   val width   = 1920
   val height  = 1080
   val indices = Seq[GE](246, 750)
-  val fIn     = userHome / "Documents" / "projects" / "Imperfect" / "material" / "frame-%d.png"
+  val base    = {
+    val b0 = userHome / "Documents" / "projects" / "Imperfect"
+    if (b0.isDirectory) b0 else file("/data")  / "projects" / "Imperfect"
+  }
+  val fIn     = base / "material" / "frame-1.png"
   val fOut    = userHome / "Documents" / "temp" / "test2.jpg"
 
   val g = Graph {
@@ -18,6 +22,12 @@ object ImageFileInSeqTest extends App {
     val idxSeq  = indices.reduce(_ ++ _)
     val in      = ImageFileSeqIn(template = fIn, numChannels = 3, indices = idxSeq)
     val sig     = in
+//    {
+//      val in1 = in.take(width * height)
+//      val in2 = in.drop(width * height)
+//      val inB = BufferMemory(in1, width * height)
+//      in2 atan2 inB
+//    }
     val spec    = ImageFile.Spec(width = width, height = height * indices.size, numChannels = 3 /* 1 */,
       fileType = ImageFile.Type.JPG, sampleFormat = ImageFile.SampleFormat.Int8)
     ImageFileOut(file = fOut, spec = spec, in = sig)

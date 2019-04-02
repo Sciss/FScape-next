@@ -84,10 +84,25 @@ object ImageFileSeqIn {
     res
   }
 }
+/** Reads a sequence of images, outputting them directly one after the other, determining
+  * their file names by formatting a template taken from an artifact stored in the object's attribute
+  * map at `key`, with a numeric argument given through `indices`.
+  *
+  * @param  key       key into the `FScape` object's attribute map, where an `Artifact` should be stored.
+  *                   The artifact's file name is taken as a ''template''. Either that file contains a single
+  *                   placeholder for `java.util.Formatter` syntax,
+  *                   such as `%d` to insert an integer number. Or alternatively, if the file name does
+  *                   not contain a `%` character but a digit or a sequence of digits, those digits
+  *                   will be replaced by `%d` to produce a valid template.
+  *                   Therefore, if the template is `foo-123.jpg` and the indices contain `4` and `5`,
+  *                   then the UGen will read the images `foo-4` and `foo-5` (the placeholder `123` is
+  *                   irrelevant).
+  */
 final case class ImageFileSeqIn(key: String, indices: GE) extends GE.Lazy {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = {
     val (f, spec) = ImageFileSeqIn.getSpec(key, indices)
-    fscape.graph.ImageFileSeqIn(template = f, numChannels = spec.numChannels, indices = indices)
+    val t = Util.mkTemplate(f)
+    fscape.graph.ImageFileSeqIn(template = t, numChannels = spec.numChannels, indices = indices)
   }
 
   def width : GE = ImageFileSeqIn.Width (key, indices)

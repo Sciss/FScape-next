@@ -21,18 +21,33 @@ import de.sciss.fscape.stream.StreamIn
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+/** Writes a sequence of images, taken their data one by one from the input `in`, and writing them
+  * to individual files, determining
+  * their file names by formatting a `template` with a numeric argument given through `indices`.
+  *
+  * @param  template  a file which contains a single placeholder for `java.util.Formatter` syntax,
+  *                   such as `%d` to insert an integer number. Alternatively, if the file name does
+  *                   not contain a `%` character but a digit or a sequence of digits, those digits
+  *                   will be replaced by `%d` to produce a valid template.
+  *                   Therefore, if the template is `foo-123.jpg` and the indices contain `4` and `5`,
+  *                   then the UGen will write the images `foo-4` and `foo-5` (the placeholder `123` is
+  *                   irrelevant).
+  */
 final case class ImageFileSeqOut(in: GE, template: File, spec: ImageFile.Spec, indices: GE)
   extends UGenSource.ZeroOut {
 
   protected def makeUGens(implicit b: UGenGraph.Builder): Unit =
     unwrap(this, in.expand.outputs :+ indices.expand)
 
-  protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit =
+  protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit = {
+    val t = Util.mkTemplate(template)
     UGen.ZeroOut(this, inputs = args,
-      aux = Aux.FileOut(template) :: Aux.ImageFileSpec(spec) :: Nil, isIndividual = true)
+      aux = Aux.FileOut(t) :: Aux.ImageFileSpec(spec) :: Nil, isIndividual = true)
+  }
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit = {
     val in :+ indices = args
-    stream.ImageFileSeqOut(template = template, spec = spec, indices = indices.toInt, in = in.map(_.toDouble))
+    val t = Util.mkTemplate(template)
+    stream.ImageFileSeqOut(template = t, spec = spec, indices = indices.toInt, in = in.map(_.toDouble))
   }
 }

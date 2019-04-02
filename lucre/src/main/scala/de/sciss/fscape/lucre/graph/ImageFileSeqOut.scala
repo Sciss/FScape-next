@@ -19,9 +19,8 @@ import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.graph.ImageFile.{SampleFormat, Type}
 import de.sciss.fscape.lucre.UGenGraphBuilder
 import de.sciss.fscape.lucre.UGenGraphBuilder.Input
-import de.sciss.fscape.lucre
+import de.sciss.fscape.{GE, Lazy, UGen, UGenGraph, UGenIn, UGenSource, Util, lucre, stream}
 import de.sciss.fscape.stream.StreamIn
-import de.sciss.fscape.{GE, Lazy, UGen, UGenGraph, UGenIn, UGenSource, stream}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
@@ -74,7 +73,15 @@ object ImageFileSeqOut {
   * The default is PNG.
   *
   * @param key          the key into the enclosing object's attribute map,
-  *                     pointing to an `Artifact` for the file template
+  *                     pointing to an `Artifact` for the file template.
+  *                     The artifact's file name is taken as a ''template''. Either that file contains a single
+  *                     placeholder for `java.util.Formatter` syntax,
+  *                     such as `%d` to insert an integer number. Or alternatively, if the file name does
+  *                     not contain a `%` character but a digit or a sequence of digits, those digits
+  *                     will be replaced by `%d` to produce a valid template.
+  *                     Therefore, if the template is `foo-123.jpg` and the indices contain `4` and `5`,
+  *                     then the UGen will write the images `foo-4` and `foo-5` (the placeholder `123` is
+  *                     irrelevant).
   * @param in           the signal to write
   * @param width        image's width in pixels
   * @param height       image's height in pixels
@@ -100,7 +107,8 @@ final case class ImageFileSeqOut(key: String, in: GE, width: GE, height: GE, fil
       //          sampleFormat = ImageFileSeqOut.id(spec.sampleFormat), sampleRate = spec.sampleRate)
 
       case f: File =>
-        ImageFileSeqOut.WithFile(template = f, in = in, width = width, height = height, fileType = fileType,
+        val t = Util.mkTemplate(f)
+        ImageFileSeqOut.WithFile(template = t, in = in, width = width, height = height, fileType = fileType,
           sampleFormat = sampleFormat, quality = quality, indices = indices)
 
       case other =>
