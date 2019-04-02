@@ -29,7 +29,7 @@ object AudioFileIn {
 
   def formatSpec(spec: AudioFileSpec): String = {
     val smp     = spec.sampleFormat
-    val isFloat = smp match {
+    val smpTpe  = smp match {
       case SampleFormat.Float | SampleFormat.Double => "float"
       case _ => "int"
     }
@@ -40,7 +40,7 @@ object AudioFileIn {
     }
     val sr  = f"${spec.sampleRate/1000}%1.1f"
     val dur = timeFmt.format(spec.numFrames.toDouble / spec.sampleRate)
-    val txt = s"${spec.fileType.name}, $channels ${smp.bitsPerSample}-$isFloat $sr kHz, $dur"
+    val txt = s"${spec.fileType.name}, $channels ${smp.bitsPerSample}-bit $smpTpe $sr kHz, $dur"
     txt
   }
 
@@ -68,7 +68,7 @@ object AudioFileIn {
 
     def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, String] = {
       val valueOpt = ctx.getProperty[Ex[String]](w, PathField.keyTitle)
-      valueOpt.getOrElse(Constant("Select Audio Input File")).expand[S]
+      valueOpt.getOrElse(Constant(defaultTitle)).expand[S]
     }
   }
 
@@ -94,6 +94,8 @@ object AudioFileIn {
       b.putProperty(this, PathField.keyTitle, value)
     }
   }
+
+  private[graph] val defaultTitle = "Select Audio Input File"
 
   type Peer = PanelWithPathField
 }

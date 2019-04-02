@@ -36,6 +36,7 @@ object AudioFileOut {
     case AudioFileType.Wave64  => 2
     case AudioFileType.IRCAM   => 3
     case AudioFileType.NeXT    => 4
+    case AudioFileType.Raw     => 5
     case other => sys.error(s"Unexpected audio file type $other")
   }
 
@@ -58,10 +59,11 @@ object AudioFileOut {
     case 2 => AudioFileType.Wave64
     case 3 => AudioFileType.IRCAM
     case 4 => AudioFileType.NeXT
+    case 5 => AudioFileType.Raw
     case other => sys.error(s"Unexpected audio file type id $other")
   }
 
-  def maxFileTypeId: Int = 4
+  def maxFileTypeId: Int = 5
 
   /** Recovers a sample format from an id. Throws an exception if the id is invalid. */
   def sampleFormat(id: Int): SampleFormat = (id: @switch) match {
