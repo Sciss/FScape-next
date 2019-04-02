@@ -19,7 +19,9 @@ lazy val commonSettings = Seq(
     "-deprecation", "-unchecked", "-feature", "-encoding", "utf8", "-Xfuture", "-Xlint", "-Xsource:2.13"
   ),
   resolvers          += "Oracle Repository" at "http://download.oracle.com/maven",  // required for sleepycat
-  updateOptions      := updateOptions.value.withLatestSnapshots(false)
+  updateOptions      := updateOptions.value.withLatestSnapshots(false),
+  javacOptions        := commonJavaOptions ++ Seq("-target", "1.6", "-g", "-Xlint:deprecation" /*, "-Xlint:unchecked" */),
+  javacOptions in doc := commonJavaOptions,
 ) ++ publishSettings
 
 lazy val deps = new {
@@ -48,6 +50,8 @@ lazy val deps = new {
     val submin          = "0.2.5"
   }
 }
+
+def commonJavaOptions = Seq("-source", "1.6")
 
 lazy val testSettings = Seq(
   libraryDependencies += {

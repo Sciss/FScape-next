@@ -14,7 +14,7 @@
 package de.sciss.lucre.swing.graph.impl
 
 import de.sciss.desktop
-import de.sciss.desktop.{FileDialog, TextFieldWithPaint}
+import de.sciss.desktop.FileDialog
 import de.sciss.file.File
 import de.sciss.fscape.lucre.graph.{AudioFileOut => UAudioFileOut}
 import de.sciss.lucre.expr.Ex
@@ -28,7 +28,7 @@ import de.sciss.synth.io.AudioFileType
 import javax.swing.JList
 
 import scala.swing.event.ValueChanged
-import scala.swing.{Orientation, SequentialContainer, Swing}
+import scala.swing.{Orientation, SequentialContainer}
 
 final class AudioFileOutExpandedImpl[S <: Sys[S]](protected val w: AudioFileOut,
                                                   fileTypeVisible     : Boolean,
@@ -47,13 +47,6 @@ final class AudioFileOutExpandedImpl[S <: Sys[S]](protected val w: AudioFileOut,
 
     deferTx {
       val c: C = new AudioFileOut.Peer with SequentialContainer.Wrapper  {
-        private[this] val fmc = {
-          val res = new TextFieldWithPaint(27)
-          res.editable  = false
-          res.focusable = false
-          res
-        }
-
         val pathField: desktop.PathField = {
           val res = new desktop.PathField
           res.mode = FileDialog.Save
@@ -75,7 +68,7 @@ final class AudioFileOutExpandedImpl[S <: Sys[S]](protected val w: AudioFileOut,
           res
         }
 
-        val fileTypeComboBox: ComboBox[AudioFileType] = {
+        lazy val fileTypeComboBox: ComboBox[AudioFileType] = {
           val items = List.tabulate(UAudioFileOut.maxFileTypeId + 1)(UAudioFileOut.fileType)
           val res = mkCombo(items) {
             case x: AudioFileType => x.name
@@ -85,7 +78,7 @@ final class AudioFileOutExpandedImpl[S <: Sys[S]](protected val w: AudioFileOut,
           res
         }
 
-        val sampleFormatComboBox: ComboBox[io.SampleFormat] = {
+        lazy val sampleFormatComboBox: ComboBox[io.SampleFormat] = {
           val items = List.tabulate(UAudioFileOut.maxSampleFormatId + 1)(UAudioFileOut.sampleFormat)
           val res = mkCombo(items) {
             case x: io.SampleFormat => AudioFileOut.formatFormat(x)
@@ -95,7 +88,7 @@ final class AudioFileOutExpandedImpl[S <: Sys[S]](protected val w: AudioFileOut,
           res
         }
 
-        val sampleRateComboBox: ComboBox[Double] = {
+        lazy val sampleRateComboBox: ComboBox[Double] = {
           val items = List[Double](44100, 48000, 88200, 96000, 176400, 192000)
           val res = mkCombo(items) {
             case x: Double => x.toInt.toString
@@ -106,9 +99,12 @@ final class AudioFileOutExpandedImpl[S <: Sys[S]](protected val w: AudioFileOut,
         }
 
         private[this] val fb = {
-          val res = new scala.swing.BoxPanel(Orientation.Horizontal)
-          res.contents += fmc
-          res.contents += Swing.HStrut(pathField.button.preferredSize.width)
+          var contents = List.empty[scala.swing.Component]
+          if (sampleRateVisible   ) contents ::= sampleRateComboBox
+          if (sampleFormatVisible ) contents ::= sampleFormatComboBox
+          if (fileTypeVisible     ) contents ::= fileTypeComboBox
+
+          val res = new scala.swing.FlowPanel(scala.swing.FlowPanel.Alignment.Leading)(contents: _*)
           res
         }
 
