@@ -14,6 +14,8 @@
 package de.sciss.fscape
 package graph
 
+import java.io.{FileNotFoundException, IOException}
+
 import de.sciss.file.File
 import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer}
 import javax.imageio.ImageIO
@@ -28,6 +30,8 @@ object ImageFile {
 
       final val id = 0
 
+      val name = "PNG"
+
       val extension = "png"
 
       val extensions: Vec[String] = Vector("png")
@@ -36,6 +40,8 @@ object ImageFile {
       override def productPrefix = s"ImageFile$$Type$$JPG$$"    // serialization
 
       final val id = 1
+
+      val name = "JPEG"
 
       val extension = "jpg"
 
@@ -53,6 +59,8 @@ object ImageFile {
   sealed trait Type {
     def id: Int
 
+    def name: String
+
     /** @return  the default extension (period not included) */
     def extension: String
 
@@ -65,11 +73,15 @@ object ImageFile {
       override def productPrefix = s"ImageFile$$SampleFormat$$Int8$$"   // serialization
 
       final val id = 0
+
+      val bitsPerSample = 8
     }
     case object Int16 extends SampleFormat {
       override def productPrefix = s"ImageFile$$SampleFormat$$Int16$$"  // serialization
 
       final val id = 1
+
+      val bitsPerSample = 16
     }
 
     /** Currently not supported (ImageIO) */
@@ -77,6 +89,8 @@ object ImageFile {
       override def productPrefix = s"ImageFile$$SampleFormat$$Float$$"  // serialization
 
       final val id = 2
+
+      val bitsPerSample = 32
     }
 
     def apply(id: Int): SampleFormat = (id: @switch) match {
@@ -87,6 +101,8 @@ object ImageFile {
   }
   sealed trait SampleFormat {
     def id: Int
+
+    def bitsPerSample: Int
   }
 
   object Spec {
@@ -132,7 +148,9 @@ object ImageFile {
     */
   def readSpec(f: File): Spec = {
     val in      = ImageIO.createImageInputStream(f)
-    val reader  = ImageIO.getImageReaders(in).next()
+    if (in == null) throw new FileNotFoundException(f.getPath)
+    val it      = ImageIO.getImageReaders(in)
+    val reader  = if (it.hasNext) it.next() else throw new IOException("Unrecognized image file format")
     try {
       reader.setInput(in)
       val fmt = reader.getFormatName

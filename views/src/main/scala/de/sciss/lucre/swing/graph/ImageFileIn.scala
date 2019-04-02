@@ -1,5 +1,5 @@
 /*
- *  AudioFileIn.scala
+ *  ImageFileIn.scala
  *  (LucreSwing)
  *
  *  Copyright (c) 2014-2019 Hanns Holger Rutz. All rights reserved.
@@ -13,46 +13,45 @@
 
 package de.sciss.lucre.swing.graph
 
-import de.sciss.audiowidgets.AxisFormat
 import de.sciss.file.File
+import de.sciss.fscape.graph.ImageFile
+import de.sciss.fscape.graph.ImageFile.SampleFormat
 import de.sciss.lucre.expr.graph.Constant
 import de.sciss.lucre.expr.{Ex, IExpr, Model}
 import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.swing.graph.impl.{ComponentImpl, FileInExpandedImpl, PathFieldValueExpandedImpl}
 import de.sciss.lucre.swing.{Graph, PanelWithPathField}
-import de.sciss.synth.io.{AudioFile, AudioFileSpec, SampleFormat}
 
-object AudioFileIn {
-  def apply(): AudioFileIn = Impl()
+object ImageFileIn {
+  def apply(): ImageFileIn = Impl()
 
-  private lazy val timeFmt = AxisFormat.Time(hours = false, millis = true)
+  def formatSpec(spec: ImageFile.Spec): String = {
+    import spec._
 
-  def formatSpec(spec: AudioFileSpec): String = {
-    val smp     = spec.sampleFormat
-    val isFloat = smp match {
-      case SampleFormat.Float | SampleFormat.Double => "float"
-      case _ => "int"
+    val isFloat = sampleFormat match {
+      case SampleFormat.Float => "float"
+      case _                  => "int"
     }
-    val channels = spec.numChannels match {
-      case 1 => "mono"
-      case 2 => "stereo"
+    val channels = numChannels match {
+      case 1 => "grayscale"
+      case 3 => "RGB"
+      case 4 => "RGBA"
       case n => s"$n-chan."
     }
-    val sr  = f"${spec.sampleRate/1000}%1.1f"
-    val dur = timeFmt.format(spec.numFrames.toDouble / spec.sampleRate)
-    val txt = s"${spec.fileType.name}, $channels ${smp.bitsPerSample}-$isFloat $sr kHz, $dur"
+    val size = s"$width\u00D7$height"
+    val txt = s"${fileType.name}, $channels ${sampleFormat.bitsPerSample}-$isFloat, $size"
     txt
   }
 
-  private final class Expanded[S <: Sys[S]](protected val w: AudioFileIn) extends FileInExpandedImpl[S] {
+  private final class Expanded[S <: Sys[S]](protected val w: ImageFileIn) extends FileInExpandedImpl[S] {
     protected def mkFormat(f: File): String = {
-      val spec = AudioFile.readSpec(f)
+      val spec = ImageFile.readSpec(f)
       formatSpec(spec)
     }
   }
 
-  final case class Value(w: AudioFileIn) extends Ex[File] {
-    override def productPrefix: String = s"AudioFileIn$$Value" // serialization
+  final case class Value(w: ImageFileIn) extends Ex[File] {
+    override def productPrefix: String = s"ImageFileIn$$Value" // serialization
 
     def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, File] = {
       import ctx.{cursor, targets}
@@ -63,17 +62,17 @@ object AudioFileIn {
     }
   }
 
-  final case class Title(w: AudioFileIn) extends Ex[String] {
-    override def productPrefix: String = s"AudioFileIn$$Title" // serialization
+  final case class Title(w: ImageFileIn) extends Ex[String] {
+    override def productPrefix: String = s"ImageFileIn$$Title" // serialization
 
     def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, String] = {
       val valueOpt = ctx.getProperty[Ex[String]](w, PathField.keyTitle)
-      valueOpt.getOrElse(Constant("Select Audio Input File")).expand[S]
+      valueOpt.getOrElse(Constant("Select Image Input File")).expand[S]
     }
   }
 
-  private final case class Impl() extends AudioFileIn with ComponentImpl { w =>
-    override def productPrefix: String = "AudioFileIn" // serialization
+  private final case class Impl() extends ImageFileIn with ComponentImpl { w =>
+    override def productPrefix: String = "ImageFileIn" // serialization
 
     protected def mkControl[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): Repr[S] =
       new Expanded[S](this).init()
@@ -97,8 +96,8 @@ object AudioFileIn {
 
   type Peer = PanelWithPathField
 }
-trait AudioFileIn extends Component {
-  type C = AudioFileIn.Peer
+trait ImageFileIn extends Component {
+  type C = ImageFileIn.Peer
 
   var title : Ex[String]
   def value : Model[File]
