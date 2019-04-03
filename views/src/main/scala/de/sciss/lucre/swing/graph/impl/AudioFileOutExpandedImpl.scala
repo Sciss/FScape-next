@@ -31,11 +31,7 @@ import scala.swing.Reactions.Reaction
 import scala.swing.event.{SelectionChanged, ValueChanged}
 import scala.swing.{Orientation, SequentialContainer, Swing}
 
-final class AudioFileOutExpandedImpl[S <: Sys[S]](protected val w: AudioFileOut,
-                                                  pathFieldVisible    : Boolean,
-                                                  fileTypeVisible     : Boolean,
-                                                  sampleFormatVisible : Boolean,
-                                                  sampleRateVisible   : Boolean)
+final class AudioFileOutExpandedImpl[S <: Sys[S]](protected val w: AudioFileOut)
   extends View[S] with ComponentHolder[AudioFileOut.Peer] with ComponentExpandedImpl[S] {
 
   type C = AudioFileOut.Peer
@@ -47,6 +43,14 @@ final class AudioFileOutExpandedImpl[S <: Sys[S]](protected val w: AudioFileOut,
     val smpFmtIdx = ctx.getProperty[Ex[Int    ]](w, AudioFileOut.keySampleFormat).fold(AudioFileOut.defaultSampleFormat )(_.expand[S].value)
     val smpRate   = ctx.getProperty[Ex[Double ]](w, AudioFileOut.keySampleRate  ).fold(AudioFileOut.defaultSampleRate   )(_.expand[S].value)
 
+    def getBoolean(key: String, default: => Boolean): Boolean =
+      ctx.getProperty[Ex[Boolean]](w, key).fold(default)(_.expand[S].value)
+
+    val pathFieldVisible    = getBoolean(AudioFileOut.keyPathFieldVisible   , AudioFileOut.defaultPathFieldVisible    )
+    val fileTypeVisible     = getBoolean(AudioFileOut.keyFileTypeVisible    , AudioFileOut.defaultFileTypeVisible     )
+    val sampleFormatVisible = getBoolean(AudioFileOut.keySampleFormatVisible, AudioFileOut.defaultSampleFormatVisible )
+    val sampleRateVisible   = getBoolean(AudioFileOut.keySampleRateVisible  , AudioFileOut.defaultSampleRateVisible   )
+
     deferTx {
       val c: C = new AudioFileOut.Peer with SequentialContainer.Wrapper  {
         def updateFormat(): Unit =
@@ -55,6 +59,14 @@ final class AudioFileOutExpandedImpl[S <: Sys[S]](protected val w: AudioFileOut,
           } else {
             None
           }
+
+        override def enabled_=(b: Boolean): Unit = {
+          super.enabled_=(b)
+          if (pathFieldVisible    ) pathField           .enabled = b
+          if (fileTypeVisible     ) fileTypeComboBox    .enabled = b
+          if (sampleFormatVisible ) sampleFormatComboBox.enabled = b
+          if (sampleRateVisible   ) sampleRateComboBox  .enabled = b
+        }
 
         lazy val pathField: desktop.PathField = {
           val res = new desktop.PathField

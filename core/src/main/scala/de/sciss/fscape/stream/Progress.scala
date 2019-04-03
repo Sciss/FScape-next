@@ -47,8 +47,8 @@ object Progress {
     override def toString = s"$name-L($label)"
 
     protected def trigger(buf: BufD, off: Int): Unit = {
-      val frac = buf.buf(off)
-      ctrl.setProgress(key, frac)
+      val fraction = buf.buf(off)
+      ctrl.setProgress(key, fraction)
     }
   }
 }

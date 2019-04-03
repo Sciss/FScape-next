@@ -47,7 +47,7 @@ object ModFourierTranslation extends Module {
     val f = FScape[S]()
     import de.sciss.fscape.lucre.MacroImplicits._
     f.setGraph {
-      // version: 01-Apr-2019
+      // version: 03-Apr-2019
       val in0           = AudioFileIn("in")
       val sr            = in0.sampleRate
       val numFramesIn   = in0.numFrames
@@ -75,17 +75,14 @@ object ModFourierTranslation extends Module {
       val fft = Fourier(inC, size = numFramesInT,
         padding = numFramesOut - numFramesInT, dir = dirFFT)
 
-      def mkProgress(frames: GE, label: String) =
-        Progress(frames / numFramesOut,
-          Metro(sr) | Metro(numFramesOut - 1),
-          label)
+      def mkProgress(x: GE, label: String) =
+        ProgressFrames(x, numFramesOut, label)
 
       def applyGain(x: GE) =
         If (gainType sig_== 0) Then {
           val rsmpBuf   = BufferDisk(x)
           val rMax      = RunningMax(Reduce.max(x.abs))
-          val read      = Frames(rMax)
-          mkProgress(read, "analyze")
+          mkProgress(rMax, "analyze")
           val maxAmp    = rMax.last
           val div       = maxAmp + (maxAmp sig_== 0.0)
           val gainAmtN  = gainAmt / div
@@ -138,23 +135,25 @@ object ModFourierTranslation extends Module {
       val in    = AudioFileIn()
       in.value <--> Artifact("run:in")
 
-      val inIm  = PathField()
+      val inIm = AudioFileIn()
+      //inIm.formatVisible = false
       inIm.value <--> Artifact("run:in-imag")
       val ggInIsComplex = CheckBox("Input [Im]:")
       ggInIsComplex.selected <--> "run:complex-in".attr(false)
-      inIm.enabled = ggInIsComplex.selected() // XXX TODO doesn't work
+      inIm.enabled = ggInIsComplex.selected()
 
       val out   = AudioFileOut()
       out.value         <--> Artifact("run:out")
       out.fileType      <--> "run:out-type".attr(0)
       out.sampleFormat  <--> "run:out-format".attr(2)
 
-      val outIm  = PathField()
-      outIm.mode = PathField.Save
+      val outIm  = AudioFileOut()
+      outIm.fileTypeVisible     = false
+      outIm.sampleFormatVisible = false
       outIm.value <--> Artifact("run:out-imag")
       val ggOutIsComplex = CheckBox("Output [Im]:")
       ggOutIsComplex.selected <--> "run:complex-out".attr(false)
-      outIm.enabled = ggOutIsComplex.selected() // XXX TODO doesn't work
+      outIm.enabled = ggOutIsComplex.selected()
 
       val ggGain = DoubleField()
       ggGain.unit = "dB"
@@ -171,7 +170,7 @@ object ModFourierTranslation extends Module {
       ggDir.index <--> "run:direction".attr(0)
 
       val ggLenMode = ComboBox(List(
-        "Expand to 2^n", "Trunacte to 2^n"
+        "Expand to 2^n", "Truncate to 2^n"
       ))
       ggLenMode.index <--> "run:len-mode".attr(0)
 

@@ -24,12 +24,7 @@ import de.sciss.synth.io
 import de.sciss.synth.io.AudioFileType
 
 object AudioFileOut {
-  def apply(pathFieldVisible    : Boolean = true,
-            fileTypeVisible     : Boolean = true,
-            sampleFormatVisible : Boolean = true,
-            sampleRateVisible   : Boolean = false): AudioFileOut =
-    Impl(pathFieldVisible = pathFieldVisible, fileTypeVisible = fileTypeVisible,
-      sampleFormatVisible = sampleFormatVisible, sampleRateVisible = sampleRateVisible)
+  def apply(): AudioFileOut = Impl()
 
   final case class Value(w: AudioFileOut) extends Ex[File] {
     override def productPrefix: String = s"AudioFileOut$$Value" // serialization
@@ -88,21 +83,49 @@ object AudioFileOut {
     }
   }
 
-  private final case class Impl(pathFieldVisible    : Boolean,
-                                fileTypeVisible     : Boolean,
-                                sampleFormatVisible : Boolean,
-                                sampleRateVisible   : Boolean)
+  final case class PathFieldVisible(w: AudioFileOut) extends Ex[Boolean] {
+    override def productPrefix: String = s"AudioFileOut$$PathFieldVisible" // serialization
+
+    def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, Boolean] = {
+      val valueOpt = ctx.getProperty[Ex[Boolean]](w, keyPathFieldVisible)
+      valueOpt.getOrElse(Constant(defaultPathFieldVisible)).expand[S]
+    }
+  }
+
+  final case class FileTypeVisible(w: AudioFileOut) extends Ex[Boolean] {
+    override def productPrefix: String = s"AudioFileOut$$FileTypeVisible" // serialization
+
+    def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, Boolean] = {
+      val valueOpt = ctx.getProperty[Ex[Boolean]](w, keyFileTypeVisible)
+      valueOpt.getOrElse(Constant(defaultFileTypeVisible)).expand[S]
+    }
+  }
+
+  final case class SampleFormatVisible(w: AudioFileOut) extends Ex[Boolean] {
+    override def productPrefix: String = s"AudioFileOut$$SampleFormatVisible" // serialization
+
+    def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, Boolean] = {
+      val valueOpt = ctx.getProperty[Ex[Boolean]](w, keySampleFormatVisible)
+      valueOpt.getOrElse(Constant(defaultSampleFormatVisible)).expand[S]
+    }
+  }
+
+  final case class SampleRateVisible(w: AudioFileOut) extends Ex[Boolean] {
+    override def productPrefix: String = s"AudioFileOut$$SampleRateVisible" // serialization
+
+    def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, Boolean] = {
+      val valueOpt = ctx.getProperty[Ex[Boolean]](w, keySampleRateVisible)
+      valueOpt.getOrElse(Constant(defaultSampleRateVisible)).expand[S]
+    }
+  }
+
+  private final case class Impl()
     extends AudioFileOut with ComponentImpl { w =>
 
     override def productPrefix: String = "AudioFileOut" // serialization
 
     protected def mkControl[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): Repr[S] =
-      new AudioFileOutExpandedImpl[S](this,
-        pathFieldVisible    = pathFieldVisible,
-        fileTypeVisible     = fileTypeVisible,
-        sampleFormatVisible = sampleFormatVisible,
-        sampleRateVisible   = sampleRateVisible
-      ).init()
+      new AudioFileOutExpandedImpl[S](this).init()
 
     object value extends Model[File] {
       def apply(): Ex[File] = Value(w)
@@ -146,16 +169,54 @@ object AudioFileOut {
       val b = Graph.builder
       b.putProperty(this, PathField.keyTitle, value)
     }
+
+    def pathFieldVisible: Ex[Boolean] = PathFieldVisible(this)
+
+    def pathFieldVisible_=(value: Ex[Boolean]): Unit = {
+      val b = Graph.builder
+      b.putProperty(this, keyPathFieldVisible, value)
+    }
+
+    def fileTypeVisible: Ex[Boolean] = FileTypeVisible(this)
+
+    def fileTypeVisible_=(value: Ex[Boolean]): Unit = {
+      val b = Graph.builder
+      b.putProperty(this, keyFileTypeVisible, value)
+    }
+
+    def sampleFormatVisible: Ex[Boolean] = SampleFormatVisible(this)
+
+    def sampleFormatVisible_=(value: Ex[Boolean]): Unit = {
+      val b = Graph.builder
+      b.putProperty(this, keySampleFormatVisible, value)
+    }
+
+    def sampleRateVisible: Ex[Boolean] = SampleRateVisible(this)
+
+    def sampleRateVisible_=(value: Ex[Boolean]): Unit = {
+      val b = Graph.builder
+      b.putProperty(this, keySampleRateVisible, value)
+    }
   }
 
   private[graph] final val keyFileType          = "fileType"
   private[graph] final val keySampleFormat      = "sampleFormat"
   private[graph] final val keySampleRate        = "sampleRate"
 
+  private[graph] final val keyPathFieldVisible    = "pathFieldVisible"
+  private[graph] final val keyFileTypeVisible     = "fileTypeVisible"
+  private[graph] final val keySampleFormatVisible = "sampleFormatVisible"
+  private[graph] final val keySampleRateVisible   = "sampleRateVisible"
+
   private[graph] final val defaultFileType      = 0 // AIFF
   private[graph] final val defaultSampleFormat  = 1 // int24
   private[graph] final val defaultSampleRate    = 44100.0
   private[graph] final val defaultTitle         = "Select Audio Output File"
+
+  private[graph] final val defaultPathFieldVisible    = true
+  private[graph] final val defaultFileTypeVisible     = true
+  private[graph] final val defaultSampleFormatVisible = true
+  private[graph] final val defaultSampleRateVisible   = false
 
   abstract class Peer extends PanelWithPathField {
     def fileTypeComboBox    : _ComboBox[AudioFileType]
@@ -172,4 +233,9 @@ trait AudioFileOut extends Component {
   def fileType    : Model[Int]
   def sampleFormat: Model[Int]
   def sampleRate  : Model[Double]
+
+  var pathFieldVisible   : Ex[Boolean]
+  var fileTypeVisible    : Ex[Boolean]
+  var sampleFormatVisible: Ex[Boolean]
+  var sampleRateVisible  : Ex[Boolean]
 }

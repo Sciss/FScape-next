@@ -446,7 +446,7 @@ trait ResampleImpl[S <: Shape] extends FullInOutImpl[S] {
           assert(winWriteOff + chunk1 == _winLen)
           if (isFlush) {
             clearWinBuf(0, chunk2)
-            flushRemain -= chunk1
+            flushRemain -= chunk2
           } else {
             copyInToWinBuf(0, chunk2)
           }

@@ -78,6 +78,24 @@ object ImageFileIn {
     }
   }
 
+  final case class PathFieldVisible(w: ImageFileIn) extends Ex[Boolean] {
+    override def productPrefix: String = s"ImageFileIn$$PathFieldVisible" // serialization
+
+    def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, Boolean] = {
+      val valueOpt = ctx.getProperty[Ex[Boolean]](w, keyPathFieldVisible)
+      valueOpt.getOrElse(Constant(defaultPathFieldVisible)).expand[S]
+    }
+  }
+
+  final case class FormatVisible(w: ImageFileIn) extends Ex[Boolean] {
+    override def productPrefix: String = s"ImageFileIn$$FormatVisible" // serialization
+
+    def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, Boolean] = {
+      val valueOpt = ctx.getProperty[Ex[Boolean]](w, keyFormatVisible)
+      valueOpt.getOrElse(Constant(defaultFormatVisible)).expand[S]
+    }
+  }
+
   private final case class Impl() extends ImageFileIn with ComponentImpl { w =>
     override def productPrefix: String = "ImageFileIn" // serialization
 
@@ -99,7 +117,27 @@ object ImageFileIn {
       val b = Graph.builder
       b.putProperty(this, PathField.keyTitle, value)
     }
+
+    def pathFieldVisible: Ex[Boolean] = PathFieldVisible(this)
+
+    def pathFieldVisible_=(value: Ex[Boolean]): Unit = {
+      val b = Graph.builder
+      b.putProperty(this, keyPathFieldVisible, value)
+    }
+
+    def formatVisible: Ex[Boolean] = FormatVisible(this)
+
+    def formatVisible_=(value: Ex[Boolean]): Unit = {
+      val b = Graph.builder
+      b.putProperty(this, keyFormatVisible, value)
+    }
   }
+
+  private[graph] def keyPathFieldVisible  : String  = AudioFileIn.keyPathFieldVisible
+  private[graph] def keyFormatVisible     : String  = AudioFileIn.keyFormatVisible
+
+  private[graph] def defaultPathFieldVisible: Boolean = AudioFileIn.defaultPathFieldVisible
+  private[graph] def defaultFormatVisible   : Boolean = AudioFileIn.defaultFormatVisible
 
   type Peer = PanelWithPathField
 }
@@ -108,4 +146,7 @@ trait ImageFileIn extends Component {
 
   var title : Ex[String]
   def value : Model[File]
+
+  var pathFieldVisible: Ex[Boolean]
+  var formatVisible   : Ex[Boolean]
 }

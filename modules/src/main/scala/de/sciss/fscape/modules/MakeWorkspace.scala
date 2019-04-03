@@ -19,11 +19,9 @@ import de.sciss.lucre.expr.BooleanObj
 import de.sciss.lucre.stm.store.BerkeleyDB
 import de.sciss.lucre.stm.{Folder, Sys}
 import de.sciss.synth.proc.Implicits._
-import de.sciss.synth.proc.{Durable, Markdown, SoundProcesses, Widget, Workspace}
+import de.sciss.synth.proc.{Markdown, SoundProcesses, Widget, Workspace}
 
 object MakeWorkspace {
-  type S = Durable
-
   final case class Config(modules: List[Module], target: File)
 
   def main(args: Array[String]): Unit = {

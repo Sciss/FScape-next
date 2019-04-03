@@ -40,7 +40,7 @@ object ModChangeGain extends Module {
     val f = FScape[S]()
     import de.sciss.fscape.lucre.MacroImplicits._
     f.setGraph {
-      // version: 28-Mar-2019
+      // version: 03-Apr-2019
       def mkIn() = AudioFileIn("in")
 
       val in0       = mkIn()
@@ -52,15 +52,13 @@ object ModChangeGain extends Module {
       val fileType  = "out-type"  .attr(0)
       val smpFmt    = "out-format".attr(2)
 
-      def mkProgress(frames: GE, label: String): Unit =
-        Progress(frames / numFrames, Metro(sr) | Metro(numFrames - 1),
-          label)
+      def mkProgress(x: GE, label: String): Unit =
+        ProgressFrames(x, numFrames, label)
 
       val mul       = If (gainType sig_== 0) Then {
         val in1       = mkIn()
         val rMax      = RunningMax(Reduce.max(in1.abs))
-        val read      = Frames(rMax)
-        mkProgress(read, "analyze")
+        mkProgress(rMax, "analyze")
         val maxAmp    = rMax.last
         val div       = maxAmp + (maxAmp sig_== 0.0)
         gainAmt / div

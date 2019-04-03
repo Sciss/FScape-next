@@ -42,7 +42,7 @@ object ModTapeSpeed extends Module {
     val f = FScape[S]()
     import de.sciss.fscape.lucre.MacroImplicits._
     f.setGraph {
-      // version: 29-Mar-2019
+      // version: 03-Apr-2019
       val in0         = AudioFileIn("in")
       val sr          = in0.sampleRate
       val numFramesIn = in0.numFrames
@@ -73,23 +73,21 @@ object ModTapeSpeed extends Module {
         )
       }
 
-      def mkProgress(frames: GE, label: String): Unit =
-        Progress(frames / numFramesOut,
-          Metro(sr) | Metro(numFramesOut - 1),
-          label)
+      def mkProgress(x: GE, label: String): Unit =
+        ProgressFrames(x, numFramesOut, label)
 
+      val sig0 = rsmp
       val sig = If (gainType sig_== 0) Then {
-        val rsmpBuf   = BufferDisk(rsmp)
-        val rMax      = RunningMax(Reduce.max(rsmp.abs))
-        val read      = Frames(rMax)
-        mkProgress(read, "analyze")
+        val sig0Buf   = BufferDisk(sig0)
+        val rMax      = RunningMax(Reduce.max(sig0.abs))
+        mkProgress(rMax, "analyze")
         val maxAmp    = rMax.last
         val div       = maxAmp + (maxAmp sig_== 0.0)
         val gainAmtN  = gainAmt / div
-        rsmpBuf * gainAmtN
+        sig0Buf * gainAmtN
 
       } Else {
-        rsmp * gainAmt
+        sig0 * gainAmt
       }
 
       val written = AudioFileOut("out", sig, fileType = fileType,

@@ -30,7 +30,7 @@ object ModMakeLoop extends Module {
     val f = FScape[S]()
     import de.sciss.fscape.lucre.MacroImplicits._
     f.setGraph {
-      // version: 30-Mar-2019
+      // version: 03-Apr-2019
       val numFramesIn   = AudioFileIn.NumFrames ("in")
       val sr            = AudioFileIn.SampleRate("in")
       val fileType      = "out-type"      .attr(0)
@@ -91,23 +91,21 @@ object ModMakeLoop extends Module {
         c1F + c2FC
       }
 
-      def mkProgress(frames: GE, label: String): Unit =
-        Progress(frames / numFramesOut,
-          Metro(sr) | Metro(numFramesOut - 1),
-          label)
+      def mkProgress(x: GE, label: String): Unit =
+        ProgressFrames(x, numFramesOut, label)
 
+      val sig0 = faded
       val sig = If (gainType sig_== 0) Then {
-        val rsmpBuf   = BufferDisk(faded)
-        val rMax      = RunningMax(Reduce.max(faded.abs))
-        val read      = Frames(rMax)
-        mkProgress(read, "analyze")
+        val sig0Buf   = BufferDisk(sig0)
+        val rMax      = RunningMax(Reduce.max(sig0.abs))
+        mkProgress(rMax, "analyze")
         val maxAmp    = rMax.last
         val div       = maxAmp + (maxAmp sig_== 0.0)
         val gainAmtN  = gainAmt / div
-        rsmpBuf * gainAmtN
+        sig0Buf * gainAmtN
 
       } Else {
-        faded * gainAmt
+        sig0 * gainAmt
       }
 
       val written = AudioFileOut("out", sig, fileType = fileType,

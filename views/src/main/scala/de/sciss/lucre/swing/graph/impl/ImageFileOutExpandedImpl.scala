@@ -35,11 +35,7 @@ import scala.swing.Reactions.Reaction
 import scala.swing.event.{SelectionChanged, ValueChanged}
 import scala.swing.{Alignment, Label, Orientation, SequentialContainer, Swing}
 
-final class ImageFileOutExpandedImpl[S <: Sys[S]](protected val w: ImageFileOut,
-                                                  pathFieldVisible    : Boolean,
-                                                  fileTypeVisible     : Boolean,
-                                                  sampleFormatVisible : Boolean,
-                                                  qualityVisible      : Boolean)
+final class ImageFileOutExpandedImpl[S <: Sys[S]](protected val w: ImageFileOut)
   extends View[S] with ComponentHolder[ImageFileOut.Peer] with ComponentExpandedImpl[S] {
 
   type C = ImageFileOut.Peer
@@ -51,8 +47,24 @@ final class ImageFileOutExpandedImpl[S <: Sys[S]](protected val w: ImageFileOut,
     val smpFmtIdx = ctx.getProperty[Ex[Int    ]](w, ImageFileOut.keySampleFormat).fold(ImageFileOut.defaultSampleFormat )(_.expand[S].value)
     val quality   = ctx.getProperty[Ex[Int    ]](w, ImageFileOut.keyQuality     ).fold(ImageFileOut.defaultQuality      )(_.expand[S].value)
 
+    def getBoolean(key: String, default: => Boolean): Boolean =
+      ctx.getProperty[Ex[Boolean]](w, key).fold(default)(_.expand[S].value)
+
+    val pathFieldVisible    = getBoolean(ImageFileOut.keyPathFieldVisible   , ImageFileOut.defaultPathFieldVisible    )
+    val fileTypeVisible     = getBoolean(ImageFileOut.keyFileTypeVisible    , ImageFileOut.defaultFileTypeVisible     )
+    val sampleFormatVisible = getBoolean(ImageFileOut.keySampleFormatVisible, ImageFileOut.defaultSampleFormatVisible )
+    val qualityVisible      = getBoolean(ImageFileOut.keyQualityVisible     , ImageFileOut.defaultQualityVisible      )
+
     deferTx {
-      val c: C = new ImageFileOut.Peer with SequentialContainer.Wrapper  {
+      val c: C = new ImageFileOut.Peer with SequentialContainer.Wrapper  { panel =>
+        override def enabled_=(b: Boolean): Unit = {
+          super.enabled_=(b)
+          if (pathFieldVisible    ) pathField           .enabled = b
+          if (fileTypeVisible     ) fileTypeComboBox    .enabled = b
+          if (sampleFormatVisible ) sampleFormatComboBox.enabled = b
+          updateQualityStatus()
+        }
+
         def updatePathOverlay(): Unit =
           pathField.paint = if (pathField.valueOption.exists(_.exists())) {
             Some(TextFieldWithPaint.BlueOverlay)
@@ -117,10 +129,10 @@ final class ImageFileOutExpandedImpl[S <: Sys[S]](protected val w: ImageFileOut,
         }
 
         def updateQualityStatus(): Unit = if (qualityVisible) {
-          Option(fileTypeComboBox.selection.item).foreach { tpe =>
-            qualityField.enabled = tpe.isLossy
-            lbQuality   .enabled = tpe.isLossy
-          }
+          val isLossy = Option(fileTypeComboBox.selection.item).exists(_.isLossy)
+          val b       = isLossy && panel.enabled
+          qualityField.enabled = b
+          lbQuality   .enabled = b
         }
 
         if (fileTypeVisible) updateQualityStatus()

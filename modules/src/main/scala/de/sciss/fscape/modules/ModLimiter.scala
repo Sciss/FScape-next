@@ -42,7 +42,7 @@ object ModLimiter extends Module {
     val f = FScape[S]()
     import de.sciss.fscape.lucre.MacroImplicits._
     f.setGraph {
-      // version: 29-Mar-2019
+      // version: 03-Apr-2019
       val in0       = AudioFileIn("in")
       val sr        = in0.sampleRate
       val numFrames = in0.numFrames
@@ -68,7 +68,7 @@ object ModLimiter extends Module {
       val sig   = inBuf * gain
       val written = AudioFileOut("out", sig, fileType = fileType,
         sampleFormat = smpFmt, sampleRate = sr)
-      Progress(written / numFrames, Metro(sr) | Metro(numFrames - 1))
+      ProgressFrames(written, numFrames)
     }
     f
   }
