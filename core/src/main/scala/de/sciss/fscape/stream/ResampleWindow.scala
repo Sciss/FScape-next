@@ -282,7 +282,15 @@ object ResampleWindow {
 
     protected def allocWinBuf(len: Int): Unit = {
       freeWinBuffer()
-      val bufSize = len * size
+      val bufSizeL = len * size
+
+      def checkSz(n: Long): Unit =
+        if (n < 0 || n > 0x7FFFFFFF) {
+          throw new IllegalArgumentException(s"ResampleWindow: buffer size too large: $len * $size")
+        }
+
+      checkSz(bufSizeL)
+      val bufSize = bufSizeL.toInt
       if (bufSize <= ctrl.nodeBufferSize) {
         val arr   = new Array[Double](bufSize)
         winBuf    = DoubleBuffer.wrap(arr)
@@ -290,7 +298,10 @@ object ResampleWindow {
         winF      = ctrl.createTempFile()
         winRaf    = new RandomAccessFile(winF, "rw")
         val fch   = winRaf.getChannel
-        val bb    = fch.map(FileChannel.MapMode.READ_WRITE, 0L, bufSize * 8)
+        val szBtL = bufSizeL * 8
+        checkSz(szBtL)
+        val szBt  = szBtL.toInt
+        val bb    = fch.map(FileChannel.MapMode.READ_WRITE, 0L, szBt)
         winBuf    = bb.asDoubleBuffer()
       }
     }

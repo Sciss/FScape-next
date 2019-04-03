@@ -173,6 +173,16 @@ object Util {
     }
   }
 
+  /** Adds a scalar to a buffer. */
+  def add(buf: Array[Double], off: Int, len: Int, value: Double): Unit = {
+    var i     = off
+    val stop  = i + len
+    while (i < stop) {
+      buf(i) += value
+      i += 1
+    }
+  }
+
   def max(in: Array[Double], off: Int, len: Int): Double = {
     var res   = Double.NegativeInfinity
     var i     = off

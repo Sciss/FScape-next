@@ -20,7 +20,7 @@ import java.nio.{ByteBuffer, DoubleBuffer}
 import de.sciss.file.File
 
 object FileBuffer {
-  /** Uses the `Control` to allocate a new temporary file. */
+  /** Uses the `Control` to allocate a new temporary file, which is deleted upon disposal. */
   def apply()(implicit ctrl: Control): FileBuffer = new Impl(ctrl.createTempFile(), deleteOnDispose = true)
 
   def apply(file: File, deleteOnDispose: Boolean): FileBuffer = new Impl(file, deleteOnDispose = deleteOnDispose)
