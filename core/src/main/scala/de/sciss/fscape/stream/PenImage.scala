@@ -14,7 +14,7 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.stage.InHandler
+import akka.stream.stage.{InHandler, OutHandler}
 import akka.stream.{Attributes, FanInShape14, Inlet}
 import de.sciss.fscape.graph.PenImage._
 import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
@@ -75,7 +75,7 @@ object PenImage {
   }
 
   private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape) { logic =>
+    extends NodeImpl(name, layer, shape) with OutHandler { logic =>
 
     // structure of inputs:
     //
@@ -84,10 +84,22 @@ object PenImage {
     //
     // "hot": in0 src
     // "may end any time": in1 alpha, in2 dst, in5 5, in6 y, in7 next
+    //
+    // Timing policy:
+    // - a turn to obtain all aux data
+    // - then main polling until a trigger in `next` is received
+    // - main polling distinguishes between too groups of signals:
+    //   1. `dst` needs to be read in first, as it creates the "background",
+    //      i.e. we need as much as `width * height` values (or truncate if
+    //      `dst` ends prematurely).
+    //   2. `src`, `alpha`, `x`, `y`, `next` are synchronised.
 
 //    private[this] var auxDataOpen   = 8
     private[this] var auxDataRem    = 8
     private[this] var auxDataReady  = false
+
+    private[this] var mainDataRem   = 6
+    private[this] var mainDataReady = false
 
     private[this] var width : Int = _
     private[this] var height: Int = _
@@ -110,23 +122,25 @@ object PenImage {
       new AuxInHandler((v: Int)     => zeroCrossings  = v)                (shape.in13)
     )
 
-    private[this] val hSrc    = new MainInDHandler(shape.in0)
-    private[this] val hAlpha  = new MainInDHandler(shape.in1)
-    private[this] val hDst    = new MainInDHandler(shape.in2)
-    private[this] val hX      = new MainInDHandler(shape.in5)
-    private[this] val hY      = new MainInDHandler(shape.in6)
-    private[this] val hNext   = new MainInIHandler(shape.in7)
+    private[this] val hSrc    = new MainInHandler(shape.in0)
+    private[this] val hAlpha  = new MainInHandler(shape.in1)
+    private[this] val hDst    = new MainInHandler(shape.in2)
+    private[this] val hX      = new MainInHandler(shape.in5)
+    private[this] val hY      = new MainInHandler(shape.in6)
+    private[this] val hNext   = new MainInHandler(shape.in7)
 
-    private[this] val mainInHandlers = Array[MainInHandler](
+    private[this] val mainInHandlers = Array[MainInHandler[_, _]](
       hSrc, hAlpha, hDst, hX, hY, hNext
     )
 
     override protected def stopped(): Unit = {
       super.stopped()
-      auxInHandlers.foreach(_.freeBuffer())
+      auxInHandlers .foreach(_.freeBuffer())
+      mainInHandlers.foreach(_.freeBuffer())
+      frameBuf = null
     }
 
-    private final class AuxInHandler[A, E <: BufElem[A]](set: A => Unit)(val in: Inlet[E])
+    private final class AuxInHandler[A, E <: BufElem[A]](set: A => Unit)(in: Inlet[E])
       extends InHandler {
 
       private[this] var hasValue      = false
@@ -135,6 +149,9 @@ object PenImage {
       private[this] var offset = 0
 
       override def toString: String = s"$logic.$in"
+
+      def hasNext: Boolean =
+        (buf != null) || !isClosed(in) || isAvailable(in)
 
       def freeBuffer(): Unit =
         if (buf != null) {
@@ -175,7 +192,7 @@ object PenImage {
         everHadValue  = true
         auxDataRem -= 1
         if (auxDataRem == 0) {
-          auxValuesReady()
+          notifyAuxDataReady()
         }
       }
 
@@ -195,39 +212,131 @@ object PenImage {
       setHandler(in, this)
     }
 
-    private abstract class MainInHandler extends InHandler {
+    private final class MainInHandler[A, E <: BufElem[A]](val in: Inlet[E])
+      extends InHandler {
 
-    }
+      private[this] var hasValue      = false
+      private[this] var everHadValue  = false
 
-    private final class MainInDHandler(val in: InD) extends MainInHandler {
-      def onPush(): Unit = ???
+      var buf       : E   = _
+      var offset    : Int = 0
+      var mostRecent: A   = _
 
-      override def onUpstreamFinish(): Unit = super.onUpstreamFinish()
+      def bufRemain: Int = if (buf == null) 0 else buf.size - offset
+
+      override def toString: String = s"$logic.$in"
+
+      def hasNext: Boolean =
+        (buf != null) || !isClosed(in) || isAvailable(in)
+
+      def freeBuffer(): Unit =
+        if (buf != null) {
+          mostRecent = buf.buf(buf.size - 1)
+          buf.release()
+          buf = null.asInstanceOf[E]
+        }
+
+      def next(): Unit = {
+        hasValue = false
+        if (bufRemain > 0) {
+          ackValue()
+        } else {
+          freeBuffer()
+          if (isAvailable(in)) onPush()
+        }
+      }
+
+      def onPush(): Unit = if (!hasValue) {
+        assert (buf == null)
+        buf     = grab(in)
+        assert (buf.size > 0)
+        offset  = 0
+        ackValue()
+        tryPull(in)
+      }
+
+      private def ackValue(): Unit = {
+        hasValue      = true
+        everHadValue  = true
+        mainDataRem -= 1
+        if (mainDataRem == 0) {
+          notifyMainDataReady()
+        }
+      }
+
+      override def onUpstreamFinish(): Unit = {
+        if (!isAvailable(in)) {
+          if (everHadValue) {
+            if (!hasValue) ackValue()
+          } else {
+            super.onUpstreamFinish()
+          }
+        }
+      }
 
       setHandler(in, this)
     }
 
-    private final class MainInIHandler(val in: InI) extends MainInHandler {
-      def onPush(): Unit = ???
+    // ---- out handler ----
 
-      override def onUpstreamFinish(): Unit = super.onUpstreamFinish()
+    def onPull(): Unit = ???
 
-      setHandler(in, this)
+    override def onDownstreamFinish(): Unit = {
+      super.onDownstreamFinish()
     }
 
-    private def turnToNextImage(): Unit = {
+    // ---- stages ----
+
+    private def turnToNextAuxData(): Unit = {
       auxDataReady = false
       assert (auxDataRem == 0)
-      auxDataRem = auxInHandlers.count(h => !isClosed(h.in))
+      auxDataRem = auxInHandlers.count(_.hasNext)
       if (auxDataRem > 0) {
-        auxInHandlers.foreach(h => if (!isClosed(h.in)) h.next())
+        auxInHandlers.foreach(h => if (h.hasNext) h.next())
+      } else {
+        notifyAuxDataReady()
       }
     }
 
-    private def auxValuesReady(): Unit = {
+    private[this] var frameSize : Int = -1
+
+    private[this] var frameBuf  : Array[Double] = _
+
+    private def notifyAuxDataReady(): Unit = {
       assert (!auxDataReady)
       auxDataReady = true
+      val newFrameSize = width * height
+      if (frameSize != newFrameSize) {
+        frameSize = newFrameSize
+        frameBuf  = new Array(newFrameSize)
+      }
+
+      if (mainDataReady) {
+        mainAndAuxReady()
+      }
+    }
+
+    private def turnToNextMainData(): Unit = {
+      mainDataReady = false
+      assert (mainDataRem == 0)
+      mainDataRem = mainInHandlers.count(_.hasNext)
+      if (mainDataRem > 0) {
+        mainInHandlers.foreach(h => if (h.hasNext) h.next())
+      }
+    }
+
+    private def notifyMainDataReady(): Unit = {
+      assert (!mainDataReady)
+      mainDataReady = true
+      if (auxDataReady) {
+        mainAndAuxReady()
+      }
+    }
+
+    private def mainAndAuxReady(): Unit = {
       ???
     }
+
+    // ---- process ----
   }
 }
