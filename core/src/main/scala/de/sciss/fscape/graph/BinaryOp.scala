@@ -67,6 +67,9 @@ object BinaryOp {
       case FirstArg .id => FirstArg
       case SecondArg.id => SecondArg
     }
+
+    final val MinId = Plus      .id
+    final val MaxId = SecondArg .id
   }
 
   sealed trait Op {

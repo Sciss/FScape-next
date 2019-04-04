@@ -14,8 +14,15 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.{Attributes, FanInShape14}
+import akka.stream.stage.InHandler
+import akka.stream.{Attributes, FanInShape14, Inlet}
+import de.sciss.fscape.graph.PenImage._
 import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import de.sciss.numbers.{DoubleFunctions => rd}
+import de.sciss.numbers.{IntFunctions => ri}
+import graph.BinaryOp.Op
+
+import scala.math.max
 
 object PenImage {
   def apply(src: OutD, alpha: OutD, dst: OutD, width: OutI, height: OutI, x: OutD, y: OutD, next: OutI,
@@ -68,8 +75,159 @@ object PenImage {
   }
 
   private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape) {
+    extends NodeImpl(name, layer, shape) { logic =>
 
-    ???
+    // structure of inputs:
+    //
+    // "aux per image": in3 width, in4 height, in8 rule, in9 op, in10 wrap, in11 rollOff, in12 kaiser, in13 zc
+    // "during image": in0 src, in1 alpha, in2 dst, in5 x, in6 y, in7 next
+    //
+    // "hot": in0 src
+    // "may end any time": in1 alpha, in2 dst, in5 5, in6 y, in7 next
+
+//    private[this] var auxDataOpen   = 8
+    private[this] var auxDataRem    = 8
+    private[this] var auxDataReady  = false
+
+    private[this] var width : Int = _
+    private[this] var height: Int = _
+    private[this] var rule  : Int = _
+    private[this] var op    : Op  = _
+
+    private[this] var wrap          : Boolean = _
+    private[this] var rollOff       : Double  = _
+    private[this] var kaiserBeta    : Double  = _
+    private[this] var zeroCrossings : Int     = _
+
+    private[this] val auxInHandlers = Array[AuxInHandler[_, _]](
+      new AuxInHandler((v: Int)     => width  = max(1, v))                (shape.in3),
+      new AuxInHandler((v: Int)     => height = max(1, v))                (shape.in4),
+      new AuxInHandler((v: Int)     => rule   = ri.clip(v, RuleMin, RuleMax))(shape.in8),
+      new AuxInHandler((v: Int)     => op     = Op(ri.clip(v, Op.MinId, Op.MaxId)))(shape.in9),
+      new AuxInHandler((v: Int)     => wrap   = v != 0)                   (shape.in10),
+      new AuxInHandler((v: Double)  => rollOff    = rd.clip(v, 0.0, 1.0)) (shape.in11),
+      new AuxInHandler((v: Double)  => kaiserBeta = max(0.0, v))          (shape.in12),
+      new AuxInHandler((v: Int)     => zeroCrossings  = v)                (shape.in13)
+    )
+
+    private[this] val hSrc    = new MainInDHandler(shape.in0)
+    private[this] val hAlpha  = new MainInDHandler(shape.in1)
+    private[this] val hDst    = new MainInDHandler(shape.in2)
+    private[this] val hX      = new MainInDHandler(shape.in5)
+    private[this] val hY      = new MainInDHandler(shape.in6)
+    private[this] val hNext   = new MainInIHandler(shape.in7)
+
+    private[this] val mainInHandlers = Array[MainInHandler](
+      hSrc, hAlpha, hDst, hX, hY, hNext
+    )
+
+    override protected def stopped(): Unit = {
+      super.stopped()
+      auxInHandlers.foreach(_.freeBuffer())
+    }
+
+    private final class AuxInHandler[A, E <: BufElem[A]](set: A => Unit)(val in: Inlet[E])
+      extends InHandler {
+
+      private[this] var hasValue      = false
+      private[this] var everHadValue  = false
+      private[this] var buf: E = _
+      private[this] var offset = 0
+
+      override def toString: String = s"$logic.$in"
+
+      def freeBuffer(): Unit =
+        if (buf != null) {
+          buf.release()
+          buf = null.asInstanceOf[E]
+        }
+
+      def next(): Unit = {
+        hasValue = false
+        if (buf != null) {
+          takeValue()
+        } else {
+          if (isAvailable(in)) onPush()
+        }
+      }
+
+      private def takeValue(): Unit = {
+        val i = buf.buf(offset)
+        offset += 1
+        set(i)
+        if (offset == buf.size) {
+          freeBuffer()
+        }
+        ackValue()
+      }
+
+      def onPush(): Unit = if (!hasValue) {
+        assert (buf == null)
+        buf     = grab(in)
+        assert (buf.size > 0)
+        offset  = 0
+        takeValue()
+        tryPull(in)
+      }
+
+      private def ackValue(): Unit = {
+        hasValue      = true
+        everHadValue  = true
+        auxDataRem -= 1
+        if (auxDataRem == 0) {
+          auxValuesReady()
+        }
+      }
+
+      def checkPushed(): Unit =
+        if (isAvailable(in)) onPush()
+
+      override def onUpstreamFinish(): Unit = {
+        if (!isAvailable(in)) {
+          if (everHadValue) {
+            if (!hasValue) ackValue()
+          } else {
+            super.onUpstreamFinish()
+          }
+        }
+      }
+
+      setHandler(in, this)
+    }
+
+    private abstract class MainInHandler extends InHandler {
+
+    }
+
+    private final class MainInDHandler(val in: InD) extends MainInHandler {
+      def onPush(): Unit = ???
+
+      override def onUpstreamFinish(): Unit = super.onUpstreamFinish()
+
+      setHandler(in, this)
+    }
+
+    private final class MainInIHandler(val in: InI) extends MainInHandler {
+      def onPush(): Unit = ???
+
+      override def onUpstreamFinish(): Unit = super.onUpstreamFinish()
+
+      setHandler(in, this)
+    }
+
+    private def turnToNextImage(): Unit = {
+      auxDataReady = false
+      assert (auxDataRem == 0)
+      auxDataRem = auxInHandlers.count(h => !isClosed(h.in))
+      if (auxDataRem > 0) {
+        auxInHandlers.foreach(h => if (!isClosed(h.in)) h.next())
+      }
+    }
+
+    private def auxValuesReady(): Unit = {
+      assert (!auxDataReady)
+      auxDataReady = true
+      ???
+    }
   }
 }

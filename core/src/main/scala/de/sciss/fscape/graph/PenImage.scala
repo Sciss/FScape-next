@@ -81,6 +81,8 @@ final case class PenImage(src: GE = 1.0, alpha: GE = 1.0, dst: GE = 0.0,
   }
 }
 object PenImage {
+  final val RuleMin = 1
+
   /**
     * `<em>C<sub>r</sub></em> = 0`
     *
@@ -164,4 +166,6 @@ object PenImage {
     * Same as `Xor`
     */
   final val Xor     = 12
+
+  final val RuleMax = 12
 }
