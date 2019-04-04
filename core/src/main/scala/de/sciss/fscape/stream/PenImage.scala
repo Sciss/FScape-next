@@ -20,14 +20,15 @@ import de.sciss.fscape.graph.BinaryOp.Op
 import de.sciss.fscape.graph.PenImage._
 import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 import de.sciss.numbers
+import de.sciss.numbers.IntFunctions
 
-import scala.math.min
+import scala.math.{abs, min}
 
 object PenImage {
   def apply(src: OutD, alpha: OutD, dst: OutD, width: OutI, height: OutI, x: OutD, y: OutD, next: OutI,
-            rule: OutI, op: OutI,
-            wrap: OutI,
+            rule: OutI, op: OutI, wrap: OutI,
             rollOff: OutD, kaiserBeta: OutD, zeroCrossings: OutI)(implicit b: Builder): OutD = {
+
     val stage0  = new Stage(b.layer)
     val stage   = b.add(stage0)
     b.connect(src           , stage.in0 )
@@ -111,21 +112,21 @@ object PenImage {
     private[this] var kaiserBeta    : Double  = _
     private[this] var zeroCrossings : Int     = _
 
-    private[this] val hSrc            = new PenInHandler [Double , BufD](shape.in0 )
-    private[this] val hAlpha          = new PenInHandler [Double , BufD](shape.in1 )
-    private[this] val hDst            = new PenInHandler [Double , BufD](shape.in2 )
-    private[this] val hX              = new PenInHandler [Double , BufD](shape.in5 )
-    private[this] val hY              = new PenInHandler [Double , BufD](shape.in6 )
-    private[this] val hNext           = new PenInHandler [Int    , BufI](shape.in7 )
+    private[this] val hSrc            = new PenInHandler[Double , BufD](shape.in0 )
+    private[this] val hAlpha          = new PenInHandler[Double , BufD](shape.in1 )
+    private[this] val hDst            = new PenInHandler[Double , BufD](shape.in2 )
+    private[this] val hX              = new PenInHandler[Double , BufD](shape.in5 )
+    private[this] val hY              = new PenInHandler[Double , BufD](shape.in6 )
+    private[this] val hNext           = new PenInHandler[Int    , BufI](shape.in7 )
 
-    private[this] val hWidth          = new AuxInHandler  [Int    , BufI](shape.in3 )
-    private[this] val hHeight         = new AuxInHandler  [Int    , BufI](shape.in4 )
-    private[this] val hRule           = new AuxInHandler  [Int    , BufI](shape.in8 )
-    private[this] val hOp             = new AuxInHandler  [Int    , BufI](shape.in9 )
-    private[this] val hWrap           = new AuxInHandler  [Int    , BufI](shape.in10)
-    private[this] val hRollOff        = new AuxInHandler  [Double , BufD](shape.in11)
-    private[this] val hKaiserBeta     = new AuxInHandler  [Double , BufD](shape.in12)
-    private[this] val hZeroCrossings  = new AuxInHandler  [Int    , BufI](shape.in13)
+    private[this] val hWidth          = new AuxInHandler[Int    , BufI](shape.in3 )
+    private[this] val hHeight         = new AuxInHandler[Int    , BufI](shape.in4 )
+    private[this] val hRule           = new AuxInHandler[Int    , BufI](shape.in8 )
+    private[this] val hOp             = new AuxInHandler[Int    , BufI](shape.in9 )
+    private[this] val hWrap           = new AuxInHandler[Int    , BufI](shape.in10)
+    private[this] val hRollOff        = new AuxInHandler[Double , BufD](shape.in11)
+    private[this] val hKaiserBeta     = new AuxInHandler[Double , BufD](shape.in12)
+    private[this] val hZeroCrossings  = new AuxInHandler[Int    , BufI](shape.in13)
 
     private[this] val penInHandlers = Array[PenInHandler[_, _]](
       hSrc, hAlpha, /*hDst, */ hX, hY, hNext
@@ -139,15 +140,22 @@ object PenImage {
 
     private[this] var frameBuf  : Array[Double] = _ // of frameSize
 
-    private[this] var stage       = 0   // 0 gather aux, 1 fill dst, 2 pen
+    private[this] var stage       = 0   // 0 gather aux, 1 fill dst, 2 apply pen, 3 write out
     private[this] var dstWritten  = 0   // 0 to frameSize
 
     override protected def stopped(): Unit = {
       super.stopped()
-      auxInHandlers .foreach(_.freeBuffer())
+      auxInHandlers.foreach(_.freeBuffer())
       penInHandlers.foreach(_.freeBuffer())
       frameBuf = null
+      freeOutBuffer()
     }
+
+    private def freeOutBuffer(): Unit =
+      if (bufOut != null) {
+        bufOut.release()
+        bufOut = null
+      }
 
     private abstract class InHandlerImpl[A, E <: BufElem[A]](in: Inlet[E])
       extends InHandler {
@@ -201,6 +209,21 @@ object PenImage {
           i
         }
 
+      final def peekValue(): A =
+        if (buf == null) {
+          mostRecent
+        } else {
+          buf.buf(offset)
+        }
+
+      final def skipValue(): Unit =
+        if (buf != null) {
+          offset += 1
+          if (offset == buf.size) {
+            freeBuffer()
+          }
+        }
+
       final def onPush(): Unit = if (!hasValue) {
         assert (buf == null)
         buf     = grab(in)
@@ -249,9 +272,13 @@ object PenImage {
 
     // ---- out handler ----
 
-    def onPull(): Unit = ???
+    def onPull(): Unit =
+      if (stage == 3) {
+        processOutData()
+      }
 
     override def onDownstreamFinish(): Unit = {
+      logStream(s"onDownstreamFinish() $logic")
       super.onDownstreamFinish()
     }
 
@@ -259,7 +286,7 @@ object PenImage {
 
     private def requestNextAuxData(): Unit = {
       assert (stage == 0)
-      auxDataReady  = false
+      assert (!auxDataReady)
       assert (auxDataRem == 0)
       auxDataRem = auxInHandlers.count(_.hasNext)
       if (auxDataRem > 0) {
@@ -271,7 +298,7 @@ object PenImage {
 
     private def requestNextDstData(): Unit = {
       assert (stage == 1)
-      dstDataReady = false
+      assert (!dstDataReady)
       if (hDst.hasNext) {
         hDst.next()
       } else {
@@ -281,35 +308,40 @@ object PenImage {
 
     private def requestNextPenData(): Unit = {
       assert (stage == 2)
-      penDataReady = false
+      assert (!penDataReady)
       assert (penDataRem == 0)
       penDataRem = penInHandlers.count(_.hasNext)
       if (penDataRem > 0) {
         penInHandlers.foreach(h => if (h.hasNext) h.next())
+      } else {
+        notifyPenDataReady()
       }
     }
 
     private def notifyAuxDataReady(): Unit = {
       assert (!auxDataReady)
-      auxDataReady = true
       if (stage == 0) {
         processAuxData()
+      } else {
+        auxDataReady = true
       }
     }
 
     private def notifyPstDataReady(): Unit = {
       assert (!dstDataReady)
-      dstDataReady = true
       if (stage == 1) {
         processDstData()
+      } else {
+        dstDataReady = true
       }
     }
 
     private def notifyPenDataReady(): Unit = {
       assert (!penDataReady)
-      penDataReady = true
       if (stage == 2) {
         processPenData()
+      } else {
+        penDataReady = true
       }
     }
 
@@ -334,6 +366,7 @@ object PenImage {
 
       stage = 1
       if (dstDataReady) {
+        dstDataReady = false
         processDstData()
       } else {
         requestNextDstData()
@@ -357,11 +390,12 @@ object PenImage {
       dstWritten += chunk
 
       if (dstWritten < frameSize) {
-        requestNextPenData()
-      } else {
+        requestNextDstData()
 
+      } else {
         stage = 2
         if (penDataReady) {
+          penDataReady = false
           processPenData()
         } else {
           requestNextPenData()
@@ -369,12 +403,257 @@ object PenImage {
       }
     }
 
+    private[this] var nextP = false
+
+    private[this] var bufOut: BufD = _
+    private[this] var outOff      = 0   // w.r.t. `bufOut`
+    private[this] var outWritten  = 0   // pushed out plus `outOff`
+
     private def processPenData(): Unit = {
       assert (stage == 2)
 
       // hSrc, hAlpha, hX, hY, hNext
 
-      ???
+      val srcRem    = hSrc  .bufRemain
+      val alphaRem  = hAlpha.bufRemain
+      val xRem      = hX    .bufRemain
+      val yRem      = hY    .bufRemain
+      val nextRem   = hNext .bufRemain
+
+      var next      = false // hNext .takeValue() != 0
+      var src       = 0.0   // hSrc  .takeValue()
+      var alpha     = 0.0   // hAlpha.takeValue()
+      var x         = 0.0   // hX    .takeValue()
+      var y         = 0.0   // hY    .takeValue()
+
+      var chunk     = Int.MaxValue
+      if (srcRem    > 0 && srcRem   < chunk) chunk = srcRem
+      if (alphaRem  > 0 && alphaRem < chunk) chunk = alphaRem
+      if (xRem      > 0 && xRem     < chunk) chunk = xRem
+      if (yRem      > 0 && yRem     < chunk) chunk = yRem
+      if (nextRem   > 0 && nextRem  < chunk) chunk = nextRem
+
+      assert (chunk < Int.MaxValue)
+
+      while (chunk > 0) {
+        next = hNext.peekValue() != 0
+        if ((!nextP && next) || !hSrc.hasNext) {
+          stage       = 3
+          outWritten  = 0
+          if (isAvailable(shape.out)) {
+            processOutData()
+          }
+          return
+        }
+        hNext.skipValue()
+
+        src   = hSrc  .takeValue()
+        alpha = hAlpha.takeValue()
+        x     = hX    .takeValue()
+        y     = hY    .takeValue()
+
+        /*val v = */ process(x, y, src, alpha)
+
+        chunk  -= 1
+        nextP   = next
+      }
+
+      requestNextPenData()
+    }
+
+    // shape.out must be available
+    private def processOutData(): Unit = {
+      assert (stage == 3)
+
+      if (bufOut == null) {
+        bufOut = ctrl.borrowBufD()
+      }
+
+      val chunk = min(bufOut.size - outOff, frameSize - outWritten)
+      Util.copy(frameBuf, outWritten, bufOut.buf, outOff, chunk)
+      outOff      += chunk
+      outWritten  += chunk
+
+      if (outOff == bufOut.size) {
+        writeOut()
+      }
+
+      if (outWritten == frameSize) {
+        if (hSrc.hasNext) {
+          stage = 0
+          if (auxDataReady) {
+            auxDataReady = false
+            processAuxData()
+          } else {
+            requestNextAuxData()
+          }
+
+        } else {
+          writeOut()
+          completeStage()
+        }
+      }
+    }
+
+    private def writeOut(): Unit = {
+      if (outOff > 0) {
+        bufOut.size = outOff
+        push(shape.out, bufOut)
+        outOff = 0
+      } else {
+        bufOut.release()
+      }
+      bufOut = null
+    }
+
+    private def process(x: Double, y: Double, src: Double, alpha: Double): Double = {
+      val _winBuf   = frameBuf
+      val _width    = width
+      val _height   = height
+      val _wrap     = wrap
+
+      val xq        = abs(x) % 1.0
+      val xTi       = x.toInt
+      val yq        = abs(y) % 1.0
+      val yTi       = y.toInt
+
+      // ------------------------ bicubic ------------------------
+      if (zeroCrossings == 0) {
+
+        val w1 = _width  - 1
+        val h1 = _height - 1
+        val x1 = if (_wrap) IntFunctions.wrap(xTi, 0, w1) else IntFunctions.clip(xTi, 0, w1)
+        val y1 = if (_wrap) IntFunctions.wrap(yTi, 0, h1) else IntFunctions.clip(yTi, 0, h1)
+
+        val value = if (xq < 1.0e-20 && yq < 1.0e-20) {
+          // short cut
+          val winBufOff = y1 * _width + x1
+          _winBuf(winBufOff)
+        } else {
+          // cf. https://en.wikipedia.org/wiki/Bicubic_interpolation
+          // note -- we begin indices at `0` instead of `-1` here
+          val x0  = if (x1 >  0) x1 - 1 else if (_wrap) w1 else 0
+          val y0  = if (y1 >  0) y1 - 1 else if (_wrap) h1 else 0
+          val x2  = if (x1 < w1) x1 + 1 else if (_wrap)  0 else w1
+          val y2  = if (y1 < h1) y1 + 1 else if (_wrap)  0 else h1
+          val x3  = if (x2 < w1) x2 + 1 else if (_wrap)  0 else w1
+          val y3  = if (y2 < h1) y2 + 1 else if (_wrap)  0 else h1
+
+          // XXX TODO --- we could save these multiplications here
+          val y0s = y0 * _width
+          val y1s = y1 * _width
+          val y2s = y2 * _width
+          val y3s = y3 * _width
+          val f00 = _winBuf(y0s + x0)
+          val f10 = _winBuf(y0s + x1)
+          val f20 = _winBuf(y0s + x2)
+          val f30 = _winBuf(y0s + x3)
+          val f01 = _winBuf(y1s + x0)
+          val f11 = _winBuf(y1s + x1)
+          val f21 = _winBuf(y1s + x2)
+          val f31 = _winBuf(y1s + x3)
+          val f02 = _winBuf(y2s + x0)
+          val f12 = _winBuf(y2s + x1)
+          val f22 = _winBuf(y2s + x2)
+          val f32 = _winBuf(y2s + x3)
+          val f03 = _winBuf(y3s + x0)
+          val f13 = _winBuf(y3s + x1)
+          val f23 = _winBuf(y3s + x2)
+          val f33 = _winBuf(y3s + x3)
+
+          def bicubic(t: Double, f0: Double, f1: Double, f2: Double, f3: Double): Double = {
+            // XXX TODO --- could save the next two multiplications
+            val tt  = t * t
+            val ttt = tt * t
+            val c0  = 2 * f1
+            val c1  = (-f0 + f2) * t
+            val c2  = (2 * f0 - 5 * f1 + 4 * f2 - f3) * tt
+            val c3  = (-f0  + 3 * f1 - 3 * f2 + f3) * ttt
+            0.5 * (c0 + c1 + c2 + c3)
+          }
+
+          val b0 = bicubic(xq, f00, f10, f20, f30)
+          val b1 = bicubic(xq, f01, f11, f21, f31)
+          val b2 = bicubic(xq, f02, f12, f22, f32)
+          val b3 = bicubic(xq, f03, f13, f23, f33)
+          bicubic(yq, b0, b1, b2, b3)
+        }
+        value
+      }
+      // ------------------------- sinc -------------------------
+      else {
+
+        ???
+//        val _fltBuf   = fltBuf
+//        val _fltBufD  = fltBufD
+//        val _fltLenH  = fltLenH
+//
+//        var value     = 0.0
+//
+//        def xIter(dir: Boolean): Unit = {
+//          var xSrcOffI  = if (dir) xTi else xTi + 1
+//          val xq1       = if (dir) xq  else 1.0 - xq
+//          var xFltOff   = xq1 * xFltIncr
+//          var xFltOffI  = xFltOff.toInt
+//          var xSrcRem   = if (wrap) Int.MaxValue else if (dir) xSrcOffI else width - xSrcOffI
+//          xSrcOffI      = IntFunctions.wrap(xSrcOffI, 0, width - 1)
+//
+//          while ((xFltOffI < _fltLenH) && (xSrcRem > 0)) {
+//            val xr  = xFltOff % 1.0  // 0...1 for interpol.
+//            val xw  = _fltBuf(xFltOffI) + _fltBufD(xFltOffI) * xr
+//
+//            def yIter(dir: Boolean): Unit = {
+//              var ySrcOffI  = if (dir) yTi else yTi + 1
+//              val yq1       = if (dir) yq  else 1.0 - yq
+//              var yFltOff   = yq1 * yFltIncr
+//              var yFltOffI  = yFltOff.toInt
+//              var ySrcRem   = if (wrap) Int.MaxValue else if (dir) ySrcOffI else height - ySrcOffI
+//              ySrcOffI      = IntFunctions.wrap(ySrcOffI, 0, height - 1)
+//
+//              while ((yFltOffI < _fltLenH) && (ySrcRem > 0)) {
+//                val yr        = yFltOff % 1.0  // 0...1 for interpol.
+//                val yw        = _fltBuf(yFltOffI) + _fltBufD(yFltOffI) * yr
+//                val winBufOff = ySrcOffI * width + xSrcOffI
+//
+//                // if (winBufOff > _winBuf.length) {
+//                //   println(s"x $x, y $y, xT $xT, yT $yT, xSrcOffI $xSrcOffI, ySrcOffI $ySrcOffI, _widthIn ${_widthIn}, _heightIn ${_heightIn}")
+//                // }
+//
+//                value += _winBuf(winBufOff) * xw * yw
+//                if (dir) {
+//                  ySrcOffI -= 1
+//                  if (ySrcOffI < 0) ySrcOffI += height
+//                } else {
+//                  ySrcOffI += 1
+//                  if (ySrcOffI == height) ySrcOffI = 0
+//                }
+//                ySrcRem  -= 1
+//                yFltOff  += yFltIncr
+//                yFltOffI  = yFltOff.toInt
+//              }
+//            }
+//
+//            yIter(dir = true )  // left -hand side of window
+//            yIter(dir = false)  // right-hand side of window
+//
+//            if (dir) {
+//              xSrcOffI -= 1
+//              if (xSrcOffI < 0) xSrcOffI += width
+//            } else {
+//              xSrcOffI += 1
+//              if (xSrcOffI == width) xSrcOffI = 0
+//            }
+//            xSrcRem  -= 1
+//            xFltOff  += xFltIncr
+//            xFltOffI  = xFltOff.toInt
+//          }
+//        }
+//
+//        xIter(dir = true )  // left -hand side of window
+//        xIter(dir = false)  // right-hand side of window
+//
+//        value * xGain * yGain
+      }
     }
   }
 }
