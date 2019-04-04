@@ -38,13 +38,14 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * @param rollOff        the FIR anti-aliasing roll-off width. Between zero and one.
   * @param kaiserBeta     the FIR windowing function's parameter
   * @param zeroCrossings  the number of zero-crossings in the truncated and windowed sinc FIR.
-  *                       If zero, algorithm uses bicubic interpolation instead.
+  *                       If zero (default), algorithm uses bicubic interpolation instead.
   *
   * @see [[AffineTransform2D]]
   * @see [[Slices]]
+  * @see [[PenImage]]
   */
 final case class ScanImage(in: GE, width: GE, height: GE, x: GE = 0, y: GE = 0, next: GE = 0, wrap: GE = 1,
-                           rollOff: GE = 0.86, kaiserBeta: GE = 7.5, zeroCrossings: GE = 15)
+                           rollOff: GE = 0.86, kaiserBeta: GE = 7.5, zeroCrossings: GE = 0)
   extends UGenSource.SingleOut {
 
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =

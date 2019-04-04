@@ -64,7 +64,7 @@ object BinaryOp {
       case Excess   .id => Excess
       case Fold2    .id => Fold2
       case Wrap2    .id => Wrap2
-      //      case Firstarg .id => Firstarg
+      case FirstArg .id => FirstArg
       case SecondArg.id => SecondArg
     }
   }
@@ -527,11 +527,13 @@ object BinaryOp {
     def apply(a: Double, b: Double): Double = rd.wrap2(a, b)
   }
 
-  //  case object Firstarg extends Op {
-  //    final val id = 46
-  //
-  //    def apply(a: Double, b: Double) = a
-  //  }
+    case object FirstArg extends Op {
+      final val id = 46
+
+      def apply(a: Double, b: Double) : Double = a
+
+      override def apply(a: Constant, b: Constant): Constant = a
+    }
 
   // case object Rrand          extends Op( 47 )
   // case object ExpRRand       extends Op( 48 )
