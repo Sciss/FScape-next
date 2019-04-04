@@ -21,6 +21,8 @@ import de.sciss.fscape.graph.PenImage._
 import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 import de.sciss.numbers
 
+import scala.math.min
+
 object PenImage {
   def apply(src: OutD, alpha: OutD, dst: OutD, width: OutI, height: OutI, x: OutD, y: OutD, next: OutI,
             rule: OutI, op: OutI,
@@ -84,8 +86,8 @@ object PenImage {
     //
     // Timing policy:
     // - a turn to obtain all aux data
-    // - then main polling until a trigger in `next` is received
-    // - main polling distinguishes between too groups of signals:
+    // - then pen polling until a trigger in `next` is received
+    // - pen polling distinguishes between too groups of signals:
     //   1. `dst` needs to be read in first, as it creates the "background",
     //      i.e. we need as much as `width * height` values (or truncate if
     //      `dst` ends prematurely).
@@ -95,8 +97,10 @@ object PenImage {
     private[this] var auxDataRem    = 8
     private[this] var auxDataReady  = false
 
-    private[this] var mainDataRem   = 5
-    private[this] var mainDataReady = false
+    private[this] var dstDataReady  = false
+
+    private[this] var penDataRem    = 5
+    private[this] var penDataReady  = false
 
     private[this] var width         : Int     = _
     private[this] var height        : Int     = _
@@ -107,12 +111,12 @@ object PenImage {
     private[this] var kaiserBeta    : Double  = _
     private[this] var zeroCrossings : Int     = _
 
-    private[this] val hSrc            = new MainInHandler [Double , BufD](shape.in0 )
-    private[this] val hAlpha          = new MainInHandler [Double , BufD](shape.in1 )
-    private[this] val hDst            = new MainInHandler [Double , BufD](shape.in2 )
-    private[this] val hX              = new MainInHandler [Double , BufD](shape.in5 )
-    private[this] val hY              = new MainInHandler [Double , BufD](shape.in6 )
-    private[this] val hNext           = new MainInHandler [Int    , BufI](shape.in7 )
+    private[this] val hSrc            = new PenInHandler [Double , BufD](shape.in0 )
+    private[this] val hAlpha          = new PenInHandler [Double , BufD](shape.in1 )
+    private[this] val hDst            = new PenInHandler [Double , BufD](shape.in2 )
+    private[this] val hX              = new PenInHandler [Double , BufD](shape.in5 )
+    private[this] val hY              = new PenInHandler [Double , BufD](shape.in6 )
+    private[this] val hNext           = new PenInHandler [Int    , BufI](shape.in7 )
 
     private[this] val hWidth          = new AuxInHandler  [Int    , BufI](shape.in3 )
     private[this] val hHeight         = new AuxInHandler  [Int    , BufI](shape.in4 )
@@ -123,7 +127,7 @@ object PenImage {
     private[this] val hKaiserBeta     = new AuxInHandler  [Double , BufD](shape.in12)
     private[this] val hZeroCrossings  = new AuxInHandler  [Int    , BufI](shape.in13)
 
-    private[this] val mainInHandlers = Array[MainInHandler[_, _]](
+    private[this] val penInHandlers = Array[PenInHandler[_, _]](
       hSrc, hAlpha, /*hDst, */ hX, hY, hNext
     )
 
@@ -131,10 +135,17 @@ object PenImage {
       hWidth, hHeight, hRule, hOp, hWrap, hRollOff, hKaiserBeta, hZeroCrossings
     )
 
+    private[this] var frameSize : Int = -1
+
+    private[this] var frameBuf  : Array[Double] = _ // of frameSize
+
+    private[this] var stage       = 0   // 0 gather aux, 1 fill dst, 2 pen
+    private[this] var dstWritten  = 0   // 0 to frameSize
+
     override protected def stopped(): Unit = {
       super.stopped()
       auxInHandlers .foreach(_.freeBuffer())
-      mainInHandlers.foreach(_.freeBuffer())
+      penInHandlers.foreach(_.freeBuffer())
       frameBuf = null
     }
 
@@ -227,69 +238,13 @@ object PenImage {
       }
     }
 
-    private final class MainInHandler[A, E <: BufElem[A]](val in: Inlet[E])
-      extends InHandler {
-
-      private[this] var hasValue      = false
-      private[this] var everHadValue  = false
-
-      var buf       : E   = _
-      var offset    : Int = 0
-      var mostRecent: A   = _
-
-      def bufRemain: Int = if (buf == null) 0 else buf.size - offset
-
-      override def toString: String = s"$logic.$in"
-
-      def hasNext: Boolean =
-        (buf != null) || !isClosed(in) || isAvailable(in)
-
-      def freeBuffer(): Unit =
-        if (buf != null) {
-          mostRecent = buf.buf(buf.size - 1)
-          buf.release()
-          buf = null.asInstanceOf[E]
-        }
-
-      def next(): Unit = {
-        hasValue = false
-        if (bufRemain > 0) {
-          ackValue()
-        } else {
-          freeBuffer()
-          if (isAvailable(in)) onPush()
+    private final class PenInHandler[A, E <: BufElem[A]](in: Inlet[E]) extends InHandlerImpl[A, E](in) {
+      protected def notifyValue(): Unit = {
+        penDataRem -= 1
+        if (penDataRem == 0) {
+          notifyPenDataReady()
         }
       }
-
-      def onPush(): Unit = if (!hasValue) {
-        assert (buf == null)
-        buf     = grab(in)
-        assert (buf.size > 0)
-        offset  = 0
-        ackValue()
-        tryPull(in)
-      }
-
-      private def ackValue(): Unit = {
-        hasValue      = true
-        everHadValue  = true
-        mainDataRem -= 1
-        if (mainDataRem == 0) {
-          notifyMainDataReady()
-        }
-      }
-
-      override def onUpstreamFinish(): Unit = {
-        if (!isAvailable(in)) {
-          if (everHadValue) {
-            if (!hasValue) ackValue()
-          } else {
-            super.onUpstreamFinish()
-          }
-        }
-      }
-
-      setHandler(in, this)
     }
 
     // ---- out handler ----
@@ -302,14 +257,8 @@ object PenImage {
 
     // ---- stages ----
 
-    private[this] var frameSize : Int = -1
-
-    private[this] var frameBuf  : Array[Double] = _
-
-    private[this] var stage = 0   // 0 gather aux, 1 fill dst, 2 pen
-
-    private def turnToNextAuxData(): Unit = {
-      stage         = 0
+    private def requestNextAuxData(): Unit = {
+      assert (stage == 0)
       auxDataReady  = false
       assert (auxDataRem == 0)
       auxDataRem = auxInHandlers.count(_.hasNext)
@@ -320,10 +269,52 @@ object PenImage {
       }
     }
 
+    private def requestNextDstData(): Unit = {
+      assert (stage == 1)
+      dstDataReady = false
+      if (hDst.hasNext) {
+        hDst.next()
+      } else {
+        notifyPstDataReady()
+      }
+    }
+
+    private def requestNextPenData(): Unit = {
+      assert (stage == 2)
+      penDataReady = false
+      assert (penDataRem == 0)
+      penDataRem = penInHandlers.count(_.hasNext)
+      if (penDataRem > 0) {
+        penInHandlers.foreach(h => if (h.hasNext) h.next())
+      }
+    }
+
     private def notifyAuxDataReady(): Unit = {
       assert (!auxDataReady)
       auxDataReady = true
+      if (stage == 0) {
+        processAuxData()
+      }
+    }
 
+    private def notifyPstDataReady(): Unit = {
+      assert (!dstDataReady)
+      dstDataReady = true
+      if (stage == 1) {
+        processDstData()
+      }
+    }
+
+    private def notifyPenDataReady(): Unit = {
+      assert (!penDataReady)
+      penDataReady = true
+      if (stage == 2) {
+        processPenData()
+      }
+    }
+
+    private def processAuxData(): Unit = {
+      assert (stage == 0)
       import numbers.Implicits._
 
       width         = hWidth        .takeValue().max(1)
@@ -341,39 +332,49 @@ object PenImage {
         frameBuf  = new Array(newFrameSize)
       }
 
-      if (stage == 0) {
-        turnToNextDstData()
-      }
-    }
-
-    private def turnToNextDstData(): Unit = {
       stage = 1
-      mainDataReady = false
-      assert (mainDataRem == 0)
-      mainDataRem = mainInHandlers.count(_.hasNext)
-      if (mainDataRem > 0) {
-        mainInHandlers.foreach(h => if (h.hasNext) h.next())
+      if (dstDataReady) {
+        processDstData()
+      } else {
+        requestNextDstData()
       }
     }
 
-    private def turnToNextMainData(): Unit = {
-      stage = 2
-      mainDataReady = false
-      assert (mainDataRem == 0)
-      mainDataRem = mainInHandlers.count(_.hasNext)
-      if (mainDataRem > 0) {
-        mainInHandlers.foreach(h => if (h.hasNext) h.next())
+    private def processDstData(): Unit = {
+      assert (stage == 1)
+
+      val dstRem    = hDst.bufRemain
+      val frameRem  = frameSize - dstWritten
+      val chunk     = if (dstRem == 0) {
+        Util.fill(frameBuf, dstWritten, frameRem, hDst.takeValue())
+        frameRem
+      } else {
+        val b = hDst.buf
+        val _chunk = min(dstRem, frameRem)
+        Util.copy(b.buf, hDst.offset, frameBuf, dstWritten, _chunk)
+        _chunk
+      }
+      dstWritten += chunk
+
+      if (dstWritten < frameSize) {
+        requestNextPenData()
+      } else {
+
+        stage = 2
+        if (penDataReady) {
+          processPenData()
+        } else {
+          requestNextPenData()
+        }
       }
     }
 
-    private def notifyMainDataReady(): Unit = {
-      assert (!mainDataReady)
-      mainDataReady = true
-      if (auxDataReady) {
-        ???
-      }
-    }
+    private def processPenData(): Unit = {
+      assert (stage == 2)
 
-    // ---- process ----
+      // hSrc, hAlpha, hX, hY, hNext
+
+      ???
+    }
   }
 }
