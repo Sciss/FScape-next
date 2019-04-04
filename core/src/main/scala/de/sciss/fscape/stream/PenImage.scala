@@ -22,6 +22,7 @@ import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 import de.sciss.numbers
 import de.sciss.numbers.IntFunctions
 
+import scala.annotation.switch
 import scala.math.{abs, min}
 
 object PenImage {
@@ -114,10 +115,11 @@ object PenImage {
 
     private[this] val hSrc            = new PenInHandler[Double , BufD](shape.in0 )
     private[this] val hAlpha          = new PenInHandler[Double , BufD](shape.in1 )
-    private[this] val hDst            = new PenInHandler[Double , BufD](shape.in2 )
     private[this] val hX              = new PenInHandler[Double , BufD](shape.in5 )
     private[this] val hY              = new PenInHandler[Double , BufD](shape.in6 )
     private[this] val hNext           = new PenInHandler[Int    , BufI](shape.in7 )
+
+    private[this] val hDst            = new DstInHandler[Double , BufD](shape.in2 )
 
     private[this] val hWidth          = new AuxInHandler[Int    , BufI](shape.in3 )
     private[this] val hHeight         = new AuxInHandler[Int    , BufI](shape.in4 )
@@ -163,9 +165,9 @@ object PenImage {
       private[this] var hasValue      = false
       private[this] var everHadValue  = false
 
-      final var buf       : E   = _
-      final var offset    : Int = 0
-      final var mostRecent: A   = _
+      final var buf             : E   = _
+      final var offset          : Int = 0
+      final var mostRecent      : A   = _
 
       // ---- abstract ----
 
@@ -224,14 +226,15 @@ object PenImage {
           }
         }
 
-      final def onPush(): Unit = if (!hasValue) {
-        assert (buf == null)
-        buf     = grab(in)
-        assert (buf.size > 0)
-        offset  = 0
-        ackValue()
-        tryPull(in)
-      }
+      final def onPush(): Unit =
+        if (!hasValue) {
+          assert (buf == null)
+          buf     = grab(in)
+          assert (buf.size > 0)
+          offset  = 0
+          ackValue()
+          tryPull(in)
+        }
 
       private def ackValue(): Unit = {
         hasValue      = true
@@ -270,6 +273,11 @@ object PenImage {
       }
     }
 
+    private final class DstInHandler[A, E <: BufElem[A]](in: Inlet[E]) extends InHandlerImpl[A, E](in) {
+      protected def notifyValue(): Unit =
+        notifyDstDataReady()
+    }
+
     // ---- out handler ----
 
     def onPull(): Unit =
@@ -281,6 +289,8 @@ object PenImage {
       logStream(s"onDownstreamFinish() $logic")
       super.onDownstreamFinish()
     }
+
+    setHandler(shape.out, this)
 
     // ---- stages ----
 
@@ -302,7 +312,7 @@ object PenImage {
       if (hDst.hasNext) {
         hDst.next()
       } else {
-        notifyPstDataReady()
+        notifyDstDataReady()
       }
     }
 
@@ -327,7 +337,7 @@ object PenImage {
       }
     }
 
-    private def notifyPstDataReady(): Unit = {
+    private def notifyDstDataReady(): Unit = {
       assert (!dstDataReady)
       if (stage == 1) {
         processDstData()
@@ -385,6 +395,7 @@ object PenImage {
         val b = hDst.buf
         val _chunk = min(dstRem, frameRem)
         Util.copy(b.buf, hDst.offset, frameBuf, dstWritten, _chunk)
+        hDst.offset += _chunk
         _chunk
       }
       dstWritten += chunk
@@ -403,7 +414,7 @@ object PenImage {
       }
     }
 
-    private[this] var nextP = false
+    private[this] var nextP = true  // ignore trigger at time zero
 
     private[this] var bufOut: BufD = _
     private[this] var outOff      = 0   // w.r.t. `bufOut`
@@ -438,6 +449,7 @@ object PenImage {
       while (chunk > 0) {
         next = hNext.peekValue() != 0
         if ((!nextP && next) || !hSrc.hasNext) {
+          nextP       = true  // so we don't re-trigger infinitely, aka `wasNextWindow`
           stage       = 3
           outWritten  = 0
           if (isAvailable(shape.out)) {
@@ -500,13 +512,24 @@ object PenImage {
         bufOut.size = outOff
         push(shape.out, bufOut)
         outOff = 0
+        bufOut = null
       } else {
-        bufOut.release()
+        freeOutBuffer()
       }
-      bufOut = null
     }
 
-    private def process(x: Double, y: Double, src: Double, alpha: Double): Double = {
+    private def calcValue(Cs: Double, As: Double, Cd: Double, w: Double): Double =
+      (rule: @switch) match {
+        case Clear  | SrcOut  => 0.0
+        case Src    | SrcIn   => Cs * w
+        case Dst    | DstOver => Cd
+        case SrcOver          => op(Cs * w, Cd*(1-(As * w)))
+        case DstIn  | DstAtop => Cd*(As * w)
+        case DstOut | Xor     => Cd*(1-(As * w))
+        case SrcAtop          => op(Cd*(1-(As * w)), Cs * w)
+      }
+
+    private def process(x: Double, y: Double, Cs: Double, As: Double): Unit = {
       val _winBuf   = frameBuf
       val _width    = width
       val _height   = height
@@ -525,10 +548,13 @@ object PenImage {
         val x1 = if (_wrap) IntFunctions.wrap(xTi, 0, w1) else IntFunctions.clip(xTi, 0, w1)
         val y1 = if (_wrap) IntFunctions.wrap(yTi, 0, h1) else IntFunctions.clip(yTi, 0, h1)
 
-        val value = if (xq < 1.0e-20 && yq < 1.0e-20) {
+        if (xq < 1.0e-20 && yq < 1.0e-20) {
           // short cut
           val winBufOff = y1 * _width + x1
-          _winBuf(winBufOff)
+          val Cd = _winBuf(winBufOff)
+          val Cr = calcValue(Cs, As, Cd, 1.0)
+          _winBuf(winBufOff) = Cr
+
         } else {
           // cf. https://en.wikipedia.org/wiki/Bicubic_interpolation
           // note -- we begin indices at `0` instead of `-1` here
@@ -577,8 +603,9 @@ object PenImage {
           val b2 = bicubic(xq, f02, f12, f22, f32)
           val b3 = bicubic(xq, f03, f13, f23, f33)
           bicubic(yq, b0, b1, b2, b3)
+
+          ???
         }
-        value
       }
       // ------------------------- sinc -------------------------
       else {
