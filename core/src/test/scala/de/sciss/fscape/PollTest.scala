@@ -25,7 +25,7 @@ object PollTest extends App {
     cb.useAsync = false
     val config = cb.build
     showStreamLog = true
-    implicit val ctrl = stream.Control(config)
+    implicit val ctrl: stream.Control = stream.Control(config)
     ctrl.run(g)
 //    import config.executionContext
 //    ctrl.status.foreach { _ =>

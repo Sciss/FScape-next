@@ -14,8 +14,11 @@
 package de.sciss.fscape
 package stream
 
+import akka.stream.stage.{InHandler, OutHandler}
 import akka.stream.{Attributes, FanInShape2}
-import de.sciss.fscape.stream.impl.{FilterChunkImpl, FilterIn2DImpl, NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+
+import scala.math.min
 
 object BinaryOp {
   import graph.BinaryOp.Op
@@ -43,35 +46,229 @@ object BinaryOp {
   }
 
   private final class Logic(shape: Shape, layer: Layer, op: Op)(implicit ctrl: Control)
-    extends NodeImpl(s"$name(${op.name})", layer, shape)
-      with FilterChunkImpl /* SameChunkImpl[Shape] */ [BufD, BufD, Shape]
-      with FilterIn2DImpl /* BinaryInDImpl */[BufD, BufD] {
+    extends NodeImpl(s"$name(${op.name})", layer, shape) with OutHandler { logic =>
+
+    private[this] val hA = new InHandlerImpl(shape.in0)
+    private[this] val hB = new InHandlerImpl(shape.in1)
+
+    private[this] var inDataRem = 2
+
+    private[this] var bufOut: BufD = _
+    private[this] var outOff = 0
 
     private[this] var aVal: Double = _
     private[this] var bVal: Double = _
 
-//    protected def shouldComplete(): Boolean = inRemain == 0 && isClosed(in0) && isClosed(in1)
+    setHandler(shape.out, this)
 
-    protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Unit = {
-      var inOffI  = inOff
+    override protected def stopped(): Unit = {
+      super.stopped()
+      hA.freeBuffer()
+      hB.freeBuffer()
+      freeOutBuffer()
+    }
+
+    private final class InHandlerImpl(in: InD)
+      extends InHandler {
+
+      private[this] var hasValue      = false
+      private[this] var everHadValue  = false
+
+      private[this] var _buf    : BufD  = _
+      private[this] var _offset : Int   = 0
+
+      def buf: BufD = _buf
+
+      def offset: Int = _offset
+
+      def bufRemain: Int = if (_buf == null) 0 else _buf.size - _offset
+
+      override def toString: String = s"$logic .${in.s}"
+
+      def updateOffset(n: Int): Unit =
+        if (_buf != null) {
+          _offset = n
+          assert (_offset <= _buf.size)
+          if (bufRemain == 0) freeBuffer()
+        }
+
+      def hasNext: Boolean =
+        (_buf != null) || !isClosed(in) || isAvailable(in)
+
+      def freeBuffer(): Unit =
+        if (_buf != null) {
+          _buf.release()
+          _buf = null
+          _offset = 0
+        }
+
+      def next(): Unit = {
+        hasValue = false
+        val r = bufRemain > 0
+        logStream(s"next() $this - $r")
+        if (r) {
+          ackValue()
+        } else {
+          freeBuffer()
+          if (isAvailable(in)) onPush()
+        }
+      }
+
+      def onPush(): Unit = {
+        logStream(s"onPush() $this - $hasValue")
+        if (!hasValue) {
+          assert(_buf == null)
+          _buf = grab(in)
+          assert(_buf.size > 0)
+          ackValue()
+          tryPull(in)
+        }
+      }
+
+      private def ackValue(): Unit = {
+        hasValue      = true
+        everHadValue  = true
+        inDataRem -= 1
+        logStream(s"ackValue() $this - $inDataRem")
+        if (inDataRem == 0) {
+          notifyInDataReady()
+        }
+      }
+
+      override def onUpstreamFinish(): Unit = {
+        val hasMore = isAvailable(in)
+        logStream(s"onUpstreamFinish() $this - $hasMore $hasValue $everHadValue")
+        if (!hasMore) {
+          if (everHadValue) {
+            if (!hasValue) ackValue()
+          } else {
+            super.onUpstreamFinish()
+          }
+        }
+      }
+
+      setHandler(in, this)
+    }
+
+    private def writeOut(): Unit = {
+      logStream(s"writeOut() $this")
+      if (outOff > 0) {
+        bufOut.size = outOff
+        push(shape.out, bufOut)
+        outOff = 0
+        bufOut = null
+      } else {
+        freeOutBuffer()
+      }
+    }
+
+    private def freeOutBuffer(): Unit =
+      if (bufOut != null) {
+        bufOut.release()
+        bufOut = null
+      }
+
+    private def tryWriteFull(): Boolean =
+      (bufOut != null && outOff == bufOut.size && isAvailable(shape.out)) && {
+        writeOut()
+        true
+      }
+
+    private[this] var inDataReady = false
+
+    private def notifyInDataReady(): Unit = {
+      logStream(s"notifyInDataReady() $this")
+      assert (!inDataReady)
+      inDataReady = true
+      processInData()
+    }
+
+    private def processInData(): Unit = {
+      logStream(s"processInData() $this")
+      assert (inDataReady)
+
+      if (bufOut == null) bufOut = ctrl.borrowBufD()
+
+      var chunk = bufOut.size - outOff
+      if (chunk == 0) return
+
       var outOffI = outOff
-      val inStop  = inOffI + chunk
-      val a       = /* if (bufIn0 == null) null else */ bufIn0.buf
-      val b       = if (bufIn1 == null) null else bufIn1.buf
-      val aStop   = /* if (a == null) 0 else */ bufIn0.size
-      val bStop   = if (b == null) 0 else bufIn1.size
-      val out     = bufOut0.buf
+      val aBuf    = hA.buf
+      val bBuf    = hB.buf
+      if (aBuf == null && bBuf == null) {
+        if (isAvailable(shape.out)) {
+          writeOut()
+          completeStage()
+        }
+        return
+      }
+
+      var aOff    = hA.offset
+      var bOff    = hB.offset
+      val aStop   = if (aBuf == null) 0 else {
+        val sz    = aBuf.size
+        val len   = sz - aOff
+        chunk     = min(chunk, len)
+        sz
+      }
+      val bStop   = if (bBuf == null) 0 else {
+        val sz    = bBuf.size
+        val len   = sz - bOff
+        chunk     = min(chunk, len)
+        sz
+      }
+      val out     = bufOut.buf
       var av      = aVal
       var bv      = bVal
-      while (inOffI < inStop) {
-        if (inOffI < aStop) av = a(inOffI)
-        if (inOffI < bStop) bv = b(inOffI)
+      val aArr    = if (aBuf == null) null else aBuf.buf
+      val bArr    = if (bBuf == null) null else bBuf.buf
+      val outStop = outOffI + chunk
+      while (outOffI < outStop) {
+        if (aOff < aStop) {
+          av = aArr(aOff)
+          aOff += 1
+        }
+        if (bOff < bStop) {
+          bv = bArr(bOff)
+          bOff += 1
+        }
         out(outOffI) = op(av, bv)
-        inOffI  += 1
         outOffI += 1
       }
-      aVal = av
-      bVal = bv
+      aVal    = av
+      bVal    = bv
+      outOff  = outStop
+
+      hA.updateOffset(aOff)
+      hB.updateOffset(bOff)
+
+      tryWriteFull()
+      requestNextInData()
+    }
+
+    private def requestNextInData(): Unit = {
+      inDataReady = false
+      val aHas  = hA.hasNext
+      val bHas  = hB.hasNext
+      inDataRem = 0
+      if (aHas) inDataRem += 1
+      if (bHas) inDataRem += 1
+      logStream(s"requestNextInData() $this $aHas $bHas")
+
+      if (inDataRem == 0) {
+        if (outOff == 0) completeStage()
+        else {
+          inDataReady = true
+        }
+      } else {
+        if (aHas) hA.next()
+        if (bHas) hB.next()
+      }
+    }
+
+    def onPull(): Unit = {
+      tryWriteFull()
+      if (inDataReady) processInData()
     }
   }
 }

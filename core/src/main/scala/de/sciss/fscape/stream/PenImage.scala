@@ -20,6 +20,7 @@ import de.sciss.fscape.graph.BinaryOp.Op
 import de.sciss.fscape.graph.PenImage._
 import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 import de.sciss.numbers
+import de.sciss.fscape.{logStream => log}
 import de.sciss.numbers.IntFunctions
 
 import scala.annotation.switch
@@ -150,8 +151,8 @@ object PenImage {
 //    private def log(what: => String): Unit =
 //      println(s"[log] $what")
 
-    @inline
-    private def log(what: => String): Unit = logStream(what)
+//    @inline
+//    private def log(what: => String): Unit = logStream(what)
 
     override protected def stopped(): Unit = {
       super.stopped()

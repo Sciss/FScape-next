@@ -58,6 +58,7 @@ object ProgressFrames {
         val b = grab(shape.in1)
         if (!hasFrames && b.size > 0) {
           numFrames = math.max(1L, b.buf(0))
+//          println(s"HAS_FRAMES $numFrames")
           hasFrames = true
           updateFraction()
         }
@@ -76,6 +77,7 @@ object ProgressFrames {
     private def updateFraction(): Unit = {
       val p500_0  = (read * 500 / numFrames).toInt
       val p500    = if (p500_0 <= 500) p500_0 else 500
+//      println(s"updateFraction() $p500")
       if (p500 > lastP500) {
         val time = System.currentTimeMillis()
         if (p500 == 500 || time - lastTime > 100) { // always report the 100% mark

@@ -40,13 +40,15 @@ final case class ProgressFrames(in: GE, numFrames: GE, label: String = "render")
   extends UGenSource.ZeroOut {
 
   protected def makeUGens(implicit b: UGenGraph.Builder): Unit =
-    unwrap(this, Vector(in.expand, numFrames.expand))
+    unwrap(this, numFrames.expand +: in.expand.outputs)
 
-  protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit =
-    UGen.ZeroOut(this, inputs = args, aux = Aux.String(label) :: Nil)
+  protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit = {
+    val trunc = args.take(2)  // if the input was multi-channel, just use the first channel
+    UGen.ZeroOut(this, inputs = trunc, aux = Aux.String(label) :: Nil)
+  }
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit = {
-    val Vec(in, numFrames) = args
+    val Vec(numFrames, in) = args
     stream.ProgressFrames(in = in.toAny, numFrames = numFrames.toLong, label = label)
   }
 }

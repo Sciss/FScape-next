@@ -37,7 +37,7 @@ object LogisticMapExample {
     (x, r) => r * x * (-x + 1.0)
 
   def bentFun(p: GE = 0.96): (GE, GE) => GE =
-    (x, r) => (r * x * (-x + 1.0)).pow(p)
+    (x, r) => (r * x * (1.0 - x)).pow(p)
 
   case class Config(id: Int = 0, ra: Double = 2.9, rb: Double = 4.0, w: Int = 240, h: Int = 500,
                     maxIt:Int = 200, y0: Double = 0.0, y1: Double = 1.0,
