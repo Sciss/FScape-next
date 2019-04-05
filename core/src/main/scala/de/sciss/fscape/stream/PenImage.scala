@@ -174,8 +174,8 @@ object PenImage {
       private[this] var hasValue      = false
       private[this] var everHadValue  = false
 
-      final var buf             : E   = _
-      final var offset          : Int = 0
+      private[this] var _buf    : E   = _
+      private[this] var _offset : Int = 0
       final var mostRecent      : A   = _
 
       // ---- abstract ----
@@ -184,18 +184,29 @@ object PenImage {
 
       // ---- impl ---
 
-      final def bufRemain: Int = if (buf == null) 0 else buf.size - offset
+      final def offset: Int = _offset
+
+      final def bufRemain: Int = if (_buf == null) 0 else _buf.size - _offset
+
+      final def buf: E = _buf
 
       override final def toString: String = in.toString //  s"$logic.$in"
 
+      final def updateOffset(n: Int): Unit =
+        if (_buf != null) {
+          _offset = n
+          assert (_offset <= _buf.size)
+          if (bufRemain == 0) freeBuffer()
+        }
+
       final def hasNext: Boolean =
-        (buf != null) || !isClosed(in) || isAvailable(in)
+        (_buf != null) || !isClosed(in) || isAvailable(in)
 
       final def freeBuffer(): Unit =
-        if (buf != null) {
-          mostRecent = buf.buf(buf.size - 1)
-          buf.release()
-          buf = null.asInstanceOf[E]
+        if (_buf != null) {
+          mostRecent = _buf.buf(_buf.size - 1)
+          _buf.release()
+          _buf = null.asInstanceOf[E]
         }
 
       final def next(): Unit = {
@@ -209,28 +220,28 @@ object PenImage {
       }
 
       final def takeValue(): A =
-        if (buf == null) {
+        if (_buf == null) {
           mostRecent
         } else {
-          val i = buf.buf(offset)
-          offset += 1
-          if (offset == buf.size) {
+          val i = _buf.buf(_offset)
+          _offset += 1
+          if (_offset == _buf.size) {
             freeBuffer()
           }
           i
         }
 
       final def peekValue(): A =
-        if (buf == null) {
+        if (_buf == null) {
           mostRecent
         } else {
-          buf.buf(offset)
+          _buf.buf(_offset)
         }
 
       final def skipValue(): Unit =
-        if (buf != null) {
-          offset += 1
-          if (offset == buf.size) {
+        if (_buf != null) {
+          _offset += 1
+          if (_offset == _buf.size) {
             freeBuffer()
           }
         }
@@ -238,10 +249,10 @@ object PenImage {
       final def onPush(): Unit = {
         log(s"onPush() $this - $hasValue")
         if (!hasValue) {
-          assert(buf == null)
-          buf = grab(in)
-          assert(buf.size > 0)
-          offset = 0
+          assert(_buf == null)
+          _buf = grab(in)
+          assert(_buf.size > 0)
+          _offset = 0
           ackValue()
           tryPull(in)
         }
@@ -424,9 +435,10 @@ object PenImage {
         frameRem
       } else {
         val b = hDst.buf
-        val _chunk = min(dstRem, frameRem)
-        Util.copy(b.buf, hDst.offset, frameBuf, dstWritten, _chunk)
-        hDst.offset += _chunk
+        val _chunk  = min(dstRem, frameRem)
+        val dstOff  = hDst.offset
+        Util.copy(b.buf, dstOff, frameBuf, dstWritten, _chunk)
+        hDst.updateOffset(dstOff + _chunk)
         _chunk
       }
       dstWritten += chunk
