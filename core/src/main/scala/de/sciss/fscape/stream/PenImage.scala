@@ -99,6 +99,7 @@ object PenImage {
     private[this] var auxDataRem    = 8
     private[this] var auxDataReady  = false
 
+    private[this] var dstDataRem    = 1
     private[this] var dstDataReady  = false
 
     private[this] var penDataRem    = 5
@@ -145,6 +146,13 @@ object PenImage {
     private[this] var stage       = 0   // 0 gather aux, 1 fill dst, 2 apply pen, 3 write out
     private[this] var dstWritten  = 0   // 0 to frameSize
 
+//    @inline
+//    private def log(what: => String): Unit =
+//      println(s"[log] $what")
+
+    @inline
+    private def log(what: => String): Unit = logStream(what)
+
     override protected def stopped(): Unit = {
       super.stopped()
       auxInHandlers.foreach(_.freeBuffer())
@@ -177,7 +185,7 @@ object PenImage {
 
       final def bufRemain: Int = if (buf == null) 0 else buf.size - offset
 
-      override final def toString: String = s"$logic.$in"
+      override final def toString: String = in.toString //  s"$logic.$in"
 
       final def hasNext: Boolean =
         (buf != null) || !isClosed(in) || isAvailable(in)
@@ -226,15 +234,17 @@ object PenImage {
           }
         }
 
-      final def onPush(): Unit =
+      final def onPush(): Unit = {
+        log(s"onPush() $this - $hasValue")
         if (!hasValue) {
-          assert (buf == null)
-          buf     = grab(in)
-          assert (buf.size > 0)
-          offset  = 0
+          assert(buf == null)
+          buf = grab(in)
+          assert(buf.size > 0)
+          offset = 0
           ackValue()
           tryPull(in)
         }
+      }
 
       private def ackValue(): Unit = {
         hasValue      = true
@@ -243,6 +253,7 @@ object PenImage {
       }
 
       final override def onUpstreamFinish(): Unit = {
+        log(s"onUpstreamFinish() $this - $hasValue $everHadValue")
         if (!isAvailable(in)) {
           if (everHadValue) {
             if (!hasValue) ackValue()
@@ -274,19 +285,25 @@ object PenImage {
     }
 
     private final class DstInHandler[A, E <: BufElem[A]](in: Inlet[E]) extends InHandlerImpl[A, E](in) {
-      protected def notifyValue(): Unit =
-        notifyDstDataReady()
+      protected def notifyValue(): Unit = {
+        dstDataRem -= 1
+        if (dstDataRem == 0) {
+          notifyDstDataReady()
+        }
+      }
     }
 
     // ---- out handler ----
 
-    def onPull(): Unit =
+    def onPull(): Unit = {
+      log(s"onPull() $logic")
       if (stage == 3) {
         processOutData()
       }
+    }
 
     override def onDownstreamFinish(): Unit = {
-      logStream(s"onDownstreamFinish() $logic")
+      log(s"onDownstreamFinish() $logic")
       super.onDownstreamFinish()
     }
 
@@ -295,40 +312,49 @@ object PenImage {
     // ---- stages ----
 
     private def requestNextAuxData(): Unit = {
+      log("requestNextAuxData")
       assert (stage == 0)
       assert (!auxDataReady)
-      assert (auxDataRem == 0)
-      auxDataRem = auxInHandlers.count(_.hasNext)
-      if (auxDataRem > 0) {
-        auxInHandlers.foreach(h => if (h.hasNext) h.next())
-      } else {
-        notifyAuxDataReady()
+      if (auxDataRem == 0) {  // no ongoing request
+        auxDataRem = auxInHandlers.count(_.hasNext)
+        if (auxDataRem > 0) {
+          auxInHandlers.foreach(h => if (h.hasNext) h.next())
+        } else {
+          notifyAuxDataReady()
+        }
       }
     }
 
     private def requestNextDstData(): Unit = {
+      log("requestNextDstData")
       assert (stage == 1)
       assert (!dstDataReady)
-      if (hDst.hasNext) {
-        hDst.next()
-      } else {
-        notifyDstDataReady()
+      if (dstDataRem == 0) {  // no ongoing request
+        if (hDst.hasNext) {
+          dstDataRem = 1
+          hDst.next()
+        } else {
+          notifyDstDataReady()
+        }
       }
     }
 
     private def requestNextPenData(): Unit = {
+      log("requestNextPenData")
       assert (stage == 2)
       assert (!penDataReady)
-      assert (penDataRem == 0)
-      penDataRem = penInHandlers.count(_.hasNext)
-      if (penDataRem > 0) {
-        penInHandlers.foreach(h => if (h.hasNext) h.next())
-      } else {
-        notifyPenDataReady()
+      if (penDataRem == 0) {  // no ongoing request
+        penDataRem = penInHandlers.count(_.hasNext)
+        if (penDataRem > 0) {
+          penInHandlers.foreach(h => if (h.hasNext) h.next())
+        } else {
+          notifyPenDataReady()
+        }
       }
     }
 
     private def notifyAuxDataReady(): Unit = {
+      log("notifyAuxDataReady")
       assert (!auxDataReady)
       if (stage == 0) {
         processAuxData()
@@ -338,6 +364,7 @@ object PenImage {
     }
 
     private def notifyDstDataReady(): Unit = {
+      log("notifyDstDataReady")
       assert (!dstDataReady)
       if (stage == 1) {
         processDstData()
@@ -347,6 +374,7 @@ object PenImage {
     }
 
     private def notifyPenDataReady(): Unit = {
+      log("notifyPenDataReady")
       assert (!penDataReady)
       if (stage == 2) {
         processPenData()
@@ -356,6 +384,7 @@ object PenImage {
     }
 
     private def processAuxData(): Unit = {
+      log("processAuxData")
       assert (stage == 0)
       import numbers.Implicits._
 
@@ -384,6 +413,7 @@ object PenImage {
     }
 
     private def processDstData(): Unit = {
+      log("processDstData")
       assert (stage == 1)
 
       val dstRem    = hDst.bufRemain
@@ -421,6 +451,7 @@ object PenImage {
     private[this] var outWritten  = 0   // pushed out plus `outOff`
 
     private def processPenData(): Unit = {
+      log("processPenData")
       assert (stage == 2)
 
       // hSrc, hAlpha, hX, hY, hNext
@@ -444,17 +475,27 @@ object PenImage {
       if (yRem      > 0 && yRem     < chunk) chunk = yRem
       if (nextRem   > 0 && nextRem  < chunk) chunk = nextRem
 
+      def goToOut(): Unit = {
+        nextP       = true  // so we don't re-trigger infinitely, aka `wasNextWindow`
+        stage       = 3
+        outWritten  = 0
+        if (isAvailable(shape.out)) {
+          processOutData()
+        }
+      }
+
+      if (!hSrc.hasNext) {
+        goToOut()
+        return
+      }
+
       assert (chunk < Int.MaxValue)
+//      if (chunk == Int.MaxValue) chunk = 0
 
       while (chunk > 0) {
         next = hNext.peekValue() != 0
-        if ((!nextP && next) || !hSrc.hasNext) {
-          nextP       = true  // so we don't re-trigger infinitely, aka `wasNextWindow`
-          stage       = 3
-          outWritten  = 0
-          if (isAvailable(shape.out)) {
-            processOutData()
-          }
+        if (!nextP && next /*|| !hSrc.hasNext*/) {
+          goToOut()
           return
         }
         hNext.skipValue()
@@ -475,6 +516,7 @@ object PenImage {
 
     // shape.out must be available
     private def processOutData(): Unit = {
+      log("processOutData")
       assert (stage == 3)
 
       if (bufOut == null) {
@@ -508,6 +550,7 @@ object PenImage {
     }
 
     private def writeOut(): Unit = {
+      log("writeOut")
       if (outOff > 0) {
         bufOut.size = outOff
         push(shape.out, bufOut)
