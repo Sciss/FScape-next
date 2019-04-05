@@ -44,7 +44,7 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * @see [[Slices]]
   * @see [[PenImage]]
   */
-final case class ScanImage(in: GE, width: GE, height: GE, x: GE = 0, y: GE = 0, next: GE = 0, wrap: GE = 1,
+final case class ScanImage(in: GE, width: GE, height: GE, x: GE = 0, y: GE = 0, next: GE = 0, wrap: GE = 0,
                            rollOff: GE = 0.86, kaiserBeta: GE = 7.5, zeroCrossings: GE = 0)
   extends UGenSource.SingleOut {
 

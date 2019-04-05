@@ -57,7 +57,7 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   */
 final case class PenImage(src: GE = 1.0, alpha: GE = 1.0, dst: GE = 0.0,
                           width: GE, height: GE, x: GE = 0, y: GE = 0, next: GE = 0,
-                          rule: GE = PenImage.SrcOver, op: GE = BinaryOp.Plus.id, wrap: GE = 1,
+                          rule: GE = PenImage.SrcOver, op: GE = BinaryOp.Plus.id, wrap: GE = 0,
                           rollOff: GE = 0.86, kaiserBeta: GE = 7.5, zeroCrossings: GE = 0)
   extends UGenSource.SingleOut {
 
