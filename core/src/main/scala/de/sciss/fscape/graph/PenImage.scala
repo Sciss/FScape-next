@@ -85,8 +85,6 @@ object PenImage {
 
   /**
     * `<em>C<sub>r</sub></em> = 0`
-    *
-    * Same as `SrcOut`
     */
   final val Clear   = 1
 
@@ -133,16 +131,14 @@ object PenImage {
   final val DstIn   = 6
 
   /**
-    * `<em>C<sub>r</sub></em> = 0`
+    * `<em>C<sub>r</sub></em> = <em>C<sub>s</sub></em> _op_ <em>C<sub>d</sub></em>`
     *
-    * Same as `Clear`
+    * Like `DstAcc` but swapped operands.
     */
-  final val SrcOut  = 7
+  final val SrcAcc  = 7
 
   /**
     * `<em>C<sub>r</sub></em> = <em>C<sub>d</sub></em>*(1-<em>A<sub>s</sub></em>)`
-    *
-    * Same as `Xor`
     */
   final val DstOut  = 8
 
@@ -161,11 +157,11 @@ object PenImage {
   final val DstAtop = 11
 
   /**
-    * `<em>C<sub>r</sub></em> = <em>C<sub>d</sub></em>*(1-<em>A<sub>s</sub></em>)`
+    * `<em>C<sub>r</sub></em> = <em>C<sub>d</sub></em> _op_ <em>C<sub>s</sub></em>`
     *
-    * Same as `Xor`
+    * Like `SrcAcc` but swapped operands.
     */
-  final val Xor     = 12
+  final val DstAcc   = 12
 
   final val RuleMax = 12
 }

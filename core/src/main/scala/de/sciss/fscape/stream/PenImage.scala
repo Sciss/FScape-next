@@ -576,12 +576,14 @@ object PenImage {
 
     private def calcValue(Cs: Double, As: Double, Cd: Double, w: Double): Double =
       (rule: @switch) match {
-        case Clear  | SrcOut  => 0.0
+        case Clear            => 0.0
         case Src    | SrcIn   => Cs * w
         case Dst    | DstOver => Cd
         case SrcOver          => op(Cs * w, Cd*(1-(As * w)))
+        case SrcAcc           => op(Cs * w, Cd)
         case DstIn  | DstAtop => Cd*(As * w)
-        case DstOut | Xor     => Cd*(1-(As * w))
+        case DstOut           => Cd*(1-(As * w))
+        case DstAcc           => op(Cd, Cs * w)
         case SrcAtop          => op(Cd*(1-(As * w)), Cs * w)
       }
 
@@ -601,15 +603,17 @@ object PenImage {
 
         val w1 = _width  - 1
         val h1 = _height - 1
-        val x1 = if (_wrap) IntFunctions.wrap(xTi, 0, w1) else IntFunctions.clip(xTi, 0, w1)
-        val y1 = if (_wrap) IntFunctions.wrap(yTi, 0, h1) else IntFunctions.clip(yTi, 0, h1)
+        val x1 = if (_wrap) IntFunctions.wrap(xTi, 0, w1) else xTi // IntFunctions.clip(xTi, 0, w1)
+        val y1 = if (_wrap) IntFunctions.wrap(yTi, 0, h1) else yTi // IntFunctions.clip(yTi, 0, h1)
 
         if (xq < 1.0e-20 && yq < 1.0e-20) {
           // short cut
-          val winBufOff = y1 * _width + x1
-          val Cd = _winBuf(winBufOff)
-          val Cr = calcValue(Cs, As, Cd, 1.0)
-          _winBuf(winBufOff) = Cr
+          if (_wrap || (xTi >= 0 && xTi <= w1 && yTi >= 0 && yTi <= h1)) {
+            val winBufOff = y1 * _width + x1
+            val Cd = _winBuf(winBufOff)
+            val Cr = calcValue(Cs, As, Cd, 1.0)
+            _winBuf(winBufOff) = Cr
+          }
 
         } else {
           // cf. https://en.wikipedia.org/wiki/Bicubic_interpolation
