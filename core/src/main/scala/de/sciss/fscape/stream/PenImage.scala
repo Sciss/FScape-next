@@ -608,7 +608,7 @@ object PenImage {
 
         if (xq < 1.0e-20 && yq < 1.0e-20) {
           // short cut
-          if (_wrap || (xTi >= 0 && xTi <= w1 && yTi >= 0 && yTi <= h1)) {
+          if (_wrap || (x1 >= 0 && x1 <= w1 && y1 >= 0 && y1 <= h1)) {
             val winBufOff = y1 * _width + x1
             val Cd = _winBuf(winBufOff)
             val Cr = calcValue(Cs, As, Cd, 1.0)
@@ -618,53 +618,119 @@ object PenImage {
         } else {
           // cf. https://en.wikipedia.org/wiki/Bicubic_interpolation
           // note -- we begin indices at `0` instead of `-1` here
-          val x0  = if (x1 >  0) x1 - 1 else if (_wrap) w1 else 0
-          val y0  = if (y1 >  0) y1 - 1 else if (_wrap) h1 else 0
-          val x2  = if (x1 < w1) x1 + 1 else if (_wrap)  0 else w1
-          val y2  = if (y1 < h1) y1 + 1 else if (_wrap)  0 else h1
-          val x3  = if (x2 < w1) x2 + 1 else if (_wrap)  0 else w1
-          val y3  = if (y2 < h1) y2 + 1 else if (_wrap)  0 else h1
+          val x0  = if (x1 >  0) x1 - 1 else if (_wrap) w1 else x1 - 1
+          val y0  = if (y1 >  0) y1 - 1 else if (_wrap) h1 else y1 - 1
+          val x2  = if (x1 < w1) x1 + 1 else if (_wrap)  0 else x1 + 1
+          val y2  = if (y1 < h1) y1 + 1 else if (_wrap)  0 else y1 + 1
+          val x3  = if (x2 < w1) x2 + 1 else if (_wrap)  0 else x2 + 1
+          val y3  = if (y2 < h1) y2 + 1 else if (_wrap)  0 else y2 + 1
 
-          // XXX TODO --- we could save these multiplications here
-          val y0s = y0 * _width
-          val y1s = y1 * _width
-          val y2s = y2 * _width
-          val y3s = y3 * _width
-          val f00 = _winBuf(y0s + x0)
-          val f10 = _winBuf(y0s + x1)
-          val f20 = _winBuf(y0s + x2)
-          val f30 = _winBuf(y0s + x3)
-          val f01 = _winBuf(y1s + x0)
-          val f11 = _winBuf(y1s + x1)
-          val f21 = _winBuf(y1s + x2)
-          val f31 = _winBuf(y1s + x3)
-          val f02 = _winBuf(y2s + x0)
-          val f12 = _winBuf(y2s + x1)
-          val f22 = _winBuf(y2s + x2)
-          val f32 = _winBuf(y2s + x3)
-          val f03 = _winBuf(y3s + x0)
-          val f13 = _winBuf(y3s + x1)
-          val f23 = _winBuf(y3s + x2)
-          val f33 = _winBuf(y3s + x3)
+          if (_wrap || (x0 >= 0 && x3 <= w1 && y0 >= 0 && y3 <= h1)) {
 
-          def bicubic(t: Double, f0: Double, f1: Double, f2: Double, f3: Double): Double = {
-            // XXX TODO --- could save the next two multiplications
+            val y0s = y0 * _width
+            val y1s = y1 * _width
+            val y2s = y2 * _width
+            val y3s = y3 * _width
+            val p00 = y0s + x0
+            val p10 = y0s + x1
+            val p20 = y0s + x2
+            val p30 = y0s + x3
+            val p01 = y1s + x0
+            val p11 = y1s + x1
+            val p21 = y1s + x2
+            val p31 = y1s + x3
+            val p02 = y2s + x0
+            val p12 = y2s + x1
+            val p22 = y2s + x2
+            val p32 = y2s + x3
+            val p03 = y3s + x0
+            val p13 = y3s + x1
+            val p23 = y3s + x2
+            val p33 = y3s + x3
+
+  //          def bicubic(t: Double, f0: Double, f1: Double, f2: Double, f3: Double): Double = {
+  //            // XXX TODO --- could save the next two multiplications
+  //            val tt  = t * t
+  //            val ttt = tt * t
+  //            val c0  = 2 * f1
+  //            val c1  = (-f0 + f2) * t
+  //            val c2  = (2 * f0 - 5 * f1 + 4 * f2 - f3) * tt
+  //            val c3  = (-f0  + 3 * f1 - 3 * f2 + f3) * ttt
+  //
+  //            /*
+  //
+  //            weight(f0): (-t + 2tt - ttt) * 0.5
+  //            weight(f1): (2 - 5tt + 3ttt) * 0.5
+  //            weight(f2): (t + 4tt - 3ttt) * 0.5
+  //            weight(f3): (-tt + ttt)      * 0.5
+  //
+  //            */
+  //
+  //            0.5 * (c0 + c1 + c2 + c3)
+  //          }
+
+            /*
+
+            weight(f00): (-t + 2tt - ttt) * 0.5 * (-s + 2s - sss) * 0.5
+            weight(f10): (2 - 5tt + 3ttt) * 0.5 * (-s + 2s - sss) * 0.5
+            weight(f20): (t + 4tt - 3ttt) * 0.5 * (-s + 2s - sss) * 0.5
+            weight(f30): (-tt + ttt)      * 0.5 * (-s + 2s - sss) * 0.5
+
+            weight(f01): (-t + 2tt - ttt) * 0.5 * (2 - 5ss + 3sss) * 0.5
+            weight(f11): (2 - 5tt + 3ttt) * 0.5 * (2 - 5ss + 3sss) * 0.5
+            weight(f21): (t + 4tt - 3ttt) * 0.5 * (2 - 5ss + 3sss) * 0.5
+            weight(f31): (-tt + ttt)      * 0.5 * (2 - 5ss + 3sss) * 0.5
+
+            weight(f02): (-t + 2tt - ttt) * 0.5 * (s + 4ss - 3sss) * 0.5
+            weight(f12): (2 - 5tt + 3ttt) * 0.5 * (s + 4ss - 3sss) * 0.5
+            weight(f22): (t + 4tt - 3ttt) * 0.5 * (s + 4ss - 3sss) * 0.5
+            weight(f32): (-tt + ttt)      * 0.5 * (s + 4ss - 3sss) * 0.5
+
+            weight(f03): (-t + 2tt - ttt) * 0.5 * (-ss + sss)      * 0.5
+            weight(f13): (2 - 5tt + 3ttt) * 0.5 * (-ss + sss)      * 0.5
+            weight(f23): (t + 4tt - 3ttt) * 0.5 * (-ss + sss)      * 0.5
+            weight(f33): (-tt + ttt)      * 0.5 * (-ss + sss)      * 0.5
+
+             */
+
+            val t   = xq
             val tt  = t * t
             val ttt = tt * t
-            val c0  = 2 * f1
-            val c1  = (-f0 + f2) * t
-            val c2  = (2 * f0 - 5 * f1 + 4 * f2 - f3) * tt
-            val c3  = (-f0  + 3 * f1 - 3 * f2 + f3) * ttt
-            0.5 * (c0 + c1 + c2 + c3)
+
+            val s   = yq
+            val ss  = s * s
+            val sss = ss * s
+
+            val wx0 = (  -t + 2*tt -   ttt) * 0.5
+            val wx1 = (2    - 5*tt + 3*ttt) * 0.5
+            val wx2 = (   t + 4*tt - 3*ttt) * 0.5
+            val wx3 = (        -tt +   ttt) * 0.5
+
+            val wy0 = (  -s + 2*ss -   sss) * 0.5
+            val wy1 = (2    - 5*ss + 3*sss) * 0.5
+            val wy2 = (   s + 4*ss - 3*sss) * 0.5
+            val wy3 = (        -ss +   sss) * 0.5
+
+            _winBuf(p00) = calcValue(Cs, As, Cd = _winBuf(p00), w = wx0 * wy0)
+            _winBuf(p10) = calcValue(Cs, As, Cd = _winBuf(p10), w = wx1 * wy0)
+            _winBuf(p20) = calcValue(Cs, As, Cd = _winBuf(p20), w = wx2 * wy0)
+            _winBuf(p30) = calcValue(Cs, As, Cd = _winBuf(p30), w = wx3 * wy0)
+
+            _winBuf(p01) = calcValue(Cs, As, Cd = _winBuf(p01), w = wx0 * wy1)
+            _winBuf(p11) = calcValue(Cs, As, Cd = _winBuf(p11), w = wx1 * wy1)
+            _winBuf(p21) = calcValue(Cs, As, Cd = _winBuf(p21), w = wx2 * wy1)
+            _winBuf(p31) = calcValue(Cs, As, Cd = _winBuf(p31), w = wx3 * wy1)
+
+            _winBuf(p02) = calcValue(Cs, As, Cd = _winBuf(p02), w = wx0 * wy2)
+            _winBuf(p12) = calcValue(Cs, As, Cd = _winBuf(p12), w = wx1 * wy2)
+            _winBuf(p22) = calcValue(Cs, As, Cd = _winBuf(p22), w = wx2 * wy2)
+            _winBuf(p32) = calcValue(Cs, As, Cd = _winBuf(p32), w = wx3 * wy2)
+
+            _winBuf(p03) = calcValue(Cs, As, Cd = _winBuf(p03), w = wx0 * wy3)
+            _winBuf(p13) = calcValue(Cs, As, Cd = _winBuf(p13), w = wx1 * wy3)
+            _winBuf(p23) = calcValue(Cs, As, Cd = _winBuf(p23), w = wx2 * wy3)
+            _winBuf(p33) = calcValue(Cs, As, Cd = _winBuf(p33), w = wx3 * wy3)
           }
-
-          val b0 = bicubic(xq, f00, f10, f20, f30)
-          val b1 = bicubic(xq, f01, f11, f21, f31)
-          val b2 = bicubic(xq, f02, f12, f22, f32)
-          val b3 = bicubic(xq, f03, f13, f23, f33)
-          bicubic(yq, b0, b1, b2, b3)
-
-          ???
         }
       }
       // ------------------------- sinc -------------------------
