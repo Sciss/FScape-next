@@ -158,7 +158,7 @@ object ModTapeSpeed extends Module {
         mkLabel("Gain:"), left(ggGain, ggGainType),
         Label(" "), Empty(),
         mkLabel("Speed:"), left(ggSpeed,
-          Label("  Filter Length:"), ggFilterQ),
+          Label("  Filter Length:"), ggFilterQ)
       )
       p.columns = 2
       p.hGap    = 8

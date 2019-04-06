@@ -138,7 +138,7 @@ object ModLimiter extends Module {
         Label(" "), Label(" "),
         mkLabel("Boost:"  ), left(ggBoost, mkLabel("    Attack [-60 dB]:" ), ggAtk),
         mkLabel("Ceiling:"), left(ggCeil , mkLabel("  Release [-60 dB]:"), ggRls),
-        mkLabel(" "), ggSync,
+        mkLabel(" "), ggSync
       )
       p.columns = 2
       p.hGap    = 8

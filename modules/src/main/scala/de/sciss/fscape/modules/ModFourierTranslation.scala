@@ -203,7 +203,7 @@ object ModFourierTranslation extends Module {
         mkLabel("Gain:"), left(ggGain, ggGainType),
         Label(" "), Empty(),
         mkLabel("Direction:"), left(ggDir),
-        mkLabel("FFT Length:"), left(ggLenMode),
+        mkLabel("FFT Length:"), left(ggLenMode)
       )
       p.columns = 2
       p.hGap    = 8

@@ -172,7 +172,7 @@ object ModSignalGenerator extends Module {
         mkLabel("Frequency:"), ggFreq,
         mkLabel("Phase (0…1):"), ggPhase,
         mkLabel("Fade in:"), ggFadeIn,
-        mkLabel("Fade out:"), ggFadeOut,
+        mkLabel("Fade out:"), ggFadeOut
       )
       p.columns = 2
       p.hGap = 8

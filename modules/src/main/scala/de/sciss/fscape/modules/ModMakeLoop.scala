@@ -165,13 +165,13 @@ object ModMakeLoop extends Module {
 
       val ggFadePos = ComboBox(List(
         "End of Loop \\ Pre Loop /",
-        "Begin of Loop / Post Loop \\",
+        "Begin of Loop / Post Loop \\"
       ))
       ggFadePos.index <--> "run:fade-pos".attr(0)
 
       val ggFadeType = ComboBox(List(
         "Equal Energy",
-        "Equal Power",
+        "Equal Power"
       ))
       ggFadeType.index <--> "run:fade-type".attr(1)
 
@@ -197,7 +197,7 @@ object ModMakeLoop extends Module {
           Label("  Fade Position:"), ggFadePos),
         mkLabel("Initial Skip:"), left(ggInitSkip,
           mkLabel("       Fade Type:"), ggFadeType),
-        mkLabel("Final Skip:"), left(ggFinalSkip),
+        mkLabel("Final Skip:"), left(ggFinalSkip)
       )
       p.columns = 2
       p.hGap    = 8

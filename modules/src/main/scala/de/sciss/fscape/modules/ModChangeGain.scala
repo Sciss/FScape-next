@@ -120,7 +120,7 @@ object ModChangeGain extends Module {
         mkLabel("Input:" ), in,
         mkLabel("Output:"), out,
         Label(" "), Empty(),
-        mkLabel("Gain:"), left(ggGain, ggGainType),
+        mkLabel("Gain:"), left(ggGain, ggGainType)
       )
       p.columns = 2
       p.hGap    = 8
