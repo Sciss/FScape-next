@@ -12,11 +12,13 @@ object ResampleTest extends App {
     val sr    = 44100.0
     val in0   = SinOsc(441/sr)
 //    val in0   = WhiteNoise()
-    val in    = in0.take(sr.toLong * 1.0)
-    val factor = 0.5
+    val in    = in0.take(sr.toLong * 10.0)
+    val factor = 1.0/128
 //    val factor = 1.0
 //        val factor = 2.0
-    val sig   = Resample(in = in, factor = factor)
+    val sig   = Resample(in = in, factor = factor,
+      rollOff = 0.70, kaiserBeta = 6.5, zeroCrossings = 5
+    )
     val factorI = (factor * 100).toInt
     val fOut  = userHome / "Documents" / "temp" / s"resample_$factorI.aif"
     AudioFileOut(file = fOut, spec = AudioFileSpec(sampleRate = sr, numChannels = 1), in = sig)
@@ -72,8 +74,8 @@ object ResampleTest extends App {
 
   val config = stream.Control.Config()
   config.useAsync   = false
-  config.blockSize  = 960 // 100 // test
-  implicit val ctrl = stream.Control(config)
+//  config.blockSize  = 960 // 100 // test
+  implicit val ctrl: stream.Control = stream.Control(config)
   ctrl.run(g1)
 
   Swing.onEDT {

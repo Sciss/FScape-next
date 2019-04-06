@@ -197,15 +197,17 @@ object AudioFileOut {
         }
       }
 
-      val bufOut  = control.borrowBufL()
-      val arrOut  = bufOut.buf
-      var j = 0
-      while (j < chunk) {
-        arrOut(j) = pos1 + j
-        j += 1
+      if (!isClosed(shape.out)) {
+        val bufOut  = control.borrowBufL()
+        val arrOut  = bufOut.buf
+        var j = 0
+        while (j < chunk) {
+          arrOut(j) = pos1 + j
+          j += 1
+        }
+        bufOut.size = chunk
+        push(shape.out, bufOut)
       }
-      bufOut.size = chunk
-      push(shape.out, bufOut)
 
       if (shouldStop) {
         _isSuccess = true

@@ -166,7 +166,7 @@ object ImageFile {
       val nc  = s.getNumComponents
       val nb  = s.getColorModel.getPixelSize / nc
       // Ok, that's a guess, LOL
-      val st  = if (nb == 8) SampleFormat.Int8 else if (nb == 16) SampleFormat.Int8 else SampleFormat.Float
+      val st  = if (nb == 8) SampleFormat.Int8 else if (nb == 16) SampleFormat.Int16 else SampleFormat.Float
       val tpe = if (fmt.toLowerCase == "png") Type.PNG else Type.JPG
       Spec(fileType = tpe, sampleFormat = st, width = w, height = h, numChannels = nc)
 

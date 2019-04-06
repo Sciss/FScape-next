@@ -43,6 +43,7 @@ trait ResampleImpl[S <: Shape] extends FullInOutImpl[S] {
 
   protected def allocOutputBuffers(): Int
 
+  // NOTE: there seems to be a bug when using higher values than around 8
   protected def PAD: Int
 
   protected def processChunk(): Boolean
@@ -428,6 +429,11 @@ trait ResampleImpl[S <: Shape] extends FullInOutImpl[S] {
       val winReadStop   = inPhase.toLong + _maxFltLenH
       val inRem0        = if (isFlush) flushRemain else availableInFrames
       val writeToWinLen = min(inRem0, winReadStop + PAD - outPhase).toInt
+
+      // XXX TODO --- we have to investigate this additional constraint;
+      // we need it because otherwise, we might write more than a full winBuf,
+      // and chunk2 might become too large and cause an ArrayIndexOutOfBoundsException
+//      val writeToWinLen = min(min(inRem0, winReadStop + PAD - outPhase).toInt, _winLen)
 
       if (writeToWinLen > 0) {
         var winWriteOff = (outPhase % _winLen).toInt

@@ -57,7 +57,8 @@ object Resample {
     with Out1DoubleImpl[Shape] {
 
     // rather arbitrary, but > 1 increases speed; for matrix resample, we'd want very small to save memory
-    protected val PAD = 32
+    // N.B.: there is a bug (#37) that has to do with this value. Still investigating; 8 seems safe
+    protected val PAD = 8 // 32
 
     private[this] var bufIn           : BufD = _
 
