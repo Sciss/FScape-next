@@ -21,6 +21,8 @@ import de.sciss.lucre.stm.{Folder, Sys}
 import de.sciss.synth.proc.Implicits._
 import de.sciss.synth.proc.{Markdown, SoundProcesses, Widget, Workspace}
 
+import scala.io.Source
+
 object MakeWorkspace {
   final case class Config(modules: List[Module] = list, target: File = file("fscape.mllt"))
 
@@ -55,7 +57,7 @@ object MakeWorkspace {
     val n   = n1.substring(n1.lastIndexOf(".") + 1)
     val nm  = s"$n.md"
     Option(clz.getResourceAsStream(nm)).map { is =>
-      val text  = io.Source.fromInputStream(is, "UTF-8").mkString
+      val text  = Source.fromInputStream(is, "UTF-8").mkString
       val res   = Markdown.newVar[S](text)
       res.name  = s"${m.name} Help"
       res.attr.put(Markdown.attrEditMode, BooleanObj.newVar[S](false))
