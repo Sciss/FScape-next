@@ -23,7 +23,6 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.language.implicitConversions
 
 object GenWindow {
-
   object Shape {
     def apply(id: Int): Shape = (id: @switch) match {
       case Hamming  .id => Hamming
@@ -33,10 +32,11 @@ object GenWindow {
       case Hann     .id => Hann
       case Triangle .id => Triangle
       case Gauss    .id => Gauss
+      case Sinc     .id => Sinc
     }
 
     final val MinId: Int = Hamming.id
-    final val MaxId: Int = Gauss  .id
+    final val MaxId: Int = Sinc   .id
 
     implicit def toGE(in: Shape): GE = in.id
   }
@@ -185,6 +185,27 @@ object GenWindow {
         buf(j)      = math.exp(-distSqr / sigmaSqr2) // / sigmaPi2Sqrt -- what the hell was this for?
         i          += 1
         j          += 1
+      }
+    }
+  }
+
+  /** The sinc or "cardinal sine" function.
+    * The parameter is the normalized frequency (frequency divided by sampleRate).
+    */
+  case object Sinc extends Shape {
+    final val id = 7
+
+    def fill(winSize: Long, winOff: Long, buf: Array[Double], bufOff: Int, len: Int, param: Double): Unit = {
+      val radius  = 0.5 * winSize
+      val norm    = param * TwoPi
+      var i       = winOff
+      val stop    = i + len
+      var j       = bufOff
+      while (i < stop) {
+        val d  = (i - radius) * norm
+        buf(j) = if (d == 0.0) 1.0 else math.sin(d) / d
+        i += 1
+        j += 1
       }
     }
   }

@@ -9,9 +9,10 @@
 An audio rendering (offline signal processing) library. Although not optimised for it, it can also be used to
 process still images and image sequences (aka videos). This project should eventually become the next major version of
 [FScape](https://git.iem.at/sciss/FScape), an experimental music and sound signal processing workbench. As of
-this writing, the library is still experimental (although very useful, and I have used it in several projects).
-It has basic integration with [Mellite](http://sciss.de/mellite/), but since Mellite does not yet offer
-"widget programs", it currently does not replace FScape (version 1) yet.
+this writing, the library is still experimental, so you may want to stick to "classic" FScape for common tasks. 
+It has basic integration with [Mellite](http://sciss.de/mellite/), increasingly providing adaptations of the classical
+FScape modules, using Mellite's widget object for a user interface similar to FScape 1. See below for instructions
+on how to generate these "standard modules".
 
 FScape(-next) is (C)opyright 2001&ndash;2019 by Hanns Holger Rutz. All rights reserved.
 This program is free software; you can redistribute it and/or modify it under the terms 
@@ -35,12 +36,26 @@ The current version `v` is `"2.24.0"`.
 
 The following sub modules are available:
 
-    "de.sciss" %% "fscape-core"  % v  // core library
-    "de.sciss" %% "fscape-lucre" % v  // integration with SoundProcesses
+    "de.sciss" %% "fscape-core"    % v  // core library
+    "de.sciss" %% "fscape-lucre"   % v  // integration with SoundProcesses
+    "de.sciss" %% "fscape-macros"  % v  // allows us to generate programs and store their source code
+    "de.sciss" %% "fscape-views"   % v  // additional widgets for Mellite integration
+    "de.sciss" %% "fscape-modules" % v  // adaptations of "classical" FScape modules
+    "de.sciss" %% "fscape-cdp"     % v  // support for Composer's Desktop Project (in alpha stage!)
 
 ## contributing
 
 Please see the file [CONTRIBUTING.md](CONTRIBUTING.md)
+
+## classical modules
+
+You can now generate a Mellite workspace containing a growing number of adaptions of classical FScape v1
+modules. Be sure you match the FScape version with the one bundled in the Mellite version you are using.
+
+    sbt "fscape-modules/run my-fscape-modules.mllt"
+    
+Where you can replace `my-fscape-modules.mllt` by the target path of the workspace to be created.
+This modules-workspace will also be published somewhere for direct download in the future.
 
 ## design
 

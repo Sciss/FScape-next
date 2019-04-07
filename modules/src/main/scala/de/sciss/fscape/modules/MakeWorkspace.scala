@@ -22,19 +22,30 @@ import de.sciss.synth.proc.Implicits._
 import de.sciss.synth.proc.{Markdown, SoundProcesses, Widget, Workspace}
 
 object MakeWorkspace {
-  final case class Config(modules: List[Module], target: File)
+  final case class Config(modules: List[Module] = list, target: File = file("fscape.mllt"))
 
   def main(args: Array[String]): Unit = {
-    val c = Config(
-      modules = list,
-      target  = userHome / "mellite" / "sessions" / "FScape-modules.mllt"
-    )
-    run(c)
+    val default = Config()
+    val p = new scopt.OptionParser[Config]("fscape-modules") {
+      arg[File]("target")
+        .required()
+        .text ("Target .mllt Mellite workspace.")
+        .action { (f, c) => c.copy(target = f) }
+    }
+    p.parse(args, default).fold(sys.exit(1)) { config =>
+      run(config)
+    }
   }
 
   val list: List[Module] =
     List(
-      ModChangeGain, ModLimiter, ModTapeSpeed, ModFourierTranslation, ModMakeLoop, ModSignalGenerator
+      ModChangeGain,
+      ModLimiter,
+      ModTapeSpeed,
+      ModFourierTranslation,
+      ModMakeLoop,
+      ModSignalGenerator,
+      ModFreqShift
     ).sortBy(_.name)
 
   def help[S <: Sys[S]](m: Module)(implicit tx: S#Tx): Option[Markdown[S]] = {
@@ -79,7 +90,7 @@ object MakeWorkspace {
     FScape        .init()
     Widget        .init()
 
-    require (!target.exists(), s"Workspace '${target.name}' already exists.")
+    require (!target.exists(), s"Workspace '${target.name}' already exists. Not overwriting.")
     val ds  = BerkeleyDB.factory(target)
     val ws  = Workspace.Durable.empty(target, ds)
     ws.cursor.step { implicit tx =>

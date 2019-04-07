@@ -2,7 +2,7 @@ lazy val baseName   = "FScape"
 lazy val baseNameL  = baseName.toLowerCase
 lazy val gitRepo    = "FScape-next"
 
-lazy val projectVersion = "2.24.0-SNAPSHOT"
+lazy val projectVersion = "2.24.0"
 lazy val mimaVersion    = "2.24.0"
 
 lazy val baseDescription = "An audio rendering library"
@@ -43,10 +43,13 @@ lazy val deps = new {
   val views = new {
     val lucreSwing      = "1.15.2"
   }
+  val modules = new {
+    val scopt           = "3.7.1"
+  }
   val test = new {
     val kollFlitz       = "0.2.3"
     val scalaTest       = "3.0.7"
-    val scopt           = "3.7.1"
+    def scopt: String   = modules.scopt
     val submin          = "0.2.5"
   }
 }
@@ -139,7 +142,7 @@ lazy val views = project.withId(s"$baseNameL-views").in(file("views"))
       "de.sciss"  %% "lucre-bdb"  % deps.lucre.lucre    % Test,
       "de.sciss"  %  "submin"     % deps.test.submin    % Test
     ),
-//    mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-views" % mimaVersion)
+    mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-views" % mimaVersion)
   )
 
 lazy val modules = project.withId(s"$baseNameL-modules").in(file("modules"))
@@ -150,13 +153,14 @@ lazy val modules = project.withId(s"$baseNameL-modules").in(file("modules"))
     description := s"Bringing $baseName v1 modules to the next generation",
     scalacOptions += "-Yrangepos",  // this is needed to extract source code
     libraryDependencies ++= Seq(
-      "de.sciss"  %% "lucre-core"           % deps.lucre.lucre,
-      "de.sciss"  %% "lucre-expr"           % deps.lucre.lucre,
-      "de.sciss"  %% "lucre-bdb"            % deps.lucre.lucre,
-      "de.sciss"  %% "lucreswing"           % deps.views.lucreSwing,
-      "de.sciss"  %% "soundprocesses-views" % deps.lucre.soundProcesses,
+      "de.sciss"          %% "lucre-core"           % deps.lucre.lucre,
+      "de.sciss"          %% "lucre-expr"           % deps.lucre.lucre,
+      "de.sciss"          %% "lucre-bdb"            % deps.lucre.lucre,
+      "de.sciss"          %% "lucreswing"           % deps.views.lucreSwing,
+      "de.sciss"          %% "soundprocesses-views" % deps.lucre.soundProcesses,
+      "com.github.scopt"  %% "scopt"                % deps.modules.scopt,
     ),
-//    mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-modules" % mimaVersion)
+    mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-modules" % mimaVersion)
   )
 
 lazy val cdp = project.withId(s"$baseNameL-cdp").in(file("cdp"))
