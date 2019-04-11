@@ -13,12 +13,10 @@
 
 package de.sciss
 
-import java.text.SimpleDateFormat
-import java.util.{Date, Locale}
+import java.util.Date
 
 import scala.annotation.elidable
 import scala.annotation.elidable.CONFIG
-
 import scala.language.implicitConversions
 
 package object fscape {
@@ -27,18 +25,18 @@ package object fscape {
   implicit def intGeOps2   (i: Int   ): GEOps2 = new GEOps2(i)
   implicit def doubleGeOps2(d: Double): GEOps2 = new GEOps2(d)
 
-  private lazy val logHeader = new SimpleDateFormat("[d MMM yyyy, HH:mm''ss.SSS] 'fscape' - ", Locale.US)
+//  private lazy val logHeader = new SimpleDateFormat("[d MMM yyyy, HH:mm''ss.SSS] 'fscape' - ", Locale.US)
 
   var showGraphLog    = false
   var showStreamLog   = false
   var showControlLog  = false
 
   @elidable(CONFIG) private[fscape] def logStream(what: => String): Unit =
-    if (showStreamLog) Console.out.println(s"${logHeader.format(new Date())}stream $what")
+    if (showStreamLog) Console.out.println(s"[${new Date()}] 'fscape' - stream $what")
 
   @elidable(CONFIG) private[fscape] def logGraph(what: => String): Unit =
-    if (showGraphLog) Console.out.println(s"${logHeader.format(new Date())}graph $what")
+    if (showGraphLog) Console.out.println(s"[${new Date()}] 'fscape' - graph $what")
 
   @elidable(CONFIG) private[fscape] def logControl(what: => String): Unit =
-    if (showControlLog) Console.out.println(s"${logHeader.format(new Date())}control $what")
+    if (showControlLog) Console.out.println(s"[${new Date()}] 'fscape' - control $what")
 }
