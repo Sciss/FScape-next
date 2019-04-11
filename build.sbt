@@ -32,8 +32,8 @@ lazy val deps = new {
     val audioFile       = "1.5.2"
     val dsp             = "1.3.1"
     val fileUtil        = "1.1.3"
-    val numbers         = "0.2.0"
-    val optional        = "1.0.0"
+    val numbers         = "0.2.1-SNAPSHOT"
+    val optional        = "1.0.1-SNAPSHOT"
     val scalaChart      = "0.7.0"
     val swingPlus       = "0.4.1"
     val akka            = "2.5.19"  // "2.5.21" has broken printDebugDump
@@ -95,21 +95,26 @@ lazy val core = crossProject(JSPlatform, JVMPlatform)
     ),
     buildInfoPackage := "de.sciss.fscape",
     libraryDependencies ++= Seq(
-      "com.typesafe.akka" %% "akka-stream"          % deps.main.akka,
-      "com.typesafe.akka" %% "akka-stream-testkit"  % deps.main.akka,
-      "de.sciss"          %% "audiofile"            % deps.main.audioFile,
-      "de.sciss"          %% "fileutil"             % deps.main.fileUtil,
-      "de.sciss"          %% "numbers"              % deps.main.numbers,
-      "de.sciss"          %% "optional"             % deps.main.optional,
-      "de.sciss"          %% "scissdsp"             % deps.main.dsp,
-      "de.sciss"          %% "swingplus"            % deps.main.swingPlus,
-      "de.sciss"          %% "scala-chart"          % deps.main.scalaChart,
-      "com.github.scopt"  %% "scopt"                % deps.test.scopt     % Test,
-      "de.sciss"          %% "kollflitz"            % deps.test.kollFlitz % Test,
+      "com.typesafe.akka" %%  "akka-stream"         % deps.main.akka,
+      "com.typesafe.akka" %%  "akka-stream-testkit" % deps.main.akka,
+      "de.sciss"          %%  "audiofile"           % deps.main.audioFile,
+      "de.sciss"          %%  "fileutil"            % deps.main.fileUtil,
+      "de.sciss"          %%% "numbers"             % deps.main.numbers,
+      "de.sciss"          %%% "optional"            % deps.main.optional,
+      "de.sciss"          %%  "scissdsp"            % deps.main.dsp,
+      "de.sciss"          %%  "swingplus"           % deps.main.swingPlus,
+      "de.sciss"          %%  "scala-chart"         % deps.main.scalaChart,
+      "com.github.scopt"  %%  "scopt"               % deps.test.scopt     % Test,
+      "de.sciss"          %%  "kollflitz"           % deps.test.kollFlitz % Test,
     ),
     mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-core" % mimaVersion),
     scalaJSUseMainModuleInitializer in Test := true,
     mainClass in Test := Some("de.sciss.fscape.DropWhileTest")
+  )
+  .jsSettings(
+    libraryDependencies ++= Seq(
+      "org.akka-js" %%% "akkajsactorstream" % "1.2.5.21"
+    )
   )
 
 lazy val lucre = crossProject(JVMPlatform)/*.withId(s"$baseNameL-lucre")*/.withoutSuffixFor(JVMPlatform).in(file("lucre"))
