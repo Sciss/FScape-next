@@ -1,3 +1,6 @@
+// shadow sbt-scalajs' crossProject and CrossType from Scala.js 0.6.x
+import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
+
 lazy val baseName   = "FScape"
 lazy val baseNameL  = baseName.toLowerCase
 lazy val gitRepo    = "FScape-next"
@@ -65,8 +68,8 @@ lazy val testSettings = Seq(
 // ---- projects ----
 
 lazy val root = project.withId(baseNameL).in(file("."))
-  .aggregate(core, lucre, macros, cdp, modules, views)
-  .dependsOn(core, lucre, macros, cdp, modules, views)
+  .aggregate(core.jvm, core.js, lucre.jvm, macros.jvm, cdp.jvm, modules.jvm, views.jvm)
+//  .dependsOn(core, lucre, macros, cdp, modules, views)
   .settings(commonSettings)
   .settings(
     name := baseName,
@@ -77,37 +80,44 @@ lazy val root = project.withId(baseNameL).in(file("."))
     autoScalaLibrary := false
   )
 
-lazy val core = project.withId(s"$baseNameL-core").in(file("core"))
+lazy val core = crossProject(JSPlatform, JVMPlatform)
+  .withoutSuffixFor(JVMPlatform)
+  .crossType(CrossType.Pure)
+  .in(file("core"))
   .enablePlugins(BuildInfoPlugin)
   .settings(commonSettings)
   .settings(testSettings)
   .settings(
+    name := s"$baseName-Core",
     buildInfoKeys := Seq(name, organization, version, scalaVersion, description,
       BuildInfoKey.map(homepage) { case (k, opt)           => k -> opt.get },
       BuildInfoKey.map(licenses) { case (_, Seq((lic, _))) => "license" -> lic }
     ),
     buildInfoPackage := "de.sciss.fscape",
     libraryDependencies ++= Seq(
-      "de.sciss"          %% "scissdsp"             % deps.main.dsp,
-      "de.sciss"          %% "numbers"              % deps.main.numbers,
-      "de.sciss"          %% "audiofile"            % deps.main.audioFile,
-      "de.sciss"          %% "fileutil"             % deps.main.fileUtil,
-      "de.sciss"          %% "swingplus"            % deps.main.swingPlus,
-      "de.sciss"          %% "optional"             % deps.main.optional,
-      "de.sciss"          %% "scala-chart"          % deps.main.scalaChart,
       "com.typesafe.akka" %% "akka-stream"          % deps.main.akka,
       "com.typesafe.akka" %% "akka-stream-testkit"  % deps.main.akka,
+      "de.sciss"          %% "audiofile"            % deps.main.audioFile,
+      "de.sciss"          %% "fileutil"             % deps.main.fileUtil,
+      "de.sciss"          %% "numbers"              % deps.main.numbers,
+      "de.sciss"          %% "optional"             % deps.main.optional,
+      "de.sciss"          %% "scissdsp"             % deps.main.dsp,
+      "de.sciss"          %% "swingplus"            % deps.main.swingPlus,
+      "de.sciss"          %% "scala-chart"          % deps.main.scalaChart,
       "com.github.scopt"  %% "scopt"                % deps.test.scopt     % Test,
       "de.sciss"          %% "kollflitz"            % deps.test.kollFlitz % Test,
     ),
-    mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-core" % mimaVersion)
+    mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-core" % mimaVersion),
+    scalaJSUseMainModuleInitializer in Test := true,
+    mainClass in Test := Some("de.sciss.fscape.DropWhileTest")
   )
 
-lazy val lucre = project.withId(s"$baseNameL-lucre").in(file("lucre"))
+lazy val lucre = crossProject(JVMPlatform)/*.withId(s"$baseNameL-lucre")*/.withoutSuffixFor(JVMPlatform).in(file("lucre"))
   .dependsOn(core)
   .settings(commonSettings)
   .settings(testSettings)
   .settings(
+    name := s"$baseName-Lucre",
     description := s"Bridge from $baseName to SoundProcesses",
     libraryDependencies ++= Seq(
       "de.sciss"        %% "lucre-core"          % deps.lucre.lucre,
@@ -120,10 +130,11 @@ lazy val lucre = project.withId(s"$baseNameL-lucre").in(file("lucre"))
     mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-lucre" % mimaVersion)
   )
 
-lazy val macros = project.withId(s"$baseNameL-macros").in(file("macros"))
+lazy val macros = crossProject(JVMPlatform)/*.withId(s"$baseNameL-macros")*/.withoutSuffixFor(JVMPlatform).in(file("macros"))
   .dependsOn(lucre)
   .settings(commonSettings)
   .settings(
+    name := s"$baseName-Macros",
     description := s"Macro support for $baseName",
     scalacOptions += "-Yrangepos",  // this is needed to extract source code
     libraryDependencies ++= Seq(
@@ -132,10 +143,11 @@ lazy val macros = project.withId(s"$baseNameL-macros").in(file("macros"))
     mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-macros" % mimaVersion)
   )
 
-lazy val views = project.withId(s"$baseNameL-views").in(file("views"))
+lazy val views = crossProject(JVMPlatform)/*.withId(s"$baseNameL-views")*/.withoutSuffixFor(JVMPlatform).in(file("views"))
   .dependsOn(lucre)
   .settings(commonSettings)
   .settings(
+    name := s"$baseName-Views",
     description := s"Widget elements for $baseName",
     libraryDependencies ++= Seq(
       "de.sciss"  %% "lucreswing" % deps.views.lucreSwing,
@@ -145,11 +157,12 @@ lazy val views = project.withId(s"$baseNameL-views").in(file("views"))
     mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-views" % mimaVersion)
   )
 
-lazy val modules = project.withId(s"$baseNameL-modules").in(file("modules"))
+lazy val modules = crossProject(JVMPlatform)/*.withId(s"$baseNameL-modules")*/.withoutSuffixFor(JVMPlatform).in(file("modules"))
   .dependsOn(macros, views)
   .settings(commonSettings)
   .settings(testSettings)
   .settings(
+    name := s"$baseName-Modules",
     description := s"Bringing $baseName v1 modules to the next generation",
     scalacOptions += "-Yrangepos",  // this is needed to extract source code
     libraryDependencies ++= Seq(
@@ -163,11 +176,12 @@ lazy val modules = project.withId(s"$baseNameL-modules").in(file("modules"))
     mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-modules" % mimaVersion)
   )
 
-lazy val cdp = project.withId(s"$baseNameL-cdp").in(file("cdp"))
+lazy val cdp = crossProject(JVMPlatform)/*.withId(s"$baseNameL-cdp")*/.withoutSuffixFor(JVMPlatform).in(file("cdp"))
   .dependsOn(core)
   .settings(commonSettings)
   .settings(testSettings)
   .settings(
+    name := s"$baseName-CDP",
     description := s"Bridge from $baseName to Composers Desktop Project",
     mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-cdp" % mimaVersion)
   )

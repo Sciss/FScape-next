@@ -17,5 +17,7 @@ object DetectLocalMaxTest extends App {
   val config        = Control.Config()
   config.useAsync   = false
   config.blockSize  = 1024    // problem is independent of block-size
+  println("--1")
   Control(config).run(g)
+  println("--2")
 }
