@@ -1,11 +1,11 @@
 package de.sciss.fscape
 
-import de.sciss.fscape.gui.SimpleGUI
 import de.sciss.fscape.stream.Control
 
-import scala.swing.Swing
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
 
-object BloodyTest extends App {
+object LengthBufferDiskTest extends App {
   import graph._
 
   lazy val g = Graph {
@@ -19,17 +19,18 @@ object BloodyTest extends App {
   }
 
   val config = Control.Config()
-  var gui: SimpleGUI = _
-  config.progressReporter = rep => Swing.onEDT(gui.progress = rep.total)
+//  var gui: SimpleGUI = _
+//  config.progressReporter = rep => Swing.onEDT(gui.progress = rep.total)
 //  config.useAsync = false   // bug only in async mode
   val ctrl = Control(config)
 
-  Swing.onEDT {
-    gui = SimpleGUI(ctrl)
-  }
+//  Swing.onEDT {
+//    gui = SimpleGUI(ctrl)
+//  }
 
 //  showStreamLog = true
   ctrl.run(g)
-
   println("Running.")
+  Await.result(ctrl.status, Duration.Inf)
+
 }

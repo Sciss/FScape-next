@@ -109,7 +109,7 @@ lazy val core = crossProject(JSPlatform, JVMPlatform)
     ),
     mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-core" % mimaVersion),
     scalaJSUseMainModuleInitializer in Test := true,
-    mainClass in Test := Some("de.sciss.fscape.DropWhileTest")
+    mainClass in Test := Some("de.sciss.fscape.FramesTest")
   )
   .jsSettings(
     libraryDependencies ++= Seq(
