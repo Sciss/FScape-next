@@ -125,7 +125,7 @@ object AudioFileOut {
     override def productPrefix: String = "AudioFileOut" // serialization
 
     protected def mkControl[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): Repr[S] =
-      new AudioFileOutExpandedImpl[S](this).init()
+      new AudioFileOutExpandedImpl[S](this).initComponent()
 
     object value extends Model[File] {
       def apply(): Ex[File] = Value(w)

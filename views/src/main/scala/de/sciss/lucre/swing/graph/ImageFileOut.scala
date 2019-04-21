@@ -124,7 +124,7 @@ object ImageFileOut {
     override def productPrefix: String = "ImageFileOut" // serialization
 
     protected def mkControl[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): Repr[S] =
-      new ImageFileOutExpandedImpl[S](this).init()
+      new ImageFileOutExpandedImpl[S](this).initComponent()
 
     object value extends Model[File] {
       def apply(): Ex[File] = Value(w)

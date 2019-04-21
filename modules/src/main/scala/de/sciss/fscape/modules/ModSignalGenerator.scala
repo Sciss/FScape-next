@@ -95,7 +95,7 @@ object ModSignalGenerator extends Module {
       // version 06-Apr-2019
       val r = Runner("run")
       val m = r.messages
-      m.changed.filter(m.nonEmpty) ---> Println(m.mkString("\n"))
+      m.changed.filter(m.nonEmpty) ---> PrintLn(m.mkString("\n"))
 
       val out = AudioFileOut()
       out.sampleRateVisible = true

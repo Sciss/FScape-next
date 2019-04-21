@@ -33,7 +33,7 @@ trait FileInExpandedImpl[S <: Sys[S]]
 
   protected def mkFormat(f: File): String
 
-  override def init()(implicit tx: S#Tx, ctx: Ex.Context[S]): this.type = {
+  override def initComponent()(implicit tx: S#Tx, ctx: Ex.Context[S]): this.type = {
     val valueOpt  = ctx.getProperty[Ex[File   ]](w, PathField.keyValue).map(_.expand[S].value)
     val titleOpt  = ctx.getProperty[Ex[String ]](w, PathField.keyTitle).map(_.expand[S].value)
     val pathVis   = ctx.getProperty[Ex[Boolean]](w, AudioFileIn.keyPathFieldVisible).fold(
@@ -116,6 +116,6 @@ trait FileInExpandedImpl[S <: Sys[S]]
 
       component = c
     }
-    super.init()
+    super.initComponent()
   }
 }

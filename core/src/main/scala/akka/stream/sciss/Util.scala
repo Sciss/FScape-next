@@ -1,11 +1,10 @@
 package akka.stream.sciss
 
-import akka.stream.impl.StreamSupervisor
 import akka.stream.impl.fusing.GraphInterpreter
 import akka.stream.impl.fusing.GraphInterpreter.Connection
 import akka.stream.stage.GraphStageLogic
+import akka.stream.testkit.scaladsl.StreamTestKit
 import akka.stream.{ActorMaterializer, Materializer}
-import akka.testkit.TestProbe
 
 import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success, Try}
@@ -18,15 +17,15 @@ object Util {
   def debugDotGraph()(implicit mat: Materializer, executionContext: ExecutionContext): Unit =
       mat match {
         case materializer: ActorMaterializer =>
-//          StreamTestKit.printDebugDump(materializer.supervisor)
+          StreamTestKit.printDebugDump(materializer.supervisor)
 //      case impl: ActorMaterializer => // ActorMaterializerImpl ⇒
-        val probe = TestProbe()(materializer.system)
-        materializer.supervisor.tell(StreamSupervisor.GetChildren, probe.ref)
-        val children = probe.expectMsgType[StreamSupervisor.Children].children
-        println(s"children.size = ${children.size}")
-        children.foreach(_ ! StreamSupervisor.PrintDebugDump)
+//        val probe = TestProbe()(materializer.system)
+//        materializer.supervisor.tell(StreamSupervisor.GetChildren, probe.ref)
+//        val children = probe.expectMsgType[StreamSupervisor.Children].children
+//        println(s"children.size = ${children.size}")
+//        children.foreach(_ ! StreamSupervisor.PrintDebugDump)
 
-      case other => sys.error(s"Not an instance of ActorMaterializerImpl: $other")
+      case other => sys.error(s"Not an instance of ActorMaterializer: $other")
     }
 
   def portToConn(in: GraphStageLogic): Array[Connection] = in.portToConn

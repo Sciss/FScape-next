@@ -102,7 +102,7 @@ object AudioFileIn {
     override def productPrefix: String = "AudioFileIn" // serialization
 
     protected def mkControl[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): Repr[S] =
-      new Expanded[S](this).init()
+      new Expanded[S](this).initComponent()
 
     object value extends Model[File] {
       def apply(): Ex[File] = Value(w)

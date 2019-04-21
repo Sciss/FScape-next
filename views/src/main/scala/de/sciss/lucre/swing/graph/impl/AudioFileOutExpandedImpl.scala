@@ -36,7 +36,7 @@ final class AudioFileOutExpandedImpl[S <: Sys[S]](protected val w: AudioFileOut)
 
   type C = AudioFileOut.Peer
 
-  override def init()(implicit tx: S#Tx, ctx: Ex.Context[S]): this.type = {
+  override def initComponent()(implicit tx: S#Tx, ctx: Ex.Context[S]): this.type = {
     val pathOpt   = ctx.getProperty[Ex[File   ]](w, PathField   .keyValue       ).map(_.expand[S].value)
     val titleOpt  = ctx.getProperty[Ex[String ]](w, PathField   .keyTitle       ).map(_.expand[S].value)
     val fileTpeIdx= ctx.getProperty[Ex[Int    ]](w, AudioFileOut.keyFileType    ).fold(AudioFileOut.defaultFileType     )(_.expand[S].value)
@@ -195,6 +195,6 @@ final class AudioFileOutExpandedImpl[S <: Sys[S]](protected val w: AudioFileOut)
 
       component = c
     }
-    super.init()
+    super.initComponent()
   }
 }
