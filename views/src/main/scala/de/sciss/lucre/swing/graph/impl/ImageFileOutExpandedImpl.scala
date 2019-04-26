@@ -35,20 +35,20 @@ import scala.swing.Reactions.Reaction
 import scala.swing.event.{SelectionChanged, ValueChanged}
 import scala.swing.{Alignment, Label, Orientation, SequentialContainer, Swing}
 
-final class ImageFileOutExpandedImpl[S <: Sys[S]](protected val w: ImageFileOut)
+final class ImageFileOutExpandedImpl[S <: Sys[S]](protected val peer: ImageFileOut)
   extends View[S] with ComponentHolder[ImageFileOut.Peer] with ComponentExpandedImpl[S] {
 
   type C = ImageFileOut.Peer
 
   override def initComponent()(implicit tx: S#Tx, ctx: Ex.Context[S]): this.type = {
-    val pathOpt   = ctx.getProperty[Ex[File   ]](w, PathField   .keyValue       ).map(_.expand[S].value)
-    val titleOpt  = ctx.getProperty[Ex[String ]](w, PathField   .keyTitle       ).map(_.expand[S].value)
-    val fileTpeIdx= ctx.getProperty[Ex[Int    ]](w, ImageFileOut.keyFileType    ).fold(ImageFileOut.defaultFileType     )(_.expand[S].value)
-    val smpFmtIdx = ctx.getProperty[Ex[Int    ]](w, ImageFileOut.keySampleFormat).fold(ImageFileOut.defaultSampleFormat )(_.expand[S].value)
-    val quality   = ctx.getProperty[Ex[Int    ]](w, ImageFileOut.keyQuality     ).fold(ImageFileOut.defaultQuality      )(_.expand[S].value)
+    val pathOpt   = ctx.getProperty[Ex[File   ]](peer, PathField   .keyValue       ).map(_.expand[S].value)
+    val titleOpt  = ctx.getProperty[Ex[String ]](peer, PathField   .keyTitle       ).map(_.expand[S].value)
+    val fileTpeIdx= ctx.getProperty[Ex[Int    ]](peer, ImageFileOut.keyFileType    ).fold(ImageFileOut.defaultFileType     )(_.expand[S].value)
+    val smpFmtIdx = ctx.getProperty[Ex[Int    ]](peer, ImageFileOut.keySampleFormat).fold(ImageFileOut.defaultSampleFormat )(_.expand[S].value)
+    val quality   = ctx.getProperty[Ex[Int    ]](peer, ImageFileOut.keyQuality     ).fold(ImageFileOut.defaultQuality      )(_.expand[S].value)
 
     def getBoolean(key: String, default: => Boolean): Boolean =
-      ctx.getProperty[Ex[Boolean]](w, key).fold(default)(_.expand[S].value)
+      ctx.getProperty[Ex[Boolean]](peer, key).fold(default)(_.expand[S].value)
 
     val pathFieldVisible    = getBoolean(ImageFileOut.keyPathFieldVisible   , ImageFileOut.defaultPathFieldVisible    )
     val fileTypeVisible     = getBoolean(ImageFileOut.keyFileTypeVisible    , ImageFileOut.defaultFileTypeVisible     )

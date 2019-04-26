@@ -16,11 +16,11 @@ package de.sciss.lucre.swing.graph
 import de.sciss.file.File
 import de.sciss.fscape.graph.ImageFile
 import de.sciss.fscape.graph.ImageFile.SampleFormat
-import de.sciss.lucre.expr.graph.Constant
-import de.sciss.lucre.expr.{Ex, IExpr, Model}
+import de.sciss.lucre.expr.graph.Const
+import de.sciss.lucre.expr.{Ex, IControl, IExpr, Model}
 import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.swing.graph.impl.{ComponentImpl, FileInExpandedImpl, PathFieldValueExpandedImpl}
-import de.sciss.lucre.swing.{Graph, PanelWithPathField}
+import de.sciss.lucre.swing.{Graph, PanelWithPathField, View}
 
 object ImageFileIn {
   def apply(): ImageFileIn = Impl()
@@ -50,7 +50,7 @@ object ImageFileIn {
   }
 
 
-  private final class Expanded[S <: Sys[S]](protected val w: ImageFileIn) extends FileInExpandedImpl[S] {
+  private final class Expanded[S <: Sys[S]](protected val peer: ImageFileIn) extends FileInExpandedImpl[S] {
     protected def mkFormat(f: File): String = {
       val spec = ImageFile.readSpec(f)
       specToString(spec)
@@ -74,7 +74,7 @@ object ImageFileIn {
 
     def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, String] = {
       val valueOpt = ctx.getProperty[Ex[String]](w, PathField.keyTitle)
-      valueOpt.getOrElse(Constant("Select Image Input File")).expand[S]
+      valueOpt.getOrElse(Const("Select Image Input File")).expand[S]
     }
   }
 
@@ -83,7 +83,7 @@ object ImageFileIn {
 
     def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, Boolean] = {
       val valueOpt = ctx.getProperty[Ex[Boolean]](w, keyPathFieldVisible)
-      valueOpt.getOrElse(Constant(defaultPathFieldVisible)).expand[S]
+      valueOpt.getOrElse(Const(defaultPathFieldVisible)).expand[S]
     }
   }
 
@@ -92,7 +92,7 @@ object ImageFileIn {
 
     def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, Boolean] = {
       val valueOpt = ctx.getProperty[Ex[Boolean]](w, keyFormatVisible)
-      valueOpt.getOrElse(Constant(defaultFormatVisible)).expand[S]
+      valueOpt.getOrElse(Const(defaultFormatVisible)).expand[S]
     }
   }
 
@@ -143,6 +143,8 @@ object ImageFileIn {
 }
 trait ImageFileIn extends Component {
   type C = ImageFileIn.Peer
+
+  type Repr[S <: Sys[S]] = View.T[S, C] with IControl[S]
 
   var title : Ex[String]
   def value : Model[File]

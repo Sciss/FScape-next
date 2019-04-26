@@ -14,11 +14,11 @@
 package de.sciss.lucre.swing.graph
 
 import de.sciss.file.File
-import de.sciss.lucre.expr.graph.Constant
-import de.sciss.lucre.expr.{Ex, IExpr, Model}
+import de.sciss.lucre.expr.graph.Const
+import de.sciss.lucre.expr.{Ex, IControl, IExpr, Model}
 import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.swing.graph.impl.{AudioFileOutExpandedImpl, ComboBoxIndexExpandedImpl, ComboBoxValueExpandedImpl, ComponentImpl, PathFieldValueExpandedImpl}
-import de.sciss.lucre.swing.{Graph, PanelWithPathField}
+import de.sciss.lucre.swing.{Graph, PanelWithPathField, View}
 import de.sciss.swingplus.{ComboBox => _ComboBox}
 import de.sciss.synth.io
 import de.sciss.synth.io.AudioFileType
@@ -79,7 +79,7 @@ object AudioFileOut {
 
     def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, String] = {
       val valueOpt = ctx.getProperty[Ex[String]](w, PathField.keyTitle)
-      valueOpt.getOrElse(Constant(defaultTitle)).expand[S]
+      valueOpt.getOrElse(Const(defaultTitle)).expand[S]
     }
   }
 
@@ -88,7 +88,7 @@ object AudioFileOut {
 
     def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, Boolean] = {
       val valueOpt = ctx.getProperty[Ex[Boolean]](w, keyPathFieldVisible)
-      valueOpt.getOrElse(Constant(defaultPathFieldVisible)).expand[S]
+      valueOpt.getOrElse(Const(defaultPathFieldVisible)).expand[S]
     }
   }
 
@@ -97,7 +97,7 @@ object AudioFileOut {
 
     def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, Boolean] = {
       val valueOpt = ctx.getProperty[Ex[Boolean]](w, keyFileTypeVisible)
-      valueOpt.getOrElse(Constant(defaultFileTypeVisible)).expand[S]
+      valueOpt.getOrElse(Const(defaultFileTypeVisible)).expand[S]
     }
   }
 
@@ -106,7 +106,7 @@ object AudioFileOut {
 
     def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, Boolean] = {
       val valueOpt = ctx.getProperty[Ex[Boolean]](w, keySampleFormatVisible)
-      valueOpt.getOrElse(Constant(defaultSampleFormatVisible)).expand[S]
+      valueOpt.getOrElse(Const(defaultSampleFormatVisible)).expand[S]
     }
   }
 
@@ -115,7 +115,7 @@ object AudioFileOut {
 
     def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, Boolean] = {
       val valueOpt = ctx.getProperty[Ex[Boolean]](w, keySampleRateVisible)
-      valueOpt.getOrElse(Constant(defaultSampleRateVisible)).expand[S]
+      valueOpt.getOrElse(Const(defaultSampleRateVisible)).expand[S]
     }
   }
 
@@ -226,6 +226,8 @@ object AudioFileOut {
 }
 trait AudioFileOut extends Component {
   type C = AudioFileOut.Peer
+
+  type Repr[S <: Sys[S]] = View.T[S, C] with IControl[S]
 
   var title       : Ex[String]
   def value       : Model[File]

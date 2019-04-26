@@ -31,20 +31,20 @@ import scala.swing.Reactions.Reaction
 import scala.swing.event.{SelectionChanged, ValueChanged}
 import scala.swing.{Orientation, SequentialContainer, Swing}
 
-final class AudioFileOutExpandedImpl[S <: Sys[S]](protected val w: AudioFileOut)
+final class AudioFileOutExpandedImpl[S <: Sys[S]](protected val peer: AudioFileOut)
   extends View[S] with ComponentHolder[AudioFileOut.Peer] with ComponentExpandedImpl[S] {
 
   type C = AudioFileOut.Peer
 
   override def initComponent()(implicit tx: S#Tx, ctx: Ex.Context[S]): this.type = {
-    val pathOpt   = ctx.getProperty[Ex[File   ]](w, PathField   .keyValue       ).map(_.expand[S].value)
-    val titleOpt  = ctx.getProperty[Ex[String ]](w, PathField   .keyTitle       ).map(_.expand[S].value)
-    val fileTpeIdx= ctx.getProperty[Ex[Int    ]](w, AudioFileOut.keyFileType    ).fold(AudioFileOut.defaultFileType     )(_.expand[S].value)
-    val smpFmtIdx = ctx.getProperty[Ex[Int    ]](w, AudioFileOut.keySampleFormat).fold(AudioFileOut.defaultSampleFormat )(_.expand[S].value)
-    val smpRate   = ctx.getProperty[Ex[Double ]](w, AudioFileOut.keySampleRate  ).fold(AudioFileOut.defaultSampleRate   )(_.expand[S].value)
+    val pathOpt   = ctx.getProperty[Ex[File   ]](peer, PathField   .keyValue       ).map(_.expand[S].value)
+    val titleOpt  = ctx.getProperty[Ex[String ]](peer, PathField   .keyTitle       ).map(_.expand[S].value)
+    val fileTpeIdx= ctx.getProperty[Ex[Int    ]](peer, AudioFileOut.keyFileType    ).fold(AudioFileOut.defaultFileType     )(_.expand[S].value)
+    val smpFmtIdx = ctx.getProperty[Ex[Int    ]](peer, AudioFileOut.keySampleFormat).fold(AudioFileOut.defaultSampleFormat )(_.expand[S].value)
+    val smpRate   = ctx.getProperty[Ex[Double ]](peer, AudioFileOut.keySampleRate  ).fold(AudioFileOut.defaultSampleRate   )(_.expand[S].value)
 
     def getBoolean(key: String, default: => Boolean): Boolean =
-      ctx.getProperty[Ex[Boolean]](w, key).fold(default)(_.expand[S].value)
+      ctx.getProperty[Ex[Boolean]](peer, key).fold(default)(_.expand[S].value)
 
     val pathFieldVisible    = getBoolean(AudioFileOut.keyPathFieldVisible   , AudioFileOut.defaultPathFieldVisible    )
     val fileTypeVisible     = getBoolean(AudioFileOut.keyFileTypeVisible    , AudioFileOut.defaultFileTypeVisible     )

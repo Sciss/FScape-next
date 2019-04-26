@@ -15,11 +15,11 @@ package de.sciss.lucre.swing.graph
 
 import de.sciss.audiowidgets.AxisFormat
 import de.sciss.file.File
-import de.sciss.lucre.expr.graph.Constant
-import de.sciss.lucre.expr.{Ex, IExpr, Model}
+import de.sciss.lucre.expr.graph.Const
+import de.sciss.lucre.expr.{Ex, IControl, IExpr, Model}
 import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.swing.graph.impl.{ComponentImpl, FileInExpandedImpl, PathFieldValueExpandedImpl}
-import de.sciss.lucre.swing.{Graph, PanelWithPathField}
+import de.sciss.lucre.swing.{Graph, PanelWithPathField, View}
 import de.sciss.synth.io
 import de.sciss.synth.io.{AudioFile, AudioFileSpec}
 
@@ -52,7 +52,7 @@ object AudioFileIn {
     txt
   }
 
-  private final class Expanded[S <: Sys[S]](protected val w: AudioFileIn) extends FileInExpandedImpl[S] {
+  private final class Expanded[S <: Sys[S]](protected val peer: AudioFileIn) extends FileInExpandedImpl[S] {
     protected def mkFormat(f: File): String = {
       val spec = AudioFile.readSpec(f)
       specToString(spec)
@@ -76,7 +76,7 @@ object AudioFileIn {
 
     def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, String] = {
       val valueOpt = ctx.getProperty[Ex[String]](w, PathField.keyTitle)
-      valueOpt.getOrElse(Constant(defaultTitle)).expand[S]
+      valueOpt.getOrElse(Const(defaultTitle)).expand[S]
     }
   }
 
@@ -85,7 +85,7 @@ object AudioFileIn {
 
     def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, Boolean] = {
       val valueOpt = ctx.getProperty[Ex[Boolean]](w, keyPathFieldVisible)
-      valueOpt.getOrElse(Constant(defaultPathFieldVisible)).expand[S]
+      valueOpt.getOrElse(Const(defaultPathFieldVisible)).expand[S]
     }
   }
 
@@ -94,7 +94,7 @@ object AudioFileIn {
 
     def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, Boolean] = {
       val valueOpt = ctx.getProperty[Ex[Boolean]](w, keyFormatVisible)
-      valueOpt.getOrElse(Constant(defaultFormatVisible)).expand[S]
+      valueOpt.getOrElse(Const(defaultFormatVisible)).expand[S]
     }
   }
 
@@ -146,6 +146,8 @@ object AudioFileIn {
 }
 trait AudioFileIn extends Component {
   type C = AudioFileIn.Peer
+
+  type Repr[S <: Sys[S]] = View.T[S, C] with IControl[S]
 
   var title : Ex[String]
   def value : Model[File]
