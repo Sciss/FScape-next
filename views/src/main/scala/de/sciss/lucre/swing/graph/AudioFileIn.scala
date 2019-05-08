@@ -15,8 +15,8 @@ package de.sciss.lucre.swing.graph
 
 import de.sciss.audiowidgets.AxisFormat
 import de.sciss.file.File
-import de.sciss.lucre.expr.graph.Const
-import de.sciss.lucre.expr.{Ex, IControl, IExpr, Model}
+import de.sciss.lucre.expr.graph.{Const, Ex}
+import de.sciss.lucre.expr.{Context, IControl, IExpr, Model}
 import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.swing.graph.impl.{ComponentImpl, FileInExpandedImpl, PathFieldValueExpandedImpl}
 import de.sciss.lucre.swing.{Graph, PanelWithPathField, View}
@@ -60,9 +60,11 @@ object AudioFileIn {
   }
 
   final case class Value(w: AudioFileIn) extends Ex[File] {
+    type Repr[S <: Sys[S]] = IExpr[S, File]
+
     override def productPrefix: String = s"AudioFileIn$$Value" // serialization
 
-    def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, File] = {
+    protected def mkRepr[S <: Sys[S]](implicit ctx: Context[S], tx: S#Tx): Repr[S] = {
       import ctx.{cursor, targets}
       val ws        = w.expand[S]
       val valueOpt  = ctx.getProperty[Ex[File]](w, PathField.keyValue)
@@ -72,27 +74,33 @@ object AudioFileIn {
   }
 
   final case class Title(w: AudioFileIn) extends Ex[String] {
+    type Repr[S <: Sys[S]] = IExpr[S, String]
+
     override def productPrefix: String = s"AudioFileIn$$Title" // serialization
 
-    def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, String] = {
+    protected def mkRepr[S <: Sys[S]](implicit ctx: Context[S], tx: S#Tx): Repr[S] = {
       val valueOpt = ctx.getProperty[Ex[String]](w, PathField.keyTitle)
       valueOpt.getOrElse(Const(defaultTitle)).expand[S]
     }
   }
 
   final case class PathFieldVisible(w: AudioFileIn) extends Ex[Boolean] {
+    type Repr[S <: Sys[S]] = IExpr[S, Boolean]
+
     override def productPrefix: String = s"AudioFileIn$$PathFieldVisible" // serialization
 
-    def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, Boolean] = {
+    protected def mkRepr[S <: Sys[S]](implicit ctx: Context[S], tx: S#Tx): Repr[S] = {
       val valueOpt = ctx.getProperty[Ex[Boolean]](w, keyPathFieldVisible)
       valueOpt.getOrElse(Const(defaultPathFieldVisible)).expand[S]
     }
   }
 
   final case class FormatVisible(w: AudioFileIn) extends Ex[Boolean] {
+    type Repr[S <: Sys[S]] = IExpr[S, Boolean]
+
     override def productPrefix: String = s"AudioFileIn$$FormatVisible" // serialization
 
-    def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, Boolean] = {
+    protected def mkRepr[S <: Sys[S]](implicit ctx: Context[S], tx: S#Tx): Repr[S] = {
       val valueOpt = ctx.getProperty[Ex[Boolean]](w, keyFormatVisible)
       valueOpt.getOrElse(Const(defaultFormatVisible)).expand[S]
     }
@@ -101,7 +109,7 @@ object AudioFileIn {
   private final case class Impl() extends AudioFileIn with ComponentImpl { w =>
     override def productPrefix: String = "AudioFileIn" // serialization
 
-    protected def mkControl[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): Repr[S] =
+    protected def mkRepr[S <: Sys[S]](implicit ctx: Context[S], tx: S#Tx): Repr[S] =
       new Expanded[S](this).initComponent()
 
     object value extends Model[File] {

@@ -17,7 +17,8 @@ import de.sciss.desktop
 import de.sciss.desktop.{FileDialog, TextFieldWithPaint}
 import de.sciss.file._
 import de.sciss.fscape.lucre.graph.{AudioFileOut => UAudioFileOut}
-import de.sciss.lucre.expr.Ex
+import de.sciss.lucre.expr.graph.Ex
+import de.sciss.lucre.expr.Context
 import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.swing.graph.{AudioFileIn, AudioFileOut, PathField}
 import de.sciss.lucre.swing.impl.ComponentHolder
@@ -36,7 +37,7 @@ final class AudioFileOutExpandedImpl[S <: Sys[S]](protected val peer: AudioFileO
 
   type C = AudioFileOut.Peer
 
-  override def initComponent()(implicit tx: S#Tx, ctx: Ex.Context[S]): this.type = {
+  override def initComponent()(implicit tx: S#Tx, ctx: Context[S]): this.type = {
     val pathOpt   = ctx.getProperty[Ex[File   ]](peer, PathField   .keyValue       ).map(_.expand[S].value)
     val titleOpt  = ctx.getProperty[Ex[String ]](peer, PathField   .keyTitle       ).map(_.expand[S].value)
     val fileTpeIdx= ctx.getProperty[Ex[Int    ]](peer, AudioFileOut.keyFileType    ).fold(AudioFileOut.defaultFileType     )(_.expand[S].value)

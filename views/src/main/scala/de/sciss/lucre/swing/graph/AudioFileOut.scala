@@ -14,8 +14,8 @@
 package de.sciss.lucre.swing.graph
 
 import de.sciss.file.File
-import de.sciss.lucre.expr.graph.Const
-import de.sciss.lucre.expr.{Ex, IControl, IExpr, Model}
+import de.sciss.lucre.expr.graph.{Const, Ex}
+import de.sciss.lucre.expr.{Context, IControl, IExpr, Model}
 import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.swing.graph.impl.{AudioFileOutExpandedImpl, ComboBoxIndexExpandedImpl, ComboBoxValueExpandedImpl, ComponentImpl, PathFieldValueExpandedImpl}
 import de.sciss.lucre.swing.{Graph, PanelWithPathField, View}
@@ -27,9 +27,11 @@ object AudioFileOut {
   def apply(): AudioFileOut = Impl()
 
   final case class Value(w: AudioFileOut) extends Ex[File] {
+    type Repr[S <: Sys[S]] = IExpr[S, File]
+
     override def productPrefix: String = s"AudioFileOut$$Value" // serialization
 
-    def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, File] = {
+    protected def mkRepr[S <: Sys[S]](implicit ctx: Context[S], tx: S#Tx): Repr[S] = {
       import ctx.{cursor, targets}
       val ws        = w.expand[S]
       val valueOpt  = ctx.getProperty[Ex[File]](w, PathField.keyValue)
@@ -39,9 +41,11 @@ object AudioFileOut {
   }
 
   final case class FileType(w: AudioFileOut) extends Ex[Int] {
+    type Repr[S <: Sys[S]] = IExpr[S, Int]
+
     override def productPrefix: String = s"AudioFileOut$$FileType" // serialization
 
-    def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, Int] = {
+    protected def mkRepr[S <: Sys[S]](implicit ctx: Context[S], tx: S#Tx): Repr[S] = {
       import ctx.{cursor, targets}
       val ws        = w.expand[S]
       val valueOpt  = ctx.getProperty[Ex[Int]](w, keyFileType)
@@ -51,9 +55,11 @@ object AudioFileOut {
   }
 
   final case class SampleFormat(w: AudioFileOut) extends Ex[Int] {
+    type Repr[S <: Sys[S]] = IExpr[S, Int]
+
     override def productPrefix: String = s"AudioFileOut$$SampleFormat" // serialization
 
-    def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, Int] = {
+    protected def mkRepr[S <: Sys[S]](implicit ctx: Context[S], tx: S#Tx): Repr[S] = {
       import ctx.{cursor, targets}
       val ws        = w.expand[S]
       val valueOpt  = ctx.getProperty[Ex[Int]](w, keySampleFormat)
@@ -63,9 +69,11 @@ object AudioFileOut {
   }
 
   final case class SampleRate(w: AudioFileOut) extends Ex[Double] {
+    type Repr[S <: Sys[S]] = IExpr[S, Double]
+
     override def productPrefix: String = s"AudioFileOut$$SampleRate" // serialization
 
-    def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, Double] = {
+    protected def mkRepr[S <: Sys[S]](implicit ctx: Context[S], tx: S#Tx): Repr[S] = {
       import ctx.{cursor, targets}
       val ws        = w.expand[S]
       val valueOpt  = ctx.getProperty[Ex[Double]](w, keySampleRate)
@@ -75,45 +83,55 @@ object AudioFileOut {
   }
 
   final case class Title(w: AudioFileOut) extends Ex[String] {
+    type Repr[S <: Sys[S]] = IExpr[S, String]
+
     override def productPrefix: String = s"AudioFileOut$$Title" // serialization
 
-    def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, String] = {
+    protected def mkRepr[S <: Sys[S]](implicit ctx: Context[S], tx: S#Tx): Repr[S] = {
       val valueOpt = ctx.getProperty[Ex[String]](w, PathField.keyTitle)
       valueOpt.getOrElse(Const(defaultTitle)).expand[S]
     }
   }
 
   final case class PathFieldVisible(w: AudioFileOut) extends Ex[Boolean] {
+    type Repr[S <: Sys[S]] = IExpr[S, Boolean]
+
     override def productPrefix: String = s"AudioFileOut$$PathFieldVisible" // serialization
 
-    def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, Boolean] = {
+    protected def mkRepr[S <: Sys[S]](implicit ctx: Context[S], tx: S#Tx): Repr[S] = {
       val valueOpt = ctx.getProperty[Ex[Boolean]](w, keyPathFieldVisible)
       valueOpt.getOrElse(Const(defaultPathFieldVisible)).expand[S]
     }
   }
 
   final case class FileTypeVisible(w: AudioFileOut) extends Ex[Boolean] {
+    type Repr[S <: Sys[S]] = IExpr[S, Boolean]
+
     override def productPrefix: String = s"AudioFileOut$$FileTypeVisible" // serialization
 
-    def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, Boolean] = {
+    protected def mkRepr[S <: Sys[S]](implicit ctx: Context[S], tx: S#Tx): Repr[S] = {
       val valueOpt = ctx.getProperty[Ex[Boolean]](w, keyFileTypeVisible)
       valueOpt.getOrElse(Const(defaultFileTypeVisible)).expand[S]
     }
   }
 
   final case class SampleFormatVisible(w: AudioFileOut) extends Ex[Boolean] {
+    type Repr[S <: Sys[S]] = IExpr[S, Boolean]
+
     override def productPrefix: String = s"AudioFileOut$$SampleFormatVisible" // serialization
 
-    def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, Boolean] = {
+    protected def mkRepr[S <: Sys[S]](implicit ctx: Context[S], tx: S#Tx): Repr[S] = {
       val valueOpt = ctx.getProperty[Ex[Boolean]](w, keySampleFormatVisible)
       valueOpt.getOrElse(Const(defaultSampleFormatVisible)).expand[S]
     }
   }
 
   final case class SampleRateVisible(w: AudioFileOut) extends Ex[Boolean] {
+    type Repr[S <: Sys[S]] = IExpr[S, Boolean]
+
     override def productPrefix: String = s"AudioFileOut$$SampleRateVisible" // serialization
 
-    def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, Boolean] = {
+    protected def mkRepr[S <: Sys[S]](implicit ctx: Context[S], tx: S#Tx): Repr[S] = {
       val valueOpt = ctx.getProperty[Ex[Boolean]](w, keySampleRateVisible)
       valueOpt.getOrElse(Const(defaultSampleRateVisible)).expand[S]
     }
@@ -124,7 +142,7 @@ object AudioFileOut {
 
     override def productPrefix: String = "AudioFileOut" // serialization
 
-    protected def mkControl[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): Repr[S] =
+    protected def mkRepr[S <: Sys[S]](implicit ctx: Context[S], tx: S#Tx): Repr[S] =
       new AudioFileOutExpandedImpl[S](this).initComponent()
 
     object value extends Model[File] {
@@ -199,19 +217,19 @@ object AudioFileOut {
     }
   }
 
-  private[graph] final val keyFileType          = "fileType"
-  private[graph] final val keySampleFormat      = "sampleFormat"
-  private[graph] final val keySampleRate        = "sampleRate"
+  private[graph] final val keyFileType                = "fileType"
+  private[graph] final val keySampleFormat            = "sampleFormat"
+  private[graph] final val keySampleRate              = "sampleRate"
 
-  private[graph] final val keyPathFieldVisible    = "pathFieldVisible"
-  private[graph] final val keyFileTypeVisible     = "fileTypeVisible"
-  private[graph] final val keySampleFormatVisible = "sampleFormatVisible"
-  private[graph] final val keySampleRateVisible   = "sampleRateVisible"
+  private[graph] final val keyPathFieldVisible        = "pathFieldVisible"
+  private[graph] final val keyFileTypeVisible         = "fileTypeVisible"
+  private[graph] final val keySampleFormatVisible     = "sampleFormatVisible"
+  private[graph] final val keySampleRateVisible       = "sampleRateVisible"
 
-  private[graph] final val defaultFileType      = 0 // AIFF
-  private[graph] final val defaultSampleFormat  = 1 // int24
-  private[graph] final val defaultSampleRate    = 44100.0
-  private[graph] final val defaultTitle         = "Select Audio Output File"
+  private[graph] final val defaultFileType            = 0 // AIFF
+  private[graph] final val defaultSampleFormat        = 1 // int24
+  private[graph] final val defaultSampleRate          = 44100.0
+  private[graph] final val defaultTitle               = "Select Audio Output File"
 
   private[graph] final val defaultPathFieldVisible    = true
   private[graph] final val defaultFileTypeVisible     = true

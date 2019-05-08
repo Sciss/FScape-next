@@ -15,8 +15,8 @@ package de.sciss.lucre.swing.graph
 
 import de.sciss.file.File
 import de.sciss.fscape.graph.ImageFile
-import de.sciss.lucre.expr.graph.Const
-import de.sciss.lucre.expr.{Ex, IControl, IExpr, Model}
+import de.sciss.lucre.expr.graph.{Const, Ex}
+import de.sciss.lucre.expr.{Context, IControl, IExpr, Model}
 import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.swing.graph.impl.{ComboBoxIndexExpandedImpl, ComponentImpl, ImageFileOutExpandedImpl, PathFieldValueExpandedImpl, SpinnerValueExpandedImpl}
 import de.sciss.lucre.swing.{Graph, PanelWithPathField, View}
@@ -26,9 +26,11 @@ object ImageFileOut {
   def apply(): ImageFileOut = Impl()
 
   final case class Value(w: ImageFileOut) extends Ex[File] {
+    type Repr[S <: Sys[S]] = IExpr[S, File]
+
     override def productPrefix: String = s"ImageFileOut$$Value" // serialization
 
-    def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, File] = {
+    protected def mkRepr[S <: Sys[S]](implicit ctx: Context[S], tx: S#Tx): Repr[S] = {
       import ctx.{cursor, targets}
       val ws        = w.expand[S]
       val valueOpt  = ctx.getProperty[Ex[File]](w, PathField.keyValue)
@@ -38,9 +40,11 @@ object ImageFileOut {
   }
 
   final case class FileType(w: ImageFileOut) extends Ex[Int] {
+    type Repr[S <: Sys[S]] = IExpr[S, Int]
+
     override def productPrefix: String = s"ImageFileOut$$FileType" // serialization
 
-    def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, Int] = {
+    protected def mkRepr[S <: Sys[S]](implicit ctx: Context[S], tx: S#Tx): Repr[S] = {
       import ctx.{cursor, targets}
       val ws        = w.expand[S]
       val valueOpt  = ctx.getProperty[Ex[Int]](w, keyFileType)
@@ -50,9 +54,11 @@ object ImageFileOut {
   }
 
   final case class SampleFormat(w: ImageFileOut) extends Ex[Int] {
+    type Repr[S <: Sys[S]] = IExpr[S, Int]
+
     override def productPrefix: String = s"ImageFileOut$$SampleFormat" // serialization
 
-    def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, Int] = {
+    protected def mkRepr[S <: Sys[S]](implicit ctx: Context[S], tx: S#Tx): Repr[S] = {
       import ctx.{cursor, targets}
       val ws        = w.expand[S]
       val valueOpt  = ctx.getProperty[Ex[Int]](w, keySampleFormat)
@@ -62,9 +68,11 @@ object ImageFileOut {
   }
 
   final case class Quality(w: ImageFileOut) extends Ex[Int] {
+    type Repr[S <: Sys[S]] = IExpr[S, Int]
+
     override def productPrefix: String = s"ImageFileOut$$Quality" // serialization
 
-    def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, Int] = {
+    protected def mkRepr[S <: Sys[S]](implicit ctx: Context[S], tx: S#Tx): Repr[S] = {
       import ctx.{cursor, targets}
       val ws        = w.expand[S]
       val valueOpt  = ctx.getProperty[Ex[Int]](w, keyQuality)
@@ -74,45 +82,55 @@ object ImageFileOut {
   }
 
   final case class Title(w: ImageFileOut) extends Ex[String] {
+    type Repr[S <: Sys[S]] = IExpr[S, String]
+
     override def productPrefix: String = s"ImageFileOut$$Title" // serialization
 
-    def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, String] = {
+    protected def mkRepr[S <: Sys[S]](implicit ctx: Context[S], tx: S#Tx): Repr[S] = {
       val valueOpt = ctx.getProperty[Ex[String]](w, PathField.keyTitle)
       valueOpt.getOrElse(Const(defaultTitle)).expand[S]
     }
   }
 
   final case class PathFieldVisible(w: ImageFileOut) extends Ex[Boolean] {
+    type Repr[S <: Sys[S]] = IExpr[S, Boolean]
+
     override def productPrefix: String = s"ImageFileOut$$PathFieldVisible" // serialization
 
-    def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, Boolean] = {
+    protected def mkRepr[S <: Sys[S]](implicit ctx: Context[S], tx: S#Tx): Repr[S] = {
       val valueOpt = ctx.getProperty[Ex[Boolean]](w, keyPathFieldVisible)
       valueOpt.getOrElse(Const(defaultPathFieldVisible)).expand[S]
     }
   }
 
   final case class FileTypeVisible(w: ImageFileOut) extends Ex[Boolean] {
+    type Repr[S <: Sys[S]] = IExpr[S, Boolean]
+
     override def productPrefix: String = s"ImageFileOut$$FileTypeVisible" // serialization
 
-    def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, Boolean] = {
+    protected def mkRepr[S <: Sys[S]](implicit ctx: Context[S], tx: S#Tx): Repr[S] = {
       val valueOpt = ctx.getProperty[Ex[Boolean]](w, keyFileTypeVisible)
       valueOpt.getOrElse(Const(defaultFileTypeVisible)).expand[S]
     }
   }
 
   final case class SampleFormatVisible(w: ImageFileOut) extends Ex[Boolean] {
+    type Repr[S <: Sys[S]] = IExpr[S, Boolean]
+
     override def productPrefix: String = s"ImageFileOut$$SampleFormatVisible" // serialization
 
-    def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, Boolean] = {
+    protected def mkRepr[S <: Sys[S]](implicit ctx: Context[S], tx: S#Tx): Repr[S] = {
       val valueOpt = ctx.getProperty[Ex[Boolean]](w, keySampleFormatVisible)
       valueOpt.getOrElse(Const(defaultSampleFormatVisible)).expand[S]
     }
   }
 
   final case class QualityVisible(w: ImageFileOut) extends Ex[Boolean] {
+    type Repr[S <: Sys[S]] = IExpr[S, Boolean]
+
     override def productPrefix: String = s"ImageFileOut$$QualityVisible" // serialization
 
-    def expand[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): IExpr[S, Boolean] = {
+    protected def mkRepr[S <: Sys[S]](implicit ctx: Context[S], tx: S#Tx): Repr[S] = {
       val valueOpt = ctx.getProperty[Ex[Boolean]](w, keyQualityVisible)
       valueOpt.getOrElse(Const(defaultQualityVisible)).expand[S]
     }
@@ -123,7 +141,7 @@ object ImageFileOut {
 
     override def productPrefix: String = "ImageFileOut" // serialization
 
-    protected def mkControl[S <: Sys[S]](implicit ctx: Ex.Context[S], tx: S#Tx): Repr[S] =
+    protected def mkRepr[S <: Sys[S]](implicit ctx: Context[S], tx: S#Tx): Repr[S] =
       new ImageFileOutExpandedImpl[S](this).initComponent()
 
     object value extends Model[File] {

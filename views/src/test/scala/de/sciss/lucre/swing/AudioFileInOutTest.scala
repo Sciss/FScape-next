@@ -1,6 +1,6 @@
 package de.sciss.lucre.swing
 
-import de.sciss.lucre.expr.{Ex, ExOps}
+import de.sciss.lucre.expr.{Context, ExOps}
 import de.sciss.lucre.synth.InMemory
 import de.sciss.synth.proc.{ExprContext, Universe}
 
@@ -22,7 +22,7 @@ object AudioFileInOutTest extends AppLike {
 
     val view = sys.step { implicit tx =>
       implicit val u: Universe[S] = Universe.dummy
-      implicit val ctx: Ex.Context[S] = ExprContext[S]()
+      implicit val ctx: Context[S] = ExprContext[S]()
       g.expand[S]
     }
     view.component
