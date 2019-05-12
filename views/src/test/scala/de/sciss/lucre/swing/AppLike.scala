@@ -2,7 +2,7 @@ package de.sciss.lucre.swing
 
 import de.sciss.desktop.UndoManager
 import de.sciss.file.File
-import de.sciss.lucre.expr
+import de.sciss.lucre.expr.LucreExpr
 import de.sciss.lucre.stm.Durable
 import de.sciss.lucre.stm.store.BerkeleyDB
 import de.sciss.submin.Submin
@@ -16,7 +16,7 @@ trait AppLike extends SimpleSwingApplication {
   implicit lazy val undo: UndoManager = UndoManager()
 
   override def main(args: Array[String]): Unit = {
-    expr.init()
+    LucreExpr.init()
     Submin.install(true)
     super.main(args)
   }

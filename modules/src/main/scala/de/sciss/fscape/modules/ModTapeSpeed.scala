@@ -98,7 +98,7 @@ object ModTapeSpeed extends Module {
   }
 
   def ui[S <: Sys[S]]()(implicit tx: S#Tx): Widget[S] = {
-    import de.sciss.lucre.expr.ExOps._
+    import de.sciss.lucre.expr.ExImport._
     import de.sciss.lucre.expr.graph._
     import de.sciss.lucre.swing.graph._
     val w = Widget[S]()
