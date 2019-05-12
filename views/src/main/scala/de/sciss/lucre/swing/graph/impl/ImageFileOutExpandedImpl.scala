@@ -17,7 +17,6 @@ import java.awt.Color
 import java.awt.geom.{AffineTransform, Path2D}
 
 import de.sciss.audiowidgets.ShapeIcon
-import de.sciss.{audiowidgets, desktop}
 import de.sciss.desktop.{FileDialog, TextFieldWithPaint}
 import de.sciss.file._
 import de.sciss.fscape.graph.ImageFile
@@ -26,10 +25,12 @@ import de.sciss.fscape.lucre.graph.{ImageFileOut => UImageFileOut}
 import de.sciss.lucre.expr.Context
 import de.sciss.lucre.expr.graph.Ex
 import de.sciss.lucre.stm.Sys
+import de.sciss.lucre.swing.LucreSwing.deferTx
 import de.sciss.lucre.swing.graph.{ImageFileIn, ImageFileOut, PathField}
 import de.sciss.lucre.swing.impl.ComponentHolder
-import de.sciss.lucre.swing.{Shapes, View, deferTx}
+import de.sciss.lucre.swing.{Shapes, View}
 import de.sciss.swingplus.{ComboBox, ListView, Spinner}
+import de.sciss.{audiowidgets, desktop}
 import javax.swing.{JList, ListCellRenderer, SpinnerNumberModel}
 
 import scala.swing.Reactions.Reaction

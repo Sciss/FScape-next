@@ -16,12 +16,13 @@ package de.sciss.lucre.swing.graph.impl
 import de.sciss.desktop
 import de.sciss.desktop.TextFieldWithPaint
 import de.sciss.file.File
-import de.sciss.lucre.expr.graph.Ex
 import de.sciss.lucre.expr.Context
+import de.sciss.lucre.expr.graph.Ex
 import de.sciss.lucre.stm.Sys
+import de.sciss.lucre.swing.LucreSwing.deferTx
 import de.sciss.lucre.swing.graph.{AudioFileIn, PathField}
 import de.sciss.lucre.swing.impl.ComponentHolder
-import de.sciss.lucre.swing.{PanelWithPathField, View, deferTx}
+import de.sciss.lucre.swing.{PanelWithPathField, View}
 
 import scala.swing.event.ValueChanged
 import scala.swing.{Orientation, SequentialContainer, Swing}

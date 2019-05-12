@@ -17,12 +17,13 @@ import de.sciss.desktop
 import de.sciss.desktop.{FileDialog, TextFieldWithPaint}
 import de.sciss.file._
 import de.sciss.fscape.lucre.graph.{AudioFileOut => UAudioFileOut}
-import de.sciss.lucre.expr.graph.Ex
 import de.sciss.lucre.expr.Context
+import de.sciss.lucre.expr.graph.Ex
 import de.sciss.lucre.stm.Sys
+import de.sciss.lucre.swing.LucreSwing.deferTx
+import de.sciss.lucre.swing.View
 import de.sciss.lucre.swing.graph.{AudioFileIn, AudioFileOut, PathField}
 import de.sciss.lucre.swing.impl.ComponentHolder
-import de.sciss.lucre.swing.{View, deferTx}
 import de.sciss.swingplus.{ComboBox, ListView}
 import de.sciss.synth.io
 import de.sciss.synth.io.AudioFileType
