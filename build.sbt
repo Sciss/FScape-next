@@ -61,7 +61,11 @@ def commonJavaOptions = Seq("-source", "1.6")
 
 lazy val testSettings = Seq(
   libraryDependencies += {
-    "org.scalatest" %% "scalatest" % deps.test.scalaTest % Test
+    if (scalaVersion.value == "2.13.0-RC2") {
+      "org.scalatest" % "scalatest_2.13.0-RC1" % deps.test.scalaTest % Test
+    } else {
+      "org.scalatest" %% "scalatest" % deps.test.scalaTest % Test
+    }
   }
 )
 
@@ -107,9 +111,15 @@ lazy val core = project
       "de.sciss"          %%  "scissdsp"            % deps.main.dsp,
       "de.sciss"          %%  "swingplus"           % deps.main.swingPlus,
       "de.sciss"          %%  "scala-chart"         % deps.main.scalaChart,
-      "com.github.scopt"  %%  "scopt"               % deps.test.scopt     % Test,
       "de.sciss"          %%  "kollflitz"           % deps.test.kollFlitz % Test,
     ),
+    libraryDependencies += {
+      if (scalaVersion.value == "2.13.0-RC2") {
+        "com.github.scopt" % "scopt_2.13.0-RC1" % deps.test.scopt % Test
+      } else {
+        "com.github.scopt" %% "scopt" % deps.test.scopt % Test
+      }
+    },
     mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-core" % mimaVersion),
     // scalaJSUseMainModuleInitializer in Test := true,
     mainClass in Test := Some("de.sciss.fscape.FramesTest")
