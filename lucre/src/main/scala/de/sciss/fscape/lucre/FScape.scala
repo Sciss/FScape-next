@@ -20,6 +20,7 @@ import de.sciss.lucre.event.{Observable, Publisher}
 import de.sciss.lucre.stm.{Disposable, Obj, Sys, Workspace}
 import de.sciss.serial.{DataInput, Serializer}
 import de.sciss.synth.proc
+import de.sciss.synth.proc.Code.Import
 import de.sciss.synth.proc.impl.CodeImpl
 import de.sciss.synth.proc.{Gen, GenView, Universe}
 import de.sciss.{fscape, model}
@@ -122,18 +123,20 @@ object FScape extends Obj.Type {
 
     private[this] lazy val _init: Unit = {
       proc.Code.addType(this)
+      import Import._
       proc.Code.registerImports(id, Vec(
         // doesn't work:
 //        "Predef.{any2stringadd => _, _}", // cf. http://stackoverflow.com/questions/7634015/
-        "de.sciss.numbers.Implicits._",
+        Import("de.sciss.numbers.Implicits", All),
 //        "de.sciss.fscape.GE",
-        "de.sciss.fscape._",
-        "de.sciss.fscape.graph.{AudioFileIn => _, AudioFileOut => _, ImageFileIn => _, ImageFileOut => _, ImageFileSeqIn => _, ImageFileSeqOut => _, _}",
-        "de.sciss.fscape.lucre.graph._",
-        "de.sciss.fscape.lucre.graph.Ops._"
+        Import("de.sciss.fscape", All),
+        Import("de.sciss.fscape.graph", List(Ignore("AudioFileIn"), Ignore("AudioFileOut"), Ignore("ImageFileIn"),
+          Ignore("ImageFileOut"), Ignore("ImageFileSeqIn"), Ignore("ImageFileSeqOut"), Wildcard)),
+        Import("de.sciss.fscape.lucre.graph", All),
+        Import("de.sciss.fscape.lucre.graph.Ops", All)
       ))
       proc.Code.registerImports(proc.Code.Action.id, Vec(
-        "de.sciss.fscape.lucre.FScape"
+        Import("de.sciss.fscape.lucre", Name("FScape") :: Nil)
       ))
     }
 
