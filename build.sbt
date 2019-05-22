@@ -48,7 +48,7 @@ lazy val deps = new {
   }
   val modules = new {
     // val scopt           = "3.7.1"
-    val scallop         = "3.2.0"
+    val scallop         = "3.3.0"
   }
   val test = new {
     val kollFlitz       = "0.2.3"
