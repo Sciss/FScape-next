@@ -20,12 +20,12 @@ import de.sciss.lucre.event.{Observable, Publisher}
 import de.sciss.lucre.stm.{Disposable, Obj, Sys, Workspace}
 import de.sciss.serial.{DataInput, Serializer}
 import de.sciss.synth.proc
-import de.sciss.synth.proc.Code.Import
+import de.sciss.synth.proc.Code.{Example, Import}
 import de.sciss.synth.proc.impl.CodeImpl
 import de.sciss.synth.proc.{Gen, GenView, Universe}
 import de.sciss.{fscape, model}
 
-import scala.collection.immutable.{IndexedSeq => Vec}
+import scala.collection.immutable.{IndexedSeq => Vec, Seq => ISeq}
 import scala.concurrent.Future
 import scala.util.Try
 
@@ -118,6 +118,15 @@ object FScape extends Obj.Type {
     final val humanName = "FScape Graph"
 
     type Repr = Code
+
+    override def examples: ISeq[Example] = List(
+      Example("Plot Sine", 'p',
+        """val sr  = 44100.0
+          |val sig = SinOsc(440 / sr)
+          |Plot1D(sig, 500)
+          |""".stripMargin
+      )
+    )
 
     def docBaseSymbol: String = "de.sciss.fscape.graph"
 
