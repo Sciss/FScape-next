@@ -4,6 +4,7 @@ import de.sciss.file._
 import de.sciss.fscape.graph.ImageFile
 import de.sciss.fscape.gui.SimpleGUI
 import de.sciss.kollflitz
+import org.rogach.scallop.{ScallopConf, ScallopOption => Opt}
 
 import scala.swing.Swing
 
@@ -12,35 +13,33 @@ object GimpSlurTest {
                     narrow: Double = 0.8, randomization: Double = 0.2, repeat: Int = 4)
 
   def main(args: Array[String]): Unit = {
-    val default = Config()
-    val p = new scopt.OptionParser[Config]("Neural") {
-      opt[File]('i', "input")
-        .required()
-        .text ("Image input file.")
-        .action { (f, c) => c.copy(fIn = f) }
+    object parse extends ScallopConf(args) {
+      printedName = "Neural"
+      version(printedName)
 
-      opt[File]('o', "output")
-        .required()
-        .text ("Image output file.")
-        .action { (f, c) => c.copy(fOut = f) }
+      val default = Config()
 
-      opt[Double] ('w', "narrow")
-        .text (s"Narrowness of the 'beam', 0 to 1 (default ${default.narrow}).")
-        .validate(v => if (v >= 0 && v <= 1) Right(()) else Left("Must be >= 0 and <= 1") )
-        .action { (v, c) => c.copy(narrow = v) }
+      val input : Opt[File] = opt(required = true, descr = "Image input file.")
+      val output: Opt[File] = opt(required = true, descr = "Image output file.")
+      mainOptions = Seq(input, output)
 
-      opt[Double] ('r', "randomization")
-        .text (s"Probability of pixels being slurred, 0 to 1 (default ${default.randomization}).")
-        .validate(v => if (v >= 0 && v <= 1) Right(()) else Left("Must be >= 0 and <= 1") )
-        .action { (v, c) => c.copy(randomization = v) }
-
-      opt[Int] ('n', "repeat")
-        .text (s"Number of recursive repetitions, 1 or greater (default ${default.repeat})")
-        .action { (v, c) => c.copy(repeat = v) }
+      val narrow: Opt[Double] = opt(short = 'w', default = Some(default.narrow),
+        descr = s"Narrowness of the 'beam', 0 to 1 (default ${default.narrow}).",
+        validate = (v: Double) => v >= 0 && v <= 1  // "Must be >= 0 and <= 1"
+      )
+      val randomization: Opt[Double] = opt(default = Some(default.randomization),
+        descr = s"Probability of pixels being slurred, 0 to 1 (default ${default.randomization}).",
+        validate = v => v >= 0 && v <= 1  // "Must be >= 0 and <= 1"
+      )
+      val repeat: Opt[Int] = opt(short = 'n', default = Some(default.repeat),
+        descr = s"Number of recursive repetitions, 1 or greater (default ${default.repeat})"
+      )
+      verify()
+      val config = Config(fIn = input(), fOut = output(), narrow = narrow(),
+        randomization = randomization(), repeat = repeat())
     }
-    p.parse(args, default).fold(sys.exit(1)) { config =>
-      run(config)
-    }
+
+    run(parse.config)
   }
 
   def run(config: Config): Unit = {

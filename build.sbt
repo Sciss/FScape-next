@@ -15,7 +15,7 @@ lazy val commonSettings = Seq(
   description        := baseDescription,
   version            := projectVersion,
   scalaVersion       := "2.12.8",
-  crossScalaVersions := Seq("2.12.8", "2.11.12"), // currently waiting for Akka Stream: "2.13.0-RC1"
+  crossScalaVersions := Seq("2.12.8", "2.11.12", "2.13.0-RC2"),
   licenses           := Seq("AGPL v3+" -> url("http://www.gnu.org/licenses/agpl-3.0.txt")),
   homepage           := Some(url(s"https://git.iem.at/sciss/$gitRepo")),
   scalacOptions in (Compile, compile) ++= Seq(
@@ -36,7 +36,7 @@ lazy val deps = new {
     val optional        = "1.0.0"
     val scalaChart      = "0.7.1"
     val swingPlus       = "0.4.2"
-    val akka            = "2.5.22"
+    val akka            = "2.5.23"
   }
   val lucre = new {
     val fileCache       = "0.5.1"
@@ -47,12 +47,14 @@ lazy val deps = new {
     val lucreSwing      = "1.17.0-SNAPSHOT"
   }
   val modules = new {
-    val scopt           = "3.7.1"
+    // val scopt           = "3.7.1"
+    val scallop         = "3.2.0"
   }
   val test = new {
     val kollFlitz       = "0.2.3"
-    val scalaTest       = "3.0.8-RC2"
-    def scopt: String   = modules.scopt
+    val scalaTest       = "3.0.8-RC4"
+    // def scopt: String   = modules.scopt
+    val scallop: String = modules.scallop
     val submin          = "0.2.5"
   }
 }
@@ -61,11 +63,11 @@ def commonJavaOptions = Seq("-source", "1.6")
 
 lazy val testSettings = Seq(
   libraryDependencies += {
-    if (scalaVersion.value == "2.13.0-RC2") {
-      "org.scalatest" % "scalatest_2.13.0-RC1" % deps.test.scalaTest % Test
-    } else {
+    // if (scalaVersion.value == "2.13.0-RC2") {
+    //   "org.scalatest" % "scalatest_2.13.0-RC1" % deps.test.scalaTest % Test
+    // } else {
       "org.scalatest" %% "scalatest" % deps.test.scalaTest % Test
-    }
+    // }
   }
 )
 
@@ -114,11 +116,12 @@ lazy val core = project
       "de.sciss"          %%  "kollflitz"           % deps.test.kollFlitz % Test,
     ),
     libraryDependencies += {
-      if (scalaVersion.value == "2.13.0-RC2") {
-        "com.github.scopt" % "scopt_2.13.0-RC1" % deps.test.scopt % Test
-      } else {
-        "com.github.scopt" %% "scopt" % deps.test.scopt % Test
-      }
+      // if (scalaVersion.value == "2.13.0-RC2") {
+      //   "com.github.scopt" % "scopt_2.13.0-RC1" % deps.test.scopt % Test
+      // } else {
+      //   "com.github.scopt" %% "scopt" % deps.test.scopt % Test
+      // }
+      "org.rogach" %% "scallop" % deps.test.scallop % Test
     },
     mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-core" % mimaVersion),
     // scalaJSUseMainModuleInitializer in Test := true,
@@ -205,7 +208,8 @@ lazy val modules = project
       "de.sciss"          %% "lucre-bdb"            % deps.lucre.lucre,
       "de.sciss"          %% "lucreswing"           % deps.views.lucreSwing,
       "de.sciss"          %% "soundprocesses-views" % deps.lucre.soundProcesses,
-      "com.github.scopt"  %% "scopt"                % deps.modules.scopt,
+      // "com.github.scopt"  %% "scopt"                % deps.modules.scopt,
+      "org.rogach"        %% "scallop"              % deps.modules.scallop
     ),
     mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-modules" % mimaVersion)
   )

@@ -20,6 +20,7 @@ import de.sciss.lucre.stm.store.BerkeleyDB
 import de.sciss.lucre.stm.{Folder, Sys}
 import de.sciss.synth.proc.Implicits._
 import de.sciss.synth.proc.{Markdown, SoundProcesses, Widget, Workspace}
+import org.rogach.scallop.{ScallopConf, ScallopOption => Opt}
 
 import scala.io.Source
 
@@ -27,16 +28,15 @@ object MakeWorkspace {
   final case class Config(modules: List[Module] = list, target: File = file("fscape.mllt"))
 
   def main(args: Array[String]): Unit = {
-    val default = Config()
-    val p = new scopt.OptionParser[Config]("fscape-modules") {
-      arg[File]("target")
-        .required()
-        .text ("Target .mllt Mellite workspace.")
-        .action { (f, c) => c.copy(target = f) }
+    object parse extends ScallopConf(args) {
+      printedName = "fscape-modules"
+      version(printedName)
+      val target: Opt[File] = trailArg(descr = "Target .mllt Mellite workspace.")
+      verify()
+      val config = Config(target = target())
     }
-    p.parse(args, default).fold(sys.exit(1)) { config =>
-      run(config)
-    }
+
+    run(parse.config)
   }
 
   val list: List[Module] =
