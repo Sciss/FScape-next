@@ -15,7 +15,7 @@ package de.sciss.fscape
 
 import de.sciss.fscape.graph.BinaryOp._
 import de.sciss.fscape.graph.UnaryOp._
-import de.sciss.fscape.graph.{BinaryOp, ChannelProxy, Clip, ComplexBinaryOp, ComplexUnaryOp, Concat, Constant, Drop, Elastic, FilterSeq, Fold, Metro, Poll, SetResetFF, Take, TakeRight, UnaryOp, UnzipWindow, Wrap, ZipWindow}
+import de.sciss.fscape.graph.{BinaryOp, ChannelProxy, Clip, ComplexBinaryOp, ComplexUnaryOp, Concat, Constant, Drop, Elastic, FilterSeq, Fold, Metro, Poll, ResizeWindow, SetResetFF, Take, TakeRight, UnaryOp, Wrap, ZipWindow}
 import de.sciss.optional.Optional
 
 /** `GEOps1` are operations for graph elements (`GE`). Instead of having these operations directly defined
@@ -325,14 +325,25 @@ final class GEComplexOps(val `this`: GE) extends AnyVal { me =>
   def * (b: GE): GE  = cBinOp(Times, b)
 
   // unary to real
-  def mag       : GE  = ChannelProxy(UnzipWindow(abs), 0)
-  def phase     : GE  = {
-    val unzip = UnzipWindow(g)
-    val re    = ChannelProxy(unzip, 0)
-    val im    = ChannelProxy(unzip, 1)
-    im atan2 re // XXX TODO --- correct?
+  def mag: GE = {
+    // ChannelProxy(UnzipWindow(abs), 0) // BROKEN
+    ResizeWindow(abs, size = 2, start = 0, stop = -1)
   }
 
-  def real      : GE  = ChannelProxy(UnzipWindow(g  ), 0)
-  def imag      : GE  = ChannelProxy(UnzipWindow(g  ), 1)
+  def phase: GE  = {
+    // val unzip = UnzipWindow(g) // BROKEN
+    val re    = real // ChannelProxy(unzip, 0) // BROKEN
+    val im    = imag // ChannelProxy(unzip, 1) // BROKEN
+    im atan2 re
+  }
+
+  def real: GE = {
+    // ChannelProxy(UnzipWindow(g  ), 0)  // BROKEN
+    ResizeWindow(g, size = 2, start = 0, stop = -1)
+  }
+
+  def imag: GE = {
+    // ChannelProxy(UnzipWindow(g  ), 1)  // BROKEN
+    ResizeWindow(g, size = 2, start = 1, stop = 0)
+  }
 }

@@ -7,6 +7,7 @@ import akka.stream.scaladsl.{GraphDSL, RunnableGraph, Source}
 import akka.stream.{ActorMaterializer, ActorMaterializerSettings, ClosedShape, Outlet, OverflowStrategy}
 import de.sciss.file._
 import de.sciss.fscape.gui.SimpleGUI
+import de.sciss.fscape.tests.CepCoef
 import de.sciss.synth.io.AudioFileSpec
 
 import scala.swing.Swing
