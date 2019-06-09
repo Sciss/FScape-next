@@ -5,7 +5,7 @@ lazy val baseName   = "FScape"
 lazy val baseNameL  = baseName.toLowerCase
 lazy val gitRepo    = "FScape-next"
 
-lazy val projectVersion = "2.26.1"
+lazy val projectVersion = "2.26.2-SNAPSHOT"
 lazy val mimaVersion    = "2.26.0"
 
 lazy val baseDescription = "An audio rendering library"
@@ -15,7 +15,7 @@ lazy val commonSettings = Seq(
   description        := baseDescription,
   version            := projectVersion,
   scalaVersion       := "2.12.8",
-  crossScalaVersions := Seq("2.12.8", "2.11.12", "2.13.0-RC2"),
+  crossScalaVersions := Seq("2.12.8", "2.11.12", "2.13.0"),
   licenses           := Seq("AGPL v3+" -> url("http://www.gnu.org/licenses/agpl-3.0.txt")),
   homepage           := Some(url(s"https://git.iem.at/sciss/$gitRepo")),
   scalacOptions in (Compile, compile) ++= Seq(
@@ -44,7 +44,7 @@ lazy val deps = new {
     val soundProcesses  = "3.29.0"
   }
   val views = new {
-    val lucreSwing      = "1.17.0"
+    val lucreSwing      = "1.17.2"
   }
   val modules = new {
     // val scopt           = "3.7.1"
@@ -52,7 +52,7 @@ lazy val deps = new {
   }
   val test = new {
     val kollFlitz       = "0.2.3"
-    val scalaTest       = "3.0.8-RC4"
+    val scalaTest       = "3.0.8-RC5"
     // def scopt: String   = modules.scopt
     val scallop: String = modules.scallop
     val submin          = "0.2.5"
@@ -63,11 +63,11 @@ def commonJavaOptions = Seq("-source", "1.6")
 
 lazy val testSettings = Seq(
   libraryDependencies += {
-    // if (scalaVersion.value == "2.13.0-RC2") {
-    //   "org.scalatest" % "scalatest_2.13.0-RC1" % deps.test.scalaTest % Test
-    // } else {
+    if (scalaVersion.value == "2.13.0") {
+      "org.scalatest" % "scalatest_2.13.0-RC3" % deps.test.scalaTest % Test
+    } else {
       "org.scalatest" %% "scalatest" % deps.test.scalaTest % Test
-    // }
+    }
   }
 )
 

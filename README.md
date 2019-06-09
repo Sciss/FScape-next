@@ -24,7 +24,7 @@ GNU General Public License v2+.
 
 ## building
 
-FScape 2 builds with sbt and Scala 2.12, 2.11. It requires Java 8.
+FScape 2 builds with sbt and Scala 2.13, 2.12, 2.11. It requires Java 8.
 
 ## linking
 
@@ -32,7 +32,7 @@ The following dependency is necessary:
 
     "de.sciss" %% "fscape" % v
 
-The current version `v` is `"2.26.1"`.
+The current version `v` is `"2.26.2"`.
 
 The following sub modules are available:
 

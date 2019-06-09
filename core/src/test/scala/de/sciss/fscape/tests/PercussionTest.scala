@@ -4,16 +4,18 @@ import de.sciss.file._
 import de.sciss.fscape.gui.SimpleGUI
 import de.sciss.fscape.{GE, Graph, graph, stream}
 import de.sciss.numbers
-import de.sciss.synth.io.AudioFileSpec
+import de.sciss.synth.io.{AudioFile, AudioFileSpec}
 
 import scala.swing.Swing
 
 object PercussionTest extends App {
-  val fIn   = userHome / "Documents" / "projects" / "Unlike" / "audio_work" / "mentasm-e8646341-63dcf8a8.aif"
-  val fOut  = userHome / "Music" / "work" / "_killme.aif"
+  val fIn   = file("/data") / "projects" / "Unlike_SpillOver" / "audio_work" / "mentasm-e8646341-63dcf8a8.aif"
+  val fOut  = file("/data") / "temp" / "_killme.aif"
 
   import graph._
   import numbers.Implicits._
+
+  val specIn = AudioFile.readSpec(fIn)
 
   lazy val g = Graph {
     // 'analysis'
@@ -40,7 +42,7 @@ object PercussionTest extends App {
     val outW        = Real1FullIFFT (in = fftOut, size = fftSize)
     val winIn       = GenWindow(size = fftSize, shape = GenWindow.Hann)
     val winOut      = outW * winIn
-    val lap         = OverlapAdd(in = winOut, size = fftSize, step = winStep)
+    val lap         = OverlapAdd(in = winOut, size = fftSize, step = winStep).take(specIn.numFrames)
 
     val sig = normalize(lap)
     AudioFileOut(file = fOut, spec = AudioFileSpec(numChannels = coefs.size, sampleRate = 44100), in = sig)
