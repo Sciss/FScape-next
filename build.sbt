@@ -5,7 +5,7 @@ lazy val baseName   = "FScape"
 lazy val baseNameL  = baseName.toLowerCase
 lazy val gitRepo    = "FScape-next"
 
-lazy val projectVersion = "2.26.2-SNAPSHOT"
+lazy val projectVersion = "2.26.2"
 lazy val mimaVersion    = "2.26.0"
 
 lazy val baseDescription = "An audio rendering library"
@@ -25,6 +25,7 @@ lazy val commonSettings = Seq(
   updateOptions      := updateOptions.value.withLatestSnapshots(false),
   javacOptions        := commonJavaOptions ++ Seq("-target", "1.6", "-g", "-Xlint:deprecation" /*, "-Xlint:unchecked" */),
   javacOptions in doc := commonJavaOptions,
+  parallelExecution in Test := false,
 ) ++ publishSettings
 
 lazy val deps = new {
@@ -40,19 +41,19 @@ lazy val deps = new {
   }
   val lucre = new {
     val fileCache       = "0.5.1"
-    val lucre           = "3.13.0"
-    val soundProcesses  = "3.29.0"
+    val lucre           = "3.13.1"
+    val soundProcesses  = "3.29.2"
   }
   val views = new {
     val lucreSwing      = "1.17.2"
   }
   val modules = new {
     // val scopt           = "3.7.1"
-    val scallop         = "3.3.0"
+    val scallop         = "3.3.1"
   }
   val test = new {
     val kollFlitz       = "0.2.3"
-    val scalaTest       = "3.0.8-RC5"
+    val scalaTest       = "3.0.8"
     // def scopt: String   = modules.scopt
     val scallop: String = modules.scallop
     val submin          = "0.2.5"
@@ -63,11 +64,11 @@ def commonJavaOptions = Seq("-source", "1.6")
 
 lazy val testSettings = Seq(
   libraryDependencies += {
-    if (scalaVersion.value == "2.13.0") {
-      "org.scalatest" % "scalatest_2.13.0-RC3" % deps.test.scalaTest % Test
-    } else {
+    // if (scalaVersion.value == "2.13.0") {
+    //   "org.scalatest" % "scalatest_2.13.0-RC3" % deps.test.scalaTest % Test
+    // } else {
       "org.scalatest" %% "scalatest" % deps.test.scalaTest % Test
-    }
+    // }
   }
 )
 
