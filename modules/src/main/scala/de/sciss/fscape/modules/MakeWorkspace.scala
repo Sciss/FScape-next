@@ -47,7 +47,8 @@ object MakeWorkspace {
       ModFourierTranslation,
       ModMakeLoop,
       ModSignalGenerator,
-      ModFreqShift
+      ModFreqShift,
+      ModSincFilter
     ).sortBy(_.name)
 
   def help[S <: Sys[S]](m: Module)(implicit tx: S#Tx): Option[Markdown[S]] = {
