@@ -49,32 +49,23 @@ object Convolution {
   private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape) with OutHandler { logic =>
 
-    private[this] var stage           = 0 // 0 -- needs kernel len, 1 -- needs kernel
-    private[this] var kernelReady     = false
+    private[this] var stage           = 0 // 0 -- needs kernel len, 1 -- needs in and/or kernel
+
+    private[this] var inReady         = false
     private[this] var kernelLenReady  = false
+
     private[this] var kernelLen       = 0
     private[this] var fftLen          = 0
     private[this] var maxInLen        = 0
 
     private[this] var inBuf     : Array[Double] = _
-    private[this] var kernelBuf : Array[Double] = _
-    private[this] var kernelOff       = 0
-    private[this] var kernelRem       = 0
+    private[this] var inOff           = 0
+    private[this] var inRem           = 0
 
     def onPull(): Unit = ???
 
     private object InH extends InHandler {
       private[this] val in = shape.in0
-
-      def onPush(): Unit = ???
-
-      override def onUpstreamFinish(): Unit = ???
-
-      setHandler(in, this)
-    }
-
-    private object KernelH extends InHandler {
-      private[this] val in = shape.in1
 
       var buf: BufD = _
       var bufOff  = 0
@@ -85,22 +76,82 @@ object Convolution {
           buf     = grab(in)
           bufOff  = 0
           bufRem  = buf.size
-          notifyKernelReady()
+          notifyInReady()
           tryPull(in)
         }
       }
 
+      def ping(): Unit =
+        if (isAvailable(in)) onPush()
+
       def process(): Boolean = {
-        val len = math.min(bufRem, kernelRem)
-        Util.copy(buf.buf, bufOff, kernelBuf, kernelOff, len)
-        bufRem    -= len
-        kernelOff += len
-        kernelRem -= len
+        val len = math.min(bufRem, inRem)
+        Util.copy(buf.buf, bufOff, inBuf, inOff, len)
+        bufRem  -= len
+        inOff   += len
+        inRem   -= len
         if (bufRem == 0) {
           buf.release()
           buf = null
         }
-        kernelRem == 0
+        inRem == 0
+      }
+
+      override def onUpstreamFinish(): Unit = ???
+
+      setHandler(in, this)
+    }
+
+    private object KernelH extends InHandler {
+      private[this] val in = shape.in1
+
+      private[this] var arr: Array[Double] = _
+      private[this] var arrOff    = 0
+      private[this] var arrRem    = 0
+
+      private[this] var buf: BufD = _
+      private[this] var bufOff  = 0
+      private[this] var bufRem  = 0
+
+      private[this] var _shouldFill = false
+
+      def shouldFill(): Unit = if (!_shouldFill) {
+        _shouldFill = true
+        if (arr == null || fftLen != arr.length) {
+          arr = new Array[Double](fftLen)
+        }
+        arrOff  = 0
+        arrRem  = kernelLen
+
+        if (isAvailable(in)) onPush()
+      }
+
+      def onPush(): Unit = {
+        if (buf == null) {
+          buf     = grab(in)
+          bufOff  = 0
+          bufRem  = buf.size
+          if (_shouldFill) {
+            processFill()
+            if (arrRem == 0) {
+              _shouldFill = false
+              notifyKernelFilled()
+            }
+          }
+          tryPull(in)
+        }
+      }
+
+      private def processFill(): Unit = {
+        val len = math.min(bufRem, arrRem)
+        Util.copy(buf.buf, bufOff, arr, arrOff, len)
+        bufRem  -= len
+        arrOff  += len
+        arrRem  -= len
+        if (bufRem == 0) {
+          buf.release()
+          buf = null
+        }
       }
 
       override def onUpstreamFinish(): Unit = ???
@@ -131,13 +182,14 @@ object Convolution {
       }
     }
 
-    private def notifyKernelReady(): Unit = {
-      assert (!kernelReady)
-      if (stage == 1) {
-        processKernel()
-      } else {
-        kernelReady = true
-      }
+    private def notifyKernelFilled(): Unit = {
+      ???
+//      assert (!kernelReady)
+//      if (stage == 1) {
+//        processKernel()
+//      } else {
+//        kernelReady = true
+//      }
     }
 
     private def processKernelLen(): Unit = {
@@ -152,24 +204,35 @@ object Convolution {
         val r0      = if (inLen0 <= _kernelLen) _kernelLen.toDouble / inLen0 else inLen0.toDouble / _kernelLen
         val r1      = inLen1.toDouble / _kernelLen
         val oldFFTLen = fftLen
-        val _fftLen  = if (r0 < r1) fftLen0 else fftLen1
+        val _fftLen  = if (r0 < r1) fftLen0 else fftLen1  // choose the more balanced ratio of input and kernel len
         fftLen      = _fftLen
         maxInLen    = _fftLen - _kernelLen + 1
         if (_fftLen != oldFFTLen) {
           inBuf     = new Array[Double](_fftLen)
-          kernelBuf = new Array[Double](_fftLen)
         }
       }
       stage = 1
-      kernelRem = _kernelLen
-      if (kernelReady) {
-        processKernel()
+      KernelH.shouldFill()
+    }
+
+    private def notifyInReady(): Unit = {
+      assert (!inReady)
+      if (stage == 1) {
+        processIn()
+      } else {
+        inReady = true
       }
     }
 
-    private def processKernel(): Unit = {
-      val done = KernelH.process()
-      ???
+    private def processIn(): Unit = {
+      val done = InH.process()
+      if (done) {
+        stage = 2
+
+
+      } else {
+        InH.ping()
+      }
     }
   }
 }
