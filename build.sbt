@@ -5,7 +5,7 @@ lazy val baseName   = "FScape"
 lazy val baseNameL  = baseName.toLowerCase
 lazy val gitRepo    = "FScape-next"
 
-lazy val projectVersion = "2.26.2"
+lazy val projectVersion = "2.26.3-SNAPSHOT"
 lazy val mimaVersion    = "2.26.0"
 
 lazy val baseDescription = "An audio rendering library"
@@ -64,11 +64,7 @@ def commonJavaOptions = Seq("-source", "1.6")
 
 lazy val testSettings = Seq(
   libraryDependencies += {
-    // if (scalaVersion.value == "2.13.0") {
-    //   "org.scalatest" % "scalatest_2.13.0-RC3" % deps.test.scalaTest % Test
-    // } else {
-      "org.scalatest" %% "scalatest" % deps.test.scalaTest % Test
-    // }
+    "org.scalatest" %% "scalatest" % deps.test.scalaTest % Test
   }
 )
 

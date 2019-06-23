@@ -14,13 +14,13 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.stage.{InHandler, OutHandler}
+import akka.stream.stage.OutHandler
 import akka.stream.{Attributes, FanInShape14, Inlet}
 import de.sciss.fscape.graph.BinaryOp.Op
 import de.sciss.fscape.graph.PenImage._
 import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
-import de.sciss.numbers
 import de.sciss.fscape.{logStream => log}
+import de.sciss.numbers
 import de.sciss.numbers.IntFunctions
 
 import scala.annotation.switch
@@ -167,116 +167,6 @@ object PenImage {
         bufOut.release()
         bufOut = null
       }
-
-    private abstract class InHandlerImpl[A, E <: BufElem[A]](in: Inlet[E])
-      extends InHandler {
-
-      private[this] var hasValue      = false
-      private[this] var everHadValue  = false
-
-      private[this] var _buf    : E   = _
-      private[this] var _offset : Int = 0
-      final var mostRecent      : A   = _
-
-      // ---- abstract ----
-
-      protected def notifyValue(): Unit
-
-      // ---- impl ---
-
-      final def offset: Int = _offset
-
-      final def bufRemain: Int = if (_buf == null) 0 else _buf.size - _offset
-
-      final def buf: E = _buf
-
-      override final def toString: String = in.toString //  s"$logic.$in"
-
-      final def updateOffset(n: Int): Unit =
-        if (_buf != null) {
-          _offset = n
-          assert (_offset <= _buf.size)
-          if (bufRemain == 0) freeBuffer()
-        }
-
-      final def hasNext: Boolean =
-        (_buf != null) || !isClosed(in) || isAvailable(in)
-
-      final def freeBuffer(): Unit =
-        if (_buf != null) {
-          mostRecent = _buf.buf(_buf.size - 1)
-          _buf.release()
-          _buf = null.asInstanceOf[E]
-        }
-
-      final def next(): Unit = {
-        hasValue = false
-        if (bufRemain > 0) {
-          ackValue()
-        } else {
-          freeBuffer()
-          if (isAvailable(in)) onPush()
-        }
-      }
-
-      final def takeValue(): A =
-        if (_buf == null) {
-          mostRecent
-        } else {
-          val i = _buf.buf(_offset)
-          _offset += 1
-          if (_offset == _buf.size) {
-            freeBuffer()
-          }
-          i
-        }
-
-      final def peekValue(): A =
-        if (_buf == null) {
-          mostRecent
-        } else {
-          _buf.buf(_offset)
-        }
-
-      final def skipValue(): Unit =
-        if (_buf != null) {
-          _offset += 1
-          if (_offset == _buf.size) {
-            freeBuffer()
-          }
-        }
-
-      final def onPush(): Unit = {
-        log(s"onPush() $this - $hasValue")
-        if (!hasValue) {
-          assert(_buf == null)
-          _buf = grab(in)
-          assert(_buf.size > 0)
-          _offset = 0
-          ackValue()
-          tryPull(in)
-        }
-      }
-
-      private def ackValue(): Unit = {
-        hasValue      = true
-        everHadValue  = true
-        notifyValue()
-      }
-
-      final override def onUpstreamFinish(): Unit = {
-        log(s"onUpstreamFinish() $this - $hasValue $everHadValue")
-        if (!isAvailable(in)) {
-          if (everHadValue) {
-            if (!hasValue) ackValue()
-          } else {
-            super.onUpstreamFinish()
-          }
-        }
-      }
-
-      setHandler(in, this)
-    }
 
     private final class AuxInHandler[A, E <: BufElem[A]](in: Inlet[E]) extends InHandlerImpl[A, E](in) {
       protected def notifyValue(): Unit = {

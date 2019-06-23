@@ -32,7 +32,7 @@ The following dependency is necessary:
 
     "de.sciss" %% "fscape" % v
 
-The current version `v` is `"2.26.2"`.
+The current version `v` is `"2.26.3"`.
 
 The following sub modules are available:
 
@@ -164,11 +164,7 @@ the [API Documentation](http://sciss.de/mellite/latest/api/de/sciss/fscape/).
   by Patterns and may provide a powerful application in FScape, too. Thirdly, we may want to create a bridging
   mechanism between the two, so that one can use patterns for low throughput symbols, take advantage of the powerful
   collections-style operations in Patterns, while using FScape for the actual DSP signals.
-- to replace FScape v1, we would probably add an abstraction to Mellite that allows one to write "widget programs"
-  which can thus represent the module GUIs of FScape v1.
-- the "hot" inlet style can lead **to very confusing behaviour** (see issue #7) of the seemingly
-  symmetric `BinaryOp`; notably
-  `a + b` may not behave the same as `b + a`, because in the first case the output stream ends when `a` ends, and in the
-  second case the output stream ends when `b` ends. So `1 + SinOsc(...)` creates a stream with the length of
-  one sample frame, while `SinOsc(...) + 1` creates an infinite stream. This will be addressed in 
-  an upcoming version.
+- usually, for filtering UGens, the first argument or "left inlet" is "hot", meaning that the UGen will
+  run for as long as this input provides samples, whereas other arguments / inputs may terminate earlier,
+  and usually their last value is kept internally. Some UGens have multiple hot inlets, such as
+  `BinaryOp`, so that `a + b` behaves exactly as `b + a`.
