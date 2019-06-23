@@ -20,6 +20,8 @@ import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 import de.sciss.numbers.Implicits._
 import edu.emory.mathcs.jtransforms.fft.DoubleFFT_1D
 
+import scala.annotation.tailrec
+
 object Convolution {
   def apply(in: OutD, kernel: OutD, kernelLen: OutI, kernelUpdate: OutI)(implicit b: Builder): OutD = {
     val stage0  = new Stage(b.layer)
@@ -50,7 +52,7 @@ object Convolution {
   private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape) with OutHandler { logic =>
 
-    private[this] var stage           = 0 // 0 -- needs kernel len, 1 -- needs in and/or kernel
+    private[this] var stage           = 0 // 0 -- needs kernel len, 1 -- needs in and/or kernel, 2 -- overlap-add and write
 
     private[this] var kernelLenReady  = false
 
@@ -61,9 +63,24 @@ object Convolution {
     private[this] var fftCost         = 0   // = (fftLen * log2(fftLen)) * 3 + fftLen ; 2x FFT forward, 1 x multiplication, 1x backward
     private[this] var maxInLen        = 0
 
+    private[this] var lapReadRem      = 0
+    private[this] var lapWriteInOff   = 0
+    private[this] var lapWriteOutOff  = 0
+    private[this] var lapWriteRem     = 0
+    private[this] var lapReadOff      = 0
+
+    private[this] var lapBuf: Array[Double] = _
+
+    private[this] var outBuf: BufD = _
+    private[this] var outOff = 0
+    private[this] var outRem = 0
+
     private[this] var fft: DoubleFFT_1D = _
 
-    def onPull(): Unit = ???
+    def onPull(): Unit =
+      if (stage == 2) {
+        processOverlapAdd()
+      }
 
     private object InH extends InHandler {
       private[this] val in = shape.in0
@@ -250,11 +267,32 @@ object Convolution {
     setHandler(shape.out, this)
 
     override protected def stopped(): Unit = {
-      fft = null
+      fft     = null
+      lapBuf  = null
+      if (outBuf != null) {
+        outBuf.release()
+        outBuf = null
+      }
       InH           .freeBuffer()
       KernelH       .freeBuffer()
       KernelLenH    .freeBuffer()
       KernelUpdateH .freeBuffer()
+    }
+
+    private def writeDone(): Unit = {
+      if (updateKernel) {
+        stage = 0
+        if (kernelLenReady) {
+          kernelLenReady = false
+          processKernelLen()
+        } else {
+          KernelLenH.next()
+        }
+
+      } else {
+        stage = 1
+        InH.shouldFill()
+      }
     }
 
     private def notifyKernelLenReady(): Unit = {
@@ -293,7 +331,7 @@ object Convolution {
         }
       }
       stage         = 1
-      updateKernel  = false // will again be set to `true` by `InH`
+      updateKernel  = false // may again be set to `true` by `InH`
       kernelDidFFT  = false
       KernelH .shouldFill()
       InH     .shouldFill()
@@ -306,7 +344,6 @@ object Convolution {
       if (KernelH.isFilled) processConvolution()
 
     private def processConvolution(): Unit = {
-      stage = 2
       val _inLen      = InH.length
       val _kernelLen  = kernelLen
       val _inArr      = InH     .array
@@ -316,11 +353,11 @@ object Convolution {
         var i = 0
         while (i < _inLen) {
           var sum = 0.0
-          val iv = _inArr(i)
-          var j = 0
+          val iv  = _inArr(i)
+          var j   = 0
           while (j < _kernelLen) {
             sum += iv * _kernelArr(j)
-            j += 1
+            j   += 1
           }
           _inArr(i) = sum
           i += 1
@@ -338,11 +375,11 @@ object Convolution {
         fft.realForward(_inArr)
         var idxRe = 0
         while (idxRe < _fftLen) {
-          val aRe = _inArr    (idxRe)
-          val bRe = _kernelArr(idxRe)
-          val idxIm = idxRe + 1
-          val aIm = _inArr    (idxIm)
-          val bIm = _kernelArr(idxIm)
+          val aRe       = _inArr    (idxRe)
+          val bRe       = _kernelArr(idxRe)
+          val idxIm     = idxRe + 1
+          val aIm       = _inArr    (idxIm)
+          val bIm       = _kernelArr(idxIm)
           _inArr(idxRe) = aRe * bRe - aIm * bIm
           _inArr(idxIm) = aRe * bIm + aIm * bRe
           idxRe += 2
@@ -350,7 +387,92 @@ object Convolution {
         fft.realInverse(_inArr, /* scale = */ true)
       }
 
-      ???
+      stage         = 2
+      lapWriteInOff = 0
+      lapWriteRem   = _inLen + _kernelLen - 1
+      processOverlapAdd()
+    }
+
+    @tailrec
+    private def processOverlapAdd(): Unit = {
+      var stateChanged = false
+
+      /*
+
+          - the convolution tail has length `kernelLen - 1`.
+          - the amount we can advance output is `inLen`.
+
+       */
+
+      if (lapReadRem == 0) {
+        if (lapBuf == null || lapBuf.length < fftLen) {  // grow overlap buffer
+          val oldLapBuf   = lapBuf
+          lapBuf          = new Array[Double](fftLen)
+          val chunkGrow1  = oldLapBuf.length - lapReadOff
+          Util.copy(oldLapBuf, lapReadOff, lapBuf, 0, chunkGrow1)
+          if (lapReadOff > 0) {
+            Util.copy(oldLapBuf, 0, lapBuf, chunkGrow1, lapReadOff)
+            lapReadOff      = 0
+            lapWriteOutOff  = 0
+          }
+        }
+
+        val chunkWrite1 = math.min(lapBuf.length - lapWriteOutOff, lapWriteRem)
+        Util.add(InH.array, lapWriteInOff, lapBuf, lapWriteOutOff, chunkWrite1)
+        lapWriteOutOff = (lapWriteOutOff + chunkWrite1) % lapBuf.length
+        lapWriteInOff += chunkWrite1
+        lapWriteRem   -= chunkWrite1
+        val chunkWrite2 = lapWriteRem - chunkWrite1
+        if (chunkWrite2 > 0) {
+          Util.add(InH.array, lapWriteInOff, lapBuf, lapWriteOutOff, chunkWrite2)
+          lapWriteOutOff = (lapWriteOutOff + chunkWrite2) % lapBuf.length
+          lapWriteInOff += chunkWrite2
+          lapWriteRem   -= chunkWrite2
+        }
+
+        lapReadRem    = InH.length
+        stateChanged  = true
+      }
+
+      if (outBuf == null) {
+        outBuf        = ctrl.borrowBufD()
+        outOff        = 0
+        outRem        = outBuf.size
+        stateChanged  = true
+      }
+
+      val chunkRead1 = math.min(lapReadRem, outRem)
+      if (chunkRead1 > 0) {
+        val chunkRead2 = math.min(lapBuf.length - lapReadOff, chunkRead1)
+        Util.add(lapBuf, lapReadOff, outBuf.buf, outOff, chunkRead2)
+        lapReadOff  = (lapReadOff + chunkRead2) % lapBuf.length
+        outOff     += chunkRead2
+        outRem     -= chunkRead2
+        lapReadRem -= chunkRead2
+        val chunkRead3 = chunkRead1 - chunkRead2
+        if (chunkRead3 > 0) {
+          Util.add(lapBuf, lapReadOff, outBuf.buf, outOff, chunkRead3)
+          lapReadOff  = (lapReadOff + chunkRead3) % lapBuf.length
+          outOff     += chunkRead3
+          outRem     -= chunkRead3
+          lapReadRem -= chunkRead3
+        }
+
+        stateChanged = true
+      }
+
+      if (outRem == 0 && isAvailable(shape.out)) {
+        outBuf.size   = outOff
+        push(shape.out, outBuf)
+        outBuf        = null
+        stateChanged  = true
+      }
+
+      if (lapReadRem == 0 && lapWriteRem == 0) {
+        writeDone()
+      } else {
+        if (stateChanged) processOverlapAdd()
+      }
     }
   }
 }
