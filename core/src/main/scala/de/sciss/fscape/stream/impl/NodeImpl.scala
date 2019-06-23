@@ -91,6 +91,13 @@ abstract class NodeImpl[+S <: Shape](protected final val name: String, val layer
 
     final def buf: E = _buf
 
+    final def available(max: Int): Int =
+      if (_buf == null) {
+        if (everHadValue) max else 0
+      } else {
+        math.min(max, _buf.size - _offset)
+      }
+
     override final def toString: String = in.toString //  s"$logic.$in"
 
     final def updateOffset(n: Int): Unit =

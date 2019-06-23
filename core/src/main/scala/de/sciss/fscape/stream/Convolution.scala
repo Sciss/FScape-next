@@ -18,6 +18,7 @@ import akka.stream.{Attributes, FanInShape4}
 import de.sciss.fscape.Util
 import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 import de.sciss.numbers.Implicits._
+import edu.emory.mathcs.jtransforms.fft.DoubleFFT_1D
 
 object Convolution {
   def apply(in: OutD, kernel: OutD, kernelLen: OutI, kernelUpdate: OutI)(implicit b: Builder): OutD = {
@@ -51,50 +52,111 @@ object Convolution {
 
     private[this] var stage           = 0 // 0 -- needs kernel len, 1 -- needs in and/or kernel
 
-    private[this] var inReady         = false
     private[this] var kernelLenReady  = false
 
+    private[this] var updateKernel    = true
+    private[this] var kernelDidFFT    = false
     private[this] var kernelLen       = 0
     private[this] var fftLen          = 0
+    private[this] var fftCost         = 0   // = (fftLen * log2(fftLen)) * 3 + fftLen ; 2x FFT forward, 1 x multiplication, 1x backward
     private[this] var maxInLen        = 0
 
-    private[this] var inBuf     : Array[Double] = _
-    private[this] var inOff           = 0
-    private[this] var inRem           = 0
+    private[this] var fft: DoubleFFT_1D = _
 
     def onPull(): Unit = ???
 
     private object InH extends InHandler {
       private[this] val in = shape.in0
 
-      var buf: BufD = _
-      var bufOff  = 0
-      var bufRem  = 0
+      private[this] var arr     : Array[Double] = _
+      private[this] var arrOff           = 0
+      private[this] var arrRem           = 0
+
+      private[this] var buf: BufD = _
+      private[this] var bufOff  = 0
+      private[this] var bufRem  = 0
+
+      private[this] var _shouldFill   = false
+
+      def isFilled: Boolean = !_shouldFill
+
+      def length: Int           = arrOff
+      def array : Array[Double] = arr
+
+      def freeBuffer(): Unit = {
+        if (buf != null) {
+          buf.release()
+          buf = null
+        }
+        arr = null
+      }
+
+      def shouldFill(): Unit = if (!_shouldFill) {
+        _shouldFill = true
+        if (arr == null || fftLen != arr.length) {
+          arr = new Array[Double](fftLen)
+        }
+        arrOff  = 0
+        arrRem  = maxInLen
+
+        if (isAvailable(in)) onPush()
+      }
 
       def onPush(): Unit = {
         if (buf == null) {
           buf     = grab(in)
           bufOff  = 0
           bufRem  = buf.size
-          notifyInReady()
+          if (_shouldFill) {
+            processFill()
+            if (arrRem == 0) {
+              _shouldFill = false
+              Util.clear(arr, arrOff, arr.length - arrOff)
+              notifyInFilled()
+            }
+          }
           tryPull(in)
         }
       }
 
-      def ping(): Unit =
-        if (isAvailable(in)) onPush()
+      private def processFill(): Unit = {
+        val len0  = math.min(bufRem, arrRem)
+        val ku    = KernelUpdateH
+        val len1  = ku.available(len0)
+        if (len1 > 0) {
+          var len       = 0
+          var _update   = false
+          var isFirst   = arrOff == 0
+          while ({
+            len < len1 && {
+              _update = if (isFirst) {
+                isFirst = false
+                false
+              } else {
+                ku.takeValue() != 0
+              }
+              !_update
+            }
+          }) {
+            len += 1
+          }
 
-      def process(): Boolean = {
-        val len = math.min(bufRem, inRem)
-        Util.copy(buf.buf, bufOff, inBuf, inOff, len)
-        bufRem  -= len
-        inOff   += len
-        inRem   -= len
-        if (bufRem == 0) {
-          buf.release()
-          buf = null
+          if (len > 0) {
+            Util.copy(buf.buf, bufOff, arr, arrOff, len)
+            bufRem  -= len
+            arrOff  += len
+            arrRem  -= len
+            if (bufRem == 0) {
+              buf.release()
+              buf = null
+            }
+          }
+
+          if (_update) {
+            updateKernel  = true
+            arrRem        = 0
+          }
         }
-        inRem == 0
       }
 
       override def onUpstreamFinish(): Unit = ???
@@ -114,6 +176,19 @@ object Convolution {
       private[this] var bufRem  = 0
 
       private[this] var _shouldFill = false
+
+      def isFilled: Boolean = !_shouldFill
+
+      def length: Int           = arrOff
+      def array : Array[Double] = arr
+
+      def freeBuffer(): Unit = {
+        if (buf != null) {
+          buf.release()
+          buf = null
+        }
+        arr = null
+      }
 
       def shouldFill(): Unit = if (!_shouldFill) {
         _shouldFill = true
@@ -135,6 +210,7 @@ object Convolution {
             processFill()
             if (arrRem == 0) {
               _shouldFill = false
+              Util.clear(arr, arrOff, arr.length - arrOff)
               notifyKernelFilled()
             }
           }
@@ -173,6 +249,14 @@ object Convolution {
     KernelUpdateH
     setHandler(shape.out, this)
 
+    override protected def stopped(): Unit = {
+      fft = null
+      InH           .freeBuffer()
+      KernelH       .freeBuffer()
+      KernelLenH    .freeBuffer()
+      KernelUpdateH .freeBuffer()
+    }
+
     private def notifyKernelLenReady(): Unit = {
       assert (!kernelLenReady)
       if (stage == 0) {
@@ -180,16 +264,6 @@ object Convolution {
       } else {
         kernelLenReady = true
       }
-    }
-
-    private def notifyKernelFilled(): Unit = {
-      ???
-//      assert (!kernelReady)
-//      if (stage == 1) {
-//        processKernel()
-//      } else {
-//        kernelReady = true
-//      }
     }
 
     private def processKernelLen(): Unit = {
@@ -203,36 +277,80 @@ object Convolution {
         val inLen1  = inLen0 + fftLen0
         val r0      = if (inLen0 <= _kernelLen) _kernelLen.toDouble / inLen0 else inLen0.toDouble / _kernelLen
         val r1      = inLen1.toDouble / _kernelLen
-        val oldFFTLen = fftLen
         val _fftLen  = if (r0 < r1) fftLen0 else fftLen1  // choose the more balanced ratio of input and kernel len
+        val oldFFTLen = fftLen
         fftLen      = _fftLen
         maxInLen    = _fftLen - _kernelLen + 1
         if (_fftLen != oldFFTLen) {
-          inBuf     = new Array[Double](_fftLen)
+          fft = null
+          var _fftLog = 1
+          var _fftLen1 = _fftLen
+          while (_fftLen1 > 2) {
+            _fftLog += 1
+            _fftLen1 >>>= 1
+          }
+          fftCost = (_fftLen * _fftLog) * 3 + _fftLen
         }
       }
-      stage = 1
-      KernelH.shouldFill()
+      stage         = 1
+      updateKernel  = false // will again be set to `true` by `InH`
+      kernelDidFFT  = false
+      KernelH .shouldFill()
+      InH     .shouldFill()
     }
 
-    private def notifyInReady(): Unit = {
-      assert (!inReady)
-      if (stage == 1) {
-        processIn()
-      } else {
-        inReady = true
+    private def notifyKernelFilled(): Unit =
+      if (InH.isFilled) processConvolution()
+
+    private def notifyInFilled(): Unit =
+      if (KernelH.isFilled) processConvolution()
+
+    private def processConvolution(): Unit = {
+      stage = 2
+      val _inLen      = InH.length
+      val _kernelLen  = kernelLen
+      val _inArr      = InH     .array
+      val _kernelArr  = KernelH .array
+
+      if (!kernelDidFFT && /* timeCost */ _inLen * _kernelLen <= fftCost) {  // perform convolution in time domain
+        var i = 0
+        while (i < _inLen) {
+          var sum = 0.0
+          val iv = _inArr(i)
+          var j = 0
+          while (j < _kernelLen) {
+            sum += iv * _kernelArr(j)
+            j += 1
+          }
+          _inArr(i) = sum
+          i += 1
+        }
+
+      } else {  // perform convolution in frequency domain
+        val _fftLen = fftLen
+        if (fft == null) {
+          fft = new DoubleFFT_1D(_fftLen)
+        }
+        if (!kernelDidFFT) {
+          fft.realForward(_kernelArr)
+          kernelDidFFT = true
+        }
+        fft.realForward(_inArr)
+        var idxRe = 0
+        while (idxRe < _fftLen) {
+          val aRe = _inArr    (idxRe)
+          val bRe = _kernelArr(idxRe)
+          val idxIm = idxRe + 1
+          val aIm = _inArr    (idxIm)
+          val bIm = _kernelArr(idxIm)
+          _inArr(idxRe) = aRe * bRe - aIm * bIm
+          _inArr(idxIm) = aRe * bIm + aIm * bRe
+          idxRe += 2
+        }
+        fft.realInverse(_inArr, /* scale = */ true)
       }
-    }
 
-    private def processIn(): Unit = {
-      val done = InH.process()
-      if (done) {
-        stage = 2
-
-
-      } else {
-        InH.ping()
-      }
+      ???
     }
   }
 }
