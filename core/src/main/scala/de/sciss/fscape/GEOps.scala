@@ -15,7 +15,7 @@ package de.sciss.fscape
 
 import de.sciss.fscape.graph.BinaryOp._
 import de.sciss.fscape.graph.UnaryOp._
-import de.sciss.fscape.graph.{BinaryOp, ChannelProxy, Clip, ComplexBinaryOp, ComplexUnaryOp, Concat, Constant, Drop, Elastic, FilterSeq, Fold, Metro, Poll, ResizeWindow, SetResetFF, Take, TakeRight, UnaryOp, Wrap, ZipWindow}
+import de.sciss.fscape.graph.{BinaryOp, ChannelProxy, Clip, ComplexBinaryOp, ComplexUnaryOp, Concat, Constant, Drop, Elastic, FilterSeq, Fold, MatchLen, Metro, Poll, ResizeWindow, SetResetFF, Take, TakeRight, UnaryOp, Wrap, ZipWindow}
 import de.sciss.optional.Optional
 
 /** `GEOps1` are operations for graph elements (`GE`). Instead of having these operations directly defined
@@ -260,7 +260,7 @@ final class GEOps2(val `this`: GE) extends AnyVal { me =>
     * match the length of `b`. This uses
     * the `SecondArg` operator with operands reversed.
     */
-  def matchLen(b: GE): GE = SecondArg.make(b, g)
+  def matchLen(b: GE): GE = MatchLen(g, b)
 
   // def rrand(b: GE): GE    = ...
   // def exprrand(b: GE): GE = ...

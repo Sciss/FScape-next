@@ -57,7 +57,7 @@ final case class PitchAC(in: GE, sampleRate: GE,
     def mkWindow()      = GenWindow(winSize, shape = GenWindow.Hann)
 
     val inLeak          = NormalizeWindow(inSlid, winSize, mode = NormalizeWindow.ZeroMean)
-    val inW             = inLeak * mkWindow()
+    val inW             = (inLeak * mkWindow()).matchLen(inLeak)
     val peaks0          = WindowApply(RunningMax(inLeak.abs, Metro(winSize)), winSize, winSize - 1)
 
     def mkAR(sig: GE): GE = {
@@ -70,7 +70,7 @@ final case class PitchAC(in: GE, sampleRate: GE,
 
     val r_a = mkAR(inW)
     val r_w = mkAR(mkWindow())
-    val r_x = r_a / r_w
+    val r_x = (r_a / r_w).matchLen(r_a)
 
     val paths = StrongestLocalMaxima(r_x, size = fftSizeH, minLag = minLag, maxLag = maxLag,
       thresh = voicingThresh * 0.5, octaveCost = octaveCost, num = numCandidatesM)

@@ -61,6 +61,9 @@ object StreamIn {
 
     def fill(a: Array[Double], off: Int, len: Int, elem: Double): Unit =
       util.Arrays.fill(a, off, len, elem)
+
+    def clear(a: Array[Double], off: Int, len: Int): Unit =
+      util.Arrays.fill(a, off, len, 0.0)
   }
 
   trait DoubleLike extends StreamIn {
@@ -140,6 +143,9 @@ object StreamIn {
 
     def fill(a: Array[Int], off: Int, len: Int, elem: Int): Unit =
       util.Arrays.fill(a, off, len, elem)
+
+    def clear(a: Array[Int], off: Int, len: Int): Unit =
+      util.Arrays.fill(a, off, len, 0)
   }
 
   trait IntLike extends StreamIn {
@@ -219,6 +225,9 @@ object StreamIn {
 
     def fill(a: Array[Long], off: Int, len: Int, elem: Long): Unit =
       util.Arrays.fill(a, off, len, elem)
+
+    def clear(a: Array[Long], off: Int, len: Int): Unit =
+      util.Arrays.fill(a, off, len, 0L)
   }
 
   trait LongLike extends StreamIn {
@@ -371,6 +380,8 @@ trait StreamType[A, Buf <: BufElem[A]] {
   def allocBuf()(implicit ctrl: Control): Buf
 
   def fill(a: Array[A], off: Int, len: Int, elem: A): Unit
+
+  def clear(a: Array[A], off: Int, len: Int): Unit
 
   def newArray(size: Int): Array[A]
 }
