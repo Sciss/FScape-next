@@ -23,6 +23,9 @@ import edu.emory.mathcs.jtransforms.fft.DoubleFFT_1D
 import scala.annotation.tailrec
 
 object Convolution {
+  var DEBUG_FORCE_FFT   = false
+  var DEBUG_FORCE_TIME  = false
+
   def apply(in: OutD, kernel: OutD, kernelLen: OutI, kernelUpdate: OutI)(implicit b: Builder): OutD = {
     val stage0  = new Stage(b.layer)
     val stage   = b.add(stage0)
@@ -56,6 +59,9 @@ object Convolution {
 
     private[this] var kernelLenReady  = false
 
+    // this is set and reset by `InH` during `processFill`.
+    // It may be checked between two calls to `InH.processFill`,
+    // e.g. in `writeDone`.
     private[this] var updateKernel    = true
     private[this] var kernelDidFFT    = false
     private[this] var kernelLen       = 0
@@ -161,9 +167,14 @@ object Convolution {
         val ku    = KernelUpdateH
         val len1  = ku.available(len0)
         if (len1 > 0) {
+          // `takeValue` does not clear that flag,
+          // and we need to ensure that `kernelUpdateReady`
+          // is called when `KernelUpdateH` is closed.
+          ku.clearHasValue()
           var len       = 0
           var _update   = false
-          var isFirst   = arrOff == 0
+          var isFirst   = updateKernel
+          if (isFirst) updateKernel = false // clear it here
           while ({
             len < len1 && {
               _update = if (isFirst) {
@@ -180,6 +191,7 @@ object Convolution {
 
           if (len > 0) {
             Util.copy(buf.buf, bufOff, arr, arrOff, len)
+            bufOff  += len
             bufRem  -= len
             arrOff  += len
             arrRem  -= len
@@ -193,18 +205,25 @@ object Convolution {
             updateKernel  = true
             arrRem        = 0
           }
+
+        } else {
+          // make sure `kernelUpdateReady` is called eventually
+          if (ku.hasNext) {
+            ku.next()
+          }
         }
 
         processDone()
       }
 
       private def processDone(): Unit = {
-        if (arrRem == 0 || (isClosed(in) && !isAvailable(in))) {
+        val ended = bufRem == 0 && isClosed(in) && !isAvailable(in)
+        if (arrRem == 0 || ended) {
           _shouldFill = false
           arrRem      = 0
           Util.clear(arr, arrOff, arr.length - arrOff)
           isFilled = true
-          if (arrOff == 0) {
+          if (arrOff == 0 && ended) {
             outFlush = true
           }
           notifyInFilled()
@@ -285,6 +304,7 @@ object Convolution {
       private def processFill(): Unit = {
         val len = math.min(bufRem, arrRem)
         Util.copy(buf.buf, bufOff, arr, arrOff, len)
+        bufOff  += len
         bufRem  -= len
         arrOff  += len
         arrRem  -= len
@@ -399,11 +419,13 @@ object Convolution {
             _fftLog += 1
             _fftLen1 >>>= 1
           }
-          fftCost = (_fftLen * _fftLog) * 3 + _fftLen
+          fftCost =
+            if      (DEBUG_FORCE_FFT  ) 0
+            else if (DEBUG_FORCE_TIME ) Int.MaxValue
+            else (_fftLen * _fftLog) * 3 + _fftLen
         }
       }
       stage         = 1
-      updateKernel  = false // may again be set to `true` by `InH`
       kernelDidFFT  = false
 
       // N.B.: It's important to set these flags to
@@ -544,8 +566,7 @@ object Convolution {
         if (_inLen > 0) {
           lapReadRem    = _inLen
           stateChanged  = true
-        } else {
-          assert (outFlush)
+        } else if (outFlush) {
           val _inLen1   = (framesProd - framesWritten).toInt
           lapReadRem    = _inLen1
           if (_inLen1 > 0) stateChanged = true

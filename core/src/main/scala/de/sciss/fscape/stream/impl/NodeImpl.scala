@@ -92,10 +92,15 @@ abstract class NodeImpl[+S <: Shape](protected final val name: String, val layer
     final def buf: E = _buf
 
     final def available(max: Int): Int =
-      if (_buf == null) {
-        if (everHadValue) max else 0
-      } else {
+      if (isClosed(in) && !isAvailable(in)) {
+        // if the stream has terminated, we will repeat last value forever
+        if (_buf != null || everHadValue) max else 0
+      } else if (_buf != null) {
+        // otherwise, if there is buffer, we can read that
         math.min(max, _buf.size - _offset)
+      } else {
+        // otherwise, we can't output anything
+        0
       }
 
     override final def toString: String = in.toString //  s"$logic.$in"
@@ -126,6 +131,9 @@ abstract class NodeImpl[+S <: Shape](protected final val name: String, val layer
         if (isAvailable(in)) onPush()
       }
     }
+
+    final def clearHasValue(): Unit =
+      hasValue = false
 
     final def takeValue(): A =
       if (_buf == null) {
