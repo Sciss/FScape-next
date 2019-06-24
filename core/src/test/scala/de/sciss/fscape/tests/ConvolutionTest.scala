@@ -39,7 +39,8 @@ object ConvolutionTest extends App {
 
   val g = Graph {
     import graph._
-    val input : GE = DC(1.0).take(1) ++ DC(0.0).take(1) // Metro(18).take(18 * 1)
+//    val input : GE = DC(1.0).take(1) ++ DC(0.0).take(1) // Metro(18).take(18 * 1)
+    val input : GE = Metro(18).take(18 * 6)
     //    val input : GE = /*DC(0.0).take(3) ++*/ 1.0 // DC(1.0).take(1)
     val kernelLen = 2 // ArithmSeq(1) // , length = 3)
     def kernel: GE = SinOsc(1.0/16).tail.take(2) // .take(kernelLen)
@@ -54,9 +55,9 @@ object ConvolutionTest extends App {
   cfg.blockSize = 8 // XXX TODO produces problems: 5
   val ctrl  = stream.Control(cfg)
 
-  Swing.onEDT {
-    SimpleGUI(ctrl)
-  }
+//  Swing.onEDT {
+//    SimpleGUI(ctrl)
+//  }
 
   ctrl.run(g)
 }

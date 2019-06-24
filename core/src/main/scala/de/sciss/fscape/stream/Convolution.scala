@@ -382,8 +382,8 @@ object Convolution {
           if (kernelLenReady) {
             kernelLenReady = false
             processKernelLen()
-          } else {
-            KernelLenH.next()
+//          } else {
+//            KernelLenH.next()
           }
 
         } else {
@@ -435,6 +435,7 @@ object Convolution {
       }
       stage         = 1
       kernelDidFFT  = false
+      KernelLenH.next()
 
       // N.B.: It's important to set these flags to
       // false first, because `KernelH.shouldFill()`
