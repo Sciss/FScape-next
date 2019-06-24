@@ -111,7 +111,7 @@ object Concat {
     protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Unit =
       Util.copy(bufIn0.buf, inOff, bufOut0.buf, outOff, chunk)
 
-    private object InHandlerImpl extends InHandler {
+    private object _InHandlerImpl extends InHandler {
       def onPush(): Unit = {
         updateCanRead()
         if (canRead) process()
@@ -123,8 +123,8 @@ object Concat {
       }
     }
 
-    setHandler(in0, InHandlerImpl)
-    setHandler(in1, InHandlerImpl)
+    setHandler(in0, _InHandlerImpl)
+    setHandler(in1, _InHandlerImpl)
     new ProcessOutHandlerImpl(out0, this)
   }
 }

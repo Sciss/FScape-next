@@ -1,12 +1,14 @@
 package de.sciss.fscape.tests
 
 import de.sciss.file._
+import de.sciss.fscape.gui.SimpleGUI
 import de.sciss.fscape.{GE, Graph, stream}
 import de.sciss.numbers.Implicits._
 import de.sciss.synth.io.AudioFile
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
+import scala.swing.Swing
 
 /*
 
@@ -59,10 +61,11 @@ object PitchTest extends App {
     val stepSize    = winSize / 4 // fftSize / 4
     val inSlid      = Sliding (in = in , size = winSize, step = stepSize)
     val numSteps: Int = ((numFrames + stepSize - 1) / stepSize).toInt
+    val slidLen = numSteps * winSize
 
     println(s"minLag $minLag, maxLag $maxLag, winSize $winSize, winPadded $winPadded, fftSize $fftSize, stepSize $stepSize, numSteps $numSteps")
 
-    def mkWindow() = GenWindow(winSize, shape = GenWindow.Hann)
+    def mkWindow(): GE = GenWindow(winSize, shape = GenWindow.Hann).take(slidLen)
 
     val inLeak  = NormalizeWindow(inSlid, winSize, mode = NormalizeWindow.ZeroMean)
     val inW     = inLeak * mkWindow()
@@ -190,10 +193,9 @@ object PitchTest extends App {
 
   println("Running.")
 
+  Swing.onEDT {
+    SimpleGUI(ctrl)
+  }
+
   Await.result(ctrl.status, Duration.Inf)
-
-//  Swing.onEDT {
-//    SimpleGUI(ctrl)
-//  }
-
 }

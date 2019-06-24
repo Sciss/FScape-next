@@ -101,8 +101,8 @@ object StrongestLocalMaxima {
       }
 
       override def onDownstreamFinish(): Unit = {
-        logStream(s"onDownstreamFinish($out)")
         val allClosed = shape.outlets.forall(isClosed(_))
+        logStream(s"onDownstreamFinish($out) allClosed = $allClosed")
         if (allClosed) super.onDownstreamFinish()
       }
 
@@ -244,10 +244,15 @@ object StrongestLocalMaxima {
         ((isClosed(sh.in1) && _inValid) || isAvailable(sh.in1)) &&
         ((isClosed(sh.in2) && _inValid) || isAvailable(sh.in2)) &&
         ((isClosed(sh.in3) && _inValid) || isAvailable(sh.in3)) &&
-        ((isClosed(sh.in4) && _inValid) || isAvailable(sh.in4))
+        ((isClosed(sh.in4) && _inValid) || isAvailable(sh.in4)) &&
+        ((isClosed(sh.in5) && _inValid) || isAvailable(sh.in5)) &&
+        ((isClosed(sh.in6) && _inValid) || isAvailable(sh.in6))
     }
 
+//    private def sz(b: BufLike): String = if (b == null) "null" else b.size.toString
+
     protected def startNextWindow(inOff: Int): Long = {
+//      println(s"startNextWindow($inOff) : ${sz(bufIn1)}, ${sz(bufIn2)}, ${sz(bufIn3)}, ${sz(bufIn4)}, ${sz(bufIn5)}, ${sz(bufIn6)}")
       // size: OutI, minLag: OutI, maxLag: OutI, thresh: OutD, octaveCost: OutD, n:
 
       if (bufIn1 != null && inOff < bufIn1.size) {

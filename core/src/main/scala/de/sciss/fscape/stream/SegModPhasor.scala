@@ -67,14 +67,14 @@ object SegModPhasor {
     private[this] var inValid0  : Boolean = false
     private[this] var inValid1  : Boolean = false
 
-    private object InHandlerImpl extends InHandler {
+    private object _InHandlerImpl extends InHandler {
       override def onUpstreamFinish(): Unit = process()
 
       def onPush(): Unit = process()
     }
 
-    setInHandler(shape.in0, InHandlerImpl)
-    setInHandler(shape.in1, InHandlerImpl)
+    setInHandler(shape.in0, _InHandlerImpl)
+    setInHandler(shape.in1, _InHandlerImpl)
     new ProcessOutHandlerImpl(shape.out, this)
 
     protected def allocOutBuf0(): BufD = ctrl.borrowBufD()

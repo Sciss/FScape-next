@@ -87,7 +87,7 @@ object RepeatWindow {
     private[this] var bufIn2 : BufL = _
     protected     var bufOut0: BufD = _
 
-    private final class InHandlerImpl[A](in: Inlet[A])(isValid: => Boolean) extends InHandler {
+    private final class _InHandlerImpl[A](in: Inlet[A])(isValid: => Boolean) extends InHandler {
       def onPush(): Unit = {
         logStream(s"onPush($in)")
         process()
@@ -105,9 +105,9 @@ object RepeatWindow {
       setInHandler(in, this)
     }
 
-    new InHandlerImpl(shape.in0)(true)
-    new InHandlerImpl(shape.in1)(winSize >= 0)
-    new InHandlerImpl(shape.in2)(num     >= 0)
+    new _InHandlerImpl(shape.in0)(true)
+    new _InHandlerImpl(shape.in1)(winSize >= 0)
+    new _InHandlerImpl(shape.in2)(num     >= 0)
     new ProcessOutHandlerImpl(shape.out, this)
 
     def inValid: Boolean = winSize >= 0 && num >= 0

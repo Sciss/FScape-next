@@ -64,7 +64,7 @@ object IfThenUnit {
     private[this] val condArr   = new Array[Boolean](numIns)
     private[this] val condDone  = new Array[Boolean](numIns)
 
-    private class InHandlerImpl(in: InI, ch: Int) extends InHandler {
+    private class _InHandlerImpl(in: InI, ch: Int) extends InHandler {
       def onPush(): Unit = {
         val b = grab(in)
 
@@ -101,7 +101,7 @@ object IfThenUnit {
     {
       var ch = 0
       while (ch < numIns) {
-        new InHandlerImpl(shape.inlets(ch), ch)
+        new _InHandlerImpl(shape.inlets(ch), ch)
         ch += 1
       }
     }

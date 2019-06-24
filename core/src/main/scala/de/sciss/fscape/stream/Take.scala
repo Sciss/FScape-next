@@ -61,7 +61,7 @@ object Take {
 
     def onPull(): Unit = {
       val ok = hasLen && isAvailable(shape.in0)
-      log(s"$this onPull() $ok")
+      log(s"$this onPull() hasLen && isAvailable(in0) ? $ok")
       if (ok) {
         process()
       }
@@ -72,7 +72,7 @@ object Take {
 
       def onPush(): Unit = {
         val ok = hasLen && isAvailable(shape.out)
-        log(s"$this onPush() $ok")
+        log(s"$this onPush() hasLen && isAvailable(out) ? $ok")
         if (ok) {
           process()
         }
@@ -80,7 +80,7 @@ object Take {
 
       override def onUpstreamFinish(): Unit = {
         val cond = !isAvailable(shape.in0)
-        log(s"$this onUpstreamFinish() $cond")
+        log(s"$this onUpstreamFinish() !isAvailable(in0) ? $cond")
         if (cond) super.onUpstreamFinish()
       }
     }
@@ -91,7 +91,7 @@ object Take {
       def onPush(): Unit = {
         val buf = grab(shape.in1)
         val ok  = !hasLen
-        log(s"$this onPush() $ok")
+        log(s"$this onPush() !hasLen ? $ok")
         if (ok) {
           takeRemain  = math.max(0L, buf.buf(0))
           hasLen      = true
@@ -106,7 +106,7 @@ object Take {
 
       override def onUpstreamFinish(): Unit = {
         val cond = !hasLen
-        log(s"$this onUpstreamFinish() $cond")
+        log(s"$this onUpstreamFinish() !hasLen ? $cond")
         if (cond) super.onUpstreamFinish()
       }
     }
@@ -125,6 +125,8 @@ object Take {
       } else {
         buf.release()
       }
+
+//      if ((takeRemain % 100000) == 0) println(s"takeRemain $takeRemain")
 
       if (takeRemain == 0L || isClosed(shape.in0)) completeStage()
       else pull(shape.in0)

@@ -48,8 +48,8 @@ object BinaryOp {
   private final class Logic(shape: Shape, layer: Layer, op: Op)(implicit ctrl: Control)
     extends NodeImpl(s"$name(${op.name})", layer, shape) with OutHandler { logic =>
 
-    private[this] val hA = new InHandlerImpl(shape.in0)
-    private[this] val hB = new InHandlerImpl(shape.in1)
+    private[this] val hA = new _InHandlerImpl(shape.in0)
+    private[this] val hB = new _InHandlerImpl(shape.in1)
 
     private[this] var inDataRem = 2
 
@@ -68,7 +68,7 @@ object BinaryOp {
       freeOutBuffer()
     }
 
-    private final class InHandlerImpl(in: InD)
+    private final class _InHandlerImpl(in: InD)
       extends InHandler {
 
       private[this] var hasValue      = false
@@ -105,7 +105,7 @@ object BinaryOp {
       def next(): Unit = {
         hasValue = false
         val r = bufRemain > 0
-        logStream(s"next() $this - $r")
+        logStream(s"next() $this - bufRemain > 0 ? $r")
         if (r) {
           ackValue()
         } else {
@@ -115,7 +115,7 @@ object BinaryOp {
       }
 
       def onPush(): Unit = {
-        logStream(s"onPush() $this - $hasValue")
+        logStream(s"onPush() $this - hasValue ? $hasValue")
         if (!hasValue) {
           assert(_buf == null)
           _buf = grab(in)
@@ -129,7 +129,7 @@ object BinaryOp {
         hasValue      = true
         everHadValue  = true
         inDataRem -= 1
-        logStream(s"ackValue() $this - $inDataRem")
+        logStream(s"ackValue() $this - inDataRem = $inDataRem")
         if (inDataRem == 0) {
           notifyInDataReady()
         }
@@ -137,7 +137,7 @@ object BinaryOp {
 
       override def onUpstreamFinish(): Unit = {
         val hasMore = isAvailable(in)
-        logStream(s"onUpstreamFinish() $this - $hasMore $hasValue $everHadValue")
+        logStream(s"onUpstreamFinish() $this - hasMore = $hasMore, hasValue = $hasValue, everHadValue = $everHadValue")
         if (!hasMore) {
           if (everHadValue) {
             if (!hasValue) ackValue()
@@ -253,7 +253,7 @@ object BinaryOp {
       inDataRem = 0
       if (aHas) inDataRem += 1
       if (bHas) inDataRem += 1
-      logStream(s"requestNextInData() $this $aHas $bHas")
+      logStream(s"requestNextInData() $this aHas = $aHas, bHas = $bHas")
 
       if (inDataRem == 0) {
         if (outOff == 0) completeStage()

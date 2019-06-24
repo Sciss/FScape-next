@@ -100,7 +100,7 @@ object Viterbi {
 
     def inValid: Boolean = throw new UnsupportedOperationException
 
-    private final class InHandlerImpl[A](in: Inlet[A]) extends InHandler {
+    private final class _InHandlerImpl[A](in: Inlet[A]) extends InHandler {
       def onPush(): Unit = {
         logStream(s"onPush($in)")
         process()
@@ -114,10 +114,10 @@ object Viterbi {
       setInHandler(in, this)
     }
 
-    new InHandlerImpl(shape.in0)
-    new InHandlerImpl(shape.in1)
-    new InHandlerImpl(shape.in2)
-    new InHandlerImpl(shape.in3)
+    new _InHandlerImpl(shape.in0)
+    new _InHandlerImpl(shape.in1)
+    new _InHandlerImpl(shape.in2)
+    new _InHandlerImpl(shape.in3)
     new ProcessOutHandlerImpl(shape.out, this)
 
     override protected def init(): Unit = {
