@@ -23,8 +23,8 @@ import edu.emory.mathcs.jtransforms.fft.DoubleFFT_1D
 import scala.annotation.tailrec
 
 object Convolution {
-  var DEBUG_FORCE_FFT   = false
-  var DEBUG_FORCE_TIME  = false
+  var DEBUG_FORCE_FFT   = false // override auto-selection and always convolve in frequency domain
+  var DEBUG_FORCE_TIME  = false // override auto-selection and always convolve in time domain
 
   def apply(in: OutD, kernel: OutD, kernelLen: OutI, kernelUpdate: OutI)(implicit b: Builder): OutD = {
     val stage0  = new Stage(b.layer)
