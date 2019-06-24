@@ -491,7 +491,16 @@ object Convolution {
             kernelDidFFT = true
           }
           fft.realForward(_inArr)
-          var idxRe = 0
+          // N.B.: We use compact storage. Since
+          // the components at DC and Nyquist are purely
+          // real, there is no imaginary component
+          // for DC, instead at offset 1 we find the
+          // real component of Nyquist. So we need
+          // to special-case the multiplication for the
+          // first two array indices.
+          _inArr(0) *= _kernelArr(0)  // real multiplication for DC
+          _inArr(1) *= _kernelArr(1)  // real multiplication for Nyquist
+          var idxRe = 2
           while (idxRe < _fftLen) {
             val aRe       = _inArr    (idxRe)
             val bRe       = _kernelArr(idxRe)

@@ -12,9 +12,11 @@ object ConvolutionTest extends App {
   val g = Graph {
     import graph._
     val dirac: GE = DC(1.0).take(3) ++ DC(0.0).take(3)
+//    val dirac: GE = DC(1.0).take(1) ++ DC(0.0).take(3)
 //    val dirac: GE = DC(0.0).take(1) ++ DC(1.0).take(3) ++ DC(0.0).take(2)
 //    val dirac: GE = DC(0.0).take(1) ++ DC(1.0).take(1) ++ DC(0.0).take(1)
     val conv = Convolution(RepeatWindow(dirac, 6, 4), dirac, kernelLen = 3)
+//    val conv = Convolution(dirac, dirac, kernelLen = 3)
     Length(conv).poll(0, "length")
 //    RepeatWindow(dirac).poll(Metro(2), "in  ")
     RepeatWindow(conv ).poll(Metro(2), "conv")
@@ -22,7 +24,7 @@ object ConvolutionTest extends App {
   }
 
   val cfg   = stream.Control.Config()
-  cfg.blockSize = 6 // XXX TODO produces problems: 5
+//  cfg.blockSize = 6 // XXX TODO produces problems: 5
   val ctrl  = stream.Control(cfg)
 
   Swing.onEDT {
