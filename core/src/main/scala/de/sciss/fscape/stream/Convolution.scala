@@ -516,28 +516,31 @@ object Convolution {
           Util.copy(oldLapBuf, lapReadOff, lapBuf, 0, chunkGrow1)
           if (lapReadOff > 0) {
             Util.copy(oldLapBuf, 0, lapBuf, chunkGrow1, lapReadOff)
+            lapWriteOutOff  = (lapWriteOutOff - lapReadOff + lapBuf.length) % lapBuf.length
             lapReadOff      = 0
-            lapWriteOutOff  = 0
           }
           stateChanged  = true
         }
 
+        val _inLen      = InH.length
         val chunkWrite1 = math.min(lapBuf.length - lapWriteOutOff, lapWriteRem)
         if (chunkWrite1 > 0) {
           Util.add(InH.array, lapWriteInOff, lapBuf, lapWriteOutOff, chunkWrite1)
-          lapWriteOutOff = (lapWriteOutOff + chunkWrite1) % lapBuf.length
+          val writeOff1  = (lapWriteOutOff + chunkWrite1) % lapBuf.length
           lapWriteInOff += chunkWrite1
           lapWriteRem   -= chunkWrite1
           if (lapWriteRem > 0) {
-            Util.add(InH.array, lapWriteInOff, lapBuf, lapWriteOutOff, lapWriteRem)
-            lapWriteOutOff = (lapWriteOutOff + lapWriteRem) % lapBuf.length
+            Util.add(InH.array, lapWriteInOff, lapBuf, writeOff1, lapWriteRem)
             lapWriteInOff += lapWriteRem
             lapWriteRem    = 0
           }
-          stateChanged  = true
+          // we advance the write offset in the lap buffer by inLen,
+          // which corresponds with the amount of frames to be flushed
+          // to out (lapReadRem)
+          lapWriteOutOff  = (lapWriteOutOff + _inLen) % lapBuf.length
+          stateChanged    = true
         }
 
-        val _inLen    = InH.length
         if (_inLen > 0) {
           lapReadRem    = _inLen
           stateChanged  = true
