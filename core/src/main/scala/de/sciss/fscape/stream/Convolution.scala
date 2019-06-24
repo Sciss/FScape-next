@@ -16,15 +16,15 @@ package de.sciss.fscape.stream
 import akka.stream.stage.{InHandler, OutHandler}
 import akka.stream.{Attributes, FanInShape4}
 import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
-//import de.sciss.fscape.{Util, logStream => log}
-import de.sciss.fscape.Util
+import de.sciss.fscape.{Util, logStream => log}
+//import de.sciss.fscape.Util
 import de.sciss.numbers.Implicits._
 import edu.emory.mathcs.jtransforms.fft.DoubleFFT_1D
 
 import scala.annotation.tailrec
 
 object Convolution {
-  def log(what: => String): Unit = println(s"[log] $what")
+//  def log(what: => String): Unit = println(s"[log] $what")
 
   var DEBUG_FORCE_FFT   = false // override auto-selection and always convolve in frequency domain
   var DEBUG_FORCE_TIME  = false // override auto-selection and always convolve in time domain
@@ -209,19 +209,30 @@ object Convolution {
             arrRem        = 0
           }
 
-        } else {
-          // make sure `kernelUpdateReady` is called eventually
-          if (ku.hasNext) {
-            ku.next()
-          }
+//          // make sure `kernelUpdateReady` is called eventually
+////          if (ku.hasNext) {
+//            _shouldFill = false
+//            ku.next()
+//            _shouldFill = true
+////          }
+
+//        } else {
+//          // make sure `kernelUpdateReady` is called eventually
+//          if (ku.hasNext) {
+//            ku.next()
+//          }
         }
 
-        processDone()
+        val n = processDone()
+        if (!n) {
+          ku.next() // XXX TODO --- all bloody horrible spaghetti logic
+        }
       }
 
-      private def processDone(): Unit = {
+      private def processDone(): Boolean = {
         val ended = bufRem == 0 && isClosed(in) && !isAvailable(in)
-        if (arrRem == 0 || ended) {
+        val n = arrRem == 0 || ended
+        if (n) {
           _shouldFill = false
           arrRem      = 0
           Util.clear(arr, arrOff, arr.length - arrOff)
@@ -231,6 +242,7 @@ object Convolution {
           }
           notifyInFilled()
         }
+        n
       }
 
       override def onUpstreamFinish(): Unit = {

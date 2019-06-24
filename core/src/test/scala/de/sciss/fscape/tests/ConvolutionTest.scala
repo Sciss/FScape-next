@@ -1,9 +1,10 @@
 package de.sciss.fscape
 package tests
 
-import de.sciss.fscape.gui.SimpleGUI
+import de.sciss.synth.io.AudioFileSpec
 
-import scala.swing.Swing
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
 
 object ConvolutionTest extends App {
 //  showStreamLog = true
@@ -37,22 +38,53 @@ object ConvolutionTest extends App {
 //    Plot1D(conv, size = 100)
 //  }
 
+//  val g = Graph {
+//    import graph._
+//    //    val input : GE = DC(1.0).take(1) ++ DC(0.0).take(1) // Metro(18).take(18 * 1)
+//    val input : GE = Metro(18).take(18 * 5)
+//    //    val input : GE = /*DC(0.0).take(3) ++*/ 1.0 // DC(1.0).take(1)
+//    val kernelLen = ArithmSeq(1) // , length = 3)
+//    def kernel: GE = SinOsc(1.0/16).tail // .take(2) // .take(kernelLen)
+//    val conv = Convolution(input, kernel, kernelLen = kernelLen, kernelUpdate = Metro(18, 1)) // Metro(18, 1))
+//    Length(conv).poll(0, "length")
+//    //    conv.poll(0, "foo")
+//    //    RepeatWindow(conv).poll(Metro(2), "conv")
+//    Plot1D(conv, size = 100)
+//  }
+
+//  val g = Graph {
+//    import graph._
+////    val input : GE = DC(1.0).take(1) ++ DC(0.0).take(1) // Metro(18).take(18 * 1)
+//    val input : GE = Metro(18).take(18 * 5)
+//    //    val input : GE = /*DC(0.0).take(3) ++*/ 1.0 // DC(1.0).take(1)
+//    val kernelLen = ArithmSeq(1) // , length = 3)
+//    def kernel: GE = SinOsc(1.0/16).tail //.take(20) // .take(kernelLen)
+//    val conv = Convolution(input, kernel, kernelLen = kernelLen, kernelUpdate = Metro(18, 1)) // Metro(18, 1))
+//    Length(conv).poll(0, "length")
+//    //    conv.poll(0, "foo")
+//    //    RepeatWindow(conv).poll(Metro(2), "conv")
+//    Plot1D(conv, size = 100)
+//  }
+
   val g = Graph {
     import graph._
-//    val input : GE = DC(1.0).take(1) ++ DC(0.0).take(1) // Metro(18).take(18 * 1)
-    val input : GE = Metro(18).take(18 * 5)
-    //    val input : GE = /*DC(0.0).take(3) ++*/ 1.0 // DC(1.0).take(1)
-    val kernelLen = ArithmSeq(1) // , length = 3)
-    def kernel: GE = SinOsc(1.0/16).tail // .take(2) // .take(kernelLen)
-    val conv = Convolution(input, kernel, kernelLen = kernelLen, kernelUpdate = Metro(18, 1)) // Metro(18, 1))
+    val sr = 44100
+//    val input : GE = Metro(sr/2).take(sr * 4)
+    val input : GE = WhiteNoise(0.01).take(sr * 4)
+    val kernelLen = (sr * 0.1).toInt
+    val freq = RepeatWindow(ArithmSeq(60).midiCps, num = kernelLen)
+    def kernel: GE = SinOsc(freq/sr) * GenWindow(kernelLen, GenWindow.Hann)
+    val conv = Convolution(input, kernel, kernelLen = kernelLen, kernelUpdate = Metro(kernelLen, 1))
     Length(conv).poll(0, "length")
     //    conv.poll(0, "foo")
     //    RepeatWindow(conv).poll(Metro(2), "conv")
-    Plot1D(conv, size = 100)
+//    Plot1D(conv, size = 100)
+    import de.sciss.file._
+    AudioFileOut(conv, userHome / "Documents" / "test.aif", AudioFileSpec(numChannels = 1, sampleRate = sr))
   }
 
   val cfg   = stream.Control.Config()
-  cfg.blockSize = 8 // XXX TODO produces problems: 5
+//  cfg.blockSize = 8 // XXX TODO produces problems: 5
   val ctrl  = stream.Control(cfg)
 
 //  Swing.onEDT {
@@ -60,4 +92,6 @@ object ConvolutionTest extends App {
 //  }
 
   ctrl.run(g)
+  Await.result(ctrl.status, Duration.Inf)
+  sys.exit()
 }
