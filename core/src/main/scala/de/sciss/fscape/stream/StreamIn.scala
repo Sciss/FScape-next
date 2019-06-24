@@ -14,6 +14,8 @@
 package de.sciss.fscape
 package stream
 
+import java.util
+
 import akka.stream.Outlet
 
 import scala.annotation.switch
@@ -56,6 +58,9 @@ object StreamIn {
     def allocBuf()(implicit ctrl: Control): BufD = ctrl.borrowBufD()
 
     def newArray(size: Int): Array[Double] = new Array(size)
+
+    def fill(a: Array[Double], off: Int, len: Int, elem: Double): Unit =
+      util.Arrays.fill(a, off, len, elem)
   }
 
   trait DoubleLike extends StreamIn {
@@ -132,6 +137,9 @@ object StreamIn {
     def allocBuf()(implicit ctrl: Control): BufI = ctrl.borrowBufI()
 
     def newArray(size: Int): Array[Int] = new Array(size)
+
+    def fill(a: Array[Int], off: Int, len: Int, elem: Int): Unit =
+      util.Arrays.fill(a, off, len, elem)
   }
 
   trait IntLike extends StreamIn {
@@ -208,6 +216,9 @@ object StreamIn {
     def allocBuf()(implicit ctrl: Control): BufL = ctrl.borrowBufL()
 
     def newArray(size: Int): Array[Long] = new Array(size)
+
+    def fill(a: Array[Long], off: Int, len: Int, elem: Long): Unit =
+      util.Arrays.fill(a, off, len, elem)
   }
 
   trait LongLike extends StreamIn {
@@ -358,6 +369,8 @@ trait StreamType[A, Buf <: BufElem[A]] {
   def mkStreamOut(out: Outlet[Buf]): StreamOut
 
   def allocBuf()(implicit ctrl: Control): Buf
+
+  def fill(a: Array[A], off: Int, len: Int, elem: A): Unit
 
   def newArray(size: Int): Array[A]
 }

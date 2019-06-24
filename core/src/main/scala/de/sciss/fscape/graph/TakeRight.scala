@@ -31,6 +31,6 @@ final case class TakeRight(in: GE, length: GE) extends UGenSource.SingleOut {
     val inE = in.toElem
     import in.tpe
     val out = stream.TakeRight[in.A, in.Buf](in = inE, length = length.toInt)
-    in.tpe.mkStreamOut(out)
+    tpe.mkStreamOut(out)
   }
 }

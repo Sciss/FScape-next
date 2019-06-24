@@ -28,9 +28,8 @@ final case class Take(in: GE, length: GE) extends UGenSource.SingleOut {
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
     val Vec(in, length) = args
-    stream.Take(in = in.toDouble, length = length.toLong)
+    import in.tpe
+    val out = stream.Take[in.A, in.Buf](in = in.toElem, length = length.toLong)
+    tpe.mkStreamOut(out)
   }
-
-  // XXX TODO --- remove in next major release
-  def len: GE = length
 }

@@ -11,16 +11,17 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape
-package stream
+package de.sciss.fscape.stream
 
-import akka.stream.{Attributes, FlowShape}
-import de.sciss.fscape.stream.impl.{GenChunkImpl, GenIn1DImpl, StageImpl, NodeImpl}
+import akka.stream.stage.{InHandler, OutHandler}
+import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
+import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import de.sciss.fscape.{logStream => log}
 
-// XXX TODO --- support OutA
 object DC {
-  def apply(in: OutD)(implicit b: Builder): OutD = {
-    val stage0  = new Stage(b.layer)
+  def apply[A, Buf >: Null <: BufElem[A]](in: Outlet[Buf])
+                                         (implicit b: Builder, aTpe: StreamType[A, Buf]): Outlet[Buf] = {
+    val stage0  = new Stage[A, Buf](b.layer)
     val stage   = b.add(stage0)
     b.connect(in, stage.in)
     stage.out
@@ -28,36 +29,62 @@ object DC {
 
   private final val name = "DC"
 
-  private type Shape = FlowShape[BufD, BufD]
+  private type Shape[A, Buf >: Null <: BufElem[A]] = FlowShape[Buf, Buf]
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
+  private final class Stage[A, Buf >: Null <: BufElem[A]](layer: Layer)
+                                                         (implicit ctrl: Control, aTpe: StreamType[A, Buf])
+    extends StageImpl[Shape[A, Buf]](name) {
 
     val shape = new FlowShape(
-      in  = InD (s"$name.in" ),
-      out = OutD(s"$name.out")
+      in  = Inlet [Buf](s"$name.in" ),
+      out = Outlet[Buf](s"$name.out")
     )
 
     def createLogic(attr: Attributes) = new Logic(shape, layer)
   }
 
-  // XXX TODO -- abstract over data type (BufD vs BufI)?
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape)
-      with GenChunkImpl[BufD, BufD, Shape]
-      with GenIn1DImpl[BufD] {
+  private final class Logic[A, Buf >: Null <: BufElem[A]](shape: Shape[A, Buf], layer: Layer)
+                                                         (implicit ctrl: Control, aTpe: StreamType[A, Buf])
+    extends NodeImpl(name, layer, shape) with OutHandler { logic =>
 
-    private[this] var _init = true
-    private[this] var value   : Double = _
+    private[this] var hasValue = false
+    private[this] var value: A = _
 
-    protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Unit = {
-      if (_init) {
-        value = bufIn0.buf(inOff)
-        _init = false
+    def onPull(): Unit = {
+      val ok = hasValue
+      log(s"$this onPull() $ok")
+      if (ok) {
+        process()
+      }
+    }
+
+    private object InH extends InHandler {
+      override def toString: String = s"$logic.in"
+
+      def onPush(): Unit = {
+        val buf = grab(shape.in)
+        val ok  = !hasValue
+        log(s"$this onPush() $ok")
+        if (ok) {
+          value     = buf.buf(0)
+          hasValue  = true
+          if (isAvailable(shape.out)) process()
+        }
+        buf.release()
+        tryPull(shape.in)
       }
 
-      // println(s"DC.fill($value, $chunk) -> $bufOut")
+      override def onUpstreamFinish(): Unit =
+        if (!hasValue) super.onUpstreamFinish()
+    }
 
-      Util.fill(bufOut0.buf, outOff, chunk, value)
+    setHandler(shape.out, this)
+    setHandler(shape.in, InH)
+
+    private def process(): Unit = {
+      val buf = aTpe.allocBuf()
+      aTpe.fill(buf.buf, 0, buf.size, value)
+      push(shape.out, buf)
     }
   }
 }

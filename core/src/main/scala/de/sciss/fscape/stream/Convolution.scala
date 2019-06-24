@@ -64,10 +64,10 @@ object Convolution {
     private[this] var maxInLen        = 0
 
     private[this] var lapReadRem      = 0
-    private[this] var lapWriteInOff   = 0
-    private[this] var lapWriteOutOff  = 0
+    private[this] var lapWriteInOff   = 0   // wrt InH.array
+    private[this] var lapWriteOutOff  = 0   // wrt lapBuf
     private[this] var lapWriteRem     = 0
-    private[this] var lapReadOff      = 0
+    private[this] var lapReadOff      = 0   // wrt lapBuf
 
     private[this] var lapBuf: Array[Double] = _
 
@@ -81,6 +81,7 @@ object Convolution {
     private[this] var framesWritten = 0L
 
     private[this] var fft: DoubleFFT_1D = _
+    private[this] var time: Array[Double] = _
 
     def onPull(): Unit = {
       val ok = stage == 2
@@ -103,12 +104,12 @@ object Convolution {
 
       private[this] var _shouldFill   = false
 
-      def isFilled: Boolean = !_shouldFill
+      var isFilled = false
 
       def length: Int           = arrOff
       def array : Array[Double] = arr
 
-      def ended: Boolean = buf == null && (isClosed(in) && !isAvailable(in))
+//      def ended: Boolean = buf == null && (isClosed(in) && !isAvailable(in))
 
       override def toString: String = s"$logic.in"
 
@@ -129,7 +130,8 @@ object Convolution {
         arrRem  = maxInLen
 
         if (buf == null) {
-          if (isAvailable(in)) onPush()
+          if      (isAvailable(in)) onPush()
+          else if (isClosed   (in)) processDone()
         } else if (bufRem > 0) {
           processFill()
         }
@@ -201,6 +203,10 @@ object Convolution {
           _shouldFill = false
           arrRem      = 0
           Util.clear(arr, arrOff, arr.length - arrOff)
+          isFilled = true
+          if (arrOff == 0) {
+            outFlush = true
+          }
           notifyInFilled()
         }
       }
@@ -229,12 +235,12 @@ object Convolution {
 
       private[this] var _shouldFill = false
 
-      def isFilled: Boolean = !_shouldFill
+      var isFilled = false
 
       def length: Int           = arrOff
       def array : Array[Double] = arr
 
-      def ended: Boolean = buf == null && (isClosed(in) && !isAvailable(in))
+//      def ended: Boolean = buf == null && (isClosed(in) && !isAvailable(in))
 
       override def toString: String = s"$logic.kernel"
 
@@ -255,7 +261,8 @@ object Convolution {
         arrRem  = kernelLen
 
         if (buf == null) {
-          if (isAvailable(in)) onPush()
+          if      (isAvailable(in)) onPush()
+          else if (isClosed   (in)) processDone()
         } else if (bufRem > 0) {
           processFill()
         }
@@ -293,6 +300,7 @@ object Convolution {
           _shouldFill = false
           arrRem      = 0
           Util.clear(arr, arrOff, arr.length - arrOff)
+          isFilled = true
           notifyKernelFilled()
         }
       }
@@ -324,6 +332,7 @@ object Convolution {
 
     override protected def stopped(): Unit = {
       fft     = null
+      time    = null
       lapBuf  = null
       if (outBuf != null) {
         outBuf.release()
@@ -337,7 +346,9 @@ object Convolution {
 
     private def writeDone(): Unit =
       if (outFlush) {
-        completeStage()
+        if (framesWritten == framesProd && outOff == 0) {
+          completeStage()
+        }
       } else {
         if (updateKernel) {
           stage = 0
@@ -350,6 +361,7 @@ object Convolution {
 
         } else {
           stage = 1
+          InH.isFilled = false
           InH.shouldFill()
         }
       }
@@ -379,7 +391,8 @@ object Convolution {
         fftLen      = _fftLen
         maxInLen    = _fftLen - _kernelLen + 1
         if (_fftLen != oldFFTLen) {
-          fft = null
+          fft   = null
+          time  = null
           var _fftLog = 1
           var _fftLen1 = _fftLen
           while (_fftLen1 > 2) {
@@ -392,6 +405,12 @@ object Convolution {
       stage         = 1
       updateKernel  = false // may again be set to `true` by `InH`
       kernelDidFFT  = false
+
+      // N.B.: It's important to set these flags to
+      // false first, because `KernelH.shouldFill()`
+      // may end up completing and asking `InH.isFilled`!
+      InH     .isFilled = false
+      KernelH .isFilled = false
       KernelH .shouldFill()
       InH     .shouldFill()
     }
@@ -414,23 +433,34 @@ object Convolution {
         val _kernelLen  = kernelLen
         val _inArr      = InH     .array
         val _kernelArr  = KernelH .array
+        val _fftLen     = fftLen
+        val _convLen    = _inLen + _kernelLen - 1
 
         if (!kernelDidFFT && /* timeCost */ _inLen * _kernelLen <= fftCost) {  // perform convolution in time domain
-          var i = 0
-          while (i < _inLen) {
-            var sum = 0.0
-            val iv  = _inArr(i)
-            var j   = 0
-            while (j < _kernelLen) {
-              sum += iv * _kernelArr(j)
-              j   += 1
-            }
-            _inArr(i) = sum
-            i += 1
+
+          if (time == null) {
+            time = new Array[Double](_fftLen)
+          } else {
+            Util.clear(time, 0, _convLen)
           }
+          val _time = time
+
+          var n = 0
+          while (n < _convLen) {
+            var nm  = n
+            var m   = 0
+            var sum = 0.0
+            while (nm >= 0 && m < _inLen) {
+              sum += _inArr(m) * _kernelArr(nm)
+              m   += 1
+              nm  -= 1
+            }
+            _time(n) = sum
+            n += 1
+          }
+          Util.copy(_time, 0, _inArr, 0, _convLen)
 
         } else {  // perform convolution in frequency domain
-          val _fftLen = fftLen
           if (fft == null) {
             fft = new DoubleFFT_1D(_fftLen)
           }
@@ -453,7 +483,6 @@ object Convolution {
           fft.realInverse(_inArr, /* scale = */ true)
         }
 
-        val _convLen  = _inLen + _kernelLen - 1
         lapWriteRem   = _convLen
         val prod0     = framesRead + _convLen
         framesRead   += _inLen
@@ -499,12 +528,11 @@ object Convolution {
           lapWriteOutOff = (lapWriteOutOff + chunkWrite1) % lapBuf.length
           lapWriteInOff += chunkWrite1
           lapWriteRem   -= chunkWrite1
-          val chunkWrite2 = lapWriteRem - chunkWrite1
-          if (chunkWrite2 > 0) {
-            Util.add(InH.array, lapWriteInOff, lapBuf, lapWriteOutOff, chunkWrite2)
-            lapWriteOutOff = (lapWriteOutOff + chunkWrite2) % lapBuf.length
-            lapWriteInOff += chunkWrite2
-            lapWriteRem   -= chunkWrite2
+          if (lapWriteRem > 0) {
+            Util.add(InH.array, lapWriteInOff, lapBuf, lapWriteOutOff, lapWriteRem)
+            lapWriteOutOff = (lapWriteOutOff + lapWriteRem) % lapBuf.length
+            lapWriteInOff += lapWriteRem
+            lapWriteRem    = 0
           }
           stateChanged  = true
         }
@@ -513,51 +541,58 @@ object Convolution {
         if (_inLen > 0) {
           lapReadRem    = _inLen
           stateChanged  = true
-        } else if (!outFlush) {
-          outFlush      = true
-          lapReadRem    = (framesProd - framesWritten).toInt
-          stateChanged  = true
+        } else {
+          assert (outFlush)
+          val _inLen1   = (framesProd - framesWritten).toInt
+          lapReadRem    = _inLen1
+          if (_inLen1 > 0) stateChanged = true
         }
       }
 
-      if (lapReadRem > 0) {
-        if (outBuf == null) {
-          outBuf        = ctrl.borrowBufD()
-          outOff        = 0
-          outRem        = if (outFlush) math.min(outBuf.size, lapReadRem) else outBuf.size
-          stateChanged  = true
+      if (outBuf == null) {
+        outBuf        = ctrl.borrowBufD()
+        outOff        = 0
+        outRem        = outBuf.size
+        stateChanged  = true
+      }
+      if (outFlush) {
+        outRem = math.min(outRem, lapReadRem)
+      }
+
+      val chunkRead1 = math.min(lapReadRem, outRem)
+      if (chunkRead1 > 0) {
+        val chunkRead2 = math.min(lapBuf.length - lapReadOff, chunkRead1)
+        Util.copy (lapBuf, lapReadOff, outBuf.buf, outOff, chunkRead2)
+        Util.clear(lapBuf, lapReadOff, chunkRead2)
+        lapReadOff     = (lapReadOff + chunkRead2) % lapBuf.length
+        outOff        += chunkRead2
+        outRem        -= chunkRead2
+        lapReadRem    -= chunkRead2
+        framesWritten += chunkRead2
+        val chunkRead3 = chunkRead1 - chunkRead2
+        if (chunkRead3 > 0) {
+          Util.copy (lapBuf, lapReadOff, outBuf.buf, outOff, chunkRead3)
+          Util.clear(lapBuf, lapReadOff, chunkRead3)
+          lapReadOff     = (lapReadOff + chunkRead3) % lapBuf.length
+          outOff        += chunkRead3
+          outRem        -= chunkRead3
+          lapReadRem    -= chunkRead3
+          framesWritten += chunkRead3
         }
 
-        val chunkRead1 = math.min(lapReadRem, outRem)
-        if (chunkRead1 > 0) {
-          val chunkRead2 = math.min(lapBuf.length - lapReadOff, chunkRead1)
-          Util.copy (lapBuf, lapReadOff, outBuf.buf, outOff, chunkRead2)
-          Util.clear(lapBuf, lapReadOff, chunkRead2)
-          lapReadOff     = (lapReadOff + chunkRead2) % lapBuf.length
-          outOff        += chunkRead2
-          outRem        -= chunkRead2
-          lapReadRem    -= chunkRead2
-          framesWritten += chunkRead2
-          val chunkRead3 = chunkRead1 - chunkRead2
-          if (chunkRead3 > 0) {
-            Util.copy (lapBuf, lapReadOff, outBuf.buf, outOff, chunkRead3)
-            Util.clear(lapBuf, lapReadOff, chunkRead3)
-            lapReadOff     = (lapReadOff + chunkRead3) % lapBuf.length
-            outOff        += chunkRead3
-            outRem        -= chunkRead3
-            lapReadRem    -= chunkRead3
-            framesWritten += chunkRead3
-          }
+        stateChanged = true
+      }
 
-          stateChanged = true
-        }
-
-        if (outRem == 0 && isAvailable(shape.out)) {
+      if (outRem == 0 && isAvailable(shape.out)) {
+        if (outOff > 0) {
           outBuf.size   = outOff
+          outOff = 0  // important, see check in `writeDone`
           push(shape.out, outBuf)
-          outBuf        = null
-          stateChanged  = true
+        } else {
+          outBuf.release()
         }
+        outBuf        = null
+        stateChanged  = true
       }
 
       if (lapReadRem == 0 && lapWriteRem == 0) {

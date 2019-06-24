@@ -155,8 +155,9 @@ abstract class NodeImpl[+S <: Shape](protected final val name: String, val layer
       }
 
     final def onPush(): Unit = {
-      log(s"onPush() $this - $hasValue")
-      if (!hasValue) {
+      val cond = !hasValue
+      log(s"onPush() $this - $cond")
+      if (cond) {
         assert(_buf == null)
         _buf = grab(in)
         assert(_buf.size > 0)
