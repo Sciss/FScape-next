@@ -163,10 +163,10 @@ abstract class NodeImpl[+S <: Shape](protected final val name: String, val layer
       }
 
     final def onPush(): Unit = {
-      val cond = !hasValue
-      log(s"onPush() $this - $cond")
+      val cond = !hasValue && _buf == null
+      log(s"onPush() $this - !hasValue = $cond")
       if (cond) {
-        assert(_buf == null)
+//        assert(_buf == null)
         _buf = grab(in)
         assert(_buf.size > 0)
         _offset = 0
@@ -182,7 +182,7 @@ abstract class NodeImpl[+S <: Shape](protected final val name: String, val layer
     }
 
     final override def onUpstreamFinish(): Unit = {
-      log(s"onUpstreamFinish() $this - $hasValue $everHadValue")
+      log(s"onUpstreamFinish() $this - hasValue = $hasValue, everHadValue = $everHadValue")
       if (!isAvailable(in)) {
         if (everHadValue) {
           if (!hasValue) ackValue()

@@ -16,13 +16,16 @@ package de.sciss.fscape.stream
 import akka.stream.stage.{InHandler, OutHandler}
 import akka.stream.{Attributes, FanInShape4}
 import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
-import de.sciss.fscape.{Util, logStream => log}
+//import de.sciss.fscape.{Util, logStream => log}
+import de.sciss.fscape.Util
 import de.sciss.numbers.Implicits._
 import edu.emory.mathcs.jtransforms.fft.DoubleFFT_1D
 
 import scala.annotation.tailrec
 
 object Convolution {
+  def log(what: => String): Unit = println(s"[log] $what")
+
   var DEBUG_FORCE_FFT   = false // override auto-selection and always convolve in frequency domain
   var DEBUG_FORCE_TIME  = false // override auto-selection and always convolve in time domain
 
@@ -91,7 +94,7 @@ object Convolution {
 
     def onPull(): Unit = {
       val ok = stage == 2
-      log(s"$this.out onPull() $ok")
+      log(s"$this.out onPull() stage == 2 ? $ok")
       if (ok) {
         processOverlapAdd()
       }
@@ -145,7 +148,7 @@ object Convolution {
 
       def onPush(): Unit = {
         val ok = buf == null
-        log(s"$this - onPush() $ok")
+        log(s"$this - onPush() buf == null ? $ok")
         if (ok) {
           buf     = grab(in)
           bufOff  = 0
@@ -153,7 +156,6 @@ object Convolution {
           if (_shouldFill) {
             processFill()
           }
-          tryPull(in)
         }
       }
 
@@ -198,6 +200,7 @@ object Convolution {
             if (bufRem == 0) {
               buf.release()
               buf = null
+              tryPull(in)
             }
           }
 
@@ -232,7 +235,7 @@ object Convolution {
 
       override def onUpstreamFinish(): Unit = {
         val really = !isAvailable(in)
-        log(s"$this - onUpstreamFinish() $really")
+        log(s"$this - onUpstreamFinish() !isAvailable(in) ? $really")
         if (really) {
           if (_shouldFill) processDone()
         }
@@ -289,7 +292,7 @@ object Convolution {
 
       def onPush(): Unit = {
         val ok = buf == null
-        log(s"$this - onPush() $ok")
+        log(s"$this - onPush() buf == null ? $ok")
         if (ok) {
           buf     = grab(in)
           bufOff  = 0
@@ -297,7 +300,7 @@ object Convolution {
           if (_shouldFill) {
             processFill()
           }
-          tryPull(in)
+//          tryPull(in)
         }
       }
 
@@ -311,6 +314,7 @@ object Convolution {
         if (bufRem == 0) {
           buf.release()
           buf = null
+          tryPull(in)
         }
         processDone()
       }
@@ -327,7 +331,7 @@ object Convolution {
 
       override def onUpstreamFinish(): Unit = {
         val really = !isAvailable(in)
-        log(s"$this - onUpstreamFinish() $really")
+        log(s"$this - onUpstreamFinish() !isAvailable(in) ? $really")
         if (really) {
           if (_shouldFill) processDone()
         }
@@ -366,10 +370,13 @@ object Convolution {
 
     private def writeDone(): Unit =
       if (outFlush) {
-        if (framesWritten == framesProd && outOff == 0) {
+        val done = framesWritten == framesProd && outOff == 0
+        log(s"$this writeDone() outFlush, done = $done")
+        if (done) {
           completeStage()
         }
       } else {
+        log(s"$this writeDone() !outFlush, updateKernel = $updateKernel")
         if (updateKernel) {
           stage = 0
           if (kernelLenReady) {
@@ -398,6 +405,7 @@ object Convolution {
     private def processKernelLen(): Unit = {
       val oldKernelLen = kernelLen
       val _kernelLen = math.max(1, KernelLenH.takeValue())
+      println(s"_kernelLen = ${_kernelLen}")
       if (_kernelLen != oldKernelLen) {
         kernelLen   = _kernelLen
         val fftLen0 = (_kernelLen + 1).nextPowerOfTwo
@@ -439,18 +447,19 @@ object Convolution {
 
     private def notifyKernelFilled(): Unit = {
       val ok = InH.isFilled
-      log(s"$this - notifyKernelFilled() $ok")
+      log(s"$this - notifyKernelFilled() InH.isFilled ? $ok")
       if (ok) processConvolution()
     }
 
     private def notifyInFilled(): Unit = {
       val ok = KernelH.isFilled
-      log(s"$this - notifyInFilled() $ok")
+      log(s"$this - notifyInFilled() KernelH.isFilled ? $ok")
       if (ok) processConvolution()
     }
 
     private def processConvolution(): Unit = {
       val _inLen = InH.length
+      log(s"$this processConvolution() inLen = ${_inLen}")
       if (_inLen > 0) {
         val _kernelLen  = kernelLen
         val _inArr      = InH     .array

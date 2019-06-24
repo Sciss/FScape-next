@@ -24,10 +24,8 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * recent kernel is reused (making it possible to use more efficient calculation
   * in the frequency domain). When `kernelUpdate` becomes `1`, a new `kernel` is polled.
   *
-  * Technically, the first value of `kernelUpdate` is ignored, because there is no
-  * previous kernel, and so initially a `kernel` along with its `kernelLen` is always
-  * read. For example, if you want to update the kernel every ten sample frames, then
-  * `kernelUpdate` could be given as `Metro(10)`. If the kernel is never updated,
+  * For example, if you want to update the kernel every ten sample frames, then
+  * `kernelUpdate` could be given as `Metro(10).tail` or `Metro(10, 1)`. If the kernel is never updated,
   * then `kernelUpdate` could be given as constant zero. If a new kernel is provided
   * for each input sample, the value could be given as constant one.
   *
@@ -37,7 +35,7 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * @param kernelLen      the filter length in sample frames. One value is polled
   *                       whenever a new kernel is required.
   * @param kernelUpdate   a gate value read synchronous with `in`, specifying whether
-  *                       a new kernel is to be read in (non-zero) or the previous
+  *                       a new kernel is to be read in (non-zero) after the next frame, or if the previous
   *                       kernel is to be reused (zero, default).
   */
 final case class Convolution(in: GE, kernel: GE, kernelLen: GE, kernelUpdate: GE = 0) extends UGenSource.SingleOut {
