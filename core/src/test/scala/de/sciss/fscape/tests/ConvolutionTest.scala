@@ -40,11 +40,11 @@ object ConvolutionTest extends App {
   val g = Graph {
     import graph._
 //    val input : GE = DC(1.0).take(1) ++ DC(0.0).take(1) // Metro(18).take(18 * 1)
-    val input : GE = Metro(18).take(18 * 6)
+    val input : GE = Metro(18).take(18 * 5)
     //    val input : GE = /*DC(0.0).take(3) ++*/ 1.0 // DC(1.0).take(1)
-    val kernelLen = 2 // ArithmSeq(1) // , length = 3)
-    def kernel: GE = SinOsc(1.0/16).tail.take(2) // .take(kernelLen)
-    val conv = Convolution(input, kernel, kernelLen = kernelLen, kernelUpdate = 1) // Metro(18, 1))
+    val kernelLen = ArithmSeq(1) // , length = 3)
+    def kernel: GE = SinOsc(1.0/16).tail // .take(2) // .take(kernelLen)
+    val conv = Convolution(input, kernel, kernelLen = kernelLen, kernelUpdate = Metro(18, 1)) // Metro(18, 1))
     Length(conv).poll(0, "length")
     //    conv.poll(0, "foo")
     //    RepeatWindow(conv).poll(Metro(2), "conv")

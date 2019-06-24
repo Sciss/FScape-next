@@ -379,7 +379,8 @@ object Convolution {
         log(s"$this writeDone() !outFlush, updateKernel = $updateKernel")
         if (updateKernel) {
           stage = 0
-          if (kernelLenReady) {
+          // what the fucking fuck did I do in that InHandlerImpl ??
+          if (KernelLenH.available(1) > 0 /*kernelLenReady*/) {
             kernelLenReady = false
             processKernelLen()
 //          } else {
@@ -405,7 +406,7 @@ object Convolution {
     private def processKernelLen(): Unit = {
       val oldKernelLen = kernelLen
       val _kernelLen = math.max(1, KernelLenH.takeValue())
-      println(s"_kernelLen = ${_kernelLen}")
+      log(s"$this processKernelLen() ${_kernelLen}")
       if (_kernelLen != oldKernelLen) {
         kernelLen   = _kernelLen
         val fftLen0 = (_kernelLen + 1).nextPowerOfTwo
