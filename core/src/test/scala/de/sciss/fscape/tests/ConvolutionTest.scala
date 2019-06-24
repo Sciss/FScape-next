@@ -66,19 +66,67 @@ object ConvolutionTest extends App {
 //    Plot1D(conv, size = 100)
 //  }
 
+//  val g = Graph {
+//    import graph._
+//    val sr = 44100
+////    val input : GE = Metro(sr/2).take(sr * 4)
+//    val input : GE = WhiteNoise(0.01).take(sr * 4)
+//    val kernelLen = (sr * 0.1).toInt
+//    val freq = RepeatWindow(ArithmSeq(60).midiCps, num = kernelLen)
+//    def kernel: GE = SinOsc(freq/sr) * GenWindow(kernelLen, GenWindow.Hann)
+//    val conv = Convolution(input, kernel, kernelLen = kernelLen, kernelUpdate = Metro(kernelLen, 1))
+//    Length(conv).poll(0, "length")
+//    //    conv.poll(0, "foo")
+//    //    RepeatWindow(conv).poll(Metro(2), "conv")
+////    Plot1D(conv, size = 100)
+//    import de.sciss.file._
+//    AudioFileOut(conv, userHome / "Documents" / "test.aif", AudioFileSpec(numChannels = 1, sampleRate = sr))
+//  }
+
+//  val g = Graph {
+//    import graph._
+//    val sr = 44100
+//    //    val input : GE = Metro(sr/2).take(sr * 4)
+//    val inputLen  = (sr * 4.000).toInt
+//    val kernelLen = (sr * 0.100).toInt
+//    val updateLen = (sr * 0.001).toInt
+//    val input : GE = WhiteNoise(0.01).take(inputLen)
+//    val freq = RepeatWindow(Line(0, 1, inputLen / updateLen).linExp(0, 1, 200, 10000), num = kernelLen)
+//    def kernel: GE = SinOsc(freq/sr) * GenWindow(kernelLen, GenWindow.Hann)
+//    val conv = Convolution(input, kernel, kernelLen = kernelLen, kernelUpdate = Metro(updateLen, 1))
+//    Length(conv).poll(0, "length")
+//    //    conv.poll(0, "foo")
+//    //    RepeatWindow(conv).poll(Metro(2), "conv")
+//    //    Plot1D(conv, size = 100)
+//    import de.sciss.file._
+//    AudioFileOut(conv, userHome / "Documents" / "test.aif", AudioFileSpec(numChannels = 1, sampleRate = sr))
+//  }
+
   val g = Graph {
+    // quasi-continuous modulation of
+    // a windowed-sinc filter's frequency
     import graph._
     val sr = 44100
-//    val input : GE = Metro(sr/2).take(sr * 4)
-    val input : GE = WhiteNoise(0.01).take(sr * 4)
-    val kernelLen = (sr * 0.1).toInt
-    val freq = RepeatWindow(ArithmSeq(60).midiCps, num = kernelLen)
-    def kernel: GE = SinOsc(freq/sr) * GenWindow(kernelLen, GenWindow.Hann)
-    val conv = Convolution(input, kernel, kernelLen = kernelLen, kernelUpdate = Metro(kernelLen, 1))
+    val inputLen  = (sr * 4.000).toInt
+    val updateLen = 16 // (sr * 0.001).toInt
+    val input : GE = WhiteNoise(0.5).take(inputLen)
+
+    val freq = Line(0, 1, inputLen.toDouble / updateLen).linExp(0, 1, 200, 10000)
+
+    val numZero   = 8
+    val f1N       = freq / sr
+    val fltLenH   = (numZero / f1N).ceil.max(1)
+    val fltLen    = fltLenH * 2 // - 1
+    val f1NR      = RepeatWindow(f1N, num = fltLen)
+
+    def kernel: GE = {
+      GenWindow(fltLen, shape = GenWindow.Sinc, param = 0.5) * 0.5 -
+      GenWindow(fltLen, shape = GenWindow.Sinc, param = f1N) * f1NR
+    }
+
+    val conv = Convolution(input, kernel, kernelLen = fltLen,
+      kernelUpdate = Metro(updateLen, 1))
     Length(conv).poll(0, "length")
-    //    conv.poll(0, "foo")
-    //    RepeatWindow(conv).poll(Metro(2), "conv")
-//    Plot1D(conv, size = 100)
     import de.sciss.file._
     AudioFileOut(conv, userHome / "Documents" / "test.aif", AudioFileSpec(numChannels = 1, sampleRate = sr))
   }
@@ -91,7 +139,10 @@ object ConvolutionTest extends App {
 //    SimpleGUI(ctrl)
 //  }
 
+  val t1 = System.currentTimeMillis()
   ctrl.run(g)
   Await.result(ctrl.status, Duration.Inf)
+  val t2 = System.currentTimeMillis()
+  println(s"Took ${(t2-t1)/1000} s.")
   sys.exit()
 }
