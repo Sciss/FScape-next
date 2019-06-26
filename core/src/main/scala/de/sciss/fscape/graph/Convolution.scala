@@ -37,8 +37,11 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * @param kernelUpdate   a gate value read synchronous with `in`, specifying whether
   *                       a new kernel is to be read in (non-zero) after the next frame, or if the previous
   *                       kernel is to be reused (zero, default).
+  * @param mode           currently unused; leave at zero
   */
-final case class Convolution(in: GE, kernel: GE, kernelLen: GE, kernelUpdate: GE = 0) extends UGenSource.SingleOut {
+final case class Convolution(in: GE, kernel: GE, kernelLen: GE, kernelUpdate: GE = 0, mode: GE = 0)
+  extends UGenSource.SingleOut {
+
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
     unwrap(this, Vector(in.expand, kernel.expand, kernelLen.expand, kernelUpdate.expand))
 

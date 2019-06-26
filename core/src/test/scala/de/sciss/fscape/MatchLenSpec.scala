@@ -14,7 +14,7 @@ class MatchLenSpec extends FlatSpec with Matchers {
       (0, 10),
       (10, 10),
       (10, 3000),
-      (1, 3000),
+      (1, 3000)
     )
 
     pairs.foreach { case (n1, n2) =>
