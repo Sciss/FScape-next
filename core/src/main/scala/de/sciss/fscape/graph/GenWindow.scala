@@ -25,18 +25,19 @@ import scala.language.implicitConversions
 object GenWindow {
   object Shape {
     def apply(id: Int): Shape = (id: @switch) match {
-      case Hamming  .id => Hamming
-      case Blackman .id => Blackman
-      case Kaiser   .id => Kaiser
-      case Rectangle.id => Rectangle
-      case Hann     .id => Hann
-      case Triangle .id => Triangle
-      case Gauss    .id => Gauss
-      case Sinc     .id => Sinc
+      case Hamming      .id => Hamming
+      case Blackman     .id => Blackman
+      case Kaiser       .id => Kaiser
+      case Rectangle    .id => Rectangle
+      case Hann         .id => Hann
+      case Triangle     .id => Triangle
+      case Gauss        .id => Gauss
+      case Sinc         .id => Sinc
+      case RaisedCosine .id => RaisedCosine
     }
 
-    final val MinId: Int = Hamming.id
-    final val MaxId: Int = Sinc   .id
+    final val MinId: Int = Hamming      .id
+    final val MaxId: Int = RaisedCosine .id
 
     implicit def toGE(in: Shape): GE = in.id
   }
@@ -204,6 +205,39 @@ object GenWindow {
       while (i < stop) {
         val d  = (i - radius) * norm
         buf(j) = if (d == 0.0) 1.0 else math.sin(d) / d
+        i += 1
+        j += 1
+      }
+    }
+  }
+
+  /** The "modulator" part for the roll-off in a raised cosine filter.
+    * It follows the formula
+    *
+    * {{{
+    *   x(n) = cos(a*n * Pi) / (1 - (2a*n)^2)
+    * }}}
+    *
+    * with `a = freq/sr` the normalized roll-off frequency, specified as the window's
+    * `param`, and the singularity of `x(0) = 1.0`.
+    *
+    */
+  case object RaisedCosine extends Shape {
+    final val id = 8
+
+    def fill(winSize: Long, winOff: Long, buf: Array[Double], bufOff: Int, len: Int, param: Double): Unit = {
+      val radius  = 0.5 * winSize
+      val norm    = param * math.Pi // TwoPi
+      var i       = winOff
+      val stop    = i + len
+      var j       = bufOff
+      while (i < stop) {
+        val d  = i - radius
+        buf(j) = if (d == 0.0) 1.0 else {
+          val d0 = d * norm
+          val d1 = 4 * d0 * d0
+          math.cos(d0 * math.Pi) / (1.0 - d1)
+        }
         i += 1
         j += 1
       }
