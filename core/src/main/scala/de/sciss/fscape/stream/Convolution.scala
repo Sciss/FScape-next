@@ -69,7 +69,7 @@ object Convolution {
     private[this] var kernelDidFFT    = false
     private[this] var kernelLen       = 0
     private[this] var fftLen          = 0
-    private[this] var fftCost         = 0   // = (fftLen * log2(fftLen)) * 3 + fftLen ; 2x FFT forward, 1 x multiplication, 1x backward
+    private[this] var fftCost         = 0L  // = (fftLen * log2(fftLen)) * 3 + fftLen ; 2x FFT forward, 1 x multiplication, 1x backward
     private[this] var maxInLen        = 0
 
     private[this] var lapReadRem      = 0
@@ -481,7 +481,8 @@ object Convolution {
         val _fftLen     = fftLen
         val _convLen    = _inLen + _kernelLen - 1
 
-        if (!kernelDidFFT && /* timeCost */ _inLen * _kernelLen <= fftCost) {  // perform convolution in time domain
+        // careful to use 64-bit math
+        if (!kernelDidFFT && /* timeCost */ _inLen.toLong * _kernelLen <= fftCost) {  // perform convolution in time domain
 
           if (time == null) {
             time = new Array[Double](_fftLen)
