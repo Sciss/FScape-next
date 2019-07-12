@@ -18,6 +18,8 @@ import akka.stream.{Attributes, FanInShape5}
 import de.sciss.fscape.stream.impl.{FilterIn5DImpl, FilterLogicImpl, NodeImpl, StageImpl, WindowedLogicImpl}
 
 object Loudness {
+  var DEBUG = false
+
   def apply(in: OutD, sampleRate: OutD, size: OutI, spl: OutD, diffuse: OutI)(implicit b: Builder): OutD = {
     val stage0  = new Stage(b.layer)
     val stage   = b.add(stage0)
@@ -431,7 +433,7 @@ object Loudness {
             if(IZ < 269) {
               IZ += 1
             } else {
-              println("WARNING ! NS Table overflows during calculation of the contribution of unmasked loudness !")
+              if (DEBUG) println("WARNING ! NS Table overflows during calculation of the contribution of unmasked loudness !")
             }
             K += 0.1
           }
@@ -460,7 +462,7 @@ object Loudness {
             if (IZ < 269) {
               IZ += 1
             } else {
-              println("WARNING ! NS Table overflows during calculation of the contribution of accessory loudness !")
+              if (DEBUG) println("WARNING ! NS Table overflows during calculation of the contribution of accessory loudness !")
             }
             K += 0.1
           }
