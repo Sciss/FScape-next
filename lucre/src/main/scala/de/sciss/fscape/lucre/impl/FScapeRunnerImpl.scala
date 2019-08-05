@@ -133,7 +133,7 @@ object FScapeRunnerImpl extends Runner.Factory {
               messages.current = m :: Nil
             case _ =>
           }
-          state = Runner.Stopped
+          state = Runner.Stopped  // XXX TODO: clear renderRef
         case _ =>
       }}
       obsRef() = newObs

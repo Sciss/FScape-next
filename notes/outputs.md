@@ -180,7 +180,7 @@ In "lucre":
 N.B.: `Attribute` is a nested graph element that produces a `Constant` in the UGen, so this is
 already structurally solved. Similar: `AudioFileIn.NumFrames`, `AudioFileIn.SampleRate`.
 `AudioFileIn` obtains a flat `File` instance and falls back to the core equivalent graph element.
-Dito for `AudioFileOut`.
+Ditto for `AudioFileOut`.
 
 Clearly, `ActionRef` and `OutputRef` are not structural values. Since both denote _output_ type values,
 strictly speaking they need not be part of a structural _input_ specification. That is, they do not influence
