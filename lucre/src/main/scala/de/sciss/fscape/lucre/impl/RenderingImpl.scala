@@ -80,11 +80,11 @@ object RenderingImpl {
     withState(uState, force = force)
   }
 
-  trait WithState[S <: Sys[S]] extends Rendering[S] {
+  trait WithState[S <: Sys[S]] extends Rendering[S] { // Used by SysSon
     def cacheResult(implicit tx: S#Tx): Option[Try[CacheValue]]
   }
 
-  /** Turns a built UGen graph into a rendering instance.
+  /** Turns a built UGen graph into a rendering instance. Used by SysSon.
     *
     * @param uState   the result of building, either complete or incomplete
     * @param force    if `true` forces rendering of graphs that do not produce outputs
