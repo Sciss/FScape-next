@@ -154,5 +154,44 @@ resources (`MkAudioCue`), in the sense that the contract is that the value remai
 Also note, dead API:
 
 - `Rendering.withState` is never used, and neither is trait `WithState` and its method `cacheResult`.
-- __correction:__ this is API for SysSon (matrix reader), it is used
+- __correction:__ this is API for SysSon (matrix reader), it is used (in a quite ugly way, where an internal
+  FScape program is created that the reader factory _knows of_ it creates exactly one resource file with known
+  type)
 
+------
+
+Looking at the `FromAny` instances, we anyway support primitive values only for now. So there is now way to obtain
+that for an audio cue (right now). What we should probably do, is extend `FScape.Output.Writer` with a `value`
+method that gives `Any`. The `var value` in `OutputImpl` should be renamed to avoid confusion with primitive values.
+`updateValue` in `OutputResult` should also be renamed. Then we construct a method alternative to `withState` that
+does not generate a cache entry with binary values, and an alternative to `RenderingImpl.Impl` that also does not
+deal with cached values. Another possibility is to re-use all that, but extend `Output.Reader` with a method to
+return the flat `Any`. The serialization is cheap, so DRY? `readOutput` in `Output.Reader` might be renamed
+to reflect that practically all implementation _instantiate_ a new `Obj`? (Perhaps not, because 'read' usually has
+that meaning in Lucre). In this second possibility, `WithState` could be re-used, if we add information on how to
+map output id strings to `Output.Reader` instances. That would be `outputs: List[OutputResult[S]]` which we may or
+may not turn into a map indexed by key (the key is anyway obtainable through `OutputRef.key`).
+
+```
+val f = FScape("key", cache = ??? : Boolean)
+val ln = f.output[Long]("foo")
+f.success ---> PrintLn(ln.toStr)
+val b = Bang()
+b ---> f.run
+b
+```
+
+I think a good task would be to try make this simple example workable without rendering existing API usage invalid.
+The second step could then be to look at the dual, `runWith`, to avoid having to persist arguments.
+
+```
+val f = FScape("key")
+val ln = f.out[Long]("foo")
+f.success ---> PrintLn(ln.toStr)
+val gg = DoubleField()
+val b = Bang()
+b ---> f.runWith("bar" -> gg.value())
+FlowPanel(gg, b)
+```
+
+Perhaps `output` here could simply be called `out` as in ScalaCollider's channel proxy?
