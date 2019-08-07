@@ -5,8 +5,8 @@ lazy val baseName   = "FScape"
 lazy val baseNameL  = baseName.toLowerCase
 lazy val gitRepo    = "FScape-next"
 
-lazy val projectVersion = "2.28.0"
-lazy val mimaVersion    = "2.28.0"
+lazy val projectVersion = "2.29.0-SNAPSHOT"
+lazy val mimaVersion    = "2.29.0"
 
 lazy val baseDescription = "An audio rendering library"
 
@@ -14,8 +14,8 @@ lazy val commonSettings = Seq(
   organization       := "de.sciss",
   description        := baseDescription,
   version            := projectVersion,
-  scalaVersion       := "2.12.8",
-  crossScalaVersions := Seq("2.12.8", "2.11.12", "2.13.0"),
+  scalaVersion       := "2.12.9",
+  crossScalaVersions := Seq("2.13.0", "2.12.9"),
   licenses           := Seq("AGPL v3+" -> url("http://www.gnu.org/licenses/agpl-3.0.txt")),
   homepage           := Some(url(s"https://git.iem.at/sciss/$gitRepo")),
   scalacOptions in (Compile, compile) ++= Seq(
@@ -23,9 +23,9 @@ lazy val commonSettings = Seq(
   ),
   resolvers          += "Oracle Repository" at "http://download.oracle.com/maven",  // required for sleepycat
   updateOptions      := updateOptions.value.withLatestSnapshots(false),
-  javacOptions        := commonJavaOptions ++ Seq("-target", "1.6", "-g", "-Xlint:deprecation" /*, "-Xlint:unchecked" */),
+  javacOptions        := commonJavaOptions ++ Seq("-target", "1.8", "-g", "-Xlint:deprecation" /*, "-Xlint:unchecked" */),
   javacOptions in doc := commonJavaOptions,
-  parallelExecution in Test := false,
+  parallelExecution in Test := false
 ) ++ publishSettings
 
 lazy val deps = new {
@@ -41,8 +41,8 @@ lazy val deps = new {
   }
   val lucre = new {
     val fileCache       = "0.5.1"
-    val lucre           = "3.13.1"
-    val soundProcesses  = "3.30.0"
+    val lucre           = "3.13.2-SNAPSHOT"
+    val soundProcesses  = "3.31.0-SNAPSHOT"
   }
   val views = new {
     val lucreSwing      = "1.17.2"
@@ -58,7 +58,7 @@ lazy val deps = new {
   }
 }
 
-def commonJavaOptions = Seq("-source", "1.6")
+def commonJavaOptions = Seq("-source", "1.8")
 
 lazy val testSettings = Seq(
   libraryDependencies += {
@@ -108,7 +108,7 @@ lazy val core = project
       "de.sciss"          %%  "scissdsp"            % deps.main.dsp,
       "de.sciss"          %%  "swingplus"           % deps.main.swingPlus,
       "de.sciss"          %%  "scala-chart"         % deps.main.scalaChart,
-      "de.sciss"          %%  "kollflitz"           % deps.test.kollFlitz % Test,
+      "de.sciss"          %%  "kollflitz"           % deps.test.kollFlitz % Test
     ),
     libraryDependencies += {
       // if (scalaVersion.value == "2.13.0-RC2") {

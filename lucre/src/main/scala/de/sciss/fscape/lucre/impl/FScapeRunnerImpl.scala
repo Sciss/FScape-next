@@ -49,7 +49,7 @@ object FScapeRunnerImpl extends Runner.Factory {
 
   private final class Impl[S <: synth.Sys[S]](val objH: stm.Source[S#Tx, FScape[S]])
                                              (implicit val universe: Runner.Universe[S])
-    extends BasicRunnerImpl[S] with ObjViewBase[S, Unit] {
+    extends BasicRunnerImpl[S] /*with ObjViewBase[S, Unit]*/ {
 
     private[this] val renderRef = Ref(Option.empty[Rendering[S]])
     private[this] val obsRef    = Ref(Disposable.empty[S#Tx])
@@ -103,10 +103,11 @@ object FScapeRunnerImpl extends Runner.Factory {
       renderRef.swap(None).foreach  (_.dispose())
     }
 
-    def prepare(timeRef: TimeRef.Option)(implicit tx: S#Tx): Unit =
+    // XXX TODO --- pass `attr` to `obj.run`
+    def prepare(attr: Runner.Attr)(implicit tx: S#Tx): Unit =
       state = Runner.Prepared
 
-    def run(timeRef: TimeRef.Option, target: Unit)(implicit tx: S#Tx): Unit = {
+    def run()(implicit tx: S#Tx): Unit = {
       val obj = objH()
       messages.current = Nil
       state = Runner.Running

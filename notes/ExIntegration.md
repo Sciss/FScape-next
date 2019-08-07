@@ -160,7 +160,7 @@ Also note, dead API:
 
 ------
 
-Looking at the `FromAny` instances, we anyway support primitive values only for now. So there is now way to obtain
+Looking at the `FromAny` instances, we anyway support primitive values only for now. So there is no way to obtain
 that for an audio cue (right now). What we should probably do, is extend `FScape.Output.Writer` with a `value`
 method that gives `Any`. The `var value` in `OutputImpl` should be renamed to avoid confusion with primitive values.
 `updateValue` in `OutputResult` should also be renamed. Then we construct a method alternative to `withState` that
