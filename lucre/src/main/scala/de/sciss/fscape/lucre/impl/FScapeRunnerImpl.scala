@@ -23,7 +23,7 @@ import de.sciss.lucre.stm.TxnLike.peer
 import de.sciss.lucre.stm.{Disposable, Obj, Sys}
 import de.sciss.lucre.{stm, synth}
 import de.sciss.synth.proc.impl.BasicRunnerImpl
-import de.sciss.synth.proc.{ObjViewBase, Runner, TimeRef}
+import de.sciss.synth.proc.{Runner, Universe}
 
 import scala.concurrent.ExecutionException
 import scala.concurrent.stm.Ref
@@ -44,11 +44,11 @@ object FScapeRunnerImpl extends Runner.Factory {
 
   def init(): Unit = _init
 
-  def mkRunner[S <: synth.Sys[S]](obj: FScape[S])(implicit tx: S#Tx, universe: Runner.Universe[S]): Runner[S] =
+  def mkRunner[S <: synth.Sys[S]](obj: FScape[S])(implicit tx: S#Tx, universe: Universe[S]): Runner[S] =
     new Impl(tx.newHandle(obj))
 
   private final class Impl[S <: synth.Sys[S]](val objH: stm.Source[S#Tx, FScape[S]])
-                                             (implicit val universe: Runner.Universe[S])
+                                             (implicit val universe: Universe[S])
     extends BasicRunnerImpl[S] /*with ObjViewBase[S, Unit]*/ {
 
     private[this] val renderRef = Ref(Option.empty[Rendering[S]])
