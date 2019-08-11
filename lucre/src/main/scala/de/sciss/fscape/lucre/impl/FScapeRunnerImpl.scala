@@ -104,7 +104,7 @@ object FScapeRunnerImpl extends Runner.Factory {
     }
 
     // XXX TODO --- pass `attr` to `obj.run`
-    def prepare(attr: Runner.Attr)(implicit tx: S#Tx): Unit =
+    def prepare(attr: Runner.Attr[S])(implicit tx: S#Tx): Unit =
       state = Runner.Prepared
 
     def run()(implicit tx: S#Tx): Unit = {
