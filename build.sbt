@@ -37,15 +37,15 @@ lazy val deps = new {
     val optional        = "1.0.0"
     val scalaChart      = "0.7.1"
     val swingPlus       = "0.4.2"
-    val akka            = "2.5.23"
+    val akka            = "2.5.24"
   }
   val lucre = new {
     val fileCache       = "0.5.1"
-    val lucre           = "3.13.2-SNAPSHOT"
+    val lucre           = "3.14.0-SNAPSHOT"
     val soundProcesses  = "3.31.0-SNAPSHOT"
   }
   val views = new {
-    val lucreSwing      = "1.17.2"
+    val lucreSwing      = "1.18.0-SNAPSHOT"
   }
   val modules = new {
     val scallop         = "3.3.1"
