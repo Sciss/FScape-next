@@ -31,6 +31,11 @@ import scala.util.control.NonFatal
 object GraphObj extends expr.impl.ExprTypeImpl[Graph, GraphObj] {
   final val typeId = 100
 
+  def tryParse(value: Any): Option[Graph] = value match {
+    case x: Graph => Some(x)
+    case _        => None
+  }
+
   protected def mkConst[S <: Sys[S]](id: S#Id, value: A)(implicit tx: S#Tx): Const[S] =
     new _Const[S](id, value)
 
