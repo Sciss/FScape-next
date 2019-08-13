@@ -40,11 +40,11 @@ trait UGenGraphBuilderContextImpl[S <: Sys[S]] extends UGenGraphBuilder.Context[
       // XXX TODO --- at some point we should 'merge' the two maps
       // WARNING: Scala compiler bug, cannot use `collect` with
       // `PartialFunction` here, only total function works.
-      val peer: Option[Any] = attr.get(aKey).flatMap {
-        case x: ExprLike[S, _]  => Some(x.value)
-        case _                  => fscape.attr.get(aKey).flatMap {
-          case x: ExprLike[S, _]  => Some(x.value)
-          case _                  => None
+      val peer: Option[Any] = attr.get(aKey) match {
+        case Some(x: ExprLike[S, _])  => Some(x.value)
+        case _                        => fscape.attr.get(aKey) match {
+          case Some(x: ExprLike[S, _])  => Some(x.value)
+          case _                        => None
         }
       }
       UGB.Input.Attribute.Value(peer)
