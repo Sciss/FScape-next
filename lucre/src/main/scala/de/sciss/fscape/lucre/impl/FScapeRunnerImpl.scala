@@ -22,15 +22,16 @@ import de.sciss.lucre.event.impl.ObservableImpl
 import de.sciss.lucre.stm.TxnLike.peer
 import de.sciss.lucre.stm.{Disposable, Obj, Sys}
 import de.sciss.lucre.{stm, synth}
+import de.sciss.synth.proc.Runner.{Done, Failed, Stopped}
 import de.sciss.synth.proc.impl.BasicRunnerImpl
 import de.sciss.synth.proc.{Runner, Universe}
 
 import scala.concurrent.ExecutionException
 import scala.concurrent.stm.Ref
-import scala.util.Failure
+import scala.util.{Failure, Success}
 
 object FScapeRunnerImpl extends Runner.Factory {
-  var DEBUG_USE_ASYNC = false // fuck you Akka, completely intrusive behaviour when using async
+  var DEBUG_USE_ASYNC = false // warning: Akka uses completely intrusive behaviour when in async
 
   final val prefix          = "FScape"
   def humanName : String    = prefix
@@ -53,7 +54,7 @@ object FScapeRunnerImpl extends Runner.Factory {
 
     private[this] val renderRef = Ref(Option.empty[Rendering[S]])
     private[this] val obsRef    = Ref(Disposable.empty[S#Tx])
-//    private[this] val dispatchedState = Ref[Runner.State](Runner.Stopped)
+    private[this] val attrRef   = Ref(Runner.emptyAttr[S])(NoManifest)
 
     def tpe: Obj.Type = FScape
 
@@ -100,12 +101,19 @@ object FScapeRunnerImpl extends Runner.Factory {
 
     protected def disposeData()(implicit tx: S#Tx): Unit = {
       obsRef   .swap(Disposable.empty).dispose()
-      renderRef.swap(None).foreach  (_.dispose())
+      disposeRender()
     }
 
-    // XXX TODO --- pass `attr` to `obj.run`
-    def prepare(attr: Runner.Attr[S])(implicit tx: S#Tx): Unit =
-      state = Runner.Prepared
+    private def disposeRender()(implicit tx: S#Tx): Unit = {
+      renderRef.swap(None).foreach  (_.dispose())
+//      attrRef.swap(Runner.emptyAttr[S]).dispose()
+      attrRef() = Runner.emptyAttr[S]
+    }
+
+    def prepare(attr: Runner.Attr[S])(implicit tx: S#Tx): Unit = {
+      attrRef() = attr
+      state     = Runner.Prepared
+    }
 
     def run()(implicit tx: S#Tx): Unit = {
       val obj = objH()
@@ -115,13 +123,16 @@ object FScapeRunnerImpl extends Runner.Factory {
       cfg.progressReporter = { p =>
         progress.push(p.total)
       }
-      cfg.useAsync = DEBUG_USE_ASYNC
-      val r: Rendering[S] = obj.run(cfg)
+      cfg.useAsync  = DEBUG_USE_ASYNC
+      val attr      = attrRef()
+      val r: Rendering[S] = obj.run(cfg, attr)
       renderRef.swap(Some(r)).foreach(_.dispose())
       obsRef   .swap(Disposable.empty) .dispose()
       val newObs = r.reactNow { implicit tx => {
         case Rendering.Completed =>
-          r.result match {
+          val res = r.result
+          disposeRender()
+          state = res match {
             case Some(Failure(ex0)) =>
               val ex    = ex0 match {
                 case cc: ExecutionException => cc.getCause
@@ -132,16 +143,20 @@ object FScapeRunnerImpl extends Runner.Factory {
               val mTxt  = ex.toString
               val m     = Runner.Message(System.currentTimeMillis(), Runner.Message.Error, mTxt)
               messages.current = m :: Nil
-            case _ =>
+              Failed(ex)
+
+            case Some(Success(_)) => Done
+
+            case _ => Stopped
           }
-          state = Runner.Stopped  // XXX TODO: clear renderRef
+
         case _ =>
       }}
       obsRef() = newObs
     }
 
     def stop()(implicit tx: S#Tx): Unit = {
-      renderRef.swap(None).foreach(_.dispose())
+      disposeRender()
       state = Runner.Stopped
     }
   }

@@ -22,7 +22,7 @@ import de.sciss.serial.{DataInput, Serializer}
 import de.sciss.synth.proc
 import de.sciss.synth.proc.Code.{Example, Import}
 import de.sciss.synth.proc.impl.CodeImpl
-import de.sciss.synth.proc.{Gen, GenView, Universe}
+import de.sciss.synth.proc.{Gen, GenView, Runner, Universe}
 import de.sciss.{fscape, model}
 
 import scala.collection.immutable.{IndexedSeq => Vec, Seq => ISeq}
@@ -88,9 +88,9 @@ object FScape extends Obj.Type {
     type Cancelled                                = fscape.stream.Cancelled
 
     /** Creates a view with the default `UGenGraphBuilder.Context`. */
-    def apply[S <: Sys[S]](peer: FScape[S], config: Control.Config)
+    def apply[S <: Sys[S]](peer: FScape[S], config: Control.Config, attr: Runner.Attr[S] = Runner.emptyAttr[S])
                           (implicit tx: S#Tx, universe: Universe[S]): Rendering[S] = {
-      val ugbCtx = new UGenGraphBuilderContextImpl.Default(peer)
+      val ugbCtx = new UGenGraphBuilderContextImpl.Default(peer, attr = attr)
       impl.RenderingImpl(peer, ugbCtx, config, force = true)
     }
   }
@@ -252,6 +252,6 @@ trait FScape[S <: Sys[S]] extends Obj[S] with Publisher[S, FScape.Update[S]] {
 
   def outputs: FScape.Outputs[S]
 
-  def run(config: Control.Config = FScape.defaultConfig)
+  def run(config: Control.Config = FScape.defaultConfig, attr: Runner.Attr[S] = Runner.emptyAttr[S])
          (implicit tx: S#Tx, universe: Universe[S]): FScape.Rendering[S]
 }

@@ -25,7 +25,7 @@ import de.sciss.lucre.stm.{Copy, Elem, Obj, Sys}
 import de.sciss.model.Change
 import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer}
 
-import scala.annotation.switch
+import scala.annotation.{switch, tailrec}
 import scala.util.control.NonFatal
 
 object GraphObj extends expr.impl.ExprTypeImpl[Graph, GraphObj] {
@@ -91,6 +91,7 @@ object GraphObj extends expr.impl.ExprTypeImpl[Graph, GraphObj] {
       xs.foreach(writeElem(_, out, ref))
     }
 
+    @tailrec
     private def writeElem(e: Any, out: DataOutput, ref: RefMapOut): Unit =
       e match {
         case c: Constant =>

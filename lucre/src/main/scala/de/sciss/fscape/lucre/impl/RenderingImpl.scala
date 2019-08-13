@@ -26,7 +26,7 @@ import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Disposable, Obj, Sys, TxnLike}
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer}
-import de.sciss.synth.proc.{GenView, Universe}
+import de.sciss.synth.proc.{GenView, Runner, Universe}
 
 import scala.concurrent.stm.{Ref, TMap, atomic}
 import scala.concurrent.{Future, Promise}
@@ -43,9 +43,9 @@ object RenderingImpl {
     * @param force      if `true`, always renders even if there are no
     *                   outputs.
     */
-  def apply[S <: SSys[S]](fscape: FScape[S], config: Control.Config, force: Boolean)
+  def apply[S <: SSys[S]](fscape: FScape[S], config: Control.Config,  attr: Runner.Attr[S], force: Boolean)
                         (implicit tx: S#Tx, universe: Universe[S]): Rendering[S] = {
-    val ugbCtx = new UGenGraphBuilderContextImpl.Default(fscape)
+    val ugbCtx = new UGenGraphBuilderContextImpl.Default(fscape, attr = attr)
     apply(fscape, ugbCtx, config, force = force)
   }
 

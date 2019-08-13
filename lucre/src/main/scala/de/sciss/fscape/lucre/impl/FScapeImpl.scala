@@ -24,7 +24,7 @@ import de.sciss.lucre.stm.{Copy, Elem, NoSys, Obj, Sys}
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.lucre.{event => evt}
 import de.sciss.serial.{DataInput, DataOutput, Serializer}
-import de.sciss.synth.proc.{GenView, Universe}
+import de.sciss.synth.proc.{GenView, Runner, Universe}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
@@ -81,7 +81,7 @@ object FScapeImpl {
       val _fscape = output.fscape
       import universe.genContext
       val fscView = genContext.acquire[Rendering[S]](_fscape) {
-        RenderingImpl(_fscape, config, force = false)
+        RenderingImpl(_fscape, config, attr = Runner.emptyAttr[S], force = false)
       }
       OutputGenView(config, output, fscView)
     }
@@ -96,8 +96,8 @@ object FScapeImpl {
 
     // --- rendering ---
 
-    final def run(config: Control.Config)(implicit tx: S#Tx, universe: Universe[S]): Rendering[S] =
-      Rendering(this, config)
+    final def run(config: Control.Config, attr: Runner.Attr[S])(implicit tx: S#Tx, universe: Universe[S]): Rendering[S] =
+      Rendering(this, config, attr = attr)
   }
 
   private sealed trait ImplOLD[S <: Sys[S]]

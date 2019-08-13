@@ -17,17 +17,19 @@ package impl
 
 import de.sciss.fscape.lucre.UGenGraphBuilder.MissingIn
 import de.sciss.fscape.lucre.{UGenGraphBuilder => UGB}
-import de.sciss.lucre.expr.Expr
+import de.sciss.lucre.expr.ExprLike
 import de.sciss.lucre.stm.Sys
 import de.sciss.synth.proc
-import de.sciss.synth.proc.Universe
+import de.sciss.synth.proc.{Runner, Universe}
 
 object UGenGraphBuilderContextImpl {
-  final class Default[S <: Sys[S]](protected val fscape: FScape[S])(implicit val universe: Universe[S])
+  final class Default[S <: Sys[S]](protected val fscape: FScape[S],
+                                   protected val attr: Runner.Attr[S])(implicit val universe: Universe[S])
     extends UGenGraphBuilderContextImpl[S]
 }
 trait UGenGraphBuilderContextImpl[S <: Sys[S]] extends UGenGraphBuilder.Context[S] {
-  protected def fscape: FScape[S]
+  protected def fscape: FScape[S] // XXX TODO --- why not transactional? I think all UGB runs in one go
+  protected def attr  : Runner.Attr[S]
 
   protected implicit def universe: Universe[S]
 
@@ -35,18 +37,23 @@ trait UGenGraphBuilderContextImpl[S <: Sys[S]] extends UGenGraphBuilder.Context[
                        (implicit tx: S#Tx): Res = in match {
     case i: UGB.Input.Attribute =>
       val aKey  = i.name
-      val f     = fscape
+      // XXX TODO --- at some point we should 'merge' the two maps
       // WARNING: Scala compiler bug, cannot use `collect` with
       // `PartialFunction` here, only total function works.
-      val peer: Option[Any] = f.attr.get(aKey).flatMap {
-        case x: Expr[S, _]  => Some(x.value)
-        case _              => None
+      val peer: Option[Any] = attr.get(aKey).flatMap {
+        case x: ExprLike[S, _]  => Some(x.value)
+        case _                  => fscape.attr.get(aKey).flatMap {
+          case x: ExprLike[S, _]  => Some(x.value)
+          case _                  => None
+        }
       }
       UGB.Input.Attribute.Value(peer)
 
     case i: UGB.Input.Action =>
       val aKey  = i.name
       val f     = fscape
+      // XXX TODO at some point we should allow `IAct`
+      // ... or actually just a `Runner` for any object
       val res   = f.attr.$[proc.Action](aKey).map { a =>
         new ActionRefImpl[S](aKey, tx.newHandle(f), tx.newHandle(a))
       }
