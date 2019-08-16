@@ -63,7 +63,7 @@ object ModLimiter extends Module {
         ceiling = ceilAmt)
       val inBuf = BufferMemory(in, atkFrames + rlsFrames)
       val gain  = If (syncChans sig_== 0) Then { gain0 } Else {
-        Reduce.max(gain0)
+        Reduce.min(gain0)
       }
       val sig   = inBuf * gain
       val written = AudioFileOut("out", sig, fileType = fileType,
