@@ -15,8 +15,8 @@ object ActionTest extends App {
 
   var r: FScape.Rendering[S] = _
 
-  val body: proc.Action.Body = new proc.Action.Body {
-    def apply[T <: Sys[T]](universe: proc.Action.Universe[T])(implicit tx: T#Tx): Unit = {
+  val body: proc.ActionRaw.Body = new proc.ActionRaw.Body {
+    def apply[T <: Sys[T]](universe: proc.ActionRaw.Universe[T])(implicit tx: T#Tx): Unit = {
       tx.afterCommit(println("Bang!"))
       assert(tx.system == cursor)
       val stx = tx.asInstanceOf[S#Tx]
@@ -33,8 +33,8 @@ object ActionTest extends App {
       val tr    = sig > 0.9 // sig >= 0 & sig < 0.0001
       Action(trig = tr, key = "action")
     }
-    proc.Action.registerPredef("bang", body)
-    val a = proc.Action.predef[S]("bang")
+    proc.ActionRaw.registerPredef("bang", body)
+    val a = proc.ActionRaw.predef[S]("bang")
     f.attr.put("action", a)
     f.graph() = g
     tx.newHandle(f)

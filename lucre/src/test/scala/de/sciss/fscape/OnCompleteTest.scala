@@ -10,8 +10,8 @@ object OnCompleteTest extends App {
   type S                  = InMemory
   implicit val cursor: S  = InMemory()
 
-  val body: proc.Action.Body = new proc.Action.Body {
-    def apply[T <: Sys[T]](universe: proc.Action.Universe[T])(implicit tx: T#Tx): Unit =
+  val body: proc.ActionRaw.Body = new proc.ActionRaw.Body {
+    def apply[T <: Sys[T]](universe: proc.ActionRaw.Universe[T])(implicit tx: T#Tx): Unit =
       tx.afterCommit {
         println(s"Completed: ${universe.value}")
         sys.exit()
@@ -33,8 +33,8 @@ object OnCompleteTest extends App {
       sig.last.poll(0, "last")
       OnComplete("action")
     }
-    proc.Action.registerPredef("bang", body)
-    val a = proc.Action.predef[S]("bang")
+    proc.ActionRaw.registerPredef("bang", body)
+    val a = proc.ActionRaw.predef[S]("bang")
     f.attr.put("action", a)
     f.graph() = g
     implicit val universe: Universe[S] = Universe.dummy

@@ -54,8 +54,8 @@ trait UGenGraphBuilderContextImpl[S <: Sys[S]] extends UGenGraphBuilder.Context[
       val f     = fscape
       // XXX TODO at some point we should allow `IAct`
       // ... or actually just a `Runner` for any object
-      val res   = f.attr.$[proc.Action](aKey).map { a =>
-        new ActionRefImpl[S](aKey, tx.newHandle(f), tx.newHandle(a))
+      val res   = f.attr.$[proc.ActionRaw](aKey).map { a =>
+        new ActionRawRefImpl[S](aKey, tx.newHandle(f), tx.newHandle(a))
       }
       res.getOrElse(throw MissingIn(aKey))
 

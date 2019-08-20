@@ -144,7 +144,7 @@ object FScape extends Obj.Type {
         Import("de.sciss.fscape.lucre.graph", All),
         Import("de.sciss.fscape.lucre.graph.Ops", All)
       ))
-      proc.Code.registerImports(proc.Code.Action.id, Vec(
+      proc.Code.registerImports(proc.Code.ActionRaw.id, Vec(
         Import("de.sciss.fscape.lucre", Name("FScape") :: Nil)
       ))
     }

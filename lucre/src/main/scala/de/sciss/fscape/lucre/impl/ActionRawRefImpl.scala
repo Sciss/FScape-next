@@ -21,9 +21,9 @@ import de.sciss.lucre.stm.Sys
 import de.sciss.synth.proc
 import de.sciss.synth.proc.{SoundProcesses, Universe}
 
-final class ActionRefImpl[S <: Sys[S]](val key: String,
-                                       fH: stm.Source[S#Tx, FScape[S]], aH: stm.Source[S#Tx, proc.Action[S]])
-                                      (implicit universe: Universe[S])
+final class ActionRawRefImpl[S <: Sys[S]](val key: String,
+                                          fH: stm.Source[S#Tx, FScape[S]], aH: stm.Source[S#Tx, proc.ActionRaw[S]])
+                                         (implicit universe: Universe[S])
   extends Input.Action.Value {
 
   def execute(value: Any): Unit = {
@@ -31,7 +31,7 @@ final class ActionRefImpl[S <: Sys[S]](val key: String,
     SoundProcesses.atomic[S, Unit] { implicit tx =>
       val f = fH()
       val a = aH()
-      val u = proc.Action.Universe(self = a, invoker = Some(f), value = value)
+      val u = proc.ActionRaw.Universe(self = a, invoker = Some(f), value = value)
       a.execute(u)
     }
   }
