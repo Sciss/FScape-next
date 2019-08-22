@@ -52,11 +52,14 @@ trait UGenGraphBuilderContextImpl[S <: Sys[S]] extends UGenGraphBuilder.Context[
     case i: UGB.Input.Action =>
       val aKey  = i.name
       val f     = fscape
-      // XXX should we actually just a `Runner` for any object
-      val res   = f.attr.$[proc.Action](aKey).map { a =>
-        new ActionRefImpl[S](aKey, tx.newHandle(f), tx.newHandle(a))
+      f.attr.get(aKey) match {
+        case Some(obj) =>
+          val objH = tx.newHandle(obj)
+          new ActionRefImpl[S](aKey, tx.newHandle(f), objH)
+
+        case None =>
+          throw MissingIn(aKey)
       }
-      res.getOrElse(throw MissingIn(aKey))
 
     case i => throw new IllegalStateException(s"Unsupported input request $i")
   }

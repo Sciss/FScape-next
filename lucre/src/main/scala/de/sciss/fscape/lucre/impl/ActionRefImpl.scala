@@ -20,11 +20,10 @@ import de.sciss.lucre.expr.SourcesAsRunnerMap
 import de.sciss.lucre.expr.graph.Const
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.Sys
-import de.sciss.synth.proc
 import de.sciss.synth.proc.{Runner, SoundProcesses, Universe}
 
 final class ActionRefImpl[S <: Sys[S]](val key: String,
-                                       fH: stm.Source[S#Tx, FScape[S]], aH: stm.Source[S#Tx, proc.Action[S]])
+                                       fH: stm.Source[S#Tx, FScape[S]], aH: stm.Source[S#Tx, stm.Obj[S]])
                                       (implicit universe: Universe[S])
   extends Input.Action.Value {
 
@@ -39,7 +38,7 @@ final class ActionRefImpl[S <: Sys[S]](val key: String,
         case None     => m0
       }
       r.prepare(new SourcesAsRunnerMap[S](m1))
-      r.run()
+      r.runAndDispose()
     }
   }
 }
