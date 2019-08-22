@@ -65,7 +65,7 @@ object Action {
       while (inOffI < stop0) {
         if (inOffI < stop0) h1 = b0(inOffI) > 0
         if (h1 && !h0) {
-          ref.execute(())
+          ref.execute(None)
         }
         inOffI  += 1
         h0       = h1

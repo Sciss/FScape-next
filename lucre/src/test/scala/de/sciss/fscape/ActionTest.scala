@@ -2,30 +2,32 @@ package de.sciss.fscape
 
 import de.sciss.fscape.lucre.FScape
 import de.sciss.fscape.stream.Cancelled
-import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.synth.InMemory
 import de.sciss.synth.proc
 import de.sciss.synth.proc.Universe
 
 import scala.util.{Failure, Success}
 
+/** New test for invoking actions from an FScape graph.
+  * What is not (yet?) implemented is a way to pass the
+  * rendering instance into the action so that it could
+  * be stopped.
+  */
 object ActionTest extends App {
   type S                  = InMemory
   implicit val cursor: S  = InMemory()
 
   var r: FScape.Rendering[S] = _
 
-  val body: proc.ActionRaw.Body = new proc.ActionRaw.Body {
-    def apply[T <: Sys[T]](universe: proc.ActionRaw.Universe[T])(implicit tx: T#Tx): Unit = {
-      tx.afterCommit(println("Bang!"))
-      assert(tx.system == cursor)
-      val stx = tx.asInstanceOf[S#Tx]
-      r.cancel()(stx)
-    }
-  }
-
   val fH = cursor.step { implicit tx =>
-    val f = FScape[S]
+    val a = proc.Action[S]()
+    a.graph() = proc.Action.Graph {
+      import de.sciss.lucre.expr.graph._
+      PrintLn("Bang!")
+      // r.cancel()(stx)
+    }
+
+    val f = FScape[S]()
     val g = Graph {
       import graph.{AudioFileOut => _, _}
       import lucre.graph._
@@ -33,8 +35,6 @@ object ActionTest extends App {
       val tr    = sig > 0.9 // sig >= 0 & sig < 0.0001
       Action(trig = tr, key = "action")
     }
-    proc.ActionRaw.registerPredef("bang", body)
-    val a = proc.ActionRaw.predef[S]("bang")
     f.attr.put("action", a)
     f.graph() = g
     tx.newHandle(f)

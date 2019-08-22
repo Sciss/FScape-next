@@ -97,7 +97,7 @@ object UGenGraphBuilder {
       /** An "untyped" action reference, i.e. without system type and transactions revealed */
       trait Value extends UGenGraphBuilder.Value {
         def key: String
-        def execute(value: Any): scala.Unit
+        def execute(value: Option[Any]): scala.Unit
       }
     }
     /** Specifies access to an action.

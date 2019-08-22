@@ -203,7 +203,9 @@ object RenderingImpl {
       }
     }
   }
-  final class CacheValue(val resources: List[File], val data: Map[String, Array[Byte]])
+  final class CacheValue(val resources: List[File], val data: Map[String, Array[Byte]]) {
+    override def toString: String = s"CacheValue@${hashCode().toHexString}"
+  }
 
   private[this] lazy val producer: TxnProducer[CacheKey, CacheValue] = {
     val cacheCfg = filecache.Config[CacheKey, CacheValue]()
