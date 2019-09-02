@@ -16,7 +16,7 @@ package lucre
 package graph
 
 import de.sciss.file.File
-import de.sciss.fscape.UGen.Aux
+import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.lucre.UGenGraphBuilder.Input
 import de.sciss.fscape.stream.{BufD, BufL, StreamIn, StreamOut, Builder => SBuilder}
 import de.sciss.synth.UGenSource.Vec
@@ -42,8 +42,8 @@ object AudioFileIn {
       makeUGen(Vector.empty)
 
     protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike = {
-      val aux = tr.toOption.fold(List.empty[Aux])(Aux.Long(_) :: Nil)  // Try#fold requires Scala 2.12
-      UGen.SingleOut(this, args, aux = aux)
+      val adjuncts = tr.toOption.fold(List.empty[Adjunct])(Adjunct.Long(_) :: Nil)  // Try#fold requires Scala 2.12
+      UGen.SingleOut(this, args, adjuncts = adjuncts)
     }
 
     private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: SBuilder): StreamOut = {
@@ -69,8 +69,8 @@ object AudioFileIn {
       makeUGen(Vector.empty)
 
     protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike = {
-      val aux = tr.toOption.fold(List.empty[Aux])(Aux.Double(_) :: Nil)   // Try#fold requires Scala 2.12
-      UGen.SingleOut(this, args, aux = aux)
+      val adjuncts = tr.toOption.fold(List.empty[Adjunct])(Adjunct.Double(_) :: Nil)   // Try#fold requires Scala 2.12
+      UGen.SingleOut(this, args, adjuncts = adjuncts)
     }
 
     private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: SBuilder): StreamOut = {
@@ -100,15 +100,15 @@ object AudioFileIn {
       makeUGen(Vector.empty)
 
     protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike = {
-      val (aux, numCh) = cueTr match {
+      val (adjuncts, numCh) = cueTr match {
         case Success(cue) =>
-          val _aux = Aux.FileIn(cue.artifact) :: Aux.AudioFileSpec(cue.spec) :: Aux.Long(cue.offset) ::
-            Aux.Double(cue.gain) :: Nil
-          (_aux, cue.numChannels)
+          val _adjuncts = Adjunct.FileIn(cue.artifact) :: Adjunct.AudioFileSpec(cue.spec) ::
+            Adjunct.Long(cue.offset) :: Adjunct.Double(cue.gain) :: Nil
+          (_adjuncts, cue.numChannels)
 
         case Failure(_) => (Nil, 1)
       }
-      UGen.MultiOut(this, args, numOutputs = numCh, aux = aux)
+      UGen.MultiOut(this, args, numOutputs = numCh, adjuncts = adjuncts)
     }
 
     private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: SBuilder): Vec[StreamOut] = {

@@ -14,7 +14,7 @@
 package de.sciss.fscape
 package graph
 
-import de.sciss.fscape.UGen.Aux
+import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 import de.sciss.numbers.{DoubleFunctions => rd, DoubleFunctions2 => rd2, IntFunctions => ri}
@@ -357,7 +357,7 @@ final case class UnaryOp(op: Int, in: GE) extends UGenSource.SingleOut {
     unwrap(this, Vector(in.expand))
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
-    UGen.SingleOut(this, inputs = args, aux = Aux.Int(op) :: Nil)
+    UGen.SingleOut(this, inputs = args, adjuncts = Adjunct.Int(op) :: Nil)
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
     val Vec(in) = args

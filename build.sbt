@@ -5,8 +5,8 @@ lazy val baseName   = "FScape"
 lazy val baseNameL  = baseName.toLowerCase
 lazy val gitRepo    = "FScape-next"
 
-lazy val projectVersion = "2.29.0"
-lazy val mimaVersion    = "2.29.0"
+lazy val projectVersion = "2.30.0"
+lazy val mimaVersion    = "2.30.0"
 
 lazy val baseDescription = "An audio rendering library"
 
@@ -42,11 +42,11 @@ lazy val deps = new {
   }
   val lucre = new {
     val fileCache       = "0.5.1"
-    val lucre           = "3.14.0"
-    val soundProcesses  = "3.31.0"
+    val lucre           = "3.15.0"
+    val soundProcesses  = "3.32.0"
   }
   val views = new {
-    val lucreSwing      = "1.18.0"
+    val lucreSwing      = "1.19.0"
   }
   val modules = new {
     val scallop         = "3.3.1"
@@ -179,9 +179,9 @@ lazy val views = project
     name := s"$baseName-Views",
     description := s"Widget elements for $baseName",
     libraryDependencies ++= Seq(
-      "de.sciss"  %% "lucreswing" % deps.views.lucreSwing,
-      "de.sciss"  %% "lucre-bdb"  % deps.lucre.lucre    % Test,
-      "de.sciss"  %  "submin"     % deps.test.submin    % Test
+      "de.sciss"  %% "lucre-swing"  % deps.views.lucreSwing,
+      "de.sciss"  %% "lucre-bdb"    % deps.lucre.lucre    % Test,
+      "de.sciss"  %  "submin"       % deps.test.submin    % Test
     ),
     mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-views" % mimaVersion)
   )
@@ -202,7 +202,7 @@ lazy val modules = project
       "de.sciss"          %% "lucre-core"           % deps.lucre.lucre,
       "de.sciss"          %% "lucre-expr"           % deps.lucre.lucre,
       "de.sciss"          %% "lucre-bdb"            % deps.lucre.lucre,
-      "de.sciss"          %% "lucreswing"           % deps.views.lucreSwing,
+      "de.sciss"          %% "lucre-swing"          % deps.views.lucreSwing,
       "de.sciss"          %% "soundprocesses-views" % deps.lucre.soundProcesses,
       // "com.github.scopt"  %% "scopt"                % deps.modules.scopt,
       "org.rogach"        %% "scallop"              % deps.modules.scallop

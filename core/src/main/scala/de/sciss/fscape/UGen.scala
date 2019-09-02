@@ -43,20 +43,20 @@ sealed trait UGen extends Product {
     * (also as we do not transcode unary/binary operator ids
     * into special indices)
     */
-  def aux: List[UGen.Aux]
+  def adjuncts: List[UGen.Adjunct]
 
   def numInputs : Int = inputs.size
   def numOutputs: Int
 
   // the full UGen spec:
-  // name, inputs, aux
+  // name, inputs, adjuncts
   override final def productPrefix: String = "UGen"
   final def productArity: Int = 3
 
   final def productElement(n: Int): Any = (n: @switch) match {
     case 0 => name
     case 1 => inputs
-    case 2 => aux
+    case 2 => adjuncts
     case _ => throw new java.lang.IndexOutOfBoundsException(n.toString)
   }
 
@@ -65,7 +65,7 @@ sealed trait UGen extends Product {
 // !!! WE CURRENTLY DISABLE STRUCTURAL EQUALITY
 //  override def equals(x: Any): Boolean = (this eq x.asInstanceOf[AnyRef]) || (!isIndividual && (x match {
 //    case u: UGen =>
-//      u.name == name && u.inputs == inputs && u.aux == aux && u.canEqual(this)
+//      u.name == name && u.inputs == inputs && u.adjuncts == adjuncts && u.canEqual(this)
 //    case _ => false
 //  }))
 
@@ -75,9 +75,10 @@ sealed trait UGen extends Product {
 
 object UGen {
   object SingleOut {
-    def apply(source: UGenSource.SingleOut, inputs: Vec[UGenIn], aux: List[Aux] = Nil, isIndividual: Boolean = false,
+    def apply(source: UGenSource.SingleOut, inputs: Vec[UGenIn], adjuncts: List[Adjunct] = Nil,
+              isIndividual: Boolean = false,
               hasSideEffect: Boolean = false)(implicit b: UGenGraph.Builder): SingleOut = {
-      val res = new SingleOutImpl(source = source, inputs = inputs, aux = aux,
+      val res = new SingleOutImpl(source = source, inputs = inputs, adjuncts = adjuncts,
         isIndividual = isIndividual, hasSideEffect = hasSideEffect)
       b.addUGen(res)
       res
@@ -95,9 +96,10 @@ object UGen {
   }
 
   object ZeroOut {
-    def apply(source: UGenSource.ZeroOut, inputs: Vec[UGenIn], aux: List[Aux] = Nil, isIndividual: Boolean = false)
+    def apply(source: UGenSource.ZeroOut, inputs: Vec[UGenIn], adjuncts: List[Adjunct] = Nil,
+              isIndividual: Boolean = false)
              (implicit b: UGenGraph.Builder): ZeroOut = {
-      val res = new ZeroOutImpl(source = source, inputs = inputs, aux = aux, isIndividual = isIndividual)
+      val res = new ZeroOutImpl(source = source, inputs = inputs, adjuncts = adjuncts, isIndividual = isIndividual)
       b.addUGen(res)
       res
     }
@@ -111,10 +113,10 @@ object UGen {
 
   object MultiOut {
     def apply(source: UGenSource.MultiOut, inputs: Vec[UGenIn], numOutputs: Int,
-              aux: List[Aux] = Nil, isIndividual: Boolean = false, hasSideEffect: Boolean = false)
+              adjuncts: List[Adjunct] = Nil, isIndividual: Boolean = false, hasSideEffect: Boolean = false)
              (implicit b: UGenGraph.Builder): MultiOut = {
       val res = new MultiOutImpl(source = source, numOutputs = numOutputs, inputs = inputs,
-        aux = aux, isIndividual = isIndividual,
+        adjuncts = adjuncts, isIndividual = isIndividual,
         hasSideEffect = hasSideEffect)
       b.addUGen(res)
       res
@@ -132,15 +134,15 @@ object UGen {
     private[fscape] final def unbubble: UGenInLike = if (numOutputs == 1) outputs(0) else this
   }
 
-  object Aux {
-    final case class FileOut(peer: File) extends Aux {
+  object Adjunct {
+    final case class FileOut(peer: File) extends Adjunct {
       def write(out: DataOutput): Unit = {
         out.writeByte(0)
         out.writeUTF(peer.path)
       }
     }
 
-    final case class FileIn(peer: File) extends Aux {
+    final case class FileIn(peer: File) extends Adjunct {
       def write(out: DataOutput): Unit = {
         out.writeByte(1)
         out.writeUTF( peer.path)
@@ -149,49 +151,49 @@ object UGen {
       }
     }
 
-    final case class Int(peer: scala.Int) extends Aux {
+    final case class Int(peer: scala.Int) extends Adjunct {
       def write(out: DataOutput): Unit = {
         out.writeByte(2)
         out.writeInt(peer)
       }
     }
 
-    final case class String(peer: scala.Predef.String) extends Aux {
+    final case class String(peer: scala.Predef.String) extends Adjunct {
       def write(out: DataOutput): Unit = {
         out.writeByte(3)
         out.writeUTF(peer)
       }
     }
 
-    final case class Long(peer: scala.Long) extends Aux {
+    final case class Long(peer: scala.Long) extends Adjunct {
       def write(out: DataOutput): Unit = {
         out.writeByte(4)
         out.writeLong(peer)
       }
     }
 
-    final case class Double(peer: scala.Double) extends Aux {
+    final case class Double(peer: scala.Double) extends Adjunct {
       def write(out: DataOutput): Unit = {
         out.writeByte(5)
         out.writeDouble(peer)
       }
     }
 
-    final case class AudioFileSpec(peer: de.sciss.synth.io.AudioFileSpec) extends Aux {
+    final case class AudioFileSpec(peer: de.sciss.synth.io.AudioFileSpec) extends Adjunct {
       def write(out: DataOutput): Unit = {
         out.writeByte(10)
         de.sciss.synth.io.AudioFileSpec.Serializer.write(peer, out)
       }
     }
 
-    final case class ImageFileSpec(peer: ImageFile.Spec) extends Aux {
+    final case class ImageFileSpec(peer: ImageFile.Spec) extends Adjunct {
       def write(out: DataOutput): Unit = {
         out.writeByte(11)
         ImageFile.Spec.Serializer.write(peer, out)
       }
     }
   }
-  trait Aux extends Writable
+  trait Adjunct extends Writable
 }
 
 object UGenInLike {

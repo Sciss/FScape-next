@@ -15,7 +15,7 @@ package de.sciss.fscape
 package graph
 
 import de.sciss.file.File
-import de.sciss.fscape.UGen.Aux
+import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.StreamIn
 
@@ -42,7 +42,7 @@ final case class ImageFileSeqOut(in: GE, template: File, spec: ImageFile.Spec, i
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit = {
     val t = Util.mkTemplate(template)
     UGen.ZeroOut(this, inputs = args,
-      aux = Aux.FileOut(t) :: Aux.ImageFileSpec(spec) :: Nil, isIndividual = true)
+      adjuncts = Adjunct.FileOut(t) :: Adjunct.ImageFileSpec(spec) :: Nil, isIndividual = true)
   }
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit = {

@@ -14,7 +14,7 @@
 package de.sciss.fscape.graph
 
 import de.sciss.fscape
-import de.sciss.fscape.UGen.Aux
+import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{BufD, BufI, BufL, OutD, OutI, OutL, StreamIn, StreamOut}
 import de.sciss.fscape.{GE, Graph, Lazy, UGen, UGenGraph, UGenIn, UGenInLike, UGenSource, stream}
@@ -84,7 +84,7 @@ object Then {
       unwrap(this, cases.iterator.map(_.cond.expand).toIndexedSeq)
 
     protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit =
-      UGen.ZeroOut(this, args, aux = cases.map(c => Aux.Int(c.branchLayer)))
+      UGen.ZeroOut(this, args, adjuncts = cases.map(c => Adjunct.Int(c.branchLayer)))
 
     private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit = {
       val cond = (args.iterator zip cases.iterator).map { case (cond0, UnitCase(_, bl)) =>
@@ -113,7 +113,7 @@ object Then {
 
     protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike = {
       val numOutputs = args.size / numCases - 1 // one conditional, N branch-outs
-      UGen.MultiOut(this, args, numOutputs = numOutputs, aux = cases.map(c => Aux.Int(c.branchLayer)))
+      UGen.MultiOut(this, args, numOutputs = numOutputs, adjuncts = cases.map(c => Adjunct.Int(c.branchLayer)))
     }
 
     private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Vec[StreamOut] = {

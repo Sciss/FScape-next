@@ -14,7 +14,7 @@
 package de.sciss.fscape.lucre.graph
 
 import de.sciss.file.File
-import de.sciss.fscape.UGen.Aux
+import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.graph.ImageFile.{SampleFormat, Type}
 import de.sciss.fscape.lucre.UGenGraphBuilder
@@ -60,7 +60,7 @@ object ImageFileOut {
         in.expand.outputs)
 
     protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit =
-      UGen.ZeroOut(this, args, aux = Aux.FileOut(file) :: Nil, isIndividual = true)
+      UGen.ZeroOut(this, args, adjuncts = Adjunct.FileOut(file) :: Nil, isIndividual = true)
 
     private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit = {
       val width +: height +: fileType +: sampleFormat +: quality +: in = args

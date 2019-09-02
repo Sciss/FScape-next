@@ -14,7 +14,7 @@
 package de.sciss.fscape
 package graph
 
-import de.sciss.fscape.UGen.Aux
+import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.StreamIn
 
@@ -38,7 +38,7 @@ final case class Progress(in: GE, trig: GE, label: String = "render")
     unwrap(this, Vector(in.expand, trig.expand))
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit =
-    UGen.ZeroOut(this, inputs = args, aux = Aux.String(label) :: Nil)
+    UGen.ZeroOut(this, inputs = args, adjuncts = Adjunct.String(label) :: Nil)
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit = {
     val Vec(in, trig) = args

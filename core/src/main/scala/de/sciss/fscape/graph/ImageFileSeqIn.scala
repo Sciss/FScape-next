@@ -15,7 +15,7 @@ package de.sciss.fscape
 package graph
 
 import de.sciss.file._
-import de.sciss.fscape.UGen.Aux
+import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
@@ -48,7 +48,7 @@ final case class ImageFileSeqIn(template: File, numChannels: Int, indices: GE) e
     val t = Util.mkTemplate(template)
     UGen.MultiOut(this, inputs = args, numOutputs = numChannels,
       // XXX TODO --- obviously the template does not capture the specs of the individual files :-(
-      aux = Aux.FileIn(t) :: Aux.Int(numChannels) :: Nil,
+      adjuncts = Adjunct.FileIn(t) :: Adjunct.Int(numChannels) :: Nil,
       isIndividual = true, hasSideEffect = true)
   }
 

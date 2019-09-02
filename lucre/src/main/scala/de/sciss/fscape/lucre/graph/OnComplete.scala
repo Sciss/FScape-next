@@ -15,7 +15,7 @@ package de.sciss.fscape
 package lucre
 package graph
 
-import de.sciss.fscape.UGen.Aux
+import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.lucre.UGenGraphBuilder.Input
 import de.sciss.fscape.stream
 import de.sciss.fscape.stream.StreamIn
@@ -28,7 +28,7 @@ object OnComplete {
     protected def makeUGens(implicit b: UGenGraph.Builder): Unit = makeUGen(Vector.empty)
 
     protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit =
-      UGen.ZeroOut(this, args, aux = Aux.String(ref.key) :: Nil)
+      UGen.ZeroOut(this, args, adjuncts = Adjunct.String(ref.key) :: Nil)
 
     private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit =
       lucre.stream.OnComplete(ref)

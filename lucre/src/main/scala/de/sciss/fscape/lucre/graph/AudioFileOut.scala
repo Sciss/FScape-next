@@ -16,7 +16,7 @@ package lucre
 package graph
 
 import de.sciss.file.File
-import de.sciss.fscape.UGen.Aux
+import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.lucre.UGenGraphBuilder.{Input, MissingIn}
 import de.sciss.fscape.stream
@@ -87,8 +87,8 @@ object AudioFileOut {
       unwrap(this, sampleRate.expand +: sampleFormat.expand +: fileType.expand +: in.expand.outputs)
 
     protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike = {
-      val aux = fileTr.toOption.fold(List.empty[Aux])(Aux.FileOut(_) :: Nil)  // Try#fold requires Scala 2.12
-      UGen.SingleOut(this, args, aux = aux, isIndividual = true, hasSideEffect = true)
+      val adjuncts = fileTr.toOption.fold(List.empty[Adjunct])(Adjunct.FileOut(_) :: Nil)  // Try#fold requires Scala 2.12
+      UGen.SingleOut(this, args, adjuncts = adjuncts, isIndividual = true, hasSideEffect = true)
     }
 
     private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {

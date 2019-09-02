@@ -14,7 +14,7 @@
 package de.sciss.fscape
 package graph
 
-import de.sciss.fscape.UGen.Aux
+import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
@@ -43,7 +43,7 @@ final case class UnzipWindowN(numOutputs: Int, in: GE, size: GE = 1) extends UGe
     unwrap(this, Vector(in.expand, size.expand))
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
-    UGen.MultiOut(this, args, numOutputs = numOutputs, aux = Aux.Int(numOutputs) :: Nil)
+    UGen.MultiOut(this, args, numOutputs = numOutputs, adjuncts = Adjunct.Int(numOutputs) :: Nil)
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit builder: stream.Builder): Vec[StreamOut] = {
     val Vec(in, size) = args

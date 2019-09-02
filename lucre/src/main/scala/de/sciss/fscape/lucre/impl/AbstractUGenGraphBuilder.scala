@@ -108,12 +108,12 @@ trait AbstractUGenGraphBuilder[S <: Sys[S]]
                 out.writeShort(pi.outIdx)
             }
 
-            val aux = ugen.aux
-            if (aux.isEmpty) {
+            val adjuncts = ugen.adjuncts
+            if (adjuncts.isEmpty) {
               out.writeShort(0)
             } else {
-              out.writeShort(aux.size)
-              aux.foreach(_.write(out))
+              out.writeShort(adjuncts.size)
+              adjuncts.foreach(_.write(out))
             }
 
             idx += 1
