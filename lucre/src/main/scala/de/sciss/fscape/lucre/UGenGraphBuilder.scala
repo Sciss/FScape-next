@@ -27,6 +27,7 @@ import de.sciss.lucre.stm.{Sys, Workspace}
 import de.sciss.serial.DataInput
 import de.sciss.synth.UGenSource.Vec
 
+import scala.annotation.tailrec
 import scala.util.control.ControlThrowable
 
 object UGenGraphBuilder {
@@ -196,6 +197,7 @@ object UGenGraphBuilder {
   def canResolveSeq(in: GE): Either[String, scala.Unit] =
     in match {
       case GESeq(elems) =>
+        @tailrec
         def loop(seq: Vec[GE]): Either[String, scala.Unit] =
           seq match {
             case head +: tail =>
@@ -262,6 +264,7 @@ object UGenGraphBuilder {
   def resolveSeq(in: GE, builder: UGenGraphBuilder): Either[String, Vec[Constant]] =
     in match {
       case GESeq(elems) =>
+        @tailrec
         def loop(seq: Vec[GE], out: Vec[Constant]): Either[String, Vec[Constant]] =
           seq match {
             case head +: tail =>

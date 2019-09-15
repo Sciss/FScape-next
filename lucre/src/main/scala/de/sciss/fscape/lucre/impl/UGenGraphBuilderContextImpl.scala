@@ -19,7 +19,6 @@ import de.sciss.fscape.lucre.UGenGraphBuilder.MissingIn
 import de.sciss.fscape.lucre.{UGenGraphBuilder => UGB}
 import de.sciss.lucre.expr.ExprLike
 import de.sciss.lucre.stm.Sys
-import de.sciss.synth.proc
 import de.sciss.synth.proc.{Runner, Universe}
 
 object UGenGraphBuilderContextImpl {
@@ -47,7 +46,7 @@ trait UGenGraphBuilderContextImpl[S <: Sys[S]] extends UGenGraphBuilder.Context[
           case _                        => None
         }
       }
-      UGB.Input.Attribute.Value(peer)
+      UGB.Input.Attribute.Value(peer) // IntelliJ highlight bug
 
     case i: UGB.Input.Action =>
       val aKey  = i.name
@@ -55,7 +54,7 @@ trait UGenGraphBuilderContextImpl[S <: Sys[S]] extends UGenGraphBuilder.Context[
       f.attr.get(aKey) match {
         case Some(obj) =>
           val objH = tx.newHandle(obj)
-          new ActionRefImpl[S](aKey, tx.newHandle(f), objH)
+          new ActionRefImpl[S](aKey, tx.newHandle(f), objH) // IntelliJ highlight bug
 
         case None =>
           throw MissingIn(aKey)
