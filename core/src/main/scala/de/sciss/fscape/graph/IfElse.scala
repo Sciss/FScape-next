@@ -19,6 +19,7 @@ import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{BufD, BufI, BufL, OutD, OutI, OutL, StreamIn, StreamOut}
 import de.sciss.fscape.{GE, Graph, Lazy, UGen, UGenGraph, UGenIn, UGenInLike, UGenSource, stream}
 
+import scala.annotation.tailrec
 import scala.collection.immutable.{IndexedSeq => Vec}
 
 /** Beginning of a conditional block.
@@ -46,6 +47,7 @@ object Then {
   private[fscape] case class GECase   (cond: UGenIn, branchLayer: Int, branchOut: Vec[UGenIn])
 
   private[fscape] def gatherUnit[A](e: Then[Any])(implicit b: UGenGraph.Builder): List[UnitCase] = {
+    @tailrec
     def loop(t: Then[Any], res: List[UnitCase]): List[UnitCase] = {
       val layer = b.expandNested(t.branch)
       val res1  = UnitCase(t.cond, layer) :: res
@@ -59,6 +61,7 @@ object Then {
   }
 
   private[fscape] def gatherGE[A](e: Then[GE])(implicit builder: UGenGraph.Builder): List[GECase] = {
+    @tailrec
     def loop(t: Then[GE], res: List[GECase]): List[GECase] = {
       val layer       = builder.expandNested(t.branch)
       val condE       = t.cond    .expand
