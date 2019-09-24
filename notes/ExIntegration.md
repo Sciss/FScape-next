@@ -14,7 +14,7 @@ val f     = FScape("key")
 val value = f.outputs[Long]("out")
 ```
 
-Then `genLong` could either have type `Ex[Long]` analogous to `Var[Long]`, or
+Then `value` could either have type `Ex[Long]` analogous to `Var[Long]`, or
 `Ex[Option[Long]]` to represent possible errors? Like `Var`, the value would be
 updated when the rendering has run. The question is how the rendering is triggered.
 Do we require explicit `run`, do we take advantage of the automatic caching?
@@ -49,7 +49,7 @@ We need
 
 - a simple way to determine whether a runner had an error
 - make sure that the outputs are all completed before the runner `state` is updated
-- a runner for `Widget` itself, or better for `Control` so we can be headless
+- a runner for `Widget` itself, or better for `Control` so we can be headless (__done__)
 
 ----
 
@@ -80,7 +80,7 @@ individual outputs could still call `rendering.flatMap(_.outputResult)` or somet
 `OutputImpl` is assumed in `RenderingImpl`, and it is based on the idea that an `Obj` is persisted (`value_=`),
 even if it's just a cue to a cache file. For 'Ex', it would be great if that persistence was optional, since we
 may not want to store the value, just pass it back into the 'Ex' program. Here is what the implementation of
-and output-reference looks like:
+an output-reference looks like:
 
 ```
 def updateValue(in: DataInput)(implicit tx: S#Tx): scala.Unit = {
@@ -155,7 +155,7 @@ Also note, dead API:
 
 - `Rendering.withState` is never used, and neither is trait `WithState` and its method `cacheResult`.
 - __correction:__ this is API for SysSon (matrix reader), it is used (in a quite ugly way, where an internal
-  FScape program is created that the reader factory _knows of_ it creates exactly one resource file with known
+  FScape program is created that the reader factory _knows_ it creates exactly one resource file with known
   type)
 
 ------
@@ -195,3 +195,33 @@ FlowPanel(gg, b)
 ```
 
 Perhaps `output` here could simply be called `out` as in ScalaCollider's channel proxy?
+
+---
+
+# Notes 190924
+
+Another thought. We might also just ignore all of this, and pass "call-backs" into `runWith`?
+
+```
+val f  = Runner("key")
+val ln = Var[Long]
+val gg = DoubleField()
+val b  = Bang()
+
+b ---> f.runWith(
+  "in"  -> gg.value(),
+  "out" -> ln,
+)
+
+f.done ---> PrintLn(ln.toStr)
+
+FlowPanel(gg, b)
+```
+
+So this becomes more similar to a `select` matching operation.
+
+This would thus entirely ignore `FScape.Output`, `GenView` etc. We could decide whether we want `MkLong`, `MkDouble`
+etc. to still function if the give refers to a "settable" `runWith` argument instead of an output. It also frees the
+user from creating useless `FScape.Output` instances, as the fscape object strictly becomes a "callable function".
+
+The only big question is how the the `Var` translates to `Form[S]` that can be recognised.
