@@ -48,8 +48,11 @@ final case class MkDouble(key: String, in: GE) extends Lazy.Expander[Unit] with 
 
   def tpe: Obj.Type = DoubleObj
 
+  override def readOutputValue(in: DataInput): Double =
+    Serializer.Double.read(in)
+
   def readOutput[S <: Sys[S]](in: DataInput)(implicit tx: S#Tx, workspace: Workspace[S]): Obj[S] = {
-    val flat = Serializer.Double.read(in)
+    val flat = readOutputValue(in)
     DoubleObj.newConst(flat)
   }
 

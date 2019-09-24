@@ -48,8 +48,11 @@ final case class MkLong(key: String, in: GE) extends Lazy.Expander[Unit] with Ou
 
   def tpe: Obj.Type = LongObj
 
+  override def readOutputValue(in: DataInput): Long =
+    Serializer.Long.read(in)
+
   def readOutput[S <: Sys[S]](in: DataInput)(implicit tx: S#Tx, workspace: Workspace[S]): Obj[S] = {
-    val flat = Serializer.Long.read(in)
+    val flat = readOutputValue(in)
     LongObj.newConst(flat)
   }
 

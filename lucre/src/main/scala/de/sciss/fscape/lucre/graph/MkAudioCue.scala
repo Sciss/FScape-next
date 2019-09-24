@@ -90,8 +90,11 @@ final case class MkAudioCue(key: String, in: GE, fileType: GE = 0, sampleFormat:
 
   def tpe: Obj.Type = AudioCue.Obj
 
+  override def readOutputValue(in: DataInput): AudioCue =
+    AudioCue.serializer.read(in)
+
   def readOutput[S <: Sys[S]](in: DataInput)(implicit tx: S#Tx, workspace: Workspace[S]): Obj[S] = {
-    val flat = AudioCue.serializer.read(in)
+    val flat = readOutputValue(in)
     AudioCue.Obj.newConst(flat)
   }
 

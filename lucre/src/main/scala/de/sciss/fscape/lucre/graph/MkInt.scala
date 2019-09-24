@@ -48,8 +48,11 @@ final case class MkInt(key: String, in: GE) extends Lazy.Expander[Unit] with Out
 
   def tpe: Obj.Type = IntObj
 
+  override def readOutputValue(in: DataInput): Int =
+    Serializer.Int.read(in)
+
   def readOutput[S <: Sys[S]](in: DataInput)(implicit tx: S#Tx, workspace: Workspace[S]): Obj[S] = {
-    val flat = Serializer.Int.read(in)
+    val flat = readOutputValue(in)
     IntObj.newConst(flat)
   }
 

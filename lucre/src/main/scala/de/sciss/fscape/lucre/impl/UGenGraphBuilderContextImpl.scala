@@ -23,12 +23,11 @@ import de.sciss.synth.proc.{Runner, Universe}
 
 object UGenGraphBuilderContextImpl {
   final class Default[S <: Sys[S]](protected val fscape: FScape[S],
-                                   protected val attr: Runner.Attr[S])(implicit val universe: Universe[S])
+                                   val attr: Runner.Attr[S])(implicit val universe: Universe[S])
     extends UGenGraphBuilderContextImpl[S]
 }
 trait UGenGraphBuilderContextImpl[S <: Sys[S]] extends UGenGraphBuilder.Context[S] {
   protected def fscape: FScape[S] // XXX TODO --- why not transactional? I think all UGB runs in one go
-  protected def attr  : Runner.Attr[S]
 
   protected implicit def universe: Universe[S]
 

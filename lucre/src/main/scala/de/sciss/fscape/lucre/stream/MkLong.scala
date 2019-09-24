@@ -58,10 +58,10 @@ object MkLong {
       val stop0   = readIns()
       val b0      = bufIn0.buf
       if (stop0 > 0) {
-        val res = b0(0)
         ref.complete(new Output.Writer {
+          override val outputValue: Long = b0(0)
           def write(out: DataOutput): Unit =
-            Serializer.Long.write(res, out)
+            Serializer.Long.write(outputValue, out)
         })
         completeStage()
       }

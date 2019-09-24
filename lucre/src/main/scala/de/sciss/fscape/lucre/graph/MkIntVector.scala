@@ -48,8 +48,11 @@ final case class MkIntVector(key: String, in: GE) extends Lazy.Expander[Unit] wi
 
   def tpe: Obj.Type = IntVector
 
+  override def readOutputValue(in: DataInput): Vec[Int] =
+    IntVector.valueSerializer.read(in)
+
   def readOutput[S <: Sys[S]](in: DataInput)(implicit tx: S#Tx, workspace: Workspace[S]): Obj[S] = {
-    val flat = IntVector.valueSerializer.read(in)
+    val flat = readOutputValue(in)
     IntVector.newConst(flat)
   }
 

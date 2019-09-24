@@ -189,10 +189,14 @@ object FScape extends Obj.Type {
       def key: String
       def tpe: Obj.Type
 
+      def readOutputValue(in: DataInput): Any
+
       def readOutput[S <: Sys[S]](in: DataInput)(implicit tx: S#Tx, workspace: Workspace[S]): Obj[S]
     }
 
-    type Writer = de.sciss.serial.Writable
+    trait Writer extends de.sciss.serial.Writable {
+      def outputValue: Any
+    }
   }
   trait Output[S <: Sys[S]] extends Gen[S] /* with Publisher[S, Output.Update[S]] */ {
     def fscape: FScape[S]

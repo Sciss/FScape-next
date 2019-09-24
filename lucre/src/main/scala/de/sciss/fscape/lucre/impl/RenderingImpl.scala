@@ -43,7 +43,7 @@ object RenderingImpl {
     * @param force      if `true`, always renders even if there are no
     *                   outputs.
     */
-  def apply[S <: SSys[S]](fscape: FScape[S], config: Control.Config,  attr: Runner.Attr[S], force: Boolean)
+  def apply[S <: SSys[S]](fscape: FScape[S], config: Control.Config, attr: Runner.Attr[S], force: Boolean)
                         (implicit tx: S#Tx, universe: Universe[S]): Rendering[S] = {
     val ugbCtx = new UGenGraphBuilderContextImpl.Default(fscape, attr = attr)
     apply(fscape, ugbCtx, config, force = force)
@@ -115,9 +115,11 @@ object RenderingImpl {
                 res.outputs.foreach { outRes =>
                   resourcesB ++= outRes.cacheFiles
                   val out = DataOutput()
-                  outRes.writer.write(out)
-                  val arr = out.toByteArray
-                  dataB += outRes.key -> arr
+                  val w   = outRes.writer
+                  w.write(out)
+                  val bytes = out.toByteArray
+                  // val data  = (w.outputValue, bytes)
+                  dataB += outRes.key -> bytes
                 }
 
                 val resources = resourcesB.result()
@@ -134,7 +136,7 @@ object RenderingImpl {
             res0
           }
 
-          val useCache = !isEmpty
+          val useCache = !isEmpty && !force // new variant: `force` has to be `false` to use cache
           val fut: Future[CacheValue] = if (useCache) {
             // - check file cache for structure
             RenderingImpl.acquire[S](struct)(mkFuture())
@@ -178,9 +180,9 @@ object RenderingImpl {
           while (i < numData) {
             val key   = in.readUTF()
             val sz    = in.readUnsignedShort()
-            val data  = new Array[Byte](sz)
-            in.readFully(data)
-            b += key -> data
+            val bytes = new Array[Byte](sz)
+            in.readFully(bytes)
+            b += key -> bytes // ((), bytes)
             i += 1
           }
           b.result()
@@ -195,10 +197,10 @@ object RenderingImpl {
         if (numFiles > 0) v.resources.foreach(f => out.writeUTF(f.path))
         val numData = v.data.size
         out.writeShort(numData)
-        if (numData > 0) v.data.foreach { case (key, data) =>
+        if (numData > 0) v.data.foreach { case (key, bytes) =>
           out.writeUTF(key)
-          out.writeShort(data.length)
-          out.write(data)
+          out.writeShort(bytes.length)
+          out.write(bytes)
         }
       }
     }

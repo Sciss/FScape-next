@@ -52,10 +52,11 @@ object MkIntVector {
     def process(): Unit = {
       if (!canRead) {
         if (isClosed(shape.in)) {
-          val res = builder.result()
           ref.complete(new Output.Writer {
+            override val outputValue: Vec[Int] = builder.result()
+
             def write(out: DataOutput): Unit =
-              IntVector.valueSerializer.write(res, out)
+              IntVector.valueSerializer.write(outputValue, out)
           })
           completeStage()
         }

@@ -22,10 +22,12 @@ import de.sciss.fscape.lucre.UGenGraphBuilder.OutputRef
 import de.sciss.fscape.lucre.graph.Attribute
 import de.sciss.fscape.lucre.impl.{AbstractOutputRef, AbstractUGenGraphBuilder, OutputImpl}
 import de.sciss.fscape.stream.Control
+import de.sciss.lucre.expr.graph.{Var => ExVar, Const => ExConst}
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Sys, Workspace}
 import de.sciss.serial.DataInput
 import de.sciss.synth.UGenSource.Vec
+import de.sciss.synth.proc.Runner
 
 import scala.annotation.tailrec
 import scala.util.control.ControlThrowable
@@ -122,7 +124,8 @@ object UGenGraphBuilder {
   }
 
   trait Context[S <: Sys[S]] {
-//    def server: Server
+
+    def attr: Runner.Attr[S]
 
     def requestInput[Res](req: UGenGraphBuilder.Input { type Value = Res }, io: IO[S] with UGenGraphBuilder)
                          (implicit tx: S#Tx): Res
@@ -396,24 +399,54 @@ object UGenGraphBuilder {
                                                workspace: Workspace[S])
     extends AbstractUGenGraphBuilder[S] { builder =>
 
+    // we first check for a named output, and then try to fallback to
+    // an `expr.graph.Var` provided attr argument.
     protected def requestOutputImpl(reader: Output.Reader): Option[OutputResult[S]] = {
-      val outOpt = fscape.outputs.get(reader.key)
-      outOpt.collect {
-        case out: OutputImpl[S] if out.valueType.typeId == reader.tpe.typeId =>
-          new OutputRefImpl(reader, tx.newHandle(out))
+      val key = reader.key
+      val outOpt = fscape.outputs.get(key)
+      outOpt match {
+        case Some(out: OutputImpl[S]) =>
+          if (out.valueType.typeId == reader.tpe.typeId) {
+            val res = new ObjOutputRefImpl(reader, tx.newHandle(out))
+            Some(res)
+          } else {
+            None
+          }
+        case _ =>
+          val attrOpt = context.attr.get(key)
+          attrOpt match {
+            case Some(ex: ExVar.Expanded[S, _]) =>
+              val res = new CtxOutputRefImpl(reader, ex)
+              Some(res)
+            case _ =>
+              None
+          }
       }
     }
   }
 
-  private final class OutputRefImpl[S <: Sys[S]](val reader: Output.Reader,
+  private final class CtxOutputRefImpl[S <: Sys[S], A](val reader: Output.Reader,
+                                                       vr: ExVar.Expanded[S, A])
+                                                      (implicit workspace: Workspace[S])
+    extends AbstractOutputRef[S] {
+
+    def updateValue(in: DataInput)(implicit tx: S#Tx): scala.Unit = {
+      val value = reader.readOutputValue(in)
+      vr.fromAny.fromAny(value).foreach { valueT =>
+        vr.update(new ExConst.Expanded(valueT))
+      }
+    }
+  }
+
+  private final class ObjOutputRefImpl[S <: Sys[S]](val reader: Output.Reader,
                                                  outputH: stm.Source[S#Tx, OutputImpl[S]])
                                                 (implicit workspace: Workspace[S])
     extends AbstractOutputRef[S] {
 
     def updateValue(in: DataInput)(implicit tx: S#Tx): scala.Unit = {
-      val value     = reader.readOutput[S](in)
-      val output    = outputH()
-      output.value_=(Some(value))
+      val obj     = reader.readOutput[S](in)
+      val output  = outputH()
+      output.value_=(Some(obj))
     }
   }
 }

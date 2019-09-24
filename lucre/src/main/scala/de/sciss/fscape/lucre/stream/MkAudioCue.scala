@@ -66,11 +66,13 @@ object MkAudioCue {
     override protected def stopped(): Unit = {
       super.stopped()
       if (isSuccess) ref.complete(new Output.Writer {
-        def write(out: DataOutput): Unit = {
+        override val outputValue: AudioCue = {
           val spec1 = spec.copy(numFrames = framesWritten)
-          val flat  = AudioCue(file, spec1, 0L, 1.0)
-          AudioCue.serializer.write(flat, out)
+          AudioCue(file, spec1, 0L, 1.0)
         }
+
+        def write(out: DataOutput): Unit =
+          AudioCue.serializer.write(outputValue, out)
       })
     }
   }

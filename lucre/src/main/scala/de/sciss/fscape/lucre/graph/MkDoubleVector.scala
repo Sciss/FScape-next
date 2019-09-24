@@ -47,8 +47,11 @@ final case class MkDoubleVector(key: String, in: GE) extends Lazy.Expander[Unit]
 
   def tpe: Obj.Type = DoubleVector
 
+  override def readOutputValue(in: DataInput): Vec[Double] =
+    DoubleVector.valueSerializer.read(in)
+
   def readOutput[S <: Sys[S]](in: DataInput)(implicit tx: S#Tx, workspace: Workspace[S]): Obj[S] = {
-    val flat = DoubleVector.valueSerializer.read(in)
+    val flat = readOutputValue(in)
     DoubleVector.newConst(flat)
   }
 

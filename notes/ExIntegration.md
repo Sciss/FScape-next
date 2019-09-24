@@ -223,5 +223,6 @@ So this becomes more similar to a `select` matching operation.
 This would thus entirely ignore `FScape.Output`, `GenView` etc. We could decide whether we want `MkLong`, `MkDouble`
 etc. to still function if the give refers to a "settable" `runWith` argument instead of an output. It also frees the
 user from creating useless `FScape.Output` instances, as the fscape object strictly becomes a "callable function".
+Also, we can just use `Runner` and extend the support to `Control`, `Proc`, `Action` etc.
 
 The only big question is how the the `Var` translates to `Form[S]` that can be recognised.

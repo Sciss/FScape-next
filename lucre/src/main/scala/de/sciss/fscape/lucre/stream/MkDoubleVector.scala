@@ -52,10 +52,11 @@ object MkDoubleVector {
     def process(): Unit = {
       if (!canRead) {
         if (isClosed(shape.in)) {
-          val res = builder.result()
           ref.complete(new Output.Writer {
+            override val outputValue: Vec[Double] = builder.result()
+
             def write(out: DataOutput): Unit =
-              DoubleVector.valueSerializer.write(res, out)
+              DoubleVector.valueSerializer.write(outputValue, out)
           })
           completeStage()
         }
