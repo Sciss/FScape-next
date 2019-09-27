@@ -256,8 +256,12 @@ object BinaryOp {
       logStream(s"requestNextInData() $this aHas = $aHas, bHas = $bHas")
 
       if (inDataRem == 0) {
-        if (outOff == 0) completeStage()
-        else {
+        if (outOff == 0) {
+          completeStage()
+        } else if (isAvailable(shape.out)) {
+          writeOut()
+          completeStage()
+        } else {
           inDataReady = true
         }
       } else {
