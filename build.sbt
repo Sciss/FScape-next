@@ -5,7 +5,7 @@ lazy val baseName   = "FScape"
 lazy val baseNameL  = baseName.toLowerCase
 lazy val gitRepo    = "FScape-next"
 
-lazy val projectVersion = "2.31.0-SNAPSHOT"
+lazy val projectVersion = "2.31.0"
 lazy val mimaVersion    = "2.31.0"
 
 lazy val baseDescription = "An audio rendering library"
@@ -42,11 +42,11 @@ lazy val deps = new {
   }
   val lucre = new {
     val fileCache       = "0.5.1"
-    val lucre           = "3.15.2-SNAPSHOT"
-    val soundProcesses  = "3.32.0"
+    val lucre           = "3.15.2"
+    val soundProcesses  = "3.32.2"
   }
   val views = new {
-    val lucreSwing      = "1.19.0"
+    val lucreSwing      = "1.19.1"
   }
   val modules = new {
     val scallop         = "3.3.1"
