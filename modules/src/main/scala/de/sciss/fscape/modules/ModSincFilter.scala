@@ -222,7 +222,7 @@ object ModSincFilter extends Module {
       val pb        = ProgressBar()
       ggRender.clicked ---> r.run
       ggCancel.clicked ---> r.stop
-      val stopped = r.state sig_== 0
+      val stopped = (r.state sig_== 0) || (r.state > 3)
       ggRender.enabled = stopped
       ggCancel.enabled = !stopped
       pb.value = (r.progress * 100).toInt
