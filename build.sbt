@@ -22,7 +22,7 @@ lazy val commonSettings = Seq(
     "-deprecation", "-unchecked", "-feature", "-encoding", "utf8", "-Xlint", "-Xsource:2.13"
   ),
   scalacOptions in (Compile, compile) ++= (if (scala.util.Properties.isJavaAtLeast("9")) Seq("-release", "8") else Nil), // JDK >8 breaks API; skip scala-doc
-  resolvers          += "Oracle Repository" at "http://download.oracle.com/maven",  // required for sleepycat
+//  resolvers          += "Oracle Repository" at "http://download.oracle.com/maven",  // required for sleepycat
   updateOptions      := updateOptions.value.withLatestSnapshots(false),
   javacOptions        := commonJavaOptions ++ Seq("-target", "1.8", "-g", "-Xlint:deprecation" /*, "-Xlint:unchecked" */),
   javacOptions in doc := commonJavaOptions,
@@ -31,7 +31,7 @@ lazy val commonSettings = Seq(
 
 lazy val deps = new {
   val main = new {
-    val akka            = "2.5.25"
+    val akka            = "2.5.26"
     val audioFile       = "1.5.3"
     val dsp             = "1.3.2"
     val fileUtil        = "1.1.3"
@@ -42,7 +42,7 @@ lazy val deps = new {
   }
   val lucre = new {
     val fileCache       = "0.5.1"
-    val lucre           = "3.15.2"
+    val lucre           = "3.15.3"
     val soundProcesses  = "3.32.2"
   }
   val views = new {
@@ -55,7 +55,7 @@ lazy val deps = new {
     val kollFlitz       = "0.2.3"
     val scalaTest       = "3.0.8"
     val scallop: String = modules.scallop
-    val submin          = "0.2.5"
+    val submin          = "0.3.3"
   }
 }
 
