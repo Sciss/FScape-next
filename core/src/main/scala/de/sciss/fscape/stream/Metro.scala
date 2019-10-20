@@ -15,9 +15,8 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape2}
-import de.sciss.fscape.stream.impl.{GenChunkImpl, GenIn2IImpl, StageImpl, NodeImpl}
+import de.sciss.fscape.stream.impl.{DemandGenIn2, DemandWindowedLogic, NodeImpl, StageImpl}
 
-// XXX TODO --- should probably poll `period` values only at period boundaries
 object Metro {
   def apply(period: OutL, phase: OutL)(implicit b: Builder): OutI = {
     val stage0  = new Stage(b.layer)
@@ -41,43 +40,56 @@ object Metro {
     def createLogic(attr: Attributes) = new Logic(shape, layer)
   }
 
-  // XXX TODO -- abstract over data type (BufD vs BufI)?
   private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
-      with GenChunkImpl[BufL, BufI, Shape]
-      with GenIn2IImpl[BufL, BufL] {
+      with DemandGenIn2[BufL, BufL, BufI]
+      with DemandWindowedLogic[Shape] {
 
-    private[this] var period  : Long = _
-    private[this] var phase   : Long = _    // internal state; does not include `phaseOff`
-    private[this] var init = true
+    private[this] var period  : Long  = _
+    private[this] var phaseOff: Long  = _
+    private[this] var phase   : Long  = _    // internal state; does not include `phaseOff`
+//    private[this] var init            = true
+    private[this] var _inputsEnded    = false
 
-    protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Unit = {
-      // println(s"Metro.processChunk($bufIn0, $chunk)")
+    protected def inputsEnded: Boolean = _inputsEnded   // never or when period == 0
 
-      var inOffI    = inOff
-      var outOffI   = outOff
-      val stop      = inOffI + chunk
-      val b0        = if (bufIn0 == null) null else bufIn0.buf
-      val out       = bufOut0.buf
-      val stop0     = if (b0 == null) 0 else bufIn0.size
-
-      var periodV   = period
-      var phaseV    = phase
-
-      if (init) {
-        val b1        = bufIn1.buf
-        periodV       = b0(inOffI)
-        if (periodV == 0) periodV = Long.MaxValue
-        val phaseOffV = b1(inOffI)
-        phaseV        = (phaseOffV + periodV - 1) % periodV + 1
-        init          = false
+    protected def startNextWindow(): Long = {
+      val inOff = auxInOff
+      if (bufIn0 != null && inOff < bufIn0.size) {
+        period = math.max(0, bufIn0.buf(inOff))
+//        println(s"PERIOD[$inOff] = $period")
+        if (period == 0L) {
+          _inputsEnded  = true  // XXX TODO --- ugly trick to work with infinite window size
+          period        = 0x3fffffffffffffffL // Long.MaxValue
+        }
+      }
+      if (/*init &&*/ bufIn1 != null && inOff < bufIn1.size) {
+        phaseOff = bufIn1.buf(inOff)
+        // init = false
       }
 
-      while (inOffI < stop) {
-        if (inOffI < stop0) {
-          periodV = b0(inOffI)
-          if (periodV == 0) periodV = Long.MaxValue
-        }
+      val _period   = period
+      phase         = (phaseOff + _period - 1) % _period + 1
+      period
+    }
+
+    protected def canStartNextWindow: Boolean = auxInRemain > 0 || (auxInValid && {
+      isClosed(in0) && isClosed(in1)
+    })
+
+    protected def copyInputToWindow(writeToWinOff: Long, chunk: Int): Unit = ()
+
+    protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit = {
+//      _shape.fill(winSize = winSize, winOff = readFromWinOff, buf = bufOut0.buf, bufOff = outOff,
+//        len = chunk, param = param)
+      val out       = bufOut0.buf
+      var outOffI   = outOff
+      val stop      = outOffI + chunk
+
+      val periodV   = period
+      var phaseV    = phase
+
+      while (outOffI < stop /*inOffI < stop*/) {
         if (phaseV >= periodV) {
           phaseV %= periodV
           out(outOffI)  = 1
@@ -85,11 +97,55 @@ object Metro {
           out(outOffI)  = 0
         }
         phaseV       += 1
-        inOffI       += 1
         outOffI      += 1
       }
-      period    = periodV
+//      period    = periodV
       phase     = phaseV
     }
+
+    protected def processWindow(writeToWinOff: Long): Long = writeToWinOff
+
+    protected def allocOutBuf0(): BufI = ctrl.borrowBufI()
+
+//    private def processChunk(inOff: Int, outOff: Int, chunk: Int): Unit = {
+//      // println(s"Metro.processChunk($bufIn0, $chunk)")
+//
+//      var inOffI    = inOff
+//      var outOffI   = outOff
+//      val stop      = inOffI + chunk
+//      val b0        = if (bufIn0 == null) null else bufIn0.buf
+//      val out       = bufOut0.buf
+//      val stop0     = if (b0 == null) 0 else bufIn0.size
+//
+//      var periodV   = period
+//      var phaseV    = phase
+//
+//      if (init) {
+//        val b1        = bufIn1.buf
+//        periodV       = b0(inOffI)
+//        if (periodV == 0) periodV = Long.MaxValue
+//        val phaseOffV = b1(inOffI)
+//        phaseV        = (phaseOffV + periodV - 1) % periodV + 1
+//        init          = false
+//      }
+//
+//      while (inOffI < stop) {
+//        if (inOffI < stop0) {
+//          periodV = b0(inOffI)
+//          if (periodV == 0) periodV = Long.MaxValue
+//        }
+//        if (phaseV >= periodV) {
+//          phaseV %= periodV
+//          out(outOffI)  = 1
+//        } else {
+//          out(outOffI)  = 0
+//        }
+//        phaseV       += 1
+//        inOffI       += 1
+//        outOffI      += 1
+//      }
+//      period    = periodV
+//      phase     = phaseV
+//    }
   }
 }
