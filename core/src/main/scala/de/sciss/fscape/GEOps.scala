@@ -165,20 +165,26 @@ final class GEOps2(val `this`: GE) extends AnyVal { me =>
 //
 //  def flatten               : GE = Flatten(g)
 
+  /** Polls a single value from the element. */
   def poll: Poll = poll()
 
+  /** Polls a single value from the element, and prints it with a given label. */
+  def poll(label: String): Poll = poll(trig = 0, label = Some(label))
+
+  // XXX TODO --- rename `trig` to `gate`
   /** Polls the output values of this graph element, and prints the result to the console.
     * This is a convenient method for wrapping this graph element in a `Poll` UGen.
     *
-    * @param   trig     a signal to trigger the printing. If this is a constant, it is
+    * @param   trig     a gate signal for the printing. If this is a constant, it is
     *                   interpreted as a period and a `Metro` generator with
-    *                   this period is used.
+    *                   this period is used. Will be renamed to '''gate''' in the next
+    *                   major version
     * @param   label    a string to print along with the values, in order to identify
     *                   different polls. Using the special label `"#auto"` (default) will generated
     *                   automatic useful labels using information from the polled graph element
     * @see  [[de.sciss.fscape.graph.Poll]]
     */
-  def poll(trig: GE = 5000, label: Optional[String] = None): Poll = {
+  def poll(trig: GE = 0, label: Optional[String] = None): Poll = {
     val trig1 = trig match {
       case c: Constant  => Metro(c)
       case other        => other

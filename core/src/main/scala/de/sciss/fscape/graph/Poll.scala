@@ -20,6 +20,7 @@ import de.sciss.fscape.stream.StreamIn
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+// XXX TODO: rename `trig` to `gate`
 /** A UGen that prints snapshots of its input to the console.
   * Note that arguments have different order than in ScalaCollider!
   *
@@ -28,8 +29,9 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   *               prevent a dangling `Poll` whose trigger is
   *               infinite (such as `Impulse`). If you want to avoid
   *               that, you should wrap the input in a `DC`.
-  * @param trig   trigger that causes the UGen to print a snapshot
-  *               of the input.
+  * @param trig   gate that causes the UGen to print a snapshot
+  *               of the input when open. It will be renamed to
+  *               '''gate'''  in the next major version
   * @param label  an identifying label to prepend to the printing.
   */
 final case class Poll(in: GE, trig: GE, label: String = "poll") extends UGenSource.ZeroOut {

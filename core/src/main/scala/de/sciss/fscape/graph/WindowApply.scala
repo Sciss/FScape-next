@@ -22,6 +22,9 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 
 /** A UGen that extracts for each input window the element at a given index.
   *
+  * For example, the first element per window can be extracted with `index = 0`,
+  * and the last element per window can be extracted with `index = -1, mode = 1` (wrap).
+  *
   * @param in     the window'ed signal to index
   * @param size   the window size.
   * @param index  the zero-based index into each window. One value per window is polled.

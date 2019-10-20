@@ -18,6 +18,8 @@ import akka.stream.{Attributes, Inlet, Outlet}
 import de.sciss.fscape.stream.impl.{NodeImpl, PollImpl, SinkShape2, StageImpl}
 
 // XXX TODO --- we could use an `Outlet[String]`, that might be making perfect sense
+// (what did I mean by `Outlet[String]`?
+// XXX TODO --- rename `trig` to `gate`
 object Poll {
   def apply(in: Outlet[BufLike], trig: OutI, label: String)(implicit b: Builder): Unit = {
     // println(s"Poll($in, $trig, $label)")
@@ -34,7 +36,7 @@ object Poll {
   private final class Stage(layer: Layer, label: String)(implicit ctrl: Control) extends StageImpl[Shape](name) {
     val shape = SinkShape2(
       in0 = Inlet[BufLike](s"$name.in"),
-      in1 = InI(s"$name.trig")
+      in1 = InI(s"$name.gate")
     )
 
     def createLogic(attr: Attributes) = new Logic(shape = shape, layer = layer, label = label)

@@ -28,7 +28,10 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * the phase cannot be modulated.
   *
   * @param period number of frames between impulses. Zero is short-hand
-  *               for `Long.MaxValue`
+  *               for `Long.MaxValue`. This currently read at the same
+  *               rate as values are output, but the behaviour is supposed
+  *               to change to take one value per output period (see issue No. 45).
+  *
   * @param phase  phase offset in frames. Initialization time only!
   */
 final case class Metro(period: GE, phase: GE = 0L) extends UGenSource.SingleOut {
