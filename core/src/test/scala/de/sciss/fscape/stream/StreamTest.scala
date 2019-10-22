@@ -126,8 +126,8 @@ object StreamTest extends App {
     val cep         = BinaryOp      (in1 = cep0 , in2 = const(1.0/fftSize), op = graph.BinaryOp.Times)
     val (pos0, neg0) = UnzipWindow   (in = cep , size = const(fftSize))
     import GraphDSL.Implicits._
-    val pos1        = ResizeWindow  (in = pos0, size = const(fftSize), start = const(0), stop = const(2)) // 'add nyquist'
-    val neg1        = ResizeWindow  (in = neg0, size = const(fftSize), start = const(0), stop = const(2)) // 'add dc'
+    val pos1        = ResizeWindow[Double, BufD](in = pos0, size = const(fftSize), start = const(0), stop = const(2)) // 'add nyquist'
+    val neg1        = ResizeWindow[Double, BufD](in = neg0, size = const(fftSize), start = const(0), stop = const(2)) // 'add dc'
 
     val pos2        = pos1.buffer(size = (fftSize + 2)/blockSize, overflowStrategy = OverflowStrategy.backpressure).outlet
     val negR2       = ReverseWindow (in = neg1 , size = const(fftSize + 2), clump = const(2))
@@ -199,9 +199,9 @@ object StreamTest extends App {
     val posOut0     = ZipWindow(a = aOut, b = bOut, size = const(1))
     val negOutR0    = ZipWindow(a = cOut, b = dOut, size = const(1))
 
-    val posOut1     = ResizeWindow(in = posOut0 , size = const(fftSize + 2), start = const(0), stop = const(-2))
+    val posOut1     = ResizeWindow[Double, BufD](in = posOut0 , size = const(fftSize + 2), start = const(0), stop = const(-2))
     // here `start` because we do this before reversal
-    val negOutR1    = ResizeWindow(in = negOutR0, size = const(fftSize + 2), start = const(2), stop = const( 0))
+    val negOutR1    = ResizeWindow[Double, BufD](in = negOutR0, size = const(fftSize + 2), start = const(2), stop = const( 0))
 
     val posOut      = posOut1.buffer(size = fftSize/blockSize, overflowStrategy = OverflowStrategy.backpressure).outlet
     val negOutR     = negOutR1 // .buffer(size = fftSize/blockSize, overflowStrategy = OverflowStrategy.backpressure).outlet

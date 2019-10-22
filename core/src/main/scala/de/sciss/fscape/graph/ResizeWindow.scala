@@ -40,6 +40,8 @@ final case class ResizeWindow(in: GE, size: GE, start: GE = 0, stop: GE = 0) ext
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
     val Vec(in, size, start, stop) = args
-    stream.ResizeWindow(in = in.toDouble, size = size.toInt, start = start.toInt, stop = stop.toInt)
+    import in.tpe
+    val out = stream.ResizeWindow[in.A, in.Buf](in = in.toElem, size = size.toInt, start = start.toInt, stop = stop.toInt)
+    tpe.mkStreamOut(out)
   }
 }
