@@ -10,6 +10,8 @@ import scala.util.Success
 
 class ResizeWindowSpec extends FlatSpec with Matchers {
   "The ResizeWindow UGen" should "work as intended" in {
+    var count = 0
+
     def variant(inLen: Int, winInSz: Int, start: Int, stop: Int): Unit = {
       val p = Promise[Vec[Int]]()
 
@@ -35,7 +37,8 @@ class ResizeWindowSpec extends FlatSpec with Matchers {
       cfg.blockSize = 128
       val ctl = stream.Control(cfg)
       ctl.run(g)
-      val info = s"for inLen = $inLen, winInSz = $winInSz, start = $start, stop = $stop"
+      count += 1
+      val info = s"for count $count inLen = $inLen, winInSz = $winInSz, start = $start, stop = $stop"
       println(info)
       Await.result(ctl.status, Duration.Inf)
 
@@ -45,10 +48,10 @@ class ResizeWindowSpec extends FlatSpec with Matchers {
     }
 
     for {
-      inLen   <- List(1) // List(0, 1, 2, 10, 200)
-      winInSz <- List(1) // List(1, 2, 9)
-      start   <- List(-1) // -3 to +3
-      stop    <- List(0) // -3 to +3
+      inLen   <- List(0, 1, 2, 10, 200)
+      winInSz <- List(1, 2, 9)
+      start   <- -3 to +3
+      stop    <- -3 to +3
     } {
       variant(inLen = inLen, winInSz = winInSz, start = start, stop = stop)
     }
