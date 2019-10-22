@@ -2,3 +2,9 @@ addSbtPlugin("com.eed3si9n"       % "sbt-buildinfo"             % "0.9.0")    //
 addSbtPlugin("com.typesafe"       % "sbt-mima-plugin"           % "0.6.1")    // binary compatibility testing
 // addSbtPlugin("org.scala-js"       % "sbt-scalajs"               % "0.6.27")   // scala.js support
 // addSbtPlugin("org.portable-scala" % "sbt-scalajs-crossproject"  % "0.6.0")
+
+// sbt-mima was killed
+resolvers += Resolver.url(
+  "typesafe sbt-plugins",
+  url("https://dl.bintray.com/typesafe/sbt-plugins")
+)(Resolver.ivyStylePatterns)
