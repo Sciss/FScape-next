@@ -16,7 +16,7 @@ package stream
 
 import akka.stream.stage.InHandler
 import akka.stream.{Attributes, FanInShape3, Inlet, Outlet}
-import de.sciss.fscape.stream.impl.{NodeImpl, Out1DoubleImpl, Out1LogicImpl, ProcessOutHandlerImpl, StageImpl}
+import de.sciss.fscape.stream.impl.{NodeImpl, Out1LogicImpl, ProcessOutHandlerImpl, StageImpl}
 
 import scala.annotation.tailrec
 
@@ -28,8 +28,9 @@ object RepeatWindow {
     * @param size   the window size. this is clipped to be `&lt;= 1`
     * @param num    the number of times each window is repeated
     */
-  def apply(in: OutD, size: OutI, num: OutL)(implicit b: Builder): OutD = {
-    val stage0  = new Stage(b.layer)
+  def apply[A, E >: Null <: BufElem[A]](in: Outlet[E], size: OutI, num: OutL)
+                                       (implicit b: Builder, tpe: StreamType[A, E]): Outlet[E] = {
+    val stage0  = new Stage[A, E](b.layer)
     val stage   = b.add(stage0)
     b.connect(in  , stage.in0)
     b.connect(size, stage.in1)
@@ -39,55 +40,56 @@ object RepeatWindow {
 
   private final val name = "RepeatWindow"
 
-  private type Shape = FanInShape3[BufD, BufI, BufL, BufD]
+  private type Shape[E] = FanInShape3[E, BufI, BufL, E]
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
+  private final class Stage[A, E >: Null <: BufElem[A]](layer: Layer)(implicit ctrl: Control, tpe: StreamType[A, E])
+    extends StageImpl[Shape[E]](name) {
+
     val shape = new FanInShape3(
-      in0 = InD (s"$name.in"   ),
-      in1 = InI (s"$name.size" ),
-      in2 = InL (s"$name.num"  ),
-      out = OutD(s"$name.out"  )
+      in0 = Inlet[E]  (s"$name.in"   ),
+      in1 = InI       (s"$name.size" ),
+      in2 = InL       (s"$name.num"  ),
+      out = Outlet[E] (s"$name.out"  )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes) = new Logic[A, E](shape, layer)
   }
 
-  // XXX TODO -- abstract over data type (BufD vs BufI)?
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+  private final class Logic[A, E >: Null <: BufElem[A]](shape: Shape[E], layer: Layer)
+                                                       (implicit ctrl: Control, tpe: StreamType[A, E])
     extends NodeImpl(name, layer, shape)
-      // with WindowedLogicImpl[Shape]
-//      with FilterLogicImpl[BufD, Shape]
-//      with FilterIn3DImpl[BufD, BufI, BufL]
-    with Out1LogicImpl[BufD, Shape] with Out1DoubleImpl[Shape]
-  {
+    with Out1LogicImpl[E, Shape[E]] {
 
-    private[this] var winBuf : Array[Double] = _
+    private[this] var winBuf : Array[A] = _
 
     protected var inRemain: Int = 0
 
-    private[this] var num     : Long  = -1
-    private[this] var winSize : Int   = -1
-    private[this] var readOff : Int   = 0
-    private[this] var writeOff: Long = 0
-    private[this] var writeSize: Long = 0
+    private[this] var num       : Long  = -1
+    private[this] var winSize   : Int   = -1
+    private[this] var readOff   : Int   = 0
+    private[this] var writeOff  : Long  = 0
+    private[this] var writeSize : Long  = 0
 
     private[this] var needsWinSize  = true
     private[this] var needsNum      = true
 
-    private[this] var inOff0: Int   = 0
-    private[this] var inOff1: Int   = 0
-    private[this] var inOff2: Int   = 0
-    private[this] var outOff0: Int  = 0
+    private[this] var inOff0    : Int   = 0
+    private[this] var inOff1    : Int   = 0
+    private[this] var inOff2    : Int   = 0
+    private[this] var outOff0   : Int   = 0
 
     private[this] var stage = 0
     private[this] var inputDone = false
 
-    private[this] var bufIn0 : BufD = _
+    private[this] var bufIn0 : E  = _
     private[this] var bufIn1 : BufI = _
     private[this] var bufIn2 : BufL = _
-    protected     var bufOut0: BufD = _
 
-    private final class _InHandlerImpl[A](in: Inlet[A])(isValid: => Boolean) extends InHandler {
+    protected     var bufOut0: E  = _
+
+    protected def allocOutBuf0(): E = tpe.allocBuf()
+
+    private final class _InHandlerImpl[B](in: Inlet[B])(isValid: => Boolean) extends InHandler {
       def onPush(): Unit = {
         logStream(s"onPush($in)")
         process()
@@ -112,7 +114,7 @@ object RepeatWindow {
 
     def inValid: Boolean = winSize >= 0 && num >= 0
 
-    protected def out0: Outlet[BufD] = shape.out
+    protected def out0: Outlet[E] = shape.out
 
     private def freeBufIn0(): Unit =
       if (bufIn0 != null) {
@@ -161,7 +163,7 @@ object RepeatWindow {
             val oldSize = winSize
             winSize = math.max(1, bufIn1.buf(inOff1))
             if (winSize != oldSize) {
-              winBuf = new Array[Double](winSize)
+              winBuf = tpe.newArray(winSize) // new Array[Double](winSize)
             }
             inOff1       += 1
             needsWinSize  = false
@@ -207,7 +209,8 @@ object RepeatWindow {
         if (readOff < winSize) {
           if (bufIn0 != null && inRemain > 0) {
             val chunk = math.min(winSize - readOff, inRemain)
-            Util.copy(bufIn0.buf, inOff0, winBuf, readOff, chunk)
+//            Util.copy(bufIn0.buf, inOff0, winBuf, readOff, chunk)
+            System.arraycopy(bufIn0.buf, inOff0, winBuf, readOff, chunk)
             inOff0     += chunk
             inRemain   -= chunk
             readOff    += chunk
@@ -222,7 +225,8 @@ object RepeatWindow {
           } else if (isClosed(shape.in0)) {
             if (readOff > 0) {
               val chunk = winSize - readOff
-              Util.clear(winBuf, readOff, chunk)
+              // Util.clear(winBuf, readOff, chunk)
+              tpe.clear(winBuf, readOff, chunk)
               readOff   = winSize
             } else {
               winSize   = 0
@@ -253,7 +257,8 @@ object RepeatWindow {
             while (rem > 0) {
               val i     = (writeOff % winSize).toInt
               val j     = math.min(rem, winSize - i)
-              Util.copy(winBuf, i, bufOut0.buf, outOff0, j)
+              // Util.copy(winBuf, i, bufOut0.buf, outOff0, j)
+              System.arraycopy(winBuf, i, bufOut0.buf, outOff0, j)
               outOff0  += j
               writeOff += j
               rem      -= j

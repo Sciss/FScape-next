@@ -80,7 +80,7 @@ object Util {
 
   /** Fills buffer with zeroes. */
   def clear(buf: Array[Double], off: Int, len: Int): Unit =
-  fill(buf, off = off, len = len, value = 0.0)
+    fill(buf, off = off, len = len, value = 0.0)
 
   /** Fills buffer with zeroes. */
   def clear(buf: Array[Int], off: Int, len: Int): Unit =

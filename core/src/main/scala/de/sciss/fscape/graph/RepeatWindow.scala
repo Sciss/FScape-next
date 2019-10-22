@@ -41,6 +41,8 @@ final case class RepeatWindow(in: GE, size: GE = 1, num: GE = 2) extends UGenSou
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
     val Vec(in, size, num) = args
-    stream.RepeatWindow(in = in.toDouble, size = size.toInt, num = num.toLong)
+    import in.tpe
+    val out = stream.RepeatWindow[in.A, in.Buf](in = in.toElem, size = size.toInt, num = num.toLong)
+    tpe.mkStreamOut(out)
   }
 }

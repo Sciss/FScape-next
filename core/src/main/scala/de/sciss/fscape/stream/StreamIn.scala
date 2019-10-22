@@ -60,10 +60,10 @@ object StreamIn {
     def newArray(size: Int): Array[Double] = new Array(size)
 
     def fill(a: Array[Double], off: Int, len: Int, elem: Double): Unit =
-      util.Arrays.fill(a, off, len, elem)
+      util.Arrays.fill(a, off, off + len, elem)
 
     def clear(a: Array[Double], off: Int, len: Int): Unit =
-      util.Arrays.fill(a, off, len, 0.0)
+      util.Arrays.fill(a, off, off + len, 0.0)
   }
 
   trait DoubleLike extends StreamIn {
@@ -142,10 +142,10 @@ object StreamIn {
     def newArray(size: Int): Array[Int] = new Array(size)
 
     def fill(a: Array[Int], off: Int, len: Int, elem: Int): Unit =
-      util.Arrays.fill(a, off, len, elem)
+      util.Arrays.fill(a, off, off + len, elem)
 
     def clear(a: Array[Int], off: Int, len: Int): Unit =
-      util.Arrays.fill(a, off, len, 0)
+      util.Arrays.fill(a, off, off + len, 0)
   }
 
   trait IntLike extends StreamIn {
@@ -224,10 +224,10 @@ object StreamIn {
     def newArray(size: Int): Array[Long] = new Array(size)
 
     def fill(a: Array[Long], off: Int, len: Int, elem: Long): Unit =
-      util.Arrays.fill(a, off, len, elem)
+      util.Arrays.fill(a, off, off + len, elem)
 
     def clear(a: Array[Long], off: Int, len: Int): Unit =
-      util.Arrays.fill(a, off, len, 0L)
+      util.Arrays.fill(a, off, off + len, 0L)
   }
 
   trait LongLike extends StreamIn {
