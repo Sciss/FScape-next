@@ -167,7 +167,19 @@ object ResizeWindow {
       math.max(0 /*1*/, winInSize - startPos + stopNeg)
 
     override protected def winInDoneCalcWinOutSize(win: Array[A], winInSize: Int): Long =
-      math.max(0 /*1*/, winInSize - (startPos + startNeg) + (stopPos + stopNeg))
+      if (winInSize == 0) 0 else math.max(0 /*1*/, winInSize - (startPos + startNeg) + (stopPos + stopNeg))
+
+    override protected def clearInputTail(win: Array[A], readOff: Layer, chunk: Layer): Unit = {
+      val writeOffI = readOff
+      val skipStart = math.max(0, startPos - writeOffI)
+      if (skipStart > chunk) return
+
+      val winOff1   = writeOffI + skipStart - startPos
+      val chunk1    = math.min(chunk - skipStart, win.length - winOff1)
+      if (chunk1 <= 0) return
+
+      tpeSignal.clear(win, winOff1, chunk1)
+    }
 
     override protected def processInput(in: Array[A], inOff: Int, win: Array[A], readOff: Int, chunk: Int): Unit = {
       val writeOffI = readOff // writeToWinOff.toInt

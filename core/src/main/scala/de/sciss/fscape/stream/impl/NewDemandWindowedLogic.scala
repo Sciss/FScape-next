@@ -189,7 +189,7 @@ trait NewDemandWindowedLogic[A, E >: Null <: BufElem[A], S <: Shape]
         if (bufInWinSize != null && inWinSizeOff < bufInWinSize.size) {
           // XXX TODO see if we can support `winSize == 0`
           winInSize = math.max(1, bufInWinSize.buf(inWinSizeOff))
-          // println(s"winSize = $winSize")
+          // println(s"winInSize = $winInSize")
           inWinSizeOff += 1
           needsWinSize  = false
           stateChange   = true
@@ -213,6 +213,7 @@ trait NewDemandWindowedLogic[A, E >: Null <: BufElem[A], S <: Shape]
         readOff     = 0
         stage       = 1
         val winBufSz = allWinParamsReady(winInSize)
+        // println(s"winBufSz = $winBufSz")
         if (winBuf == null || winBuf.length != winBufSz) {
           winBuf = tpeSignal.newArray(winBufSz)
         }
