@@ -313,8 +313,8 @@ object Control {
     }
 
     private def nodesInLayer(layer: Layer): Vec[Node] = nodeLayers.get(layer) match {
-      case Some(buf) => buf.toIndexedSeq
-      case None => Vector.empty
+      case Some(buf)  => buf.toIndexedSeq
+      case None       => Vector.empty
     }
 
     // We kind of emulate what Akka Stream would do itself
@@ -324,8 +324,8 @@ object Control {
     // and then mapping the resulting future to launch the
     // nodes (`launch` will typically poll a node's inputs).
     private def actLaunch(layer: Layer, done: Promise[Unit]): Unit = {
-      logControl(s"${hashCode().toHexString} actLaunch")
       val nodes0 = nodesInLayer(layer)
+      logControl(s"${hashCode().toHexString} actLaunch. #nodes = ${nodes0.size}")
       val futInit0: List[Future[Unit]] = nodes0.iterator.collect {
         case ni: NodeHasInit => ni.initAsync()
       } .toList
@@ -343,6 +343,7 @@ object Control {
         val inner = nodes0.map { n =>
           n.launchAsync()
         }
+        logControl(s"--- woppa ${inner.size}")
         Future.sequence(inner).map(_ => ())
       }
       done.tryCompleteWith(futLaunch)

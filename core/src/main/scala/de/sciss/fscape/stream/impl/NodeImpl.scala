@@ -21,6 +21,9 @@ import de.sciss.fscape.{logStream => log}
 
 import scala.concurrent.{ExecutionContext, Future}
 
+//object NodeImpl {
+//  var BLA = false
+//}
 abstract class NodeImpl[+S <: Shape](protected final val name: String, val layer: Layer,
                                      final override val shape: S)
                                     (implicit final protected val control: Control)
@@ -28,17 +31,25 @@ abstract class NodeImpl[+S <: Shape](protected final val name: String, val layer
 
   override def toString = s"$name-L@${hashCode.toHexString}"
 
-  final def launchAsync(): Future[Unit] = {
-    val async = getAsyncCallback { _: Unit =>
-      launch()
-    }
+  // very important: `getAsyncCallback` must only be called on the
+  // graph-stage-logic constructor or `onPull`, `onPush`!
+  private[this] val async = getAsyncCallback { _: Unit =>
+    launch()
+  }
 
+  final def launchAsync(): Future[Unit] = {
     implicit val ex: ExecutionContext = control.config.executionContext
     async.invokeWithFeedback(()).map(_ => ())
   }
 
   protected def launch(): Unit = {
     logStream(s"$this - launch")
+//    if (NodeImpl.BLA) {
+//      NodeImpl.BLA = false
+//      if (toString.contains("ResizeWindow")) {
+//        println("Aqui")
+//      }
+//    }
     // N.B.: `tryPull` not `pull`, because now the graph interpreter may have processed some nodes already
     shape.inlets.foreach { in =>
       if (!isClosed(in) && !hasBeenPulled(in)) {

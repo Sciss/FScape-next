@@ -1,5 +1,6 @@
 package de.sciss.fscape
 
+import de.sciss.fscape.stream.impl.NodeImpl
 import de.sciss.kollflitz.Vec
 import org.scalatest.{FlatSpec, Matchers}
 
@@ -11,6 +12,8 @@ import scala.util.Success
 class ResizeWindowSpec extends FlatSpec with Matchers {
   "The ResizeWindow UGen" should "work as intended" in {
     var count = 0
+//    showControlLog  = true
+//    showStreamLog   = true
 
     def variant(inLen: Int, winInSz: Int, start: Int, stop: Int): Unit = {
       val p = Promise[Vec[Int]]()
@@ -36,10 +39,11 @@ class ResizeWindowSpec extends FlatSpec with Matchers {
       val cfg = stream.Control.Config()
       cfg.blockSize = 128
       val ctl = stream.Control(cfg)
+//      NodeImpl.BLA = true
       ctl.run(g)
       count += 1
       val info = s"for count $count inLen = $inLen, winInSz = $winInSz, start = $start, stop = $stop"
-      println(info)
+//      println(info)
       Await.result(ctl.status, Duration.Inf)
 
       assert(p.isCompleted)
@@ -57,7 +61,7 @@ class ResizeWindowSpec extends FlatSpec with Matchers {
     }
   }
 
-  ignore should "work with varying window parameters" in {
+  it should "work with varying window parameters" in {
     val p   = Promise[Vec[Int]]()
 
     val inLen       = 385
