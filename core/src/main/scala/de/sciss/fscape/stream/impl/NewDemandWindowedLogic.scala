@@ -48,21 +48,6 @@ trait NewDemandWindowedLogic[A, E >: Null <: BufElem[A], S <: Shape]
 
   protected def tryObtainWinParams(): Boolean
 
-  /** Called one or several times per window, when the output buffer
-    * should be filled.
-    *
-    * @param  win        the input window array
-    * @param  winInSize the valid size in `in`
-    * @param  writeOff  the number of output frames processed so far.
-    *                   This is an accumulation of `chunk` across multiple invocations per window.
-    * @param  out       the output window array to fill by this method.
-    * @param  winOutSize  the valid size in `out` (as previously reported through `winInDoneCalcWinOutSize`)
-    * @param  outOff    the offset in `out` from which on it should be filled
-    * @param  chunk     the number of values to fill in `out`
-    */
-  protected def processOutput(win : Array[A], winInSize : Int, writeOff: Long,
-                              out : Array[A], winOutSize: Long, outOff: Int, chunk: Int): Unit
-
   protected def needsWinParams: Boolean
 
   protected def requestWinParams(): Unit
@@ -84,7 +69,7 @@ trait NewDemandWindowedLogic[A, E >: Null <: BufElem[A], S <: Shape]
     *
     * The default implementation returns `winInSize`.
     */
-  protected def winInDoneCalcWinOutSize(win: Array[A], winInSize: Int): Long =
+  protected def prepareWindow(win: Array[A], winInSize: Int): Long =
     winInSize
 
   /** The default implementation zeroes the window buffer. */
@@ -94,6 +79,24 @@ trait NewDemandWindowedLogic[A, E >: Null <: BufElem[A], S <: Shape]
   /** The default implementation copies the input to the window. */
   protected def processInput(in: Array[A], inOff: Int, win: Array[A], readOff: Int, chunk: Int): Unit =
     System.arraycopy(in, inOff, win, readOff, chunk)
+
+  /** Called one or several times per window, when the output buffer
+    * should be filled.
+    *
+    * The default implementation copies the window to the output.
+    *
+    * @param  win         the input window array
+    * @param  winInSize   the valid size in `in`
+    * @param  writeOff    the number of output frames processed so far.
+    *                     This is an accumulation of `chunk` across multiple invocations per window.
+    * @param  out         the output window array to fill by this method.
+    * @param  winOutSize  the valid size in `out` (as previously reported through `winInDoneCalcWinOutSize`)
+    * @param  outOff      the offset in `out` from which on it should be filled
+    * @param  chunk       the number of values to fill in `out`
+    */
+  protected def processOutput(win : Array[A], winInSize : Int, writeOff: Long,
+                              out : Array[A], winOutSize: Long, outOff: Int, chunk: Int): Unit =
+    System.arraycopy(win, writeOff.toInt, out, outOff, chunk)
 
   override protected def stopped(): Unit = {
     super.stopped()
@@ -254,7 +257,7 @@ trait NewDemandWindowedLogic[A, E >: Null <: BufElem[A], S <: Shape]
       if (readOff == winInSize) {
         writeOff    = 0
         stage       = 2
-        writeSize   = winInDoneCalcWinOutSize(winBuf, winInSize)
+        writeSize   = prepareWindow(winBuf, winInSize)
         // println(s"winInDoneCalcWinOutSize(_, $winInSize) = $writeSize")
         stateChange = true
       }

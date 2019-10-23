@@ -130,7 +130,7 @@ object StreamTest extends App {
     val neg1        = ResizeWindow[Double, BufD](in = neg0, size = const(fftSize), start = const(0), stop = const(2)) // 'add dc'
 
     val pos2        = pos1.buffer(size = (fftSize + 2)/blockSize, overflowStrategy = OverflowStrategy.backpressure).outlet
-    val negR2       = ReverseWindow (in = neg1 , size = const(fftSize + 2), clump = const(2))
+    val negR2       = ReverseWindow[Double, BufD](in = neg1 , size = const(fftSize + 2), clump = const(2))
 
     // val posB = BroadcastBuf(pos2, 2)
     val pos  = pos2 // posB(0)
@@ -205,7 +205,7 @@ object StreamTest extends App {
 
     val posOut      = posOut1.buffer(size = fftSize/blockSize, overflowStrategy = OverflowStrategy.backpressure).outlet
     val negOutR     = negOutR1 // .buffer(size = fftSize/blockSize, overflowStrategy = OverflowStrategy.backpressure).outlet
-    val negOut      = ReverseWindow (in = negOutR, size = const(fftSize), clump = const(2))
+    val negOut      = ReverseWindow[Double, BufD](in = negOutR, size = const(fftSize), clump = const(2))
     val logOut      = ZipWindow(a = posOut, b = negOut, size = const(fftSize))
     val freq0       = Complex1FFT   (in = logOut, size = const(fftSize), padding = const(0))
     val freq        = BinaryOp      (in1 = freq0 , in2 = const(fftSize), op = Times)

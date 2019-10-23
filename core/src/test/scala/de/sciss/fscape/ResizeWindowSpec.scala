@@ -11,7 +11,7 @@ import scala.util.Success
 
 class ResizeWindowSpec extends FlatSpec with Matchers {
   "The ResizeWindow UGen" should "work as intended" in {
-    var count = 0
+//    var count = 0
 //    showControlLog  = true
 //    showStreamLog   = true
 
@@ -41,8 +41,8 @@ class ResizeWindowSpec extends FlatSpec with Matchers {
       val ctl = stream.Control(cfg)
 //      NodeImpl.BLA = true
       ctl.run(g)
-      count += 1
-      val info = s"for count $count inLen = $inLen, winInSz = $winInSz, start = $start, stop = $stop"
+//      count += 1
+      val info = s"for inLen = $inLen, winInSz = $winInSz, start = $start, stop = $stop"
 //      println(info)
       Await.result(ctl.status, Duration.Inf)
 

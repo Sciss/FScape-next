@@ -166,7 +166,7 @@ object ResizeWindow {
     override protected def allWinParamsReady(winInSize: Int): Int =
       math.max(0 /*1*/, winInSize - startPos + stopNeg)
 
-    override protected def winInDoneCalcWinOutSize(win: Array[A], winInSize: Int): Long =
+    override protected def prepareWindow(win: Array[A], winInSize: Int): Long =
       if (winInSize == 0) 0 else math.max(0 /*1*/, winInSize - (startPos + startNeg) + (stopPos + stopNeg))
 
     override protected def clearInputTail(win: Array[A], readOff: Layer, chunk: Layer): Unit = {
@@ -197,8 +197,8 @@ object ResizeWindow {
       System.arraycopy(in, inOff1, win, winOff1, chunk1)
     }
 
-    protected def processOutput(win: Array[A], winInSize: Int, writeOff: Long, out: Array[A], winOutSize: Long,
-                                outOff: Int, chunk: Int): Unit = {
+    override protected def processOutput(win: Array[A], winInSize : Int , writeOff: Long,
+                                         out: Array[A], winOutSize: Long, outOff  : Int, chunk: Int): Unit = {
       val readOffI  = writeOff.toInt
       val arr       = bufOut0.buf
       val zeroStart = math.min(chunk, math.max(0, -startNeg - readOffI))

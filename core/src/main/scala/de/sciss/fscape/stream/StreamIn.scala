@@ -64,6 +64,10 @@ object StreamIn {
 
     def clear(a: Array[Double], off: Int, len: Int): Unit =
       util.Arrays.fill(a, off, off + len, 0.0)
+
+    def isInt   : Boolean = false
+    def isLong  : Boolean = false
+    def isDouble: Boolean = true
   }
 
   trait DoubleLike extends StreamIn {
@@ -146,6 +150,10 @@ object StreamIn {
 
     def clear(a: Array[Int], off: Int, len: Int): Unit =
       util.Arrays.fill(a, off, off + len, 0)
+
+    def isInt   : Boolean = true
+    def isLong  : Boolean = false
+    def isDouble: Boolean = false
   }
 
   trait IntLike extends StreamIn {
@@ -228,6 +236,22 @@ object StreamIn {
 
     def clear(a: Array[Long], off: Int, len: Int): Unit =
       util.Arrays.fill(a, off, off + len, 0L)
+
+//    def reverse(a: Array[Long], off: Layer, len: Layer): Unit = {
+//      var i = off
+//      var j = off + len
+//      while (i < j) {
+//        val tmp = a(i)
+//        a(i) = a(j)
+//        a(j) = tmp
+//        i += 1
+//        j -= 1
+//      }
+//    }
+
+    def isInt   : Boolean = false
+    def isLong  : Boolean = true
+    def isDouble: Boolean = false
   }
 
   trait LongLike extends StreamIn {
@@ -383,7 +407,13 @@ trait StreamType[A, Buf <: BufElem[A]] {
 
   def clear(a: Array[A], off: Int, len: Int): Unit
 
+//  def reverse(a: Array[A], off: Int, len: Int): Unit
+
   def newArray(size: Int): Array[A]
+
+  def isInt   : Boolean
+  def isLong  : Boolean
+  def isDouble: Boolean
 }
 
 object StreamOut {

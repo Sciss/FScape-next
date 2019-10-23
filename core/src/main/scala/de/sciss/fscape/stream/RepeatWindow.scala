@@ -112,10 +112,10 @@ object RepeatWindow {
         false
       }
 
-    override protected def winInDoneCalcWinOutSize(in: Array[A], winSize: Int): Long = num * winSize
+    override protected def prepareWindow(in: Array[A], winSize: Int): Long = num * winSize
 
-    protected def processOutput(in : Array[A], winInSize : Int , writeOff : Long,
-                                out: Array[A], winOutSize: Long, outOff   : Int , chunk: Int): Unit = {
+    override protected def processOutput(in : Array[A], winInSize : Int , writeOff : Long,
+                                         out: Array[A], winOutSize: Long, outOff   : Int , chunk: Int): Unit = {
       var rem       = chunk
       var outOff0   = outOff
       var writeOff0 = writeOff

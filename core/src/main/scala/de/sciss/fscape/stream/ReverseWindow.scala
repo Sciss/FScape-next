@@ -14,8 +14,8 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.{Attributes, FanInShape3}
-import de.sciss.fscape.stream.impl.{FilterIn3DImpl, FilterLogicImpl, StageImpl, NodeImpl, WindowedLogicImpl}
+import akka.stream.{Attributes, FanInShape3, Inlet, Outlet}
+import de.sciss.fscape.stream.impl.{NewDemandWindowedLogic, NodeImpl, StageImpl}
 
 /** Reverses contents of windowed input. */
 object ReverseWindow {
@@ -30,8 +30,9 @@ object ReverseWindow {
     *               sampled at each beginning of a new window and held constant
     *               during the window.
     */
-  def apply(in: OutD, size: OutI, clump: OutI)(implicit b: Builder): OutD = {
-    val stage0  = new Stage(b.layer)
+  def apply[A, E >: Null <: BufElem[A]](in: Outlet[E], size: OutI, clump: OutI)
+                                       (implicit b: Builder, tpe: StreamType[A, E]): Outlet[E] = {
+    val stage0  = new Stage[A, E](b.layer)
     val stage   = b.add(stage0)
     b.connect(in    , stage.in0)
     b.connect(size  , stage.in1)
@@ -41,69 +42,110 @@ object ReverseWindow {
 
   private final val name = "ReverseWindow"
 
-  private type Shape = FanInShape3[BufD, BufI, BufI, BufD]
+  private type Shp[E] = FanInShape3[E, BufI, BufI, E]
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
+  private final class Stage[A, E >: Null <: BufElem[A]](layer: Layer)
+                                                       (implicit ctrl: Control,
+                                                        tpe: StreamType[A, E])
+    extends StageImpl[Shp[E]](name) {
+
     val shape = new FanInShape3(
-      in0 = InD (s"$name.in"   ),
-      in1 = InI (s"$name.size" ),
-      in2 = InI (s"$name.clump"),
-      out = OutD(s"$name.out"  )
+      in0 = Inlet[E]  (s"$name.in"   ),
+      in1 = InI       (s"$name.size" ),
+      in2 = InI       (s"$name.clump"),
+      out = Outlet[E] (s"$name.out"  )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = {
+      val res: Logic[_, _] = if (tpe.isInt)
+        new Logic[Int   , BufI](shape.asInstanceOf[Shp[BufI]], layer)
+      else if (tpe.isLong)
+        new Logic[Long  , BufL](shape.asInstanceOf[Shp[BufL]], layer)
+      else if (tpe.isDouble)
+        new Logic[Double, BufD](shape.asInstanceOf[Shp[BufD]], layer)
+      else
+        new Logic[A, E](shape, layer)
+
+      res.asInstanceOf[Logic[A, E]]
+    }
   }
 
-  // XXX TODO -- abstract over data type (BufD vs BufI)?
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+  private final class Logic[@specialized(Int, Long, Double) A,
+    E >: Null <: BufElem[A]](shape: Shp[E], layer: Layer)(implicit ctrl: Control, protected val tpeSignal: StreamType[A, E])
     extends NodeImpl(name, layer, shape)
-      with WindowedLogicImpl[Shape]
-      with FilterLogicImpl[BufD, Shape]
-      with FilterIn3DImpl[BufD, BufI, BufI] {
+      with NewDemandWindowedLogic[A, E, Shp[E]] {
 
-    private[this] var winBuf : Array[Double] = _
-    private[this] var winSize: Int = _
-    private[this] var clump  : Int = _
+    private[this] var clump       : Int     = -1
+    private[this] var bufClumpOff : Int     = 0
+    private[this] var bufClump    : BufI    = _
+    private[this] var needsClump  : Boolean = true
 
-    protected def startNextWindow(inOff: Int): Long = {
-      val oldSize = winSize
-      if (bufIn1 != null && inOff < bufIn1.size) {
-        winSize = math.max(1, bufIn1.buf(inOff))
-      }
-      if (bufIn2 != null && inOff < bufIn2.size) {
-        clump = math.max(1, bufIn2.buf(inOff))
-      }
-      if (winSize != oldSize) {
-        winBuf = new Array[Double](winSize)
-      }
-      winSize
+    // constructor
+    {
+      installMainAndWindowHandlers()
+      new _InHandlerImpl(inletClump)(clumpValid)
     }
 
-    protected def copyInputToWindow(inOff: Int, writeToWinOff: Long, chunk: Int): Unit =
-      Util.copy(bufIn0.buf, inOff, winBuf, writeToWinOff.toInt, chunk)
+    private def clumpValid = clump >= 0
 
-    protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit =
-      Util.copy(winBuf, readFromWinOff.toInt, bufOut0.buf, outOff, chunk)
+    protected def inletSignal : Inlet[E]  = shape.in0
+    protected def inletWinSize: InI       = shape.in1
+    protected def inletClump  : InI       = shape.in2
 
-    protected def processWindow(writeToWinOff: Long): Long = {
-      val writeOffI = writeToWinOff.toInt
+    protected def out0        : Outlet[E] = shape.out
+
+    protected def winParamsValid: Boolean = clumpValid
+    protected def needsWinParams: Boolean = needsClump
+
+    protected def requestWinParams(): Unit = {
+      needsClump = true
+    }
+
+    protected def freeWinParamBuffers(): Unit =
+      freeClumpBuf()
+
+    private def freeClumpBuf(): Unit =
+      if (bufClump != null) {
+        bufClump.release()
+        bufClump = null
+      }
+
+    protected def tryObtainWinParams(): Boolean =
+      if (needsClump && bufClump != null && bufClumpOff < bufClump.size) {
+        clump       = math.max(1, bufClump.buf(bufClumpOff))
+        bufClumpOff += 1
+        needsClump = false
+        true
+      } else if (isAvailable(inletClump)) {
+        freeClumpBuf()
+        bufClump    = grab(inletClump)
+        bufClumpOff = 0
+        tryPull(inletClump)
+        true
+      } else if (needsClump && isClosed(inletClump) && clumpValid) {
+        needsClump = false
+        true
+      } else {
+        false
+      }
+
+    override protected def prepareWindow(win: Array[A], winInSize: Int): Long = {
       var i   = 0
       val cl  = clump
       val cl2 = cl + cl
-      var j   = writeOffI - cl  // should use `winBuf.size` instead (flush)?
-      val b   = winBuf
+      var j   = winInSize - cl
       while (i < j) {
         val k = i + cl
         while (i < k) {
-          val tmp = b(i)
-          b(i) = b(j)
-          b(j) = tmp
+          val tmp = win(i)
+          win(i) = win(j)
+          win(j) = tmp
           i += 1
           j += 1
         }
         j -= cl2
       }
-      writeToWinOff
+      winInSize
     }
   }
 }
