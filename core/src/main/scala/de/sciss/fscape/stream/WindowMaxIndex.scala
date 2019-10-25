@@ -15,7 +15,7 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape2, Inlet, Outlet}
-import de.sciss.fscape.stream.impl.{DemandWindowedLogic, NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.{DemandWindowedLogic, NoParamsDemandWindowLogic, NodeImpl, StageImpl}
 
 object WindowMaxIndex {
   def apply(in: OutD, size: OutI)(implicit b: Builder): OutI = {
@@ -42,10 +42,9 @@ object WindowMaxIndex {
 
   private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
-      with DemandWindowedLogic[Double, BufD, Int, BufI, Shape] {
+      with DemandWindowedLogic[Double, BufD, Int, BufI, Shape] with NoParamsDemandWindowLogic {
 
     private[this] var index   : Int     = _
-
     private[this] var maxValue: Double  = _
 
     protected def inletSignal : Inlet [BufD]  = shape.in0
@@ -60,15 +59,6 @@ object WindowMaxIndex {
     protected def tpeSignal: StreamType[Double, BufD] = StreamType.double
 
     protected def allocOutBuf0(): BufI = ctrl.borrowBufI()
-
-    protected def winParamsValid: Boolean = true
-    protected def needsWinParams: Boolean = false
-
-    protected def requestWinParams(): Unit = ()
-
-    protected def freeWinParamBuffers(): Unit = ()
-
-    protected def tryObtainWinParams(): Boolean = false // there aren't any
 
     override protected def allWinParamsReady(winInSize: Int): Int = {
       maxValue  = Double.NegativeInfinity

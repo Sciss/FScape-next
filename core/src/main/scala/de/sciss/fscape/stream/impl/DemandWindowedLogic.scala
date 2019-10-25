@@ -212,8 +212,7 @@ trait DemandWindowedLogic[A, In >: Null <: BufElem[A], B, Out >: Null <: BufElem
         stage       = 1
         val winBufSz = allWinParamsReady(winInSize)
         // println(s"winBufSz = $winBufSz")
-        val winSz = if (winBuf == null) 0 else winBuf.length
-        if (winSz != winBufSz) {
+        if (winBuf == null || (winBuf.length != winBufSz)) {
           winBuf = tpeSignal.newArray(winBufSz)
         }
         stateChange = true
@@ -322,4 +321,13 @@ trait DemandFilterWindowedLogic[A, E >: Null <: BufElem[A], S <: Shape]
   protected def processOutput(win : Array[A], winInSize : Int, writeOff: Long,
                               out : Array[A], winOutSize: Long, outOff: Int, chunk: Int): Unit =
     System.arraycopy(win, writeOff.toInt, out, outOff, chunk)
+}
+
+trait NoParamsDemandWindowLogic {
+  protected def winParamsValid: Boolean = true
+  protected def needsWinParams: Boolean = false
+
+  protected def requestWinParams    (): Unit    = ()
+  protected def freeWinParamBuffers (): Unit    = ()
+  protected def tryObtainWinParams  (): Boolean = false // there aren't any
 }
