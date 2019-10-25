@@ -69,7 +69,7 @@ trait DemandWindowedLogic[A, In >: Null <: BufElem[A], B, Out >: Null <: BufElem
     *
     * The default implementation returns `winInSize`.
     */
-  protected def prepareWindow(win: Array[A], winInSize: Int): Long =
+  protected def prepareWindow(win: Array[A], winInSize: Int, inSignalDone: Boolean): Long =
     winInSize
 
   /** The default implementation zeroes the window buffer. */
@@ -185,8 +185,7 @@ trait DemandWindowedLogic[A, In >: Null <: BufElem[A], B, Out >: Null <: BufElem
     if (stage == 0) {
       if (needsWinSize) {
         if (bufInWinSize != null && inWinSizeOff < bufInWinSize.size) {
-          // XXX TODO see if we can support `winSize == 0`
-          winInSize = math.max(1, bufInWinSize.buf(inWinSizeOff))
+          winInSize = math.max(0, bufInWinSize.buf(inWinSizeOff))
           // println(s"winInSize = $winInSize")
           inWinSizeOff += 1
           needsWinSize  = false
@@ -212,7 +211,7 @@ trait DemandWindowedLogic[A, In >: Null <: BufElem[A], B, Out >: Null <: BufElem
         stage       = 1
         val winBufSz = allWinParamsReady(winInSize)
         // println(s"winBufSz = $winBufSz")
-        if (winBuf == null || (winBuf.length != winBufSz)) {
+        if (winBuf == null || winBuf.length != winBufSz) {
           winBuf = tpeSignal.newArray(winBufSz)
         }
         stateChange = true
@@ -254,7 +253,7 @@ trait DemandWindowedLogic[A, In >: Null <: BufElem[A], B, Out >: Null <: BufElem
       if (readOff == winInSize) {
         writeOff    = 0
         stage       = 2
-        writeSize   = prepareWindow(winBuf, winInSize)
+        writeSize   = prepareWindow(winBuf, winInSize, inSignalDone = inSignalDone)
         // println(s"winInDoneCalcWinOutSize(_, $winInSize) = $writeSize")
         stateChange = true
       }

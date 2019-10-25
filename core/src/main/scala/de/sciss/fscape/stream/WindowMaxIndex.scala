@@ -63,7 +63,7 @@ object WindowMaxIndex {
     override protected def allWinParamsReady(winInSize: Int): Int = {
       maxValue  = Double.NegativeInfinity
       index     = -1
-      winInSize
+      0
     }
 
     override protected def processInput(in  : Array[Double], inOff  : Int,
@@ -85,8 +85,8 @@ object WindowMaxIndex {
       index     = _index
     }
 
-    override protected def prepareWindow(win: Array[Double], winInSize: Layer): Long =
-      if (winInSize > 0) 1 else 0
+    override protected def prepareWindow(win: Array[Double], winInSize: Int, inSignalDone: Boolean): Long =
+      if (inSignalDone && winInSize == 0) 0 else 1
 
     protected def processOutput(win: Array[Double], winInSize : Int , writeOff: Long,
                                 out: Array[Int]   , winOutSize: Long, outOff  : Int, chunk: Int): Unit = {

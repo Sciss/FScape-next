@@ -15,7 +15,7 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape3, Inlet, Outlet}
-import de.sciss.fscape.stream.impl.{DemandFilterWindowedLogic, DemandWindowedLogic, NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.{DemandFilterWindowedLogic, NodeImpl, StageImpl}
 
 /** Repeats contents of windowed input.
   */
@@ -112,7 +112,8 @@ object RepeatWindow {
         false
       }
 
-    override protected def prepareWindow(in: Array[A], winSize: Int): Long = num * winSize
+    override protected def prepareWindow(in: Array[A], winSize: Int, inSignalDone: Boolean): Long =
+      num * winSize
 
     override protected def processOutput(in : Array[A], winInSize : Int , writeOff : Long,
                                          out: Array[A], winOutSize: Long, outOff   : Int , chunk: Int): Unit = {

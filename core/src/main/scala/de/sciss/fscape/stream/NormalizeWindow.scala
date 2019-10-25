@@ -126,7 +126,7 @@ object NormalizeWindow {
 //    protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit =
 //      Util.copy(winBuf, readFromWinOff.toInt, bufOut0.buf, outOff, chunk)
 
-    override protected def prepareWindow(win: Array[Double], winInSize: Int): Long = {
+    override protected def prepareWindow(win: Array[Double], winInSize: Int, inSignalDone: Boolean): Long = {
       val n = winInSize // writeToWinOff.toInt
 //      if (n < winSize) {
 //        Util.clear(winBuf, n, winSize - n)

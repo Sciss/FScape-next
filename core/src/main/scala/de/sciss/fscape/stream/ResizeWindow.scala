@@ -15,7 +15,7 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape4, Inlet, Outlet}
-import de.sciss.fscape.stream.impl.{DemandFilterWindowedLogic, DemandWindowedLogic, NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.{DemandFilterWindowedLogic, NodeImpl, StageImpl}
 
 object ResizeWindow {
   /** Resizes the windowed input signal by trimming each
@@ -166,8 +166,9 @@ object ResizeWindow {
     override protected def allWinParamsReady(winInSize: Int): Int =
       math.max(0 /*1*/, winInSize - startPos + stopNeg)
 
-    override protected def prepareWindow(win: Array[A], winInSize: Int): Long =
-      if (winInSize == 0) 0 else math.max(0 /*1*/, winInSize - (startPos + startNeg) + (stopPos + stopNeg))
+    override protected def prepareWindow(win: Array[A], winInSize: Int, inSignalDone: Boolean): Long =
+      if (inSignalDone && winInSize == 0) 0
+      else math.max(0 /*1*/, winInSize - (startPos + startNeg) + (stopPos + stopNeg))
 
     override protected def clearInputTail(win: Array[A], readOff: Layer, chunk: Layer): Unit = {
       val writeOffI = readOff
@@ -175,7 +176,7 @@ object ResizeWindow {
       if (skipStart > chunk) return
 
       val winOff1   = writeOffI + skipStart - startPos
-      val chunk1    = math.min(chunk - skipStart, win.length - winOff1)
+      val chunk1    = /*if (win == null) 0 else*/ math.min(chunk - skipStart, win.length - winOff1)
       if (chunk1 <= 0) return
 
       tpeSignal.clear(win, winOff1, chunk1)
@@ -191,7 +192,7 @@ object ResizeWindow {
 
       val inOff1    = inOff + skipStart
       val winOff1   = writeOffI + skipStart - startPos
-      val chunk1    = math.min(chunk - skipStart, win.length - winOff1)
+      val chunk1    = /*if (win == null) 0 else*/ math.min(chunk - skipStart, win.length - winOff1)
       if (chunk1 <= 0) return
 
       System.arraycopy(in, inOff1, win, winOff1, chunk1)
@@ -208,7 +209,7 @@ object ResizeWindow {
       val winOff1   = readOffI + zeroStart + startNeg
       val outOff1   = outOff + zeroStart
       val chunk1    = chunk - zeroStart
-      val chunk2    = math.min(chunk1, math.max(0, win.length - winOff1))
+      val chunk2    = /*if (win == null) 0 else*/ math.min(chunk1, math.max(0, win.length - winOff1))
       if (chunk2 > 0) {
         System.arraycopy(win, winOff1, arr, outOff1, chunk2)
       }

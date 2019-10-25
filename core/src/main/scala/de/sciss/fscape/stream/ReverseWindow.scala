@@ -129,7 +129,7 @@ object ReverseWindow {
         false
       }
 
-    override protected def prepareWindow(win: Array[A], winInSize: Int): Long = {
+    override protected def prepareWindow(win: Array[A], winInSize: Int, inSignalDone: Boolean): Long = {
       var i   = 0
       val cl  = clump
       val cl2 = cl + cl

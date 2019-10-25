@@ -14,8 +14,8 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.{Attributes, FanInShape2}
-import de.sciss.fscape.stream.impl.{FilterIn2Impl, FilterLogicImpl, NodeImpl, StageImpl, WindowedLogicImpl}
+import akka.stream.{Attributes, FanInShape2, Inlet, Outlet}
+import de.sciss.fscape.stream.impl.{DemandFilterWindowedLogic, NoParamsDemandWindowLogic, NodeImpl, StageImpl}
 
 object WindowIndexWhere {
   def apply(p: OutI, size: OutI)(implicit b: Builder): OutI = {
@@ -42,42 +42,49 @@ object WindowIndexWhere {
 
   private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
-      with WindowedLogicImpl[Shape]
-      with FilterLogicImpl[BufI, Shape]
-      with FilterIn2Impl[BufI, BufI, BufI] {
+      with DemandFilterWindowedLogic[Int, BufI, Shape] with NoParamsDemandWindowLogic {
 
-    protected def allocOutBuf0(): BufI = ctrl.borrowBufI()
-
-    private[this] var size  : Int = _
     private[this] var index : Int = _
 
-    protected def startNextWindow(inOff: Int): Long = {
-      if (bufIn1 != null && inOff < bufIn1.size) {
-        size = math.max(1, bufIn1.buf(inOff))
-      }
-      index = -1
-      size
+    protected def tpeSignal: StreamType[Layer, BufI] = StreamType.int
+
+    protected def inletSignal : Inlet [BufI]  = shape.in0
+    protected def inletWinSize: InI           = shape.in1
+    protected def out0        : Outlet[BufI]  = shape.out
+
+    // constructor
+    {
+      installMainAndWindowHandlers()
     }
 
-    protected def copyInputToWindow(inOff: Int, writeToWinOff: Long, chunk: Int): Unit =
+    override protected def allWinParamsReady(winInSize: Int): Int = {
+      index = -1
+      0
+    }
+
+    override protected def clearInputTail(win: Array[Int], readOff: Int, chunk: Int): Unit = ()
+
+    override protected def prepareWindow(win: Array[Int], winInSize: Int, inSignalDone: Boolean): Long =
+      if (inSignalDone && winInSize == 0) 0 else 1
+
+    override protected def processInput(in  : Array[Int], inOff   : Int,
+                                        win : Array[Int], readOff : Int, chunk: Int): Unit =
       if (index < 0) {
-        val b = bufIn0.buf
         var i = inOff
         val s = i + chunk
         while (i < s) {
-          if (b(i) != 0) {
-            index = writeToWinOff.toInt + (i - inOff)
+          if (in(i) != 0) {
+            index = readOff + (i - inOff)
             return
           }
           i += 1
         }
       }
 
-    protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit = {
-      assert(readFromWinOff == 0 && chunk == 1)
-      bufOut0.buf(outOff) = index
+    override protected def processOutput(win: Array[Int], winInSize : Int , writeOff: Long,
+                                         out: Array[Int], winOutSize: Long, outOff  : Int, chunk: Int): Unit = {
+      assert(writeOff == 0 && chunk == 1)
+      out(outOff) = index
     }
-
-    protected def processWindow(writeToWinOff: Long): Long = 1
   }
 }
