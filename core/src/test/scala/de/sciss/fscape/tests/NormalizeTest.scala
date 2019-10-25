@@ -22,7 +22,7 @@ object NormalizeTest extends App {
   lazy val gOLD = Graph {
     val trig  = Metro(44100)
     val in    = AudioFileIn(file = fIn, numChannels = 1)
-    Poll(in = in, trig = trig, label = "test")
+    Poll(in = in, gate = trig, label = "test")
   }
 
   lazy val gFORK2 = Graph {
@@ -44,7 +44,7 @@ object NormalizeTest extends App {
 
   lazy val gConst = Graph {
     val trig = 1 // Impulse(1.0/44100)
-    Poll(in = (-0.0940551906824112: GE).abs.ampDb, trig = trig, label = "max")
+    Poll(in = (-0.0940551906824112: GE).abs.ampDb, gate = trig, label = "max")
   }
 
   lazy val g = Graph {

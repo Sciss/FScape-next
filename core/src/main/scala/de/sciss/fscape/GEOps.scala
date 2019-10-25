@@ -189,7 +189,7 @@ final class GEOps2(val `this`: GE) extends AnyVal { me =>
       case c: Constant  => Metro(c)
       case other        => other
     }
-    Poll(in = g, trig = trig1, label = label.getOrElse {
+    Poll(in = g, gate = trig1, label = label.getOrElse {
       val str = g.toString
       val i   = str.indexOf('(')
       if (i >= 0) str.substring(0, i)

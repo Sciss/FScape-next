@@ -21,9 +21,9 @@ import de.sciss.numbers.IntFunctions
 import scala.annotation.switch
 
 object WindowApply {
-  def apply[A, BufA >: Null <: BufElem[A]](in: Outlet[BufA], size: OutI, index: OutI, mode: OutI)
-                                          (implicit b: Builder, aTpe: StreamType[A, BufA]): Outlet[BufA] = {
-    val stage0  = new Stage[A, BufA](b.layer)
+  def apply[A, E >: Null <: BufElem[A]](in: Outlet[E], size: OutI, index: OutI, mode: OutI)
+                                          (implicit b: Builder, tpe: StreamType[A, E]): Outlet[E] = {
+    val stage0  = new Stage[A, E](b.layer)
     val stage   = b.add(stage0)
     b.connect(in    , stage.in0)
     b.connect(size  , stage.in1)
@@ -35,38 +35,37 @@ object WindowApply {
 
   private final val name = "WindowApply"
 
-  private type Shape[A, BufA >: Null <: BufElem[A]] =
-    FanInShape4[BufA, BufI, BufI, BufI, BufA]
+  private type Shape[E] = FanInShape4[E, BufI, BufI, BufI, E]
 
-  private final class Stage[A, BufA >: Null <: BufElem[A]](layer: Layer)
-                                                          (implicit ctrl: Control, aTpe: StreamType[A, BufA])
-    extends StageImpl[Shape[A, BufA]](name) {
+  private final class Stage[A, E >: Null <: BufElem[A]](layer: Layer)
+                                                          (implicit ctrl: Control, tpe: StreamType[A, E])
+    extends StageImpl[Shape[E]](name) {
 
     val shape = new FanInShape4(
-      in0 = Inlet[BufA] (s"$name.in"   ),
-      in1 = InI         (s"$name.size" ),
-      in2 = InI         (s"$name.index"),
-      in3 = InI         (s"$name.mode" ),
-      out = Outlet[BufA](s"$name.out"  )
+      in0 = Inlet [E] (s"$name.in"   ),
+      in1 = InI       (s"$name.size" ),
+      in2 = InI       (s"$name.index"),
+      in3 = InI       (s"$name.mode" ),
+      out = Outlet[E] (s"$name.out"  )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes) = new Logic[A, E](shape, layer)
   }
 
-  private final class Logic[A, BufA >: Null <: BufElem[A]](shape: Shape[A, BufA], layer: Layer)
-                                                          (implicit ctrl: Control, aTpe: StreamType[A, BufA])
+  private final class Logic[A, E >: Null <: BufElem[A]](shape: Shape[E], layer: Layer)
+                                                       (implicit ctrl: Control, tpe: StreamType[A, E])
     extends NodeImpl(name, layer, shape)
-      with DemandWindowedLogicOLD[Shape[A, BufA]]
-      with DemandFilterIn4[BufA, BufI, BufI, BufI, BufA] {
+      with DemandWindowedLogicOLD[Shape[E]]
+      with DemandFilterIn4[E, BufI, BufI, BufI, E] {
 
     private[this] var elem        : A       = _
     private[this] var winSize     : Int     = _
     private[this] var index0      : Int     = _
     private[this] var index       : Int     = _
     private[this] var mode        : Int     = _
-    private[this] val zero        : A       = aTpe.newArray(1)(0)
+    private[this] val zero        : A       = tpe.newArray(1)(0)
 
-    protected def allocOutBuf0(): BufA = aTpe.allocBuf()
+    protected def allocOutBuf0(): E = tpe.allocBuf()
 
     protected def inputsEnded: Boolean =
       mainInRemain == 0 && isClosed(in0) && !isAvailable(in0)

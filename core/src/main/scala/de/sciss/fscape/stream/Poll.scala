@@ -21,12 +21,12 @@ import de.sciss.fscape.stream.impl.{NodeImpl, PollImpl, SinkShape2, StageImpl}
 // (what did I mean by `Outlet[String]`?
 // XXX TODO --- rename `trig` to `gate`
 object Poll {
-  def apply(in: Outlet[BufLike], trig: OutI, label: String)(implicit b: Builder): Unit = {
+  def apply(in: Outlet[BufLike], gate: OutI, label: String)(implicit b: Builder): Unit = {
     // println(s"Poll($in, $trig, $label)")
     val stage0  = new Stage(layer = b.layer, label = label)
     val stage   = b.add(stage0)
     b.connect(in  , stage.in0)
-    b.connect(trig, stage.in1)
+    b.connect(gate, stage.in1)
   }
 
   private final val name = "Poll"

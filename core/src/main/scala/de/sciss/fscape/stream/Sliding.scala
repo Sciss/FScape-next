@@ -76,6 +76,7 @@ object Sliding {
     def createLogic(attr: Attributes) = new Logic(shape, layer)
   }
 
+  // XXX TODO -- abstract over data type (BufD vs BufI)?
   private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
       with ChunkImpl[Shape]

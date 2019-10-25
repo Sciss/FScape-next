@@ -20,7 +20,6 @@ import de.sciss.fscape.stream.StreamIn
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-// XXX TODO: rename `trig` to `gate`
 /** A UGen that prints snapshots of its input to the console.
   * Note that arguments have different order than in ScalaCollider!
   *
@@ -29,20 +28,19 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   *               prevent a dangling `Poll` whose trigger is
   *               infinite (such as `Impulse`). If you want to avoid
   *               that, you should wrap the input in a `DC`.
-  * @param trig   gate that causes the UGen to print a snapshot
-  *               of the input when open. It will be renamed to
-  *               '''gate'''  in the next major version
+  * @param gate   gate that causes the UGen to print a snapshot
+  *               of the input when open.
   * @param label  an identifying label to prepend to the printing.
   */
-final case class Poll(in: GE, trig: GE, label: String = "poll") extends UGenSource.ZeroOut {
+final case class Poll(in: GE, gate: GE, label: String = "poll") extends UGenSource.ZeroOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): Unit =
-    unwrap(this, Vector(in.expand, trig.expand))
+    unwrap(this, Vector(in.expand, gate.expand))
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit =
     UGen.ZeroOut(this, inputs = args, adjuncts = Adjunct.String(label) :: Nil)
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit = {
-    val Vec(in, trig) = args
-    stream.Poll(in = in.toAny, trig = trig.toInt, label = label)
+    val Vec(in, gate) = args
+    stream.Poll(in = in.toAny, gate = gate.toInt, label = label)
   }
 }

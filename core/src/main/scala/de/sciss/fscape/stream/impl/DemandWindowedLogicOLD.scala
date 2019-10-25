@@ -21,6 +21,7 @@ import akka.stream.stage.GraphStageLogic
 /** A logic component for windowed processing, where window parameters
   * are obtained "on demand", i.e. at the speed of one per window.
   */
+@deprecated("Assumes that block-sizes for aux-ins always match", since = "2.32.0")
 trait DemandWindowedLogicOLD[S <: Shape] extends DemandChunkImpl[S] {
 
   _: GraphStageLogic =>

@@ -23,8 +23,6 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * It outputs one integer value per window; if the predicate does not hold across the entire
   * window, the index will be `-1`.
   *
-  * '''Warning:''' window parameter modulation is currently not working correctly (issue #30)
-  * 
   * @param p      a predicate to detect the index
   * @param size   the window size.
   */
