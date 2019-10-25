@@ -24,6 +24,7 @@ import scala.annotation.tailrec
   * between main or full-rate inputs and auxiliary or
   * demand-rate inputs (for example, polling one value per window).
   */
+@deprecated("Assumes that block-sizes for aux-ins always match", since = "2.32.0")
 trait DemandChunkImpl[S <: Shape] extends InOutImpl[S] {
   _: GraphStageLogic =>
 

@@ -14,13 +14,14 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.{Attributes, FanInShape3}
-import de.sciss.fscape.stream.impl.{FilterIn3DImpl, FilterLogicImpl, NodeImpl, StageImpl, WindowedLogicImpl}
+import akka.stream.{Attributes, FanInShape3, Inlet, Outlet}
+import de.sciss.fscape.stream.impl.{NewDemandWindowedLogic, NodeImpl, StageImpl}
 import de.sciss.numbers.IntFunctions
 
 object RotateWindow {
-  def apply(in: OutD, size: OutI, amount: OutI)(implicit b: Builder): OutD = {
-    val stage0  = new Stage(b.layer)
+  def apply[A, E >: Null <: BufElem[A]](in: Outlet[E], size: OutI, amount: OutI)
+                                       (implicit b: Builder, tpe: StreamType[A, E]): Outlet[E] = {
+    val stage0  = new Stage[A, E](b.layer)
     val stage   = b.add(stage0)
     b.connect(in    , stage.in0)
     b.connect(size  , stage.in1)
@@ -31,68 +32,98 @@ object RotateWindow {
 
   private final val name = "RotateWindow"
 
-  private type Shape = FanInShape3[BufD, BufI, BufI, BufD]
+  private type Shape[E] = FanInShape3[E, BufI, BufI, E]
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
+  private final class Stage[A, E >: Null <: BufElem[A]](layer: Layer)(implicit ctrl: Control, tpe: StreamType[A, E])
+    extends StageImpl[Shape[E]](name) {
+    
     val shape = new FanInShape3(
-      in0 = InD (s"$name.in"    ),
-      in1 = InI (s"$name.size"  ),
-      in2 = InI (s"$name.amount"),
-      out = OutD(s"$name.out"   )
+      in0 = Inlet[E]  (s"$name.in"    ),
+      in1 = InI       (s"$name.size"  ),
+      in2 = InI       (s"$name.amount"),
+      out = Outlet[E] (s"$name.out"   )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes) = new Logic[A, E](shape, layer)
   }
 
-  // XXX TODO -- abstract over data type (BufD vs BufI)?
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+  private final class Logic[A, E >: Null <: BufElem[A]](shape: Shape[E], layer: Layer)
+                                                       (implicit ctrl: Control,
+                                                        protected val tpeSignal: StreamType[A, E])
     extends NodeImpl(name, layer, shape)
-      with WindowedLogicImpl[Shape]
-      with FilterLogicImpl[BufD, Shape]
-      with FilterIn3DImpl[BufD, BufI, BufI] {
+      with NewDemandWindowedLogic[A, E, Shape[E]] {
 
-    private[this] var winBuf    : Array[Double] = _
-    private[this] var winSize   : Int = _
-    private[this] var amountInv : Int = _
+    private[this] var amount         : Int   = _
+    private[this] var amountInv      : Int   = -1
+    private[this] var bufAmountOff   : Int   = 0
+    private[this] var bufAmount      : BufI  = _
+    private[this] var needsAmount = true
 
-    protected def startNextWindow(inOff: Int): Long = {
-      if (bufIn1 != null && inOff < bufIn1.size) {
-        val oldSize   = winSize
-        val _winSize  = math.max(1, bufIn1.buf(inOff))
-        val amount    = oldSize - amountInv
-        amountInv     = _winSize - amount
-        if (_winSize != oldSize) {
-          winBuf  = new Array[Double](_winSize)
-          winSize = _winSize
-        }
-      }
-      if (bufIn2 != null && inOff < bufIn2.size) {
-        val amount  = IntFunctions.mod(bufIn2.buf(inOff), winSize)
-        amountInv   = winSize - amount
-      }
-      winSize
+    private def amountValid = amountInv >= 0
+
+    // constructor
+    {
+      installMainAndWindowHandlers()
+      new _InHandlerImpl(inletAmount)(amountValid)
     }
 
-    protected def copyInputToWindow(inOff: Int, writeToWinOff: Long, chunk: Int): Unit =
-      Util.copy(bufIn0.buf, inOff, winBuf, writeToWinOff.toInt, chunk)
+    protected def inletSignal : Inlet[E]  = shape.in0
+    protected def inletWinSize: InI       = shape.in1
+    private   def inletAmount : InI       = shape.in2
 
-    protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit = {
-      val _winSize  = winSize
-      val n         = (readFromWinOff.toInt + amountInv) % _winSize
-      val m         = math.min(chunk, _winSize - n)
-      Util.copy(winBuf, n, bufOut0.buf, outOff, m)
+    protected def out0        : Outlet[E] = shape.out
+
+    protected def winParamsValid: Boolean = amountValid
+    protected def needsWinParams: Boolean = needsAmount
+
+    protected def requestWinParams(): Unit = {
+      needsAmount = true
+    }
+
+    protected def freeWinParamBuffers(): Unit =
+      freeAmountBuf()
+
+    private def freeAmountBuf(): Unit =
+      if (bufAmount != null) {
+        bufAmount.release()
+        bufAmount = null
+      }
+
+    protected def tryObtainWinParams(): Boolean =
+      if (needsAmount && bufAmount != null && bufAmountOff < bufAmount.size) {
+        amount       = bufAmount.buf(bufAmountOff)
+//        val amount  = IntFunctions.mod(bufAmount.buf(bufAmountOff), winSize)
+        bufAmountOff   += 1
+        needsAmount = false
+        true
+      } else if (isAvailable(inletAmount)) {
+        freeAmountBuf()
+        bufAmount    = grab(inletAmount)
+        bufAmountOff = 0
+        tryPull(inletAmount)
+        true
+      } else if (needsAmount && isClosed(inletAmount) && amountValid) {
+        needsAmount = false
+        true
+      } else {
+        false
+      }
+
+    override protected def allWinParamsReady(winInSize: Layer): Layer = {
+      val amountM = IntFunctions.mod(amount, winInSize)
+      amountInv   = winInSize - amountM
+      winInSize
+    }
+
+    override protected def processOutput(win: Array[A], winInSize : Int , writeOff: Long,
+                                         out: Array[A], winOutSize: Long, outOff  : Int, chunk: Int): Unit = {
+      val n         = (writeOff.toInt + amountInv) % winInSize
+      val m         = math.min(chunk, winInSize - n)
+      System.arraycopy(win, n, out, outOff, m)
       val p         = chunk - m
       if (p > 0) {
-        Util.copy(winBuf, 0, bufOut0.buf, outOff + m, p)
+        System.arraycopy(win, 0, out, outOff + m, p)
       }
-    }
-
-    protected def processWindow(writeToWinOff: Long): Long = {
-      val n = writeToWinOff.toInt
-      if (n < winSize) {
-        Util.clear(winBuf, n, winSize - n)
-      }
-      writeToWinOff
     }
   }
 }

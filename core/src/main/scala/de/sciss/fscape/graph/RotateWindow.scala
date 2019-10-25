@@ -23,8 +23,6 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * For example, it can be used to align the phases prior to FFT so that the sample
   * that was formerly in the centre of the window moves to the beginning of the window.
   *
-  * '''Warning:''' window parameter modulation is currently not working correctly (issue #30)
-  *
   * @param in     the signal to window and resize
   * @param size   the input window size
   * @param amount the rotation amount in sample frames. Positive values "move" the contents
@@ -40,6 +38,8 @@ final case class RotateWindow(in: GE, size: GE, amount: GE = 0) extends UGenSour
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
     val Vec(in, size, amount) = args
-    stream.RotateWindow(in = in.toDouble, size = size.toInt, amount = amount.toInt)
+    import in.tpe
+    val out = stream.RotateWindow[in.A, in.Buf](in = in.toElem, size = size.toInt, amount = amount.toInt)
+    tpe.mkStreamOut(out)
   }
 }
