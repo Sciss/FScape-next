@@ -212,7 +212,8 @@ trait DemandWindowedLogic[A, In >: Null <: BufElem[A], B, Out >: Null <: BufElem
         stage       = 1
         val winBufSz = allWinParamsReady(winInSize)
         // println(s"winBufSz = $winBufSz")
-        if ((winBuf == null && winBufSz > 0) || winBuf.length != winBufSz) {
+        val winSz = if (winBuf == null) 0 else winBuf.length
+        if (winSz != winBufSz) {
           winBuf = tpeSignal.newArray(winBufSz)
         }
         stateChange = true
