@@ -16,7 +16,7 @@ package stream
 
 import akka.stream.{Attributes, FanInShape3, Inlet, Outlet}
 import de.sciss.fscape.graph.NormalizeWindow.{FitBipolar, FitUnipolar, Normalize, ZeroMean}
-import de.sciss.fscape.stream.impl.{NewDemandWindowedLogic, NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.{DemandFilterWindowedLogic, NodeImpl, StageImpl}
 
 import scala.annotation.switch
 
@@ -48,7 +48,7 @@ object NormalizeWindow {
 
   private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
-      with NewDemandWindowedLogic[Double, BufD, Shape] {
+      with DemandFilterWindowedLogic[Double, BufD, Shape] {
 
     private[this] var mode      : Int     = -1
     private[this] var bufModeOff: Int     = 0

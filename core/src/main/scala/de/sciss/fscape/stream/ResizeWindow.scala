@@ -15,7 +15,7 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape4, Inlet, Outlet}
-import de.sciss.fscape.stream.impl.{NewDemandWindowedLogic, NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.{DemandFilterWindowedLogic, DemandWindowedLogic, NodeImpl, StageImpl}
 
 object ResizeWindow {
   /** Resizes the windowed input signal by trimming each
@@ -64,7 +64,7 @@ object ResizeWindow {
                                                        (implicit ctrl: Control,
                                                         protected val tpeSignal: StreamType[A, E])
     extends NodeImpl(name, layer, shape)
-      with NewDemandWindowedLogic[A, E, Shape[E]] {
+      with DemandFilterWindowedLogic[A, E, Shape[E]] {
 
     private[this] var startPos    : Int = -1
     private[this] var startNeg    : Int = _

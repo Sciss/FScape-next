@@ -15,7 +15,7 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape2}
-import de.sciss.fscape.stream.impl.{DemandGenIn2, DemandWindowedLogic, NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.{DemandGenIn2, DemandWindowedLogicOLD, NodeImpl, StageImpl}
 
 object Metro {
   def apply(period: OutL, phase: OutL)(implicit b: Builder): OutI = {
@@ -43,7 +43,7 @@ object Metro {
   private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
       with DemandGenIn2[BufL, BufL, BufI]
-      with DemandWindowedLogic[Shape] {
+      with DemandWindowedLogicOLD[Shape] {
 
     private[this] var period  : Long  = _
     private[this] var phaseOff: Long  = _

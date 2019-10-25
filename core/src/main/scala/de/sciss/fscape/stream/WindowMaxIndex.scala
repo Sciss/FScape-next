@@ -14,8 +14,8 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.{Attributes, FanInShape2}
-import de.sciss.fscape.stream.impl.{FilterIn2Impl, FilterLogicImpl, NodeImpl, StageImpl, WindowedLogicImpl}
+import akka.stream.{Attributes, FanInShape2, Inlet, Outlet}
+import de.sciss.fscape.stream.impl.{DemandWindowedLogic, NodeImpl, StageImpl}
 
 object WindowMaxIndex {
   def apply(in: OutD, size: OutI)(implicit b: Builder): OutI = {
@@ -42,34 +42,49 @@ object WindowMaxIndex {
 
   private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
-      with WindowedLogicImpl[Shape]
-      with FilterLogicImpl[BufD, Shape]
-      with FilterIn2Impl[BufD, BufI, BufI] {
+      with DemandWindowedLogic[Double, BufD, Int, BufI, Shape] {
+
+    private[this] var index   : Int     = _
+
+    private[this] var maxValue: Double  = _
+
+    protected def inletSignal : Inlet [BufD]  = shape.in0
+    protected def inletWinSize: InI           = shape.in1
+    protected def out0        : Outlet[BufI]  = shape.out
+
+    // constructor
+    {
+      installMainAndWindowHandlers()
+    }
+
+    protected def tpeSignal: StreamType[Double, BufD] = StreamType.double
 
     protected def allocOutBuf0(): BufI = ctrl.borrowBufI()
 
-    private[this] var size    : Int     = _
-    private[this] var index   : Int     = _
-    private[this] var maxValue: Double  = _
+    protected def winParamsValid: Boolean = true
+    protected def needsWinParams: Boolean = false
 
-    protected def startNextWindow(inOff: Int): Long = {
-      if (bufIn1 != null && inOff < bufIn1.size) {
-        size = math.max(1, bufIn1.buf(inOff))
-      }
-      index     = 0
+    protected def requestWinParams(): Unit = ()
+
+    protected def freeWinParamBuffers(): Unit = ()
+
+    protected def tryObtainWinParams(): Boolean = false // there aren't any
+
+    override protected def allWinParamsReady(winInSize: Int): Int = {
       maxValue  = Double.NegativeInfinity
-      size
+      index     = -1
+      winInSize
     }
 
-    protected def copyInputToWindow(inOff: Int, writeToWinOff: Long, chunk: Int): Unit = {
-      val b       = bufIn0.buf
+    override protected def processInput(in  : Array[Double], inOff  : Int,
+                                        win : Array[Double], readOff: Int, chunk: Int): Unit = {
       var i       = inOff
       val s       = i + chunk
       var _max    = maxValue
       var _index  = index
-      val d       = writeToWinOff.toInt - inOff
+      val d       = readOff - inOff
       while (i < s) {
-        val v = b(i)
+        val v = in(i)
         if (v > _max) {
           _max    = v
           _index  = i + d
@@ -80,11 +95,13 @@ object WindowMaxIndex {
       index     = _index
     }
 
-    protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit = {
-      assert(readFromWinOff == 0 && chunk == 1)
-      bufOut0.buf(outOff) = index
-    }
+    override protected def prepareWindow(win: Array[Double], winInSize: Layer): Long =
+      if (winInSize > 0) 1 else 0
 
-    protected def processWindow(writeToWinOff: Long): Long = 1
+    protected def processOutput(win: Array[Double], winInSize : Int , writeOff: Long,
+                                out: Array[Int]   , winOutSize: Long, outOff  : Int, chunk: Int): Unit = {
+      assert(writeOff == 0 && chunk == 1)
+      out(outOff) = index
+    }
   }
 }

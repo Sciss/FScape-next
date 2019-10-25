@@ -11,119 +11,311 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape
-package stream
-package impl
+package de.sciss.fscape.stream.impl
 
-import akka.stream.Shape
-import akka.stream.stage.GraphStageLogic
+import akka.stream.stage.{GraphStageLogic, InHandler}
+import akka.stream.{Inlet, Shape}
+import de.sciss.fscape.stream.{BufElem, BufI, InI}
+import de.sciss.fscape.{logStream, stream}
 
-/** A logic component for windowed processing, where window parameters
-  * are obtained "on demand", i.e. at the speed of one per window.
+import scala.annotation.tailrec
+
+/** Ok, '''another''' attempt to isolate a correct building block.
+  * This is for window processing UGens where window parameters include
+  * `winSize` and possibly others, and will be polled per window.
+  * Input windows are buffered, output windows can be arbitrary in size
+  * (`Long`).
+  *
+  * Implementations should call `installMainAndWindowHandlers()` in their
+  * constructor, and add handlers for all other inlets.
   */
-trait DemandWindowedLogic[S <: Shape] extends DemandChunkImpl[S] {
+trait DemandWindowedLogic[A, In >: Null <: BufElem[A], B, Out >: Null <: BufElem[B], S <: Shape]
+  extends Out1LogicImpl[Out, S] {
 
-  _: GraphStageLogic =>
+    _: GraphStageLogic =>
 
   // ---- abstract ----
 
-  /** Notifies about the start of the next window.
+  protected def tpeSignal: stream.StreamType[A, In]
+
+  protected def winParamsValid: Boolean
+
+  protected def inletSignal   : Inlet [In]
+  protected def inletWinSize  : InI
+
+  protected def freeWinParamBuffers(): Unit
+
+  /** Should return `true` if state was changed. */
+  protected def tryObtainWinParams(): Boolean
+
+  protected def needsWinParams: Boolean
+
+  protected def requestWinParams(): Unit
+
+  // ---- possible to override ----
+
+  /** Called when all new window parameters have been obtained.
+    * Returns the buffer size for the internal `win` array.
     *
-    * @return the number of frames to write to the internal window buffer
-    *         (becomes `writeToWinRemain`)
+    * The default implementation returns `winInSize`.
     */
-  protected def startNextWindow(): Long
+  protected def allWinParamsReady(winInSize: Int): Int =
+    winInSize
 
-  /** If crucial inputs have been closed. */
-  protected def inputsEnded: Boolean
-
-  /** Issues a copy from input buffer to internal window buffer.
+  /** Called when the input window has been fully read.
+    * The implementation may update the `in` array if needed,
+    * or perform additional initializations. It should then
+    * return the write-size (`winOutSize`).
     *
-    * @param writeToWinOff  current offset into internal window buffer
-    * @param chunk          number of frames to copy
+    * The default implementation returns `winInSize`.
     */
-  protected def copyInputToWindow(writeToWinOff: Long, chunk: Int): Unit
+  protected def prepareWindow(win: Array[A], winInSize: Int): Long =
+    winInSize
 
-  /** Called when the internal window buffer is full, in order to
-    * proceed to the next phase of copying from window to output.
-    * (transitioning between `copyInputToWindow` and `copyWindowToOutput`)
+  /** The default implementation zeroes the window buffer. */
+  protected def clearInputTail(win: Array[A], readOff: Int, chunk: Int): Unit =
+    tpeSignal.clear(win, readOff, chunk)
+
+  /** The default implementation copies the input to the window. */
+  protected def processInput(in: Array[A], inOff: Int, win: Array[A], readOff: Int, chunk: Int): Unit =
+    System.arraycopy(in, inOff, win, readOff, chunk)
+
+  /** Called one or several times per window, when the output buffer
+    * should be filled.
     *
-    * @param writeToWinOff  the current offset into the internal window buffer.
-    *                       this is basically the amount of frames available for
-    *                       processing.
-    * @return the number of frames available for sending through `copyWindowToOutput`
-    *         (this becomes `readFromWinRemain`).
+    * @param  win         the input window array
+    * @param  winInSize   the valid size in `in`
+    * @param  writeOff    the number of output frames processed so far.
+    *                     This is an accumulation of `chunk` across multiple invocations per window.
+    * @param  out         the output window array to fill by this method.
+    * @param  winOutSize  the valid size in `out` (as previously reported through `winInDoneCalcWinOutSize`)
+    * @param  outOff      the offset in `out` from which on it should be filled
+    * @param  chunk       the number of values to fill in `out`
     */
-  protected def processWindow(writeToWinOff: Long /* , flush: Boolean */): Long
+  protected def processOutput(win : Array[A], winInSize : Int, writeOff: Long,
+                              out : Array[B], winOutSize: Long, outOff: Int, chunk: Int): Unit
 
-  protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit
-
-  protected def canStartNextWindow: Boolean
+  override protected def stopped(): Unit = {
+    super.stopped()
+    freeInputBuffers()
+    freeOutputBuffers()
+    winBuf = null
+  }
 
   // ---- impl ----
 
-  private[this] final var writeToWinOff     = 0L
-  private[this] final var writeToWinRemain  = 0L
-  private[this] final var readFromWinOff    = 0L
-  private[this] final var readFromWinRemain = 0L
-  private[this] final var isNextWindow      = true
+  private[this] var winBuf : Array[A] = _
 
-  @inline
-  private[this] final def canWriteToWindow  = readFromWinRemain == 0 && inValid
+  private[this] var inSignalRemain: Int = 0
 
-  protected final def processChunk(): Boolean = {
-    var stateChange = false
+  private[this] var winInSize : Int   = -1
+  private[this] var readOff   : Int   = 0
+  private[this] var writeOff  : Long  = 0
+  private[this] var writeSize : Long  = 0
 
-    if (canWriteToWindow) {
-      val flushIn0 = inputsEnded // inRemain == 0 && shouldComplete()
-      if (isNextWindow && canStartNextWindow && !flushIn0) {
-        writeToWinRemain  = startNextWindow()
-        isNextWindow      = false
-        stateChange       = true
-        // logStream(s"startNextWindow(); writeToWinRemain = $writeToWinRemain")
-      }
+  private[this] var needsWinSize  = true
 
-      val chunk     = math.min(writeToWinRemain, mainInRemain).toInt
-      val flushIn   = flushIn0 && writeToWinOff > 0
-      if (chunk > 0 || flushIn) {
-        // logStream(s"writeToWindow(); inOff = $inOff, writeToWinOff = $writeToWinOff, chunk = $chunk")
-        if (chunk > 0) {
-          copyInputToWindow(writeToWinOff = writeToWinOff, chunk = chunk)
-          mainInOff        += chunk
-          mainInRemain     -= chunk
-          writeToWinOff    += chunk
-          writeToWinRemain -= chunk
-          stateChange       = true
-        }
+  private[this] var inSignalOff : Int   = 0
+  private[this] var inWinSizeOff: Int   = 0
+  private[this] var outOff0     : Int   = 0
 
-        if (writeToWinRemain == 0 || flushIn) {
-          readFromWinRemain = processWindow(writeToWinOff = writeToWinOff) // , flush = flushIn)
-          writeToWinOff     = 0
-          readFromWinOff    = 0
-          isNextWindow      = true
-          stateChange       = true
-          auxInOff         += 1
-          auxInRemain      -= 1
-          // logStream(s"processWindow(); readFromWinRemain = $readFromWinRemain")
-        }
+  private[this] var stage = 0 // 0: gather window parameters, 1: gather input, 2: produce output
+  private[this] var inSignalDone = false
+
+  private[this] var bufInSignal : In  = _
+
+  private[this] var bufInWinSize : BufI = _
+
+  protected final var bufOut0: Out = _
+
+  protected final class _InHandlerImpl[T](in: Inlet[T])(isValid: => Boolean) extends InHandler {
+    def onPush(): Unit = {
+      logStream(s"onPush($in)")
+      process()
+    }
+
+    override def onUpstreamFinish(): Unit = {
+      logStream(s"onUpstreamFinish($in)")
+      if (isValid) {
+        process()
+      } else if (!isInAvailable(in)) {
+        super.onUpstreamFinish()
       }
     }
 
-    if (readFromWinRemain > 0) {
-      val chunk = math.min(readFromWinRemain, outRemain).toInt
-      if (chunk > 0) {
-        // logStream(s"readFromWindow(); readFromWinOff = $readFromWinOff, outOff = $outOff, chunk = $chunk")
-        copyWindowToOutput(readFromWinOff = readFromWinOff, outOff = outOff, chunk = chunk)
-        readFromWinOff    += chunk
-        readFromWinRemain -= chunk
-        outOff            += chunk
-        outRemain         -= chunk
-        stateChange        = true
-      }
-    }
-
-    stateChange
+    setInHandler(in, this)
   }
 
-  protected final def shouldComplete(): Boolean = inputsEnded && writeToWinOff == 0 && readFromWinRemain == 0
+  protected final def installMainAndWindowHandlers(): Unit = {
+    new _InHandlerImpl(inletSignal)(true)
+    new _InHandlerImpl(inletWinSize)(winInSize >= 0)
+    new ProcessOutHandlerImpl(out0, this)
+  }
+
+  final def inValid: Boolean = winInSize >= 0 && winParamsValid
+
+  private def freeBufInSignal(): Unit =
+    if (bufInSignal != null) {
+      bufInSignal.release()
+      bufInSignal = null
+    }
+
+  private def freeBufInWinSize(): Unit =
+    if (bufInWinSize != null) {
+      bufInWinSize.release()
+      bufInWinSize = null
+    }
+
+  private def freeInputBuffers(): Unit = {
+    freeBufInSignal()
+    freeBufInWinSize()
+    freeWinParamBuffers()
+  }
+
+  protected def freeOutputBuffers(): Unit =
+    if (bufOut0 != null) {
+      bufOut0.release()
+      bufOut0 = null
+    }
+
+  @tailrec
+  final def process(): Unit = {
+    var stateChange = false
+
+    if (stage == 0) {
+      if (needsWinSize) {
+        if (bufInWinSize != null && inWinSizeOff < bufInWinSize.size) {
+          // XXX TODO see if we can support `winSize == 0`
+          winInSize = math.max(1, bufInWinSize.buf(inWinSizeOff))
+          // println(s"winInSize = $winInSize")
+          inWinSizeOff += 1
+          needsWinSize  = false
+          stateChange   = true
+        } else if (isAvailable(inletWinSize)) {
+          freeBufInWinSize()
+          bufInWinSize  = grab(inletWinSize)
+          inWinSizeOff  = 0
+          tryPull(inletWinSize)
+          stateChange = true
+        } else if (isClosed(inletWinSize) && winInSize >= 0) {
+          needsWinSize  = false
+          stateChange   = true
+        }
+      }
+
+      if (needsWinParams) {
+        stateChange ||= tryObtainWinParams()
+      }
+
+      if (!needsWinSize && !needsWinParams) {
+        readOff     = 0
+        stage       = 1
+        val winBufSz = allWinParamsReady(winInSize)
+        // println(s"winBufSz = $winBufSz")
+        if ((winBuf == null && winBufSz > 0) || winBuf.length != winBufSz) {
+          winBuf = tpeSignal.newArray(winBufSz)
+        }
+        stateChange = true
+      }
+    }
+
+    if (stage == 1) {
+      if (readOff < winInSize) {
+        if (bufInSignal != null && inSignalRemain > 0) {
+          val chunk = math.min(winInSize - readOff, inSignalRemain)
+          processInput(in = bufInSignal.buf, inOff = inSignalOff, win = winBuf, readOff = readOff, chunk = chunk)
+          inSignalOff     += chunk
+          inSignalRemain  -= chunk
+          readOff         += chunk
+          stateChange      = true
+        } else if (isAvailable(inletSignal)) {
+          freeBufInSignal()
+          bufInSignal     = grab(inletSignal)
+          inSignalOff     = 0
+          inSignalRemain  = bufInSignal.size
+          tryPull(inletSignal)
+          stateChange = true
+        } else if (isClosed(inletSignal)) {
+          // println(s"closed; readOff = $readOff")
+          if (readOff > 0) {
+            val chunk = winInSize - readOff
+            if (chunk > 0) clearInputTail(winBuf, readOff = readOff, chunk = chunk)
+            readOff   = winInSize
+          } else {
+            winInSize   = 0
+          }
+          inSignalDone  = true
+          stateChange   = true
+        }
+      }
+
+      if (readOff == winInSize) {
+        writeOff    = 0
+        stage       = 2
+        writeSize   = prepareWindow(winBuf, winInSize)
+        // println(s"winInDoneCalcWinOutSize(_, $winInSize) = $writeSize")
+        stateChange = true
+      }
+    }
+
+    if (stage == 2) {
+      if (bufOut0 == null) {
+        bufOut0 = allocOutBuf0()
+        outOff0 = 0
+      }
+
+      if (writeOff < writeSize) {
+        if (outOff0 < bufOut0.size) {
+          val chunk = math.min(writeSize - writeOff, bufOut0.size - outOff0).toInt
+          // if (winSize == 0) println(s"Fuckedifuck! $chunk")
+          processOutput(
+            win = winBuf      , winInSize   = winInSize , writeOff  = writeOff,
+            out = bufOut0.buf , winOutSize  = writeSize , outOff    = outOff0,
+            chunk = chunk
+          )
+          writeOff   += chunk
+          outOff0    += chunk
+          stateChange = true
+        }
+      }
+
+      if (outOff0 == bufOut0.size && canWrite) {
+        writeOuts(outOff0)
+        stateChange = true
+      }
+
+      if (writeOff == writeSize) {
+        if (inSignalDone) {
+          if (isAvailable(out0)) {
+            writeOuts(outOff0)
+            completeStage()
+          }
+        }
+        else {
+          stage         = 0
+          needsWinSize  = true
+          requestWinParams() // needsWinParams= true
+          stateChange   = true
+        }
+      }
+    }
+
+    if (stateChange) process()
+  }
+}
+
+/** Variant of `DemandWindowedLogic` where input and output type are the same.  */
+trait DemandFilterWindowedLogic[A, E >: Null <: BufElem[A], S <: Shape]
+  extends DemandWindowedLogic[A, E, A, E, S] {
+
+  _: GraphStageLogic =>
+
+  protected final def allocOutBuf0(): E = tpeSignal.allocBuf()
+
+  /**
+    * The default implementation copies the window to the output.
+    */
+  protected def processOutput(win : Array[A], winInSize : Int, writeOff: Long,
+                              out : Array[A], winOutSize: Long, outOff: Int, chunk: Int): Unit =
+    System.arraycopy(win, writeOff.toInt, out, outOff, chunk)
 }

@@ -15,7 +15,7 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape3, Inlet, Outlet}
-import de.sciss.fscape.stream.impl.{NewDemandWindowedLogic, NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.{DemandFilterWindowedLogic, DemandWindowedLogic, NodeImpl, StageImpl}
 
 /** Repeats contents of windowed input.
   */
@@ -56,7 +56,7 @@ object RepeatWindow {
                                                        (implicit ctrl: Control,
                                                         protected val tpeSignal: StreamType[A, E])
     extends NodeImpl(name, layer, shape)
-    with NewDemandWindowedLogic[A, E, Shape[E]] {
+    with DemandFilterWindowedLogic[A, E, Shape[E]] {
 
     private[this] var num         : Long  = -1
     private[this] var bufNumOff   : Int   = 0

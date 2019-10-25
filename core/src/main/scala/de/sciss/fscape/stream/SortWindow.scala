@@ -17,7 +17,7 @@ package stream
 import java.util
 
 import akka.stream.{Attributes, FanInShape3, Inlet, Outlet}
-import de.sciss.fscape.stream.impl.{DemandAuxInHandler, DemandFilterLogic, DemandInOutImpl, DemandProcessInHandler, DemandWindowedLogic, NodeImpl, Out1LogicImpl, ProcessOutHandlerImpl, StageImpl}
+import de.sciss.fscape.stream.impl.{DemandAuxInHandler, DemandFilterLogic, DemandInOutImpl, DemandProcessInHandler, DemandWindowedLogicOLD, NodeImpl, Out1LogicImpl, ProcessOutHandlerImpl, StageImpl}
 
 object SortWindow {
   def apply[A, K >: Null <: BufElem[A],
@@ -61,7 +61,7 @@ object SortWindow {
                               valueTpe: StreamType[B, V])
     extends NodeImpl(name, layer, shape)
       with DemandFilterLogic[K, Shape[A, K, B, V]]
-      with DemandWindowedLogic[ Shape[A, K, B, V]]
+      with DemandWindowedLogicOLD[ Shape[A, K, B, V]]
       with Out1LogicImpl    [V, Shape[A, K, B, V]]
       with DemandInOutImpl[     Shape[A, K, B, V]] {
 

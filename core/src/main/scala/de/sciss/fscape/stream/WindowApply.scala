@@ -15,7 +15,7 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape4, Inlet, Outlet}
-import de.sciss.fscape.stream.impl.{DemandFilterIn4, DemandWindowedLogic, NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.{DemandFilterIn4, DemandWindowedLogicOLD, NodeImpl, StageImpl}
 import de.sciss.numbers.IntFunctions
 
 import scala.annotation.switch
@@ -56,7 +56,7 @@ object WindowApply {
   private final class Logic[A, BufA >: Null <: BufElem[A]](shape: Shape[A, BufA], layer: Layer)
                                                           (implicit ctrl: Control, aTpe: StreamType[A, BufA])
     extends NodeImpl(name, layer, shape)
-      with DemandWindowedLogic[Shape[A, BufA]]
+      with DemandWindowedLogicOLD[Shape[A, BufA]]
       with DemandFilterIn4[BufA, BufI, BufI, BufI, BufA] {
 
     private[this] var elem        : A       = _

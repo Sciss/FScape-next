@@ -15,7 +15,7 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape5}
-import de.sciss.fscape.stream.impl.{DemandFilterIn5D, DemandFilterLogic, DemandWindowedLogic, NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.{DemandFilterIn5D, DemandFilterLogic, DemandWindowedLogicOLD, NodeImpl, StageImpl}
 
 object ARCWindow {
   def apply(in: OutD, size: OutI, lo: OutD, hi: OutD, lag: OutD)(implicit b: Builder): OutD = {
@@ -49,7 +49,7 @@ object ARCWindow {
   private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
       with DemandFilterLogic[BufD, Shape]
-      with DemandWindowedLogic[Shape]
+      with DemandWindowedLogicOLD[Shape]
       with DemandFilterIn5D[BufD, BufI, BufD, BufD, BufD] {
 
     private[this] var winSize = 0

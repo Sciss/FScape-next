@@ -18,8 +18,8 @@ class RotateWindowSpec extends FlatSpec with Matchers {
     // -> amtM = 3, amtI = 1
     // -> slice(1, 4) ++ slice(0, 1)\
     val winSz = in.size
-    val amtM = IntFunctions.mod(amount, winSz)
-    val amtI = winSz - amtM
+    val amtM  = IntFunctions.mod(amount, winSz)
+    val amtI  = winSz - amtM
     in.slice(amtI, winSz) ++ in.slice(0, amtI)
   }
 

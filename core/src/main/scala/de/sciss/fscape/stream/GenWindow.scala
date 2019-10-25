@@ -15,7 +15,7 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape3}
-import de.sciss.fscape.stream.impl.{DemandGenIn3D, NodeImpl, StageImpl, DemandWindowedLogic}
+import de.sciss.fscape.stream.impl.{DemandGenIn3D, NodeImpl, StageImpl, DemandWindowedLogicOLD}
 
 object GenWindow {
   import graph.GenWindow.{Hann, Shape => WinShape}
@@ -48,7 +48,7 @@ object GenWindow {
   // XXX TODO -- abstract over data type (BufD vs BufI)?
   private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
-      with DemandWindowedLogic[Shape]
+      with DemandWindowedLogicOLD[Shape]
       with DemandGenIn3D[BufL, BufI, BufD] {
 
     // private[this] var winBuf : Array[Double] = _

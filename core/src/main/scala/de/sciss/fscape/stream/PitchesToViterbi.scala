@@ -15,7 +15,7 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape10, Outlet}
-import de.sciss.fscape.stream.impl.{DemandAuxInHandler, DemandInOutImpl, DemandProcessInHandler, DemandWindowedLogic, NodeImpl, Out1DoubleImpl, Out1LogicImpl, ProcessOutHandlerImpl, StageImpl}
+import de.sciss.fscape.stream.impl.{DemandAuxInHandler, DemandInOutImpl, DemandProcessInHandler, DemandWindowedLogicOLD, NodeImpl, Out1DoubleImpl, Out1LogicImpl, ProcessOutHandlerImpl, StageImpl}
 
 object PitchesToViterbi {
   def apply(lags: OutD, strengths: OutD, numIn: OutI, peaks: OutD, maxLag: OutI, voicingThresh: OutD, silenceThresh: OutD,
@@ -59,7 +59,7 @@ object PitchesToViterbi {
 
   private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
-      with DemandWindowedLogic[Shape]
+      with DemandWindowedLogicOLD[Shape]
       with Out1DoubleImpl     [Shape]
       with Out1LogicImpl[BufD, Shape]
       with DemandInOutImpl    [Shape] {

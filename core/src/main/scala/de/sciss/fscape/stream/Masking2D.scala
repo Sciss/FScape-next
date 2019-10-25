@@ -15,7 +15,7 @@ package de.sciss.fscape.stream
 
 import akka.stream.{Attributes, FanInShape8, Outlet}
 import de.sciss.fscape.Util
-import de.sciss.fscape.stream.impl.{DemandAuxInHandler, DemandInOutImpl, DemandProcessInHandler, DemandWindowedLogic, NodeImpl, Out1DoubleImpl, Out1LogicImpl, ProcessOutHandlerImpl, StageImpl}
+import de.sciss.fscape.stream.impl.{DemandAuxInHandler, DemandInOutImpl, DemandProcessInHandler, DemandWindowedLogicOLD, NodeImpl, Out1DoubleImpl, Out1LogicImpl, ProcessOutHandlerImpl, StageImpl}
 import de.sciss.numbers
 
 object Masking2D {
@@ -56,7 +56,7 @@ object Masking2D {
 
   private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
-      with DemandWindowedLogic[Shape]
+      with DemandWindowedLogicOLD[Shape]
       with Out1DoubleImpl     [Shape]
       with Out1LogicImpl[BufD, Shape]
       with DemandInOutImpl    [Shape] {

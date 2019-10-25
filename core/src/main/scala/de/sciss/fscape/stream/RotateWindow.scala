@@ -15,7 +15,7 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape3, Inlet, Outlet}
-import de.sciss.fscape.stream.impl.{NewDemandWindowedLogic, NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.{DemandFilterWindowedLogic, NodeImpl, StageImpl}
 import de.sciss.numbers.IntFunctions
 
 object RotateWindow {
@@ -51,13 +51,13 @@ object RotateWindow {
                                                        (implicit ctrl: Control,
                                                         protected val tpeSignal: StreamType[A, E])
     extends NodeImpl(name, layer, shape)
-      with NewDemandWindowedLogic[A, E, Shape[E]] {
+      with DemandFilterWindowedLogic[A, E, Shape[E]] {
 
-    private[this] var amount         : Int   = _
-    private[this] var amountInv      : Int   = -1
-    private[this] var bufAmountOff   : Int   = 0
-    private[this] var bufAmount      : BufI  = _
-    private[this] var needsAmount = true
+    private[this] var amount         : Int  = _
+    private[this] var amountInv      : Int  = -1
+    private[this] var bufAmountOff   : Int  = 0
+    private[this] var bufAmount      : BufI = _
+    private[this] var needsAmount           = true
 
     private def amountValid = amountInv >= 0
 

@@ -15,7 +15,7 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape3, Inlet, Outlet}
-import de.sciss.fscape.stream.impl.{NewDemandWindowedLogic, NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.{DemandFilterWindowedLogic, DemandWindowedLogic, NodeImpl, StageImpl}
 
 /** Reverses contents of windowed input. */
 object ReverseWindow {
@@ -73,7 +73,7 @@ object ReverseWindow {
   private final class Logic[@specialized(Int, Long, Double) A,
     E >: Null <: BufElem[A]](shape: Shp[E], layer: Layer)(implicit ctrl: Control, protected val tpeSignal: StreamType[A, E])
     extends NodeImpl(name, layer, shape)
-      with NewDemandWindowedLogic[A, E, Shp[E]] {
+      with DemandFilterWindowedLogic[A, E, Shp[E]] {
 
     private[this] var clump       : Int     = -1
     private[this] var bufClumpOff : Int     = 0

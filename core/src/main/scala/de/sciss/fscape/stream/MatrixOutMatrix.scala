@@ -15,7 +15,7 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape8}
-import de.sciss.fscape.stream.impl.{DemandFilterIn8D, DemandFilterLogic, DemandWindowedLogic, NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.{DemandFilterIn8D, DemandFilterLogic, DemandWindowedLogicOLD, NodeImpl, StageImpl}
 
 object MatrixOutMatrix {
   def apply(in: OutD, rowsInner: OutI, columnsInner: OutI, columnsOuter: OutI, rowOff: OutI, columnOff: OutI,
@@ -55,7 +55,7 @@ object MatrixOutMatrix {
 
   private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
-      with DemandWindowedLogic[Shape]
+      with DemandWindowedLogicOLD[Shape]
       with DemandFilterLogic[BufD, Shape]
       with DemandFilterIn8D[BufD, BufI, BufI, BufI, BufI, BufI, BufI, BufI] {
 
