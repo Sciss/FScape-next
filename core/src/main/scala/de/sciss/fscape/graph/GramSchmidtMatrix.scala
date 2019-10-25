@@ -24,7 +24,9 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * It processes the row vectors per matrix by
   * making them orthogonal to one another, optionally
   * also orthonormal.
-
+  *
+  * '''Warning:''' window parameter modulation is currently not working correctly (issue #30)
+  *
   * @param in       the input matrices
   * @param rows     the number of rows of the ''input''
   * @param columns  the number of columns of the ''input''

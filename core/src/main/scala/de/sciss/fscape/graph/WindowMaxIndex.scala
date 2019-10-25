@@ -24,6 +24,8 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * value, the index of the first element is reported (notably zero if the window
   * contains only identical elements).
   *
+  * '''Warning:''' window parameter modulation is currently not working correctly (issue #30)
+  *
   * @param in     the input signal.
   * @param size   the window size.
   */

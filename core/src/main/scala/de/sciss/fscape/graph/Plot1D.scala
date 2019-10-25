@@ -20,7 +20,10 @@ import de.sciss.fscape.stream.StreamIn
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-/** Debugging utility that plots 1D "windows" of the input data. */
+/** Debugging utility that plots 1D "windows" of the input data.
+  *
+  * '''Warning:''' window parameter modulation is currently not working correctly (issue #30)
+  */
 final case class Plot1D(in: GE, size: GE, label: String = "plot") extends UGenSource.ZeroOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): Unit =
     unwrap(this, Vector(in.expand, size.expand))

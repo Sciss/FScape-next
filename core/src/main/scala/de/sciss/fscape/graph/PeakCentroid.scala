@@ -20,6 +20,9 @@ import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+/**
+  * '''Warning:''' window parameter modulation is currently not working correctly (issue #30)
+  */
 final case class PeakCentroid1D(in: GE, size: GE, thresh1: GE = 0.5, thresh2: GE = 0.33, radius: GE = 1)
   extends GE.Lazy {
 
@@ -34,6 +37,9 @@ final case class PeakCentroid1D(in: GE, size: GE, thresh1: GE = 0.5, thresh2: GE
   def peak     : GE = ChannelProxy(this, 1)
 }
 
+/**
+  * '''Warning:''' window parameter modulation is currently not working correctly (issue #30)
+  */
 final case class PeakCentroid2D(in: GE, width: GE, height: GE, thresh1: GE = 0.5, thresh2: GE = 0.33, radius: GE = 1)
   extends UGenSource.MultiOut {
 

@@ -22,6 +22,8 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 /** A UGen that calculates the Pearson product-moment correlation coefficient of
   * two input matrices.
   *
+  * '''Warning:''' window parameter modulation is currently not working correctly (issue #30)
+  *
   * @param x      first matrix
   * @param y      second matrix
   * @param size   matrix or window size

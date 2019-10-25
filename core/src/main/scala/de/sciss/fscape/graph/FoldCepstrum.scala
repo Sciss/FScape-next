@@ -19,6 +19,9 @@ import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+/**
+  * '''Warning:''' window parameter modulation is currently not working correctly (issue #30)
+  */
 final case class FoldCepstrum(in: GE, size: GE,
             crr: GE, cri: GE, clr: GE, cli: GE,
             ccr: GE, cci: GE, car: GE, cai: GE) extends UGenSource.SingleOut {

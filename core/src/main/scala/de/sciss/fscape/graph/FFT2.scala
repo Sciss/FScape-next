@@ -65,6 +65,8 @@ sealed trait FFT2HalfUGen extends UGenSource.SingleOut {
   * XXX TODO: Depending on `mode`,
   * the output window size is either `size + padding` or `size + padding + 2`.
   *
+  * '''Warning:''' window parameter modulation is currently not working correctly (issue #30)
+  *
   * @param in       the real signal to transform. If overlapping windows
   *                 are desired, a `Sliding` should already have been applied
   *                 to this signal, as well as multiplication with a window function.
@@ -92,26 +94,41 @@ final case class Real2FFT(in: GE, rows: GE, columns: GE = 0, mode: GE = 0) exten
     stream.Real2FFT(in = in, rows = rows, columns = columns, mode = mode)
 }
 
+/**
+  * '''Warning:''' window parameter modulation is currently not working correctly (issue #30)
+  */
 final case class Real2IFFT(in: GE, rows: GE, columns: GE = 0, mode: GE = 0) extends FFT2HalfUGen {
   protected def apply(in: OutD, rows: OutI, columns: OutI, mode: OutI)(implicit b: stream.Builder): OutD =
     stream.Real2IFFT(in = in, rows = rows, columns = columns, mode = mode)
 }
 
+/**
+  * '''Warning:''' window parameter modulation is currently not working correctly (issue #30)
+  */
 final case class Real2FullFFT(in: GE, rows: GE, columns: GE = 0) extends FFT2FullUGen {
   protected def apply(in: OutD, rows: OutI, columns: OutI)(implicit b: stream.Builder): OutD =
     stream.Real2FullFFT(in = in, rows = rows, columns = columns)
 }
 
+/**
+  * '''Warning:''' window parameter modulation is currently not working correctly (issue #30)
+  */
 final case class Real2FullIFFT(in: GE, rows: GE, columns: GE = 0) extends FFT2FullUGen {
   protected def apply(in: OutD, rows: OutI, columns: OutI)(implicit b: stream.Builder): OutD =
     stream.Real2FullIFFT(in = in, rows = rows, columns = columns)
 }
 
+/**
+  * '''Warning:''' window parameter modulation is currently not working correctly (issue #30)
+  */
 final case class Complex2FFT(in: GE, rows: GE, columns: GE = 0) extends FFT2FullUGen {
   protected def apply(in: OutD, rows: OutI, columns: OutI)(implicit b: stream.Builder): OutD =
     stream.Complex2FFT(in = in, rows = rows, columns = columns)
 }
 
+/**
+  * '''Warning:''' window parameter modulation is currently not working correctly (issue #30)
+  */
 final case class Complex2IFFT(in: GE, rows: GE, columns: GE = 0) extends FFT2FullUGen {
   protected def apply(in: OutD, rows: OutI, columns: OutI)(implicit b: stream.Builder): OutD =
     stream.Complex2IFFT(in = in, rows = rows, columns = columns)

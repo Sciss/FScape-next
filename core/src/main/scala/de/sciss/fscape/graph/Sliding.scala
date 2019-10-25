@@ -21,6 +21,8 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 
 /** A UGen that produces a sliding window over its input.
   *
+  * '''Warning:''' window parameter modulation is currently not working correctly (issue #30)
+  *
   * @param in     the input to be repacked into windows
   * @param size   the window size
   * @param step   the stepping factor in the input, between windows

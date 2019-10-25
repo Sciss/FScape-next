@@ -28,6 +28,8 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * That is, in the above formula `out` is replaced by each window element, and
   * `i` is the window count.
   *
+  * '''Warning:''' window parameter modulation is currently not working correctly (issue #30)
+  *
   * @param in   input signal to be processed
   * @param size window size
   * @param coef feedback coefficient. Should be between -1 and +1

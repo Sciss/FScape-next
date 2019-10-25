@@ -22,6 +22,8 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 /** A loudness measurement UGen, using Zwicker bands.
   * One value in Phon per window is output.
   *
+  * '''Warning:''' window parameter modulation is currently not working correctly (issue #30)
+  *
   * @param  in          the signal to analyse
   * @param  sampleRate  sample rate of the input signal
   * @param  size        the window size for which to calculate values

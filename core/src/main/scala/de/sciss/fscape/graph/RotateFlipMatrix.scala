@@ -24,6 +24,8 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * Unless mode is 90-degree rotation (4 or 5) and the matrix is not square, this needs one
   * internal matrix buffer, otherwise two internal matrix buffers are needed.
   *
+  * '''Warning:''' window parameter modulation is currently not working correctly (issue #30)
+  *
   * @param in       the matrix / matrices to rotate
   * @param rows     the number of rows in the input
   * @param columns  the number of columns in the input

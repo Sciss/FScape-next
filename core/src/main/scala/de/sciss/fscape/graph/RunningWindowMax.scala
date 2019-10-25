@@ -23,6 +23,8 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * running input. However, it operates on entire windows, i.e. it outputs
   * windows that contain the maximum elements of all the past windows observed.
   *
+  * '''Warning:''' window parameter modulation is currently not working correctly (issue #30)
+  *
   * @param in     the windowed signal to monitor
   * @param size   the window size. This should normally be a constant. If modulated,
   *               the internal buffer will be re-allocated, essentially causing
