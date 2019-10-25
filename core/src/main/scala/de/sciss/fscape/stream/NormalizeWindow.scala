@@ -14,9 +14,9 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.{Attributes, FanInShape3}
-import de.sciss.fscape.stream.impl.{FilterIn3DImpl, FilterLogicImpl, NodeImpl, StageImpl, WindowedLogicImpl}
-import graph.NormalizeWindow._
+import akka.stream.{Attributes, FanInShape3, Inlet, Outlet}
+import de.sciss.fscape.graph.NormalizeWindow.{FitBipolar, FitUnipolar, Normalize, ZeroMean}
+import de.sciss.fscape.stream.impl.{NewDemandWindowedLogic, NodeImpl, StageImpl}
 
 import scala.annotation.switch
 
@@ -48,52 +48,100 @@ object NormalizeWindow {
 
   private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
-      with WindowedLogicImpl[Shape]
-      with FilterLogicImpl[BufD, Shape]
-      with FilterIn3DImpl[BufD, BufI, BufI] {
+      with NewDemandWindowedLogic[Double, BufD, Shape] {
 
-    private[this] var winBuf    : Array[Double] = _
-    private[this] var winSize   : Int = _
-    private[this] var mode      : Int = _
+    private[this] var mode      : Int     = -1
+    private[this] var bufModeOff: Int     = 0
+    private[this] var bufMode   : BufI    = _
+    private[this] var needsMode : Boolean = true
 
-    protected def startNextWindow(inOff: Int): Long = {
-      if (bufIn1 != null && inOff < bufIn1.size) {
-        val oldSize   = winSize
-        val _winSize  = math.max(1, bufIn1.buf(inOff))
-        if (_winSize != oldSize) {
-          winBuf  = new Array[Double](_winSize)
-          winSize = _winSize
-        }
-      }
-      if (bufIn2 != null && inOff < bufIn2.size) {
-        mode = math.max(0, math.min(ModeMax, bufIn2.buf(inOff)))
-      }
-      winSize
+    // constructor
+    {
+      installMainAndWindowHandlers()
+      new _InHandlerImpl(inletMode)(modeValid)
     }
 
-    protected def copyInputToWindow(inOff: Int, writeToWinOff: Long, chunk: Int): Unit =
-      Util.copy(bufIn0.buf, inOff, winBuf, writeToWinOff.toInt, chunk)
+    private def modeValid = mode >= 0
 
-    protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit =
-      Util.copy(winBuf, readFromWinOff.toInt, bufOut0.buf, outOff, chunk)
+    protected def tpeSignal: StreamType[Double, BufD] = StreamType.double
 
-    protected def processWindow(writeToWinOff: Long): Long = {
-      val n = writeToWinOff.toInt
-      if (n < winSize) {
-        Util.clear(winBuf, n, winSize - n)
+    protected def inletSignal : Inlet[BufD]   = shape.in0
+    protected def inletWinSize: InI           = shape.in1
+    protected def inletMode   : InI           = shape.in2
+    protected def out0        : Outlet[BufD]  = shape.out
+
+    protected def winParamsValid: Boolean = modeValid
+    protected def needsWinParams: Boolean = needsMode
+
+    protected def requestWinParams(): Unit = {
+      needsMode = true
+    }
+
+    protected def freeWinParamBuffers(): Unit =
+      freeModeBuf()
+
+    private def freeModeBuf(): Unit =
+      if (bufMode != null) {
+        bufMode.release()
+        bufMode = null
       }
+
+    protected def tryObtainWinParams(): Boolean =
+      if (needsMode && bufMode != null && bufModeOff < bufMode.size) {
+        mode       = math.max(0, bufMode.buf(bufModeOff))
+        bufModeOff += 1
+        needsMode = false
+        true
+      } else if (isAvailable(inletMode)) {
+        freeModeBuf()
+        bufMode    = grab(inletMode)
+        bufModeOff = 0
+        tryPull(inletMode)
+        true
+      } else if (needsMode && isClosed(inletMode) && modeValid) {
+        needsMode = false
+        true
+      } else {
+        false
+      }
+
+    //    protected def startNextWindow(inOff: Int): Long = {
+//      if (bufIn1 != null && inOff < bufIn1.size) {
+//        val oldSize   = winSize
+//        val _winSize  = math.max(1, bufIn1.buf(inOff))
+//        if (_winSize != oldSize) {
+//          winBuf  = new Array[Double](_winSize)
+//          winSize = _winSize
+//        }
+//      }
+//      if (bufIn2 != null && inOff < bufIn2.size) {
+//        mode = math.max(0, math.min(ModeMax, bufIn2.buf(inOff)))
+//      }
+//      winSize
+//    }
+
+//    protected def copyInputToWindow(inOff: Int, writeToWinOff: Long, chunk: Int): Unit =
+//      Util.copy(bufIn0.buf, inOff, winBuf, writeToWinOff.toInt, chunk)
+//
+//    protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit =
+//      Util.copy(winBuf, readFromWinOff.toInt, bufOut0.buf, outOff, chunk)
+
+    override protected def prepareWindow(win: Array[Double], winInSize: Int): Long = {
+      val n = winInSize // writeToWinOff.toInt
+//      if (n < winSize) {
+//        Util.clear(winBuf, n, winSize - n)
+//      }
       if (n > 0) (mode: @switch) match {
-        case Normalize    => processNormalize(n)
-        case FitUnipolar  => processFitRange(n, lo =  0.0, hi =  1.0)
-        case FitBipolar   => processFitRange(n, lo = -1.0, hi = +1.0)
-        case ZeroMean     => processZeroMean(n)
+        case Normalize    => processNormalize (win, n)
+        case FitUnipolar  => processFitRange  (win, n, lo =  0.0, hi =  1.0)
+        case FitBipolar   => processFitRange  (win, n, lo = -1.0, hi = +1.0)
+        case ZeroMean     => processZeroMean  (win, n)
       }
 
-      writeToWinOff
+      winInSize
     }
 
-    private def processNormalize(n: Int): Unit = {
-      val b   = winBuf
+    private def processNormalize(b: Array[Double], n: Int): Unit = {
       var max = Double.NegativeInfinity
       var i   = 0
       while (i < n) {
@@ -111,8 +159,7 @@ object NormalizeWindow {
       }
     }
 
-    private def processFitRange(n: Int, lo: Double, hi: Double): Unit = {
-      val b   = winBuf
+    private def processFitRange(b: Array[Double], n: Int, lo: Double, hi: Double): Unit = {
       var min = Double.PositiveInfinity
       var max = Double.NegativeInfinity
       var i   = 0
@@ -131,8 +178,7 @@ object NormalizeWindow {
       }
     }
 
-    private def processZeroMean(n: Int): Unit = {
-      val b   = winBuf
+    private def processZeroMean(b: Array[Double], n: Int): Unit = {
       var sum = 0.0
       var i   = 0
       while (i < n) {

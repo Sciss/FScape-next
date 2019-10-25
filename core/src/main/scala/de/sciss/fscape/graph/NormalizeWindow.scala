@@ -33,6 +33,9 @@ object NormalizeWindow {
   * If the last window is not entirely filled, the output will pad that
   * window always to zero (no matter the normalization mode!)
   *
+  * A window size of 1 should be avoided (and does not really make sense),
+  * although the UGen makes efforts to not output NaN values.
+  *
   * @param in     the input signal
   * @param size   the input's window size
   * @param mode   `0` for normalizing the amplitude to 1,

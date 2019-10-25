@@ -49,7 +49,7 @@ object DebugDoublePromise {
 
     override protected def stopped(): Unit = {
       builder = null
-      p.tryFailure(new Exception("No orderly completion"))
+      p.trySuccess(Vector.empty) // p.tryFailure(new Exception("No orderly completion"))
       super.stopped()
     }
 

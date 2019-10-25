@@ -18,6 +18,7 @@ package impl
 import akka.stream.Shape
 import akka.stream.stage.GraphStageLogic
 
+@deprecated("Does not poll window parameters per window, use NewDemandWindowedLogic instead", since = "2.32.0")
 trait WindowedLogicImpl[S <: Shape] extends ChunkImpl[S] {
 
   _: GraphStageLogic =>
