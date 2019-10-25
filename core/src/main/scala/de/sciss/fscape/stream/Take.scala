@@ -20,15 +20,15 @@ import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 import de.sciss.fscape.{logStream => log}
 
 object Take {
-  def head[A, Buf >: Null <: BufElem[A]](in: Outlet[Buf])
-                                        (implicit b: Builder): Outlet[Buf] = {
+  def head[A, E >: Null <: BufElem[A]](in: Outlet[E])
+                                      (implicit b: Builder): Outlet[E] = {
     val length = ConstantL(1).toLong
-    apply[A, Buf](in = in, length = length)
+    apply[A, E](in = in, length = length)
   }
 
-  def apply[A, Buf >: Null <: BufElem[A]](in: Outlet[Buf], length: OutL)
-                                         (implicit b: Builder): Outlet[Buf] = {
-    val stage0  = new Stage[A, Buf](b.layer)
+  def apply[A, E >: Null <: BufElem[A]](in: Outlet[E], length: OutL)
+                                       (implicit b: Builder): Outlet[E] = {
+    val stage0  = new Stage[A, E](b.layer)
     val stage   = b.add(stage0)
     b.connect(in    , stage.in0)
     b.connect(length, stage.in1)
@@ -37,23 +37,22 @@ object Take {
 
   private final val name = "Take"
 
-  private type Shape[A, Buf >: Null <: BufElem[A]] = FanInShape2[Buf, BufL, Buf]
+  private type Shape[E] = FanInShape2[E, BufL, E]
 
-  private final class Stage[A, Buf >: Null <: BufElem[A]](layer: Layer)
-                                                         (implicit ctrl: Control)
-    extends StageImpl[Shape[A, Buf]](name) {
+  private final class Stage[A, E >: Null <: BufElem[A]](layer: Layer)(implicit ctrl: Control)
+    extends StageImpl[Shape[E]](name) {
 
     val shape = new FanInShape2(
-      in0 = Inlet [Buf](s"$name.in"    ),
-      in1 = InL        (s"$name.length"),
-      out = Outlet[Buf](s"$name.out"   )
+      in0 = Inlet [E](s"$name.in"    ),
+      in1 = InL      (s"$name.length"),
+      out = Outlet[E](s"$name.out"   )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes) = new Logic[A, E](shape, layer)
   }
 
-  private final class Logic[A, Buf >: Null <: BufElem[A]](shape: Shape[A, Buf], layer: Layer)
-                                                         (implicit ctrl: Control)
+  private final class Logic[A, E >: Null <: BufElem[A]](shape: Shape[E], layer: Layer)
+                                                       (implicit ctrl: Control)
     extends NodeImpl(name, layer, shape) with OutHandler { logic =>
 
     private[this] var takeRemain    = Long.MaxValue

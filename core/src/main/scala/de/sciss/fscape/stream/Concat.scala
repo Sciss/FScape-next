@@ -15,15 +15,13 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.stage.InHandler
-import akka.stream.{Attributes, FanInShape2}
-import de.sciss.fscape.stream.impl.{FullInOutImpl, Out1DoubleImpl, Out1LogicImpl, ProcessOutHandlerImpl, SameChunkImpl, StageImpl, NodeImpl}
+import akka.stream.{Attributes, FanInShape2, Inlet, Outlet}
+import de.sciss.fscape.stream.impl.{FullInOutImpl, NodeImpl, Out1LogicImpl, ProcessOutHandlerImpl, SameChunkImpl, StageImpl}
 
-/** Binary operator assuming stream is complex signal (real and imaginary interleaved).
-  * Outputs another complex stream even if the operator yields a purely real-valued result.
-  */
 object Concat {
-  def apply(a: OutD, b: OutD)(implicit builder: Builder): OutD = {
-    val stage0  = new Stage(builder.layer)
+  def apply[A, E >: Null <: BufElem[A]](a: Outlet[E], b: Outlet[E])
+                                       (implicit builder: Builder, tpe: StreamType[A, E]): Outlet[E] = {
+    val stage0  = new Stage[A, E](builder.layer)
     val stage   = builder.add(stage0)
     builder.connect(a, stage.in0)
     builder.connect(b, stage.in1)
@@ -32,40 +30,44 @@ object Concat {
 
   private final val name = "Concat"
 
-  private type Shape = FanInShape2[BufD, BufD, BufD]
+  private type Shape[E] = FanInShape2[E, E, E]
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
+  private final class Stage[A, E >: Null <: BufElem[A]](layer: Layer)(implicit ctrl: Control, tpe: StreamType[A, E])
+    extends StageImpl[Shape[E]](name) {
+
     val shape = new FanInShape2(
-      in0 = InD (s"$name.a" ),
-      in1 = InD (s"$name.b" ),
-      out = OutD(s"$name.out")
+      in0 = Inlet [E](s"$name.a"  ),
+      in1 = Inlet [E](s"$name.b"  ),
+      out = Outlet[E](s"$name.out")
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes) = new Logic[A, E](shape, layer)
   }
 
   // XXX TODO --- abstract across BufI / BufD?
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+  private final class Logic[A, E >: Null <: BufElem[A]](shape: Shape[E], layer: Layer)
+                                                       (implicit ctrl: Control, tpe: StreamType[A, E])
     extends NodeImpl(name, layer, shape)
-      with FullInOutImpl[Shape]
-      with SameChunkImpl[Shape]
-      with Out1LogicImpl[BufD, Shape]
-      with Out1DoubleImpl[Shape] {
+      with FullInOutImpl[Shape[E]]
+      with SameChunkImpl[Shape[E]]
+      with Out1LogicImpl[E, Shape[E]] {
 
 
     // ---- impl ----
 
-    protected var bufIn0 : BufD = _
-    protected var bufOut0: BufD = _
+    protected var bufIn0 : E = _
+    protected var bufOut0: E = _
 
-    protected val in0 : InD  = shape.in0
-    protected val in1 : InD  = shape.in1
-    protected val out0: OutD = shape.out
+    protected val in0 : Inlet [E] = shape.in0
+    protected val in1 : Inlet [E] = shape.in1
+    protected val out0: Outlet[E] = shape.out
 
     private[this] var _canRead = false
 
     def canRead: Boolean = _canRead
     def inValid: Boolean = true
+
+    protected def allocOutBuf0(): E = tpe.allocBuf()
 
     override protected def stopped(): Unit = {
       super.stopped()
@@ -109,7 +111,7 @@ object Concat {
       inRemain == 0 && isClosed(in0) && !isAvailable(in0) && isClosed(in1) && !isAvailable(in1)
 
     protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Unit =
-      Util.copy(bufIn0.buf, inOff, bufOut0.buf, outOff, chunk)
+      System.arraycopy(bufIn0.buf, inOff, bufOut0.buf, outOff, chunk)
 
     private object _InHandlerImpl extends InHandler {
       def onPush(): Unit = {

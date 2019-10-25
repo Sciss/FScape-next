@@ -15,7 +15,7 @@ package de.sciss.fscape
 package graph
 
 import de.sciss.fscape.UGenSource.unwrap
-import de.sciss.fscape.stream.{StreamIn, StreamOut}
+import de.sciss.fscape.stream.{BufD, BufI, BufL, StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
@@ -29,6 +29,13 @@ final case class Concat(a: GE, b: GE) extends UGenSource.SingleOut {
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit builder: stream.Builder): StreamOut = {
     val Vec(a, b) = args
-    stream.Concat(a = a.toDouble, b = b.toDouble)
+    if (a.isDouble || b.isDouble) {
+      stream.Concat[Double, BufD](a = a.toDouble, b = b.toDouble)
+    } else if (a.isLong || b.isLong) {
+      stream.Concat[Long  , BufL](a = a.toLong  , b = b.toLong  )
+    } else {
+      assert (a.isInt)
+      stream.Concat[Int   , BufI](a = a.toInt   , b = b.toInt   )
+    }
   }
 }
