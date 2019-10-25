@@ -224,11 +224,13 @@ trait DemandWindowedLogic[A, In >: Null <: BufElem[A], B, Out >: Null <: BufElem
       if (readOff < winInSize) {
         if (bufInSignal != null && inSignalRemain > 0) {
           val chunk = math.min(winInSize - readOff, inSignalRemain)
-          processInput(in = bufInSignal.buf, inOff = inSignalOff, win = winBuf, readOff = readOff, chunk = chunk)
-          inSignalOff     += chunk
-          inSignalRemain  -= chunk
-          readOff         += chunk
-          stateChange      = true
+          if (chunk > 0) {
+            processInput(in = bufInSignal.buf, inOff = inSignalOff, win = winBuf, readOff = readOff, chunk = chunk)
+            inSignalOff     += chunk
+            inSignalRemain  -= chunk
+            readOff         += chunk
+            stateChange      = true
+          }
         } else if (isAvailable(inletSignal)) {
           freeBufInSignal()
           bufInSignal     = grab(inletSignal)
@@ -268,15 +270,16 @@ trait DemandWindowedLogic[A, In >: Null <: BufElem[A], B, Out >: Null <: BufElem
       if (writeOff < writeSize) {
         if (outOff0 < bufOut0.size) {
           val chunk = math.min(writeSize - writeOff, bufOut0.size - outOff0).toInt
-          // if (winSize == 0) println(s"Fuckedifuck! $chunk")
-          processOutput(
-            win = winBuf      , winInSize   = winInSize , writeOff  = writeOff,
-            out = bufOut0.buf , winOutSize  = writeSize , outOff    = outOff0,
-            chunk = chunk
-          )
-          writeOff   += chunk
-          outOff0    += chunk
-          stateChange = true
+          if (chunk > 0) {
+            processOutput(
+              win = winBuf      , winInSize   = winInSize , writeOff  = writeOff,
+              out = bufOut0.buf , winOutSize  = writeSize , outOff    = outOff0,
+              chunk = chunk
+            )
+            writeOff   += chunk
+            outOff0    += chunk
+            stateChange = true
+          }
         }
       }
 
