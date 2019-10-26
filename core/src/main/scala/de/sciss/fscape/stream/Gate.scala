@@ -14,12 +14,13 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.{Attributes, FanInShape2}
-import de.sciss.fscape.stream.impl.{FilterChunkImpl, FilterIn2DImpl, StageImpl, NodeImpl}
+import akka.stream.{Attributes, FanInShape2, Inlet, Outlet}
+import de.sciss.fscape.stream.impl.{FilterChunkImpl, FilterIn2Impl, NodeImpl, StageImpl}
 
 object Gate {
-  def apply(in: OutD, gate: OutI)(implicit b: Builder): OutD = {
-    val stage0  = new Stage(b.layer)
+  def apply[A, E >: Null <: BufElem[A]](in: Outlet[E], gate: OutI)
+                                       (implicit b: Builder, tpe: StreamType[A, E]): Outlet[E] = {
+    val stage0  = new Stage[A, E](b.layer)
     val stage   = b.add(stage0)
     b.connect(in  , stage.in0)
     b.connect(gate, stage.in1)
@@ -28,25 +29,43 @@ object Gate {
 
   private final val name = "Gate"
 
-  private type Shape = FanInShape2[BufD, BufI, BufD]
+  private type Shp[E] = FanInShape2[E, BufI, E]
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
+  private final class Stage[A, E >: Null <: BufElem[A]](layer: Layer)
+                                                       (implicit ctrl: Control, tpe: StreamType[A, E])
+    extends StageImpl[Shp[E]](name) {
+
     val shape = new FanInShape2(
-      in0 = InD (s"$name.in"  ),
-      in1 = InI (s"$name.gate"),
-      out = OutD(s"$name.out" )
+      in0 = Inlet [E] (s"$name.in"  ),
+      in1 = InI       (s"$name.gate"),
+      out = Outlet[E] (s"$name.out" )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = {
+      val res: Logic[_, _] = if (tpe.isInt) {
+        new Logic[Int   , BufI](shape.asInstanceOf[Shp[BufI]], layer)
+      } else if (tpe.isLong) {
+        new Logic[Long  , BufL](shape.asInstanceOf[Shp[BufL]], layer)
+      } else if (tpe.isDouble) {
+        new Logic[Double, BufD](shape.asInstanceOf[Shp[BufD]], layer)
+      } else {
+        new Logic[A, E](shape, layer)
+      }
+
+      res.asInstanceOf[Logic[A, E]]
+    }
   }
 
-  // XXX TODO -- abstract over data type (BufD vs BufI)?
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+  private final class Logic[@specialized(Int, Long, Double) A,
+    E >: Null <: BufElem[A]](shape: Shp[E], layer: Layer)(implicit ctrl: Control, tpe: StreamType[A, E])
     extends NodeImpl(name, layer, shape)
-      with FilterIn2DImpl[BufD, BufI]
-      with FilterChunkImpl[BufD, BufD, Shape] {
+      with FilterIn2Impl[E, BufI, E]
+      with FilterChunkImpl[E, E, Shp[E]] {
 
     private[this] var high  = false
+    private[this] val zero  = tpe.zero
+
+    protected def allocOutBuf0(): E = tpe.allocBuf()
 
     protected def processChunk(inOff: Int, outOff: Int, len: Int): Unit = {
       val b0      = bufIn0.buf
@@ -59,7 +78,7 @@ object Gate {
       val stop0   = inOff + len
       while (inOffI < stop0) {
         if (inOffI < stop1) h0 = b1(inOffI) > 0
-        val v0 = if (h0) b0(inOffI) else 0.0
+        val v0 = if (h0) b0(inOffI) else zero // 0.0
         out(outOffI) = v0
         inOffI  += 1
         outOffI += 1

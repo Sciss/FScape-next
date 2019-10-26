@@ -33,6 +33,8 @@ final case class Gate(in: GE, gate: GE) extends UGenSource.SingleOut {
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
     val Vec(in, gate) = args
-    stream.Gate(in = in.toDouble, gate = gate.toInt)
+    import in.tpe
+    val out = stream.Gate[in.A, in.Buf](in = in.toElem, gate = gate.toInt)
+    tpe.mkStreamOut(out)
   }
 }

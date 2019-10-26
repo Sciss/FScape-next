@@ -53,6 +53,8 @@ object StreamIn {
   object DoubleType extends StreamType[Double, BufD] {
     val ordering: Ordering[Double] = implicitly[Ordering[Double]] // Ordering.Double
 
+    val zero = 0.0
+
     final def mkStreamOut(out: OutD): StreamOut = out
 
     def allocBuf()(implicit ctrl: Control): BufD = ctrl.borrowBufD()
@@ -139,6 +141,8 @@ object StreamIn {
   object IntType extends StreamType[Int, BufI] {
     val ordering: Ordering[Int] = Ordering.Int
 
+    val zero = 0
+
     final def mkStreamOut(out: OutI): StreamOut = out
 
     def allocBuf()(implicit ctrl: Control): BufI = ctrl.borrowBufI()
@@ -224,6 +228,8 @@ object StreamIn {
 
   object LongType extends StreamType[Long, BufL] {
     val ordering: Ordering[Long] = Ordering.Long
+
+    val zero = 0L
 
     final def mkStreamOut(out: OutL): StreamOut = out
 
@@ -406,6 +412,8 @@ trait StreamType[A, Buf <: BufElem[A]] {
   def fill(a: Array[A], off: Int, len: Int, elem: A): Unit
 
   def clear(a: Array[A], off: Int, len: Int): Unit
+
+  def zero: A
 
 //  def reverse(a: Array[A], off: Int, len: Int): Unit
 

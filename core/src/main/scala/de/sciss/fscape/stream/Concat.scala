@@ -44,14 +44,12 @@ object Concat {
     def createLogic(attr: Attributes) = new Logic[A, E](shape, layer)
   }
 
-  // XXX TODO --- abstract across BufI / BufD?
   private final class Logic[A, E >: Null <: BufElem[A]](shape: Shape[E], layer: Layer)
                                                        (implicit ctrl: Control, tpe: StreamType[A, E])
     extends NodeImpl(name, layer, shape)
       with FullInOutImpl[Shape[E]]
       with SameChunkImpl[Shape[E]]
       with Out1LogicImpl[E, Shape[E]] {
-
 
     // ---- impl ----
 
