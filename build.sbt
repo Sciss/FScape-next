@@ -42,11 +42,11 @@ lazy val deps = new {
   }
   val lucre = new {
     val fileCache       = "0.5.1"
-    val lucre           = "3.15.3"
-    val soundProcesses  = "3.32.2"
+    val lucre           = "3.16.0-SNAPSHOT"
+    val soundProcesses  = "3.33.0-SNAPSHOT"
   }
   val views = new {
-    val lucreSwing      = "1.19.1"
+    val lucreSwing      = "1.20.0-SNAPSHOT"
   }
   val modules = new {
     val scallop         = "3.3.1"

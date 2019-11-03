@@ -43,7 +43,7 @@ object OnCompleteTest extends App {
       } yield {
         PrintLn("Completed '" ++ name ++ "' with value " ++ v.toStr)
       }
-      actDone.getOrElse(PrintLn("Missing data in done action"))
+      actDone.orElse(PrintLn("Missing data in done action"))
     }
     f.attr.put("action" , a)
     f.attr.put("name"   , StringObj.newConst[S]("line-poll"))
