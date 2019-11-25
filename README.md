@@ -32,7 +32,7 @@ The following dependency is necessary:
 
     "de.sciss" %% "fscape" % v
 
-The current version `v` is `"2.32.0"`.
+The current version `v` is `"2.32.1"`.
 
 The following sub modules are available:
 
