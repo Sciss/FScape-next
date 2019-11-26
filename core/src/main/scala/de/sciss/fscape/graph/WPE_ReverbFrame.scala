@@ -24,6 +24,12 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * signal, subtract the output from the input signal, then perform inverse FFT and overlap-add
   * reconstruction.
   *
+  * The algorithm closely follows the Python package described in
+  * L. Drude, J. Heymann, Ch. Boeddeker, R. Haeb-Umbach,
+  * 'NARA-WPE: A Python package for weighted prediction error dereverberation
+  * in Numpy and Tensorflow for online and offline processing' and its Numpy implementation
+  * (MIT licensed).
+  *
   * @param in         the sequence of complex FFT'ed frames. Should have been obtained through
   *                   `Real1FFT` with `mode = 1`.
   * @param psd        the power spectrum density estimation, frame by frame corresponding with `in`. It

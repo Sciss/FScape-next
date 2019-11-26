@@ -135,7 +135,7 @@ object ResizeWindow {
         freeStartBuf()
         bufStart    = grab(inletStart)
         bufStartOff = 0
-        tryPull(shape.in2)
+        tryPull(inletStart)
         stateChange = true
       } else if (needsStart && isClosed(inletStart) && startValid) {
         needsStart  = false
@@ -153,7 +153,7 @@ object ResizeWindow {
         freeStopBuf()
         bufStop     = grab(inletStop)
         bufStopOff  = 0
-        tryPull(shape.in3)
+        tryPull(inletStop)
         stateChange = true
       } else if (needsStop && isClosed(inletStop) && stopValid) {
         needsStop   = false

@@ -13,17 +13,29 @@
 
 package de.sciss.fscape.stream
 
-import akka.stream.Inlet
 import akka.stream.stage.{GraphStageLogic, InHandler}
+import akka.stream.{Attributes, Inlet}
+import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 import de.sciss.fscape.{Util, logStream}
-import de.sciss.fscape.stream.impl.{NodeImpl, ProcessOutHandlerImpl}
 
 import scala.annotation.tailrec
 import scala.collection.immutable.{IndexedSeq => Vec}
 
 object WPE_ReverbFrame {
-  def apply(in: Vec[OutD], psd: OutD, bins: OutI, delay: OutI, taps: OutI, alpha: OutD): Vec[OutD] = {
-    ???
+  def apply(in: Vec[OutD], psd: OutD, bins: OutI, delay: OutI, taps: OutI, alpha: OutD)
+           (implicit b: Builder): Vec[OutD] = {
+    val numChannels = in.size
+    val source      = new Stage(layer = b.layer, numChannels = numChannels)
+    val stage       = b.add(source)
+    (in zip stage.ins0).foreach { case (output, input) =>
+      b.connect(output, input)
+    }
+    b.connect(psd   , stage.in1)
+    b.connect(bins  , stage.in2)
+    b.connect(delay , stage.in3)
+    b.connect(taps  , stage.in4)
+    b.connect(alpha , stage.in5)
+    stage.outlets // .toIndexedSeq
   }
 
   private final val name = "WPE_ReverbFrame"
@@ -40,6 +52,23 @@ object WPE_ReverbFrame {
         outlets = outlets.map(_.carbonCopy()))
   }
 
+  private final class Stage(layer: Layer, numChannels: Int)(implicit ctrl: Control)
+    extends StageImpl[Shape](name) {
+
+    val shape = Shape(
+      ins0    = Vector.tabulate(numChannels)(ch => InD(s"$name.in$ch")),
+      in1     = InD (s"$name.psd"),
+      in2     = InI (s"$name.bins"),
+      in3     = InI (s"$name.delay"),
+      in4     = InI (s"$name.taps"),
+      in5     = InD (s"$name.alpha"),
+      outlets = Vector.tabulate(numChannels)(ch => OutD(s"$name.out$ch"))
+    )
+
+    def createLogic(attr: Attributes): NodeImpl[Shape] =
+      new Logic(shape, layer = layer, numChannels = numChannels)
+  }
+
   /* Similar to `DemandWindowedLogic` but for our multi-channel purposes.
    */
   private final class Logic(shape: Shape, layer: Layer, numChannels: Int)(implicit ctrl: Control)
@@ -47,61 +76,171 @@ object WPE_ReverbFrame {
 
     _: GraphStageLogic =>
 
-    private val inletsSignal: Vec[InD]  = shape.ins0
-    private val inletPSD        : InD   = shape.in1
-    private val inletBins       : InI   = shape.in2
-    private val inletDelay      : InI   = shape.in3
-    private val inletTaps       : InI   = shape.in4
-    private val inletAlpha      : InD   = shape.in5
-    private val outlets     : Vec[OutD] = shape.outlets
+    private[this] val inletsSignal: Vec[InD]  = shape.ins0
+    private[this] val inletPSD        : InD   = shape.in1
+    private[this] val inletBins       : InI   = shape.in2
+    private[this] val inletDelay      : InI   = shape.in3
+    private[this] val inletTaps       : InI   = shape.in4
+    private[this] val inletAlpha      : InD   = shape.in5
+    private[this] val outlets     : Vec[OutD] = shape.outlets
 
-    private def winParamsValid: Boolean = {
-      ???
+    // XXX TODO --- will be more efficient with flat arrays
+    private[this] var invCov: Array[Array[Array[Double]]] = _ // [bins][numChannels * taps][numChannels * taps C]
+    private[this] var filter: Array[Array[Array[Double]]] = _ // [numChannels][bins][numChannels * taps C] -- note, different orient than nara_wpe
+    private[this] var winBuf: Array[Array[Array[Double]]] = _ // [numChannels][T][bins C] -- note, different orient than nara_wpe
+    private[this] var invCovValid = false
+    private[this] var filterValid = false
+    private[this] var winValid    = false
+
+    private[this] var bins      : Int     = -1
+    private[this] var frameSize : Int     = -1 // bins times two for complex numbers
+    private[this] var delay     : Int     = -1
+    private[this] var taps      : Int     = -1
+    private[this] var alpha     : Double  = -1.0
+
+    private def delayValid  = delay  >= 0
+    private def tapsValid   = taps   >= 0
+    private def alphaValid  = alpha  >= 0
+
+    private[this] var minReadOff  : Int   = 0
+    private[this] var minWriteOff : Int   = 0
+
+    private[this] var needsBins  = true
+    private[this] var needsDelay = true
+    private[this] var needsTaps  = true
+    private[this] var needsAlpha = true
+
+    private[this] var bufBinsOff  : Int   = 0
+    private[this] var bufBins     : BufI = _
+    private[this] var bufDelayOff : Int   = 0
+    private[this] var bufDelay    : BufI  = _
+    private[this] var bufTapsOff  : Int   = 0
+    private[this] var bufTaps     : BufI  = _
+    private[this] var bufAlphaOff : Int   = 0
+    private[this] var bufAlpha    : BufD  = _
+
+    private[this] val bufsSignalRemain  = new Array[Int](numChannels)
+    private[this] val insSignalOff      = new Array[Int](numChannels)
+    private[this] val insReadOff        = new Array[Int](numChannels)
+    private[this] val bufsOutRemain     = new Array[Int](numChannels)
+    private[this] val outsWriteOff      = new Array[Int](numChannels)
+    private[this] val outsOff           = new Array[Int](numChannels)
+
+    private[this] var bufPsdOff   : Int   = 0
+    private[this] var bufPsdRemain: Int   = 0
+    private[this] var bufPsd      : BufD  = _
+    private[this] var psdReadOff      = 0
+
+    private[this] val bufsSignal      = new Array[BufD](numChannels)
+    private[this] val bufsOut         = new Array[BufD](numChannels)
+
+    private[this] var stage = 0 // 0: gather window parameters, 1: gather input, 2: produce output
+    private[this] var signalDone = false
+
+//    private def winParamsValid: Boolean = ...
+
+    private def freeFrameParamBuffers(): Unit = {
+      freeDelayBuf()
+      freeTapsBuf ()
+      freeAlphaBuf()
     }
 
-    private def freeWinParamBuffers(): Unit = {
-      ???
-    }
+    private def freeDelayBuf(): Unit =
+      if (bufDelay != null) {
+        bufDelay.release()
+        bufDelay = null
+      }
+
+    private def freeTapsBuf(): Unit =
+      if (bufTaps != null) {
+        bufTaps.release()
+        bufTaps = null
+      }
+
+    private def freeAlphaBuf(): Unit =
+      if (bufAlpha != null) {
+        bufAlpha.release()
+        bufAlpha = null
+      }
 
     /* Should return `true` if state was changed. */
     private def tryObtainFrameParams(): Boolean = {
-      ???
+      var stateChange = false
+
+      if (needsDelay && bufDelay != null && bufDelayOff < bufDelay.size) {
+        val newDelay = math.max(0, bufDelay.buf(bufDelayOff))
+        if (delay != newDelay) {
+          delay     = newDelay
+          winValid  = false
+        }
+        bufDelayOff += 1
+        needsDelay  = false
+        stateChange = true
+      } else if (isAvailable(inletDelay)) {
+        freeDelayBuf()
+        bufDelay    = grab(inletDelay)
+        bufDelayOff = 0
+        tryPull(inletDelay)
+        stateChange = true
+      } else if (needsDelay && isClosed(inletDelay) && delayValid) {
+        needsDelay  = false
+        stateChange = true
+      }
+
+      // XXX TODO --- gosh, we need to put this into a state-class
+      if (needsTaps && bufTaps != null && bufTapsOff < bufTaps.size) {
+        val newTaps = math.max(1, bufTaps.buf(bufTapsOff))
+        if (taps != newTaps) {
+          taps        = newTaps
+          winValid    = false
+          invCovValid = false
+          filterValid = false
+        }
+        bufTapsOff += 1
+        needsTaps   = false
+        stateChange = true
+      } else if (isAvailable(inletTaps)) {
+        freeTapsBuf()
+        bufTaps     = grab(inletTaps)
+        bufTapsOff  = 0
+        tryPull(inletTaps)
+        stateChange = true
+      } else if (needsTaps && isClosed(inletTaps) && tapsValid) {
+        needsTaps   = false
+        stateChange = true
+      }
+
+      if (needsAlpha && bufAlpha != null && bufAlphaOff < bufAlpha.size) {
+        alpha        = math.max(1.0e-10, bufAlpha.buf(bufAlphaOff))
+        bufAlphaOff += 1
+        needsAlpha   = false
+        stateChange = true
+      } else if (isAvailable(inletAlpha)) {
+        freeAlphaBuf()
+        bufAlpha     = grab(inletAlpha)
+        bufAlphaOff  = 0
+        tryPull(inletAlpha)
+        stateChange = true
+      } else if (needsAlpha && isClosed(inletAlpha) && alphaValid) {
+        needsAlpha   = false
+        stateChange = true
+      }
+
+      stateChange
     }
 
-    private def needsFrameParams: Boolean = {
-      ???
-    }
+    private def needsFrameParams: Boolean = 
+      needsDelay || needsTaps || needsAlpha
 
     private def requestFrameParams(): Unit = {
-      ???
-    }
-
-    /* Called when all new window parameters have been obtained.
-     * Returns the buffer size for the internal `win` array.
-     *
-     * The default implementation returns `winInSize`.
-     */
-    private def allWinParamsReady(winInSize: Int): Int =
-      winInSize
-
-    /* Called when the input window has been fully read.
-     * The implementation may update the `in` array if needed,
-     * or perform additional initializations. It should then
-     * return the write-size (`winOutSize`).
-     *
-     * The default implementation returns `winInSize`.
-     */
-    private def prepareWindow(win: Array[Array[Double]], winInSize: Int, inSignalDone: Boolean): Unit = {
-      ???
+      needsDelay = true
+      needsTaps  = true
+      needsAlpha = true
     }
 
     /* The default implementation zeroes the window buffer. */
     private def clearInputTail(win: Array[Double], readOff: Int, chunk: Int): Unit =
       Util.clear(win, readOff, chunk)
-
-    /* The default implementation copies the input to the window. */
-    private def processInput(in: Array[Double], inOff: Int, win: Array[Double], readOff: Int, chunk: Int): Unit =
-      System.arraycopy(in, inOff, win, readOff, chunk)
 
     /* Called one or several times per window, when the output buffer
      * should be filled.
@@ -115,46 +254,21 @@ object WPE_ReverbFrame {
      * @param  outOff      the offset in `out` from which on it should be filled
      * @param  chunk       the number of values to fill in `out`
      */
-    private def processOutput(win : Array[Double], winInSize : Int, writeOff: Long,
-                              out : Array[Double], winOutSize: Long, outOff: Int, chunk: Int): Unit = {
-      ???
+    private def processOutput(win : Array[Double], winInSize : Int, writeOff: Int,
+                              out : Array[Double], winOutSize: Int, outOff: Int, chunk: Int): Unit = {
+      System.arraycopy(win, writeOff, out, outOff, chunk)
     }
 
     override protected def stopped(): Unit = {
       super.stopped()
       freeInputBuffers()
       freeOutputBuffers()
-      winBuf = null
+      winBuf  = null
+      invCov  = null
+      filter  = null
     }
 
-    // ---- impl ----
-
-    private[this] var winBuf : Array[Array[Double]] = _
-
-    private[this] var bins      : Int   = -1
-    private[this] var frameSize : Int   = -1 // bins times two for complex numbers
-    private[this] var maxReadOff: Int   = 0
-    private[this] var maxWriteOff: Long  = 0
-
-    private[this] var needsBins  = true
-
-    private[this] val insSignalRemain = new Array[Int](numChannels)
-    private[this] val insSignalOff    = new Array[Int](numChannels)
-    private[this] val insReadOff      = new Array[Int](numChannels)
-    private[this] val outsWriteOff    = new Array[Int](numChannels)
-    private[this] val outsRemain      = new Array[Int](numChannels)
-
-    private[this] val bufsInSignal    = new Array[BufD](numChannels)
-    private[this] val bufsOut         = new Array[BufD](numChannels)
-
-    private[this] var inBinsOff   : Int   = 0
-
-    private[this] var stage = 0 // 0: gather window parameters, 1: gather input, 2: produce output
-    private[this] var inSignalDone = false
-
-    private[this] var bufInBins : BufI = _
-
-    private final class _InSignalHandlerImpl[T](in: Inlet[T], ch: Int) extends InHandler {
+    private final class _InSignalHandlerImpl[T](in: Inlet[T]) extends InHandler {
       def onPush(): Unit = {
         logStream(s"onPush($in)")
         process()
@@ -187,13 +301,12 @@ object WPE_ReverbFrame {
     }
 
     private def installMainAndWindowHandlers(): Unit = {
-      var ch = 0
-      while (ch < numChannels) {
-        new _InSignalHandlerImpl(inletsSignal(ch), ch)
-        ch += 1
+      inletsSignal.foreach { in =>
+        new _InSignalHandlerImpl(in)
       }
+      new _InSignalHandlerImpl(inletPSD)
       new _InHandlerImpl(inletBins)(bins >= 0)
-      shape.outlets.foreach {
+      outlets.foreach {
         ??? // new ProcessOutHandlerImpl(_, this)
       }
     }
@@ -201,30 +314,30 @@ object WPE_ReverbFrame {
     // constructor
     installMainAndWindowHandlers()
 
-    private def inValid: Boolean = bins >= 0 && winParamsValid
+//    private def inValid: Boolean = bins >= 0 && winParamsValid
 
     private def freeBufInSignal(): Unit = {
       var ch = 0
       while (ch < numChannels) {
-        val buf = bufsInSignal(ch)
+        val buf = bufsSignal(ch)
         if (buf != null) {
           buf.release()
-          bufsInSignal(ch) = null
+          bufsSignal(ch) = null
         }
         ch += 1
       }
     }
 
     private def freeBufInWinSize(): Unit =
-      if (bufInBins != null) {
-        bufInBins.release()
-        bufInBins = null
+      if (bufBins != null) {
+        bufBins.release()
+        bufBins = null
       }
 
     private def freeInputBuffers(): Unit = {
       freeBufInSignal()
       freeBufInWinSize()
-      freeWinParamBuffers()
+      freeFrameParamBuffers()
     }
 
     private def freeOutputBuffers(): Unit = {
@@ -239,23 +352,57 @@ object WPE_ReverbFrame {
       }
     }
 
+    private def processFrame(): Unit = {
+      /*
+
+        # frame: (F, D) --- in our case: [D][F]
+        prediction, window = self._get_prediction(frame)
+
+        self._update_kalman_gain(window)
+        self._update_inv_cov(window)
+        self._update_taps(prediction)
+
+       */
+      ???
+    }
+
+    // eq. (11)
+    private def updatePrediction(): Unit = {
+
+    }
+
+    // eq. (14)
+    private def updateKalmanGain(): Unit = {
+
+    }
+
+    // eq. (15)
+    private def updateInvCov(): Unit = {
+
+    }
+
+    // eq. (16)
+    private def updateTaps(): Unit = {
+
+    }
+
     @tailrec
     private def process(): Unit = {
       var stateChange = false
 
       if (stage == 0) {
         if (needsBins) {
-          if (bufInBins != null && inBinsOff < bufInBins.size) {
-            bins        = math.max(1, bufInBins.buf(inBinsOff))
+          if (bufBins != null && bufBinsOff < bufBins.size) {
+            bins        = math.max(1, bufBins.buf(bufBinsOff))
             frameSize   = bins << 1
             // println(s"winInSize = $winInSize")
-            inBinsOff  += 1
+            bufBinsOff  += 1
             needsBins   = false
             stateChange = true
           } else if (isAvailable(inletBins)) {
             freeBufInWinSize()
-            bufInBins   = grab(inletBins)
-            inBinsOff   = 0
+            bufBins   = grab(inletBins)
+            bufBinsOff   = 0
             tryPull(inletBins)
             stateChange = true
           } else if (isClosed(inletBins) && bins >= 0) {
@@ -269,58 +416,92 @@ object WPE_ReverbFrame {
         }
 
         if (!needsBins && !needsFrameParams) {
-          maxReadOff = 0
+          minReadOff = 0
           var ch = 0
           while (ch < numChannels) {
             insReadOff(ch) = 0
             ch += 1
           }
-          stage       = 1
-          val winBufSz = allWinParamsReady(bins)
-          // println(s"winBufSz = $winBufSz")
-          if (winBuf == null || winBuf.length != winBufSz) {
-            winBuf = new Array(winBufSz) // tpeSignal.newArray(winBufSz)
+
+          if (winValid) {
+            // rotate
+            var ch = 0
+            val winBufCh0 = winBuf(0)
+            val numChM = numChannels - 1
+            while (ch < numChM) {
+              winBuf(ch) = winBuf(ch + 1)
+              ch += 1
+            }
+            winBuf(numChM) = winBufCh0
+
+          } else {
+            val T     = taps + delay + 1
+            winBuf    = Array.ofDim(numChannels, T, frameSize)
+            winValid  = true
           }
+
+          if (!invCovValid) {
+            val I       = numChannels * taps
+            val IC      = I << 1
+            invCov      = Array.tabulate(bins, I, IC) { case (_, i, j) =>
+              if ((i << 1) == j) 1.0 else 0.0   // "eye"
+            }
+            invCovValid = true
+          }
+
+          if (!filterValid) {
+            val I       = numChannels * taps
+            val IC      = I << 1
+            filter      = Array.ofDim(numChannels, bins, IC)
+            filterValid = true
+          }
+
+          stage       = 1
           stateChange = true
         }
       }
 
       if (stage == 1) {
-        if (maxReadOff < frameSize) {
+        if (minReadOff < frameSize) {
+          var inCloseCount  = 0
+          var hasInReadOff  = false
+          var checkMin      = false
+
+          ??? // psd
+
           var ch = 0
-          var inCloseCount = 0
-          var hasInReadOff = false
           while (ch < numChannels) {
-            val bufIn = bufsInSignal(ch)
-            val inRem = insSignalRemain(ch)
+            val bufIn = bufsSignal(ch)
+            val inRem = bufsSignalRemain(ch)
             if (bufIn != null && inRem > 0) {
-              var inReadOff = insReadOff(ch)
+              val inReadOff = insReadOff(ch)
               val chunk = math.min(frameSize - inReadOff, inRem)
               if (chunk > 0) {
-                val inOff = insSignalOff(ch)
-                processInput(in = bufIn.buf, inOff = inOff, win = winBuf(ch), readOff = inReadOff, chunk = chunk)
-                insSignalOff    (ch) = inOff + chunk
-                insSignalRemain (ch) = inRem - chunk
-                inReadOff       += chunk
-                insReadOff(ch)   = inReadOff
-                maxReadOff       = math.max(maxReadOff, inReadOff)
-                stateChange      = true
+                val inOff     = insSignalOff(ch)
+                val winBufCh  = winBuf(ch)
+                val t         = winBufCh.length - 1
+                System.arraycopy(bufIn.buf, inOff, winBufCh(t), inReadOff, chunk)
+                insSignalOff    (ch) = inOff     + chunk
+                bufsSignalRemain (ch) = inRem     - chunk
+                insReadOff      (ch) = inReadOff + chunk
+                if (minReadOff == inReadOff) checkMin = true  // minReadOff might have grown
+                stateChange = true
               }
             } else {
               val inSig = inletsSignal(ch)
               if (isAvailable(inSig)) {
                 // freeBufInSignal()
-                val oldBuf  = bufsInSignal(ch)
+                val oldBuf  = bufsSignal(ch)
                 if (oldBuf != null) {
                   oldBuf.release()
                   // bufsInSignal(ch) = null
                 }
                 val newBuf = grab(inSig)
-                bufsInSignal(ch) = newBuf
+                bufsSignal(ch) = newBuf
                 tryPull(inSig)
-                //              inSignalAvailable = false
+                // inSignalAvailable = false
                 insSignalOff    (ch)  = 0
-                insSignalRemain (ch)  = newBuf.size
+                bufsSignalRemain(ch)  = newBuf.size
                 stateChange           = true
               } else if (isClosed(inSig)) {
                 // println(s"closed; readOff = $readOff")
@@ -330,70 +511,97 @@ object WPE_ReverbFrame {
                   hasInReadOff = true
                   val chunk = frameSize - inReadOff
                   if (chunk > 0) {
-                    ??? // clearInputTail(winBuf, readOff = readOff, chunk = chunk)
+                    val winBufCh  = winBuf(ch)
+                    val t         = winBufCh.length - 1
+                    clearInputTail(winBufCh(t), readOff = inReadOff, chunk = chunk)
                     insReadOff(ch)  = frameSize
                     stateChange     = true
                   }
-                }
-                if (inCloseCount == numChannels) {
-                  if (!hasInReadOff) {
-                    bins      = 0
-                    frameSize = 0
-                  }
-                  inSignalDone  = true
-                  stateChange   = true
                 }
               }
             }
             ch += 1
           } // while (ch < numChannels)
+
+          if (checkMin) {
+            var ch = 0
+            var min = psdReadOff
+            while (ch < numChannels) {
+              min = math.min(min, insReadOff(ch))
+              ch += 1
+            }
+            minReadOff = min
+          }
+
+          if (inCloseCount == numChannels) {
+            if (!hasInReadOff) {
+              bins      = 0
+              frameSize = 0
+            }
+            signalDone  = true
+            stateChange = true
+          }
         }
 
-        if (maxReadOff == frameSize) {
-          maxWriteOff = 0
+        if (minReadOff == frameSize) {
+          minWriteOff = 0
           var ch = 0
           while (ch < numChannels) {
             outsWriteOff(ch) = 0
             ch += 1
           }
           stage       = 2
-          /*writeSize   =*/ prepareWindow(winBuf, bins, inSignalDone = inSignalDone)
+
+          processFrame()
+
           // println(s"winInDoneCalcWinOutSize(_, $winInSize) = $writeSize")
           stateChange = true
         }
       }
 
       if (stage == 2) {
-        if (maxWriteOff < frameSize) {
+        if (minWriteOff < frameSize) {
+          var checkMin = false
           var ch = 0
           while (ch < numChannels) {
             if (bufsOut(ch) == null) {
               val newBuf      = ctrl.borrowBufD()
               bufsOut   (ch)  = newBuf
-              outsRemain(ch)  = newBuf.size
+              outsOff   (ch)  = 0
+              bufsOutRemain(ch)  = newBuf.size
             }
 
-            val outRem = outsRemain(ch)
+            val outRem = bufsOutRemain(ch)
             if (outRem > 0) {
-              var outWriteOff = outsWriteOff(ch)
+              val outWriteOff = outsWriteOff(ch)
               val chunk = math.min(frameSize - outWriteOff, outRem) // .toInt
               if (chunk > 0) {
                 //            val outBuf = bufsOut(ch)
+                val outOff = outsOff     (ch)
 //                processOutput(
 //                  win = winBuf(ch)      , winInSize = bins , writeOff  = writeOff,
 //                  out = outBuf.buf , winOutSize  = writeSize , outOff    = outOff,
 //                  chunk = chunk
 //                )
-                ???
-                outWriteOff      += chunk
-                outsWriteOff(ch)  = outWriteOff
-                maxWriteOff       = math.max(maxWriteOff, outWriteOff)
-                outsRemain  (ch)  = outRem - chunk
-                stateChange       = true
+                outsOff     (ch) = outOff      + chunk
+                bufsOutRemain  (ch) = outRem      - chunk
+                outsWriteOff(ch) = outWriteOff + chunk
+                if (minWriteOff == outWriteOff) checkMin = true  // minWriteOff might have grown
+                stateChange = true
               }
             }
 
-            if (outsRemain(ch) == 0 && isAvailable(outlets(ch))) {
+            if (checkMin) {
+              var ch = 0
+              var min = frameSize
+              while (ch < numChannels) {
+                min = math.min(min, outsWriteOff(ch))
+                ch += 1
+              }
+              minWriteOff = min
+            }
+
+            if (bufsOutRemain(ch) == 0 && isAvailable(outlets(ch))) {
               push(outlets(ch), bufsOut(ch))
               bufsOut(ch) = null
               stateChange = true
@@ -403,8 +611,8 @@ object WPE_ReverbFrame {
           } // while (ch < numChannels)
         }
 
-        if (maxWriteOff == frameSize) {
-          if (inSignalDone) {
+        if (minWriteOff == frameSize) {
+          if (signalDone) {
             var ch = 0
             var outPushCount = 0
             while (ch < numChannels) {
@@ -413,7 +621,7 @@ object WPE_ReverbFrame {
               if (out == null) {
                 outPushCount += 1
               } else if (isAvailable(outlet)) {
-                out.size -= outsRemain(ch)
+                out.size -= bufsOutRemain(ch)
                 // don't bother to update `outsRemain` because it will be done later when buf is null
 
                 if (out.size > 0) {
