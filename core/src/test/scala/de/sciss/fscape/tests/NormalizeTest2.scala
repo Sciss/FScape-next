@@ -10,7 +10,7 @@ import de.sciss.synth.io.AudioFileSpec
 import scala.swing.Swing
 
 object NormalizeTest2 extends App {
-  val fIn   = userHome / "Documents" / "projects" / "Imperfect" / "anemone" / "rec" / "capture.aif"
+  val fIn   = file("/data") / "projects" / "Imperfect" / "anemone" / "rec" / "capture.aif"
   val fOut  = userHome / "Music" / "work" / "_killme.aif"
 
   val g = Graph {
@@ -53,7 +53,8 @@ object NormalizeTest2 extends App {
     // 'synthesis'
     val outW        = Real1FullIFFT (in = fftOut, size = fftSize)
     val winIn       = GenWindow(size = fftSize, shape = GenWindow.Hann)
-    val winOut      = outW * winIn
+//    val winOut      = outW * winIn
+    val winOut      = outW * winIn.matchLen(outW)
     val lap         = OverlapAdd(in = winOut, size = fftSize, step = winStep)
 
     // (lap \ 0).poll(Metro(44100), "lap")
@@ -64,7 +65,7 @@ object NormalizeTest2 extends App {
       ChannelProxy(run, 0).poll(Metro(44100), "run-max")
       Length(run).poll(0, "run-len")
       val max       = run.last
-      max.ampDb.poll(0, "max [dB]")
+      max.ampDb.poll("max [dB]")
       val headroom  = -0.2.dbAmp
       val gain      = max.reciprocal * headroom
       val buf       = BufferDisk(in)
