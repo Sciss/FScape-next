@@ -20,7 +20,8 @@ object DereverbTest extends App {
     val wpe         = WPE_Dereverberate(in)
     val sig         = wpe // in - wpe
     val out         = AudioFileOut(sig, fOut, AudioFileSpec(numChannels = numChannels, sampleRate = sampleRate))
-    Progress(out / specIn.numFrames.toDouble, Metro(sampleRate))
+//    Progress(out / specIn.numFrames.toDouble, Metro(sampleRate))
+    ProgressFrames(out, specIn.numFrames)
   }
 
   val config = Control.Config()

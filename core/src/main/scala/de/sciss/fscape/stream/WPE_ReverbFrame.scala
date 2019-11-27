@@ -382,7 +382,8 @@ object WPE_ReverbFrame {
     // eq. (11)
     private def updatePrediction(): Unit = {
       /*
-        self.buffer: [taps + delay + 1][bins][numChannels = D]
+        buffer    : [taps + delay + 1][bins][numChannels = D] complex
+        prediction: [F][D]                                    complex
 
         window = self.buffer[:-self.delay - 1]  # [taps = K][bins][D]
         # window.transpose(1, 2, 0): [][][]
@@ -715,12 +716,52 @@ object WPE_ReverbFrame {
     // eq. (16)
     private def updateFilter(): Unit = {
       /*
+        filter_taps : [F][D * K][D]   complex
+        kalman_gain : [F][D * K]      complex
+        prediction  : [F][D]          complex
+
         self.filter_taps = (
             self.filter_taps +
             np.einsum('fi,fm->fim', self.kalman_gain, np.conjugate(prediction))
         )
 
        */
+
+      val _bins   = bins
+      val _taps   = taps
+      val DK      = numChannels * _taps
+      val _filter = filter  // [numChannels][bins][numChannels * taps C]
+      val _kalman = kalman  // [bins][numChannels * taps C]
+      val _pred   = pred    // [numChannels][bins C]
+      var f_re    = 0
+      var f_im    = 1
+      var bin     = 0
+      while (bin < _bins) {
+        val kalmanF = _kalman(bin)  // [numChannels * taps C]
+        var i     = 0
+        var i_re  = 0
+        var i_im  = 1
+        while (i < DK) {
+          val kalman_re = kalmanF(i_re)
+          val kalman_im = kalmanF(i_im)
+          var m = 0
+          while (m < numChannels) {
+            val filterChF = _filter (m)(bin)
+            val pred_re   =  _pred  (m)(f_re)
+            val pred_im   = -_pred  (m)(f_im)
+            filterChF(i_re) += kalman_re * pred_re - kalman_im * pred_im
+            filterChF(i_im) += kalman_re * pred_im + kalman_im * pred_re
+            m += 1
+          }
+          i    += 1
+          i_re += 2
+          i_im += 2
+        }
+
+        bin  += 1
+        f_re += 2
+        f_im += 2
+      }
     }
 
 //    var STAGE_1_COUNT = 0
