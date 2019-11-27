@@ -90,16 +90,14 @@ object WPE_ReverbFrame {
     private[this] val inletAlpha      : InD   = shape.in5
     private[this] val outlets     : Vec[OutD] = shape.outlets
 
-    // XXX TODO --- will be more efficient with flat arrays
+    // XXX TODO --- perhaps more efficient with flat arrays
+    private[this] var winBuf: Array[Array[Array[Double]]] = _ // [numChannels][T][bins C] -- NOTE, different orient than nara_wpe
     private[this] var invCov: Array[Array[Array[Double]]] = _ // [bins][numChannels * taps][numChannels * taps C]
-    private[this] var filter: Array[Array[Array[Double]]] = _ // [numChannels][bins][numChannels * taps C] -- note, different orient than nara_wpe
-    private[this] var winBuf: Array[Array[Array[Double]]] = _ // [numChannels][T][bins C] -- note, different orient than nara_wpe
-    private[this] var psd   : Array[Double] = _ // real!
-    private[this] var pred  : Array[Array[Double]] = _ // prediction [numChannels][bins C]
-    private[this] var invCovValid = false
-    private[this] var filterValid = false
-    private[this] var winValid    = false
-    private[this] var psdValid    = false
+    private[this] var filter: Array[Array[Array[Double]]] = _ // [numChannels][bins][numChannels * taps C] -- NOTE, different orient than nara_wpe
+    private[this] var kalman: Array[Array[Double]]        = _ // [bins][numChannels * taps C]
+    private[this] var psd   : Array[Double]               = _ // [bins] real!
+    private[this] var pred  : Array[Array[Double]]        = _ // [numChannels][bins C]
+    private[this] var buffersValid = false
 
     private[this] var bins      : Int     = -1
     private[this] var frameSize : Int     = -1 // bins times two for complex numbers
@@ -174,8 +172,8 @@ object WPE_ReverbFrame {
       if (needsDelay && bufDelay != null && bufDelayOff < bufDelay.size) {
         val newDelay = math.max(0, bufDelay.buf(bufDelayOff))
         if (delay != newDelay) {
-          delay     = newDelay
-          winValid  = false
+          delay         = newDelay
+          buffersValid  = false
         }
         bufDelayOff += 1
         needsDelay  = false
@@ -195,10 +193,8 @@ object WPE_ReverbFrame {
       if (needsTaps && bufTaps != null && bufTapsOff < bufTaps.size) {
         val newTaps = math.max(1, bufTaps.buf(bufTapsOff))
         if (taps != newTaps) {
-          taps        = newTaps
-          winValid    = false
-          invCovValid = false
-          filterValid = false
+          taps          = newTaps
+          buffersValid  = false
         }
         bufTapsOff += 1
         needsTaps   = false
@@ -253,6 +249,7 @@ object WPE_ReverbFrame {
       winBuf  = null
       invCov  = null
       filter  = null
+      kalman  = null
       psd     = null
       pred    = null
     }
@@ -417,10 +414,9 @@ object WPE_ReverbFrame {
       var ch = 0
       while (ch < numChannels) {
         val x       = pred  (ch)    // [bins C]
-        val winBufCh= winBuf(ch)    // [T][bins C]
-        val yt      = winBufCh(KD)  // [bins C]
-        val window  = winBufCh      // [T][bins C]
-        val g       = filter(ch)    // [bins][numChannels, taps C]
+        val winCh   = winBuf(ch)    // [T][bins C]
+        val yt      = winCh(KD)     // [bins C]
+        val fltCh   = filter(ch)    // [bins][numChannels, taps C]
         var f_re    = 0
         var f_im    = 1
         var bin     = 0
@@ -430,23 +426,23 @@ object WPE_ReverbFrame {
           val y_im    = yt(f_im)
           var sum_re  = 0.0
           var sum_im  = 0.0
-          val gBin    = g(bin)      // [numChannels, taps C]
+          val fltChF  = fltCh(bin)      // [numChannels, taps C]
           var i_re    = 0
           var i_im    = 1
           var tI      = 0
           while (tI < _taps) {
-            val windowT = window(tI)    // [bins C]
-            val yD_re   = windowT(f_re)
-            val yD_im   = windowT(f_im)
+            val winChT  = winCh(tI)    // [bins C]
+            val yD_re   = winChT(f_re)
+            val yD_im   = winChT(f_im)
             var chI = 0
             while (chI < numChannels) {
-              val g_re =  gBin(i_re)
-              val g_im = -gBin(i_im)
+              val g_re =  fltChF(i_re)
+              val g_im = -fltChF(i_im)
               sum_re  += g_re * yD_re - g_im * yD_im
               sum_im  += g_re * yD_im + g_im * yD_re
               chI  += 1
-              i_re += 1
-              i_im += 1
+              i_re += 2
+              i_im += 2
             }
             tI += 1
           }
@@ -468,17 +464,140 @@ object WPE_ReverbFrame {
     // eq. (14)
     private def updateKalmanGain(): Unit = {
       /*
+        inv_cov     : [F][D * K][D * K] complex
+        window      : [F][D * K] complex
+        nominator   : [F][D * K] complex
+        power       : [F] real
+        denominator : [F] complex
+        kalman_gain : [F][D * K] complex
+
+        winBuf: [numChannels][T][bins C]
+
         nominator = np.einsum('fij,fj->fi', self.inv_cov, window)
         denominator = (self.alpha * self.power).astype(window.dtype)
         denominator += np.einsum('fi,fi->f', np.conjugate(window), nominator)
         self.kalman_gain = nominator / denominator[:, None]
 
+        nominator: for(f <- 0 until bins} {
+          for (i <- 0 until DK) {
+            n = out[f][i] = sum(t = 0 until taps; d = 0 until numChannels) {
+              j = d * taps + t
+              inv_cov[f][i][j] * window[d][t][f]
+            }
+          }
+        }
+
+        denominatorPlus: for(f <- 0 until bins) {
+          sum (t = 0 until taps; d = 0 until numChannels) {
+            i = d * taps + t
+            conj(window[d][t][f]) * nominator[f][i]
+          }
+        }
+
+        We calculate nominator first (in kalman), then the denominator and divide in-place in kalman
+
        */
+
+      val _bins   = bins
+      val _alpha  = alpha
+      val _taps   = taps
+      val DK      = numChannels * _taps
+      val _invCov = invCov  // [bins][numChannels * taps][numChannels * taps C]
+      val _kalman = kalman  // [bins][numChannels * taps C]
+      val _psd    = psd     // [bins] real!
+      val _winBuf = winBuf  // [numChannels][T][bins C]
+      var f_re    = 0
+      var f_im    = 1
+      var bin     = 0
+      while (bin < _bins) {
+        // we begin with the nominator matrix
+        val invCovF = _invCov(bin)  // [numChannels * taps][numChannels * taps C]
+        val kalmanF = _kalman(bin)  // [numChannels * taps C]
+        var i       = 0
+        var i_re    = 0
+        var i_im    = 1
+        while (i < DK) {
+          val invCovFI = invCovF(i) // [numChannels * taps C]
+          var tJ      = 0
+          var j_re    = 0
+          var j_im    = 1
+          var nom_re  = 0.0
+          var nom_im  = 0.0
+          while (tJ < _taps) {
+            var chJ = 0
+            while (chJ < numChannels) {
+              val inv_re  = invCovFI(j_re)
+              val inv_im  = invCovFI(j_im)
+              val winChT  = _winBuf(chJ)(tJ)
+              val win_re  = winChT(f_re)
+              val win_im  = winChT(f_im)
+              nom_re  += inv_re * win_re - inv_im * win_im
+              nom_im  += inv_re * win_im + inv_im * win_re
+              chJ  += 1
+              j_re += 2
+              j_im += 2
+            }
+            tJ += 1
+          }
+          // here kalman becomes nominator
+          kalmanF(i_re) = nom_re
+          kalmanF(i_im) = nom_im
+          i    += 1
+          i_re += 2
+          i_im += 2
+        }
+        // now we construct the denominator vector
+        val denomA = _alpha * _psd(bin) // real
+        var denom_re  = denomA
+        var denom_im  = 0.0
+        var tI      = 0
+        /*var*/ i_re    = 0
+        /*var*/ i_im    = 1
+        while (tI < _taps) {
+          tI += 1
+          var chI = 0
+          while (chI < numChannels) {
+            val winChT  = _winBuf(chI)(tI)
+            val win_re  =  winChT(f_re)
+            val win_im  = -winChT(f_im)
+            val nom_re  = kalmanF(i_re)
+            val nom_im  = kalmanF(i_im)
+            denom_re += win_re * nom_re - win_im * nom_im
+            denom_im += win_re * nom_im + win_im * nom_re
+            chI  += 1
+            i_re += 2
+            i_im += 2
+          }
+        }
+        // now we divide by the denominator
+        val denomAbsSq  = denom_re * denom_re + denom_im * denom_im
+        val denomR_re   = if (denomAbsSq == 0.0) 0.0 else  denom_re / denomAbsSq
+        val denomR_im   = if (denomAbsSq == 0.0) 0.0 else -denom_im / denomAbsSq
+
+        /*var*/ i_re    = 0
+        /*var*/ i_im    = 1
+        while (i < DK) {
+          val nom_re    = kalmanF(i_re)
+          val nom_im    = kalmanF(i_im)
+          kalmanF(i_re) = nom_re * denomR_re - nom_im * denomR_im
+          kalmanF(i_im) = nom_re * denomR_im + nom_im * denomR_re
+          i_re += 2
+          i_im += 2
+        }
+
+        bin  += 1
+        f_re += 2
+        f_im += 2
+      }
     }
 
     // eq. (15)
     private def updateInvCov(): Unit = {
       /*
+        window      : [F][D * K]
+        inv_cov     : [F][D * K][D * K]
+        kalman_gain : []
+
         self.inv_cov = self.inv_cov - np.einsum(
             'fj,fjm,fi->fim',
             np.conjugate(window),
@@ -513,12 +632,9 @@ object WPE_ReverbFrame {
           if (bufBins != null && bufBinsOff < bufBins.size) {
             val newBins = math.max(1, bufBins.buf(bufBinsOff))
             if (bins != newBins) {
-              bins        = newBins
-              frameSize   = newBins << 1
-              invCovValid = false
-              filterValid = false
-              winValid    = false
-              psdValid    = false
+              bins          = newBins
+              frameSize     = newBins << 1
+              buffersValid  = false
             }
             bufBinsOff  += 1
             needsBins   = false
@@ -547,7 +663,7 @@ object WPE_ReverbFrame {
             ch += 1
           }
 
-          if (winValid) {
+          if (buffersValid) {
             // rotate
             var ch = 0
             val winBufCh0 = winBuf(0)
@@ -561,30 +677,19 @@ object WPE_ReverbFrame {
           } else {
             // println(s"numChannels = $numChannels, taps = $taps, delay = $delay, frameSize = $frameSize")
             val T     = taps + delay + 1
+            val I     = numChannels * taps
+            val IC    = I << 1
+
             winBuf    = Array.ofDim(numChannels, T, frameSize)
             pred      = Array.ofDim(numChannels, frameSize)
-            winValid  = true
-          }
-
-          if (!psdValid) {
             psd       = new Array(bins)
-            psdValid  = true
-          }
-
-          if (!invCovValid) {
-            val I       = numChannels * taps
-            val IC      = I << 1
-            invCov      = Array.tabulate(bins, I, IC) { case (_, i, j) =>
+            invCov    = Array.tabulate(bins, I, IC) { case (_, i, j) =>
               if ((i << 1) == j) 1.0 else 0.0   // "eye"
             }
-            invCovValid = true
-          }
+            filter    = Array.ofDim(numChannels, bins, IC)
+            kalman    = Array.ofDim(bins, IC)
 
-          if (!filterValid) {
-            val I       = numChannels * taps
-            val IC      = I << 1
-            filter      = Array.ofDim(numChannels, bins, IC)
-            filterValid = true
+            buffersValid = true
           }
 
           stage       = 1
