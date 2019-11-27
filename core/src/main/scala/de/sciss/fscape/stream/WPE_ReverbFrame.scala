@@ -92,7 +92,7 @@ object WPE_ReverbFrame {
 
     // XXX TODO --- perhaps more efficient with flat arrays
     private[this] var winBuf: Array[Array[Array[Double]]] = _ // [numChannels][T][bins C] -- NOTE, different orient than nara_wpe
-    private[this] var invCov: Array[Array[Array[Double]]] = _ // [bins][numChannels * taps][numChannels * taps C]
+    private[this] var invCov: Array[Array[Array[Double]]] = _ // [bins + 1][numChannels * taps][numChannels * taps C] -- last is aux
     private[this] var filter: Array[Array[Array[Double]]] = _ // [numChannels][bins][numChannels * taps C] -- NOTE, different orient than nara_wpe
     private[this] var kalman: Array[Array[Double]]        = _ // [bins][numChannels * taps C]
     private[this] var psd   : Array[Double]               = _ // [bins] real!
@@ -229,7 +229,7 @@ object WPE_ReverbFrame {
       stateChange
     }
 
-    private def needsFrameParams: Boolean = 
+    private def needsFrameParams: Boolean =
       needsDelay || needsTaps || needsAlpha
 
     private def requestFrameParams(): Unit = {
@@ -246,12 +246,12 @@ object WPE_ReverbFrame {
       super.stopped()
       freeInputBuffers()
       freeOutputBuffers()
-      winBuf  = null
-      invCov  = null
-      filter  = null
-      kalman  = null
-      psd     = null
-      pred    = null
+      winBuf    = null
+      invCov    = null
+      filter    = null
+      kalman    = null
+      psd       = null
+      pred      = null
     }
 
     private final class _InSignalHandlerImpl[T](in: Inlet[T]) extends InHandler {
@@ -376,7 +376,7 @@ object WPE_ReverbFrame {
       updatePrediction()
       updateKalmanGain()
       updateInvCov()
-      updateTaps()
+      updateFilter()
     }
 
     // eq. (11)
@@ -574,6 +574,7 @@ object WPE_ReverbFrame {
         val denomR_re   = if (denomAbsSq == 0.0) 0.0 else  denom_re / denomAbsSq
         val denomR_im   = if (denomAbsSq == 0.0) 0.0 else -denom_im / denomAbsSq
 
+        /*var*/ i       = 0
         /*var*/ i_re    = 0
         /*var*/ i_im    = 1
         while (i < DK) {
@@ -581,6 +582,7 @@ object WPE_ReverbFrame {
           val nom_im    = kalmanF(i_im)
           kalmanF(i_re) = nom_re * denomR_re - nom_im * denomR_im
           kalmanF(i_im) = nom_re * denomR_im + nom_im * denomR_re
+          i    += 1
           i_re += 2
           i_im += 2
         }
@@ -594,9 +596,9 @@ object WPE_ReverbFrame {
     // eq. (15)
     private def updateInvCov(): Unit = {
       /*
-        window      : [F][D * K]
-        inv_cov     : [F][D * K][D * K]
-        kalman_gain : []
+        window      : [F][D * K]        complex
+        inv_cov     : [F][D * K][D * K] complex
+        kalman_gain : [F][D * K]        complex
 
         self.inv_cov = self.inv_cov - np.einsum(
             'fj,fjm,fi->fim',
@@ -607,11 +609,111 @@ object WPE_ReverbFrame {
         )
         self.inv_cov /= self.alpha
 
+        np.einsum('fj,fjm,fi->fim', x, y, z)
+        np.einsum('j,jm,i->im', x(f), y(f), z(f)) ; 1D, 2D, 1D
+
+        for (f <- 0 until bins) {
+          invCovF = invCov(f) // [DK][DK]
+          kalmanF = kalman(f) // [DK]
+
+          aux[i] = for (i <- 0 until DK) {
+            kalmanFI = kalmanF(i) // scalar
+            // np.einsum('j,jm->m', window(f), invCovF) * kalmanFI
+            aux[i][m] = np.einsum('j,jm->m', window(f), invCovF) = for (m <- 0 until DK) yield {
+              sum(j <- 0 until DK) {
+                conj(window(f)(j)) * invCovF(j)(m)
+              }
+            } * kalmanFI
+          }
+          invCovF[i][m] = (invCovF[i][m] - aux[i][m]) / alpha
+        }
+
        */
+
+      // XXX TODO --- this is bloody slow; perhaps avoid winBuf multi-indexing
+      val _bins   = bins
+      val alphaR  = 1.0 / alpha
+      val _taps   = taps
+      val DK      = numChannels * _taps
+      val _winBuf = winBuf          // [numChannels][T][bins C]
+      val _invCov = invCov          // [bins][numChannels * taps][numChannels * taps C]
+      val aux     = _invCov(_bins)  // [numChannels * taps][numChannels * taps C]
+      val _kalman = kalman          // [bins][numChannels * taps C]
+      var f_re    = 0
+      var f_im    = 1
+      var bin     = 0
+      while (bin < _bins) {
+        val invCovF = _invCov(bin)  // [numChannels * taps][numChannels * taps C]
+        val kalmanF = _kalman(bin)  // [numChannels * taps C]
+        var i       = 0
+        var i_re    = 0
+        var i_im    = 1
+        // we first store the invCovF gradient (K ỹH R(t-1)) in aux
+        while (i < DK) {
+          val kalman_re = kalmanF(i_re)
+          val kalman_im = kalmanF(i_im)
+          val auxI      = aux(i)    // [numChannels * taps C]
+          var m     = 0
+          var m_re  = 0
+          var m_im  = 1
+          while (m < DK) {
+            var sum_re    = 0.0
+            var sum_im    = 0.0
+            var tJ = 0
+            var j  = 0
+            while (tJ < _taps) {
+              var chJ = 0
+              while (chJ < numChannels) {
+                val winChT    = _winBuf(chJ)(tJ) // [bins C]
+                val win_re    =  winChT(f_re)
+                val win_im    = -winChT(f_im)
+                val invCovFJ  = invCovF(j)     // [numChannels * taps C]
+                val inv_re    = invCovFJ(m_re)
+                val inv_im    = invCovFJ(m_im)
+                sum_re += win_re * inv_re - win_im * inv_im
+                sum_im += win_re * inv_im + win_im * inv_re
+                chJ += 1
+                j   += 1
+              }
+              tJ += 1
+            }
+            auxI(m_re) = sum_re * kalman_re - sum_im * kalman_im
+            auxI(m_im) = sum_re * kalman_im + sum_im * kalman_re
+            m    += 1
+            m_re += 2
+            m_im += 2
+          }
+          i    += 1
+          i_re += 2
+          i_im += 2
+        }
+
+        // now we incorporate aux into invCovF
+        /*var*/ i       = 0
+        while (i < DK) {
+          val auxI      = aux(i)      // [numChannels * taps C]
+          val invCovFI  = invCovF(i)  // [numChannels * taps C]
+          var m     = 0
+          var m_re  = 0
+          var m_im  = 1
+          while (m < DK) {
+            invCovFI(m_re) = (invCovFI(m_re) - auxI(m_re)) * alphaR
+            invCovFI(m_im) = (invCovFI(m_im) - auxI(m_im)) * alphaR
+            m    += 1
+            m_re += 2
+            m_im += 2
+          }
+          i += 1
+        }
+
+        bin  += 1
+        f_re += 2
+        f_im += 2
+      }
     }
 
     // eq. (16)
-    private def updateTaps(): Unit = {
+    private def updateFilter(): Unit = {
       /*
         self.filter_taps = (
             self.filter_taps +
@@ -683,7 +785,7 @@ object WPE_ReverbFrame {
             winBuf    = Array.ofDim(numChannels, T, frameSize)
             pred      = Array.ofDim(numChannels, frameSize)
             psd       = new Array(bins)
-            invCov    = Array.tabulate(bins, I, IC) { case (_, i, j) =>
+            invCov    = Array.tabulate(bins + 1, I, IC) { case (_, i, j) =>
               if ((i << 1) == j) 1.0 else 0.0   // "eye"
             }
             filter    = Array.ofDim(numChannels, bins, IC)
@@ -731,7 +833,7 @@ object WPE_ReverbFrame {
                 if (chunk > 0) {
                   val inOff     = insSignalOff(ch)
                   val winBufCh  = winBuf(ch)
-                  val t         = winBufCh.length - 1
+                  val t         = taps + delay
                   System.arraycopy(bufIn.buf, inOff, winBufCh(t), inReadOff, chunk)
                   insSignalOff    (ch) = inOff     + chunk
                   bufsSignalRemain(ch) = inRem     - chunk
@@ -768,7 +870,7 @@ object WPE_ReverbFrame {
                       clearInputTail(psd, readOff = inReadOff >> 1, chunk = chunk >> 1)
                     } else {
                       val winBufCh  = winBuf(ch)
-                      val t         = winBufCh.length - 1
+                      val t         = taps + delay
                       clearInputTail(winBufCh(t), readOff = inReadOff, chunk = chunk)
                     }
                     insReadOff(ch)  = frameSize
