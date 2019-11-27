@@ -128,14 +128,14 @@ object WPE_ReverbFrame {
     private[this] var bufAlphaOff : Int   = 0
     private[this] var bufAlpha    : BufD  = _
 
-    private[this] val bufsSignalRemain  = new Array[Int](numChannels + 1)  // last ist psd
-    private[this] val insSignalOff      = new Array[Int](numChannels + 1)  // last ist psd
-    private[this] val insReadOff        = new Array[Int](numChannels + 1)  // last ist psd
+    private[this] val bufsSignalRemain  = new Array[Int](numChannels + 1)  // last is psd
+    private[this] val insSignalOff      = new Array[Int](numChannels + 1)  // last is psd
+    private[this] val insReadOff        = new Array[Int](numChannels + 1)  // last is psd
     private[this] val bufsOutRemain     = new Array[Int](numChannels)
     private[this] val outsWriteOff      = new Array[Int](numChannels)
     private[this] val outsOff           = new Array[Int](numChannels)
 
-    private[this] val bufsSignal      = new Array[BufD](numChannels + 1)  // last ist psd
+    private[this] val bufsSignal      = new Array[BufD](numChannels + 1)  // last is psd
     private[this] val bufsOut         = new Array[BufD](numChannels)
 
     private[this] var stage = 0 // 0: gather window parameters, 1: gather input, 2: produce output
@@ -330,7 +330,7 @@ object WPE_ReverbFrame {
 
     private def freeBufInSignal(): Unit = {
       var ch = 0
-      while (ch <= numChannels) {  // last ist psd
+      while (ch <= numChannels) {  // last is psd
         val buf = bufsSignal(ch)
         if (buf != null) {
           buf.release()
@@ -502,7 +502,7 @@ object WPE_ReverbFrame {
        */
     }
 
-    var STAGE_1_COUNT = 0
+//    var STAGE_1_COUNT = 0
 
     @tailrec
     private def process(): Unit = {
@@ -542,7 +542,7 @@ object WPE_ReverbFrame {
         if (!needsBins && !needsFrameParams) {
           minReadOff = 0
           var ch = 0
-          while (ch < numChannels) {
+          while (ch <= numChannels) { // last is psd
             insReadOff(ch) = 0
             ch += 1
           }
@@ -588,12 +588,12 @@ object WPE_ReverbFrame {
           }
 
           stage       = 1
-          STAGE_1_COUNT += 1
-          println(s"stage = 1 ($STAGE_1_COUNT)")
+//          STAGE_1_COUNT += 1
+          // println(s"stage = 1 ($STAGE_1_COUNT)")
           stateChange = false // "reset" for next stage
-          if (STAGE_1_COUNT == 22) {
-            println("here")
-          }
+//          if (STAGE_1_COUNT == 22) {
+//            println("here")
+//          }
         }
       }
 
@@ -604,7 +604,7 @@ object WPE_ReverbFrame {
           var checkMin      = false
 
           var ch = 0
-          while (ch <= numChannels) {    // last ist psd
+          while (ch <= numChannels) {    // last is psd
             val bufIn = bufsSignal(ch)
             val inRem = bufsSignalRemain(ch)
             if (bufIn != null && inRem > 0) {
@@ -678,7 +678,7 @@ object WPE_ReverbFrame {
           if (checkMin) {
             var ch = 0
             var min = frameSize
-            while (ch <= numChannels) {  // last ist psd
+            while (ch <= numChannels) {  // last is psd
               min = math.min(min, insReadOff(ch))
               ch += 1
             }
@@ -707,7 +707,7 @@ object WPE_ReverbFrame {
 
           // println(s"winInDoneCalcWinOutSize(_, $winInSize) = $writeSize")
           stage       = 2
-          println("stage = 2")
+          // println("stage = 2")
           stateChange = false // "reset" for next stage
         }
       }
@@ -789,7 +789,7 @@ object WPE_ReverbFrame {
           }
           else {
             stage       = 0
-            println("stage = 0")
+            // println("stage = 0")
             needsBins   = true
             requestFrameParams() // needsWinParams= true
             stateChange = true

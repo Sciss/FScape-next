@@ -16,7 +16,7 @@ object DereverbTest extends App {
     import specIn.{numChannels, sampleRate}
     assert (numChannels == 4)
     val fOut        = file("/data/temp/wpe-test.aif")
-    val in          = AudioFileIn(fIn, numChannels = specIn.numChannels)
+    val in          = AudioFileIn(fIn, numChannels = numChannels)
     val wpe         = WPE_Dereverberate(in)
     val sig         = wpe // in - wpe
     val out         = AudioFileOut(sig, fOut, AudioFileSpec(numChannels = numChannels, sampleRate = sampleRate))

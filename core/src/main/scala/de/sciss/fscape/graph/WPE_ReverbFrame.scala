@@ -75,18 +75,22 @@ final case class WPE_Dereverberate(in: GE, fftSize: GE = 512, winStep: GE = 128,
                                    delay: GE = 3, taps: GE = 10, alpha: GE = 0.9999,
                                    psdLen: GE = 0) extends GE {
   private[fscape] def expand(implicit b: UGenGraph.Builder): UGenInLike = {
-    val sl      = Sliding(in, fftSize, winStep) * GenWindow(fftSize, GenWindow.Hann)
-    val fft     = Real1FFT(sl, fftSize, mode = 1).elastic()
+    val sl      = Sliding(in, fftSize, winStep) // * GenWindow(fftSize, GenWindow.Hann)
+    val fft     = Real1FFT(sl, fftSize, mode = 1) // .elastic()
 //    Length(fft).poll("Length(fft)")
-    val bins    = fftSize / 2 + (1: GE)
+    val fftSizeH = fftSize / 2
+    val bins    = fftSizeH + (1: GE)
 //    val psdLenC = psdLen.max(0) + 1 // XXX TODO
-//    val numCh   = NumChannels(in)
-//    val psd1    = Reduce.+(fft.complex.absSquared.complex.real) / numCh
-    val psd     = fft.out(0).complex.mag // psd1  // XXX TODO -- we need something like ReduceWindows or AvgWindows
+    val numCh   = NumChannels(in)
+    val psd1    = Reduce.+(fft.complex.absSquared.complex.real) / numCh
+//    val psd     = fft.out(0).complex.mag // psd1  // XXX TODO -- we need something like ReduceWindows or AvgWindows
+    val psd     = psd1
+//    NumChannels(psd).poll("psd.channels")
     val est     = WPE_ReverbFrame(fft, bins = bins, delay = delay, taps = taps, alpha = alpha,
-      psd = BufferDisk(psd))
-    val ifft    = Real1FFT(/*fft.complex -*/ est, fftSize, mode = 1)
-    val rec     = OverlapAdd(ifft, fftSize, winStep)
+      psd = psd /*BufferDisk(psd)*/)
+    val gain    = winStep / fftSize // compensation for overlap-add
+    val ifft    = Real1IFFT(/*fft.complex -*/ est, fftSize, mode = 1)
+    val rec     = OverlapAdd(ifft, fftSize, winStep) * gain
     rec
   }
 }
