@@ -814,14 +814,15 @@ object WPE_ReverbFrame {
 
           if (buffersValid) {
             // rotate
-            var ch = 0
-            val winBufCh0 = winBuf(0)
-            val numChM = numChannels - 1
-            while (ch < numChM) {
-              winBuf(ch) = winBuf(ch + 1)
+            val KD  = taps + delay
+            var ch  = 0
+            while (ch < numChannels) {
+              val winBufCh    = winBuf(ch)
+              val winBufChT0  = winBufCh(0)
+              System.arraycopy(winBufCh, 1, winBufCh, 0, KD)
+              winBufCh(KD)    = winBufChT0
               ch += 1
             }
-            winBuf(numChM) = winBufCh0
 
           } else {
             // println(s"numChannels = $numChannels, taps = $taps, delay = $delay, frameSize = $frameSize")
