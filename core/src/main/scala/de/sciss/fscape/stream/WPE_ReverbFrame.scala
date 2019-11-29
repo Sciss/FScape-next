@@ -411,20 +411,20 @@ object WPE_ReverbFrame {
        */
 
       val _taps = taps
-      val KD    = _taps + delay
+//      val KD    = _taps + delay
       var ch = 0
       while (ch < numChannels) {
         val x       = pred  (ch)    // [bins C]
         val winCh   = winBuf(ch)    // [T][bins C]
-        val yt      = winCh(KD)     // [bins C]
+//        val yt      = winCh(KD)     // [bins C]
         val fltCh   = filter(ch)    // [bins][numChannels, taps C]
         var f_re    = 0
         var f_im    = 1
         var bin     = 0
         val _bins   = bins
         while (bin < _bins) {
-          val y_re    = yt(f_re)
-          val y_im    = yt(f_im)
+//          val y_re    = yt(f_re)
+//          val y_im    = yt(f_im)
           var sum_re  = 0.0
           var sum_im  = 0.0
           val fltChF  = fltCh(bin)      // [numChannels, taps C]
@@ -448,8 +448,8 @@ object WPE_ReverbFrame {
             tI += 1
           }
 
-          val x_re  = y_re - sum_re
-          val x_im  = y_im - sum_im
+          val x_re  = /*y_re -*/ sum_re
+          val x_im  = /*y_im -*/ sum_im
 
           x(f_re) = x_re
           x(f_im) = x_im
@@ -730,9 +730,11 @@ object WPE_ReverbFrame {
       val _bins   = bins
       val _taps   = taps
       val DK      = numChannels * _taps
+      val KD      = _taps + delay
       val _filter = filter  // [numChannels][bins][numChannels * taps C]
       val _kalman = kalman  // [bins][numChannels * taps C]
       val _pred   = pred    // [numChannels][bins C]
+      val _winBuf = winBuf
       var f_re    = 0
       var f_im    = 1
       var bin     = 0
@@ -747,8 +749,12 @@ object WPE_ReverbFrame {
           var m = 0
           while (m < numChannels) {
             val filterChF = _filter (m)(bin)
-            val pred_re   =  _pred  (m)(f_re)
-            val pred_im   = -_pred  (m)(f_im)
+            val winCh   = _winBuf(m)    // [T][bins C]
+            val yt      = winCh(KD)     // [bins C]
+            val y_re    = yt(f_re)
+            val y_im    = yt(f_im)
+            val pred_re   =   y_re - _pred(m)(f_re)
+            val pred_im   = -(y_im - _pred(m)(f_im))
             filterChF(i_re) += kalman_re * pred_re - kalman_im * pred_im
             filterChF(i_im) += kalman_re * pred_im + kalman_im * pred_re
             m += 1
