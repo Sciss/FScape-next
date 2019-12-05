@@ -11,10 +11,11 @@ import scala.swing.Swing
 object DereverbTest extends App {
   lazy val g = Graph {
     import graph._
-    val fIn     = file("/home/hhrutz/Documents/devel/fdndlp/wav_sample/sample_4ch.wav")
+//    val fIn     = file("/home/hhrutz/Documents/devel/fdndlp/wav_sample/sample_4ch.wav")
+    val fIn     = file("/home/hhrutz/Documents/devel/fdndlp/wav_sample/sample_quad-1.wav")
     val specIn  = AudioFile.readSpec(fIn)
     import specIn.{numChannels, sampleRate}
-    assert (numChannels == 4)
+//    assert (numChannels == 4)
     val fOut        = file("/data/temp/wpe-test.aif")
     val in          = AudioFileIn(fIn, numChannels = numChannels)
     val wpe         = WPE_Dereverberate(in)

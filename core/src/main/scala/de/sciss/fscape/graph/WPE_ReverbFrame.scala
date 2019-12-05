@@ -75,20 +75,29 @@ final case class WPE_Dereverberate(in: GE, fftSize: GE = 512, winStep: GE = 128,
                                    delay: GE = 3, taps: GE = 10, alpha: GE = 0.9999,
                                    psdLen: GE = 0) extends GE {
   private[fscape] def expand(implicit b: UGenGraph.Builder): UGenInLike = {
-    val sl      = Sliding(in, fftSize, winStep) // * GenWindow(fftSize, GenWindow.Hann)
-    val fft     = Real1FFT(sl, fftSize, mode = 1) // .elastic()
-//    Length(fft).poll("Length(fft)")
+//    Sheet1D(in, 100)
     val fftSizeH = fftSize / 2
     val bins    = fftSizeH + (1: GE)
+    val sl0     = Sliding(in, fftSize, winStep)
+    val sl      = sl0 * GenWindow(fftSize, GenWindow.Hann).matchLen(sl0)
+    // RunningSum(sl.take(fftSize).squared).last.poll("time")
+    // `* fftSizeH` to match the scaling in nara_wpe
+    val fft     = Real1FFT(sl, fftSize, mode = 1) * fftSizeH // .elastic()
+//    Sheet1D(fft.complex.real, bins)
+    // RunningSum(fft.complex.mag.take(bins).squared).last.poll("freq")
+    //    Length(fft).poll("Length(fft)")
 //    val psdLenC = psdLen.max(0) + 1 // XXX TODO
     val numCh   = NumChannels(in)
-    val psd1    = Reduce.+(fft.complex.absSquared.complex.real) / numCh
+    val psd1    = Reduce.+(BufferDisk(fft).complex.absSquared.complex.real) / numCh
 //    val psd     = fft.out(0).complex.mag // psd1  // XXX TODO -- we need something like ReduceWindows or AvgWindows
-    val psd     = psd1
+    val T       = delay + taps + 1
+    val psd2    = TransposeMatrix(psd1, rows = bins, columns = T)
+    val psd     = ReduceWindow.+(psd2, size = T) / T
+    Sheet1D(psd, bins)
 //    NumChannels(psd).poll("psd.channels")
-    val est     = WPE_ReverbFrame(fft, bins = bins, delay = delay, taps = taps, alpha = alpha,
-      psd = psd /*BufferDisk(psd)*/)
-    val gain    = winStep / fftSize // compensation for overlap-add
+    val est     = WPE_ReverbFrame(BufferDisk(fft), bins = bins, delay = delay, taps = taps, alpha = alpha,
+      psd = /*BufferMemory(psd, bins * T)*/ BufferDisk(psd))
+    val gain    = (winStep / fftSize) // compensation for overlap-add
     val ifft    = Real1IFFT(/*fft.complex -*/ est, fftSize, mode = 1)
     val rec     = OverlapAdd(ifft, fftSize, winStep) * gain
     rec
