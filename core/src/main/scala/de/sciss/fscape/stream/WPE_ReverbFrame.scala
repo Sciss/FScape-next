@@ -377,6 +377,38 @@ object WPE_ReverbFrame {
       updateKalmanGain()
       updateInvCov()
       updateFilter()
+
+      if (FRAME_COUNT == taps + delay + 1) {
+        DEBUG_INV_COV()
+      }
+    }
+
+    private def DEBUG_INV_COV(): Unit = {
+      println("inv_cov:")
+      val c0 = invCov(0)
+      var row = 0
+      while (row < c0.length) {
+        println("[")
+        val cr = c0(row)
+        var col = 0
+        var i = 0
+        while (i < cr.length) {
+          val v_re = cr(i)
+          val v_im = cr(i + 1)
+          println(f"${v_re}%g ${if (v_im >= 0) "+" else ""}${v_im}%gj")
+          col += 1
+          i += 2
+        }
+        println("]")
+        row += 1
+      }
+
+//      while (f < c0.length) {
+//        val v_re = c0(f)(0)(0)
+//        val v_im = c0(f)(0)(1)
+//        println(f"${v_re}%g ${if (v_im > 0) "+" else ""}${v_im}%gj")
+//        f += 1
+//      }
     }
 
     // eq. (11)
@@ -771,6 +803,8 @@ object WPE_ReverbFrame {
     }
 
 //    var STAGE_1_COUNT = 0
+    var FRAME_COUNT = 0
+    val SKIP_FRAMES = true
 
     @tailrec
     private def process(): Unit = {
@@ -958,7 +992,8 @@ object WPE_ReverbFrame {
             ch += 1
           }
 
-          processFrame()
+          FRAME_COUNT += 1  // input frames
+          if (!(SKIP_FRAMES && FRAME_COUNT < (taps + delay + 1))) processFrame()
 
           // println(s"winInDoneCalcWinOutSize(_, $winInSize) = $writeSize")
           stage       = 2
