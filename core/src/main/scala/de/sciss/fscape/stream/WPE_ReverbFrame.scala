@@ -457,20 +457,20 @@ object WPE_ReverbFrame {
        */
 
       val _taps = taps
-//      val KD    = _taps + delay
+      val KD    = _taps + delay
       var ch = 0
       while (ch < numChannels) {
         val x       = pred  (ch)    // [bins C]
         val winCh   = winBuf(ch)    // [T][bins C]
-//        val yt      = winCh(KD)     // [bins C]
+        val yt      = winCh(KD)     // [bins C]
         val fltCh   = filter(ch)    // [bins][numChannels, taps C]
         var f_re    = 0
         var f_im    = 1
         var bin     = 0
         val _bins   = bins
         while (bin < _bins) {
-//          val y_re    = yt(f_re)
-//          val y_im    = yt(f_im)
+          val y_re    = yt(f_re)
+          val y_im    = yt(f_im)
           var sum_re  = 0.0
           var sum_im  = 0.0
           val fltChF  = fltCh(bin)      // [numChannels, taps C]
@@ -495,8 +495,10 @@ object WPE_ReverbFrame {
             // tI += 1
           }
 
-          val x_re  = /*y_re -*/ sum_re
-          val x_im  = /*y_im -*/ sum_im
+//          val x_re  = /*y_re -*/ sum_re
+//          val x_im  = /*y_im -*/ sum_im
+          val x_re  = if (OUT_VERB) sum_re else y_re - sum_re
+          val x_im  = if (OUT_VERB) sum_im else y_im - sum_im
 
           x(f_re) = x_re
           x(f_im) = x_im
@@ -827,8 +829,10 @@ object WPE_ReverbFrame {
             val yt      = winCh(KD)     // [bins C]
             val y_re    = yt(f_re)
             val y_im    = yt(f_im)
-            val pred_re   =   y_re - _pred(m)(f_re)
-            val pred_im   = -(y_im - _pred(m)(f_im))
+//            val pred_re   =   y_re - _pred(m)(f_re)
+//            val pred_im   = -(y_im - _pred(m)(f_im))
+            val pred_re   = if (OUT_VERB)   y_re - _pred(m)(f_re)  else  _pred(m)(f_re)
+            val pred_im   = if (OUT_VERB) -(y_im - _pred(m)(f_im)) else -_pred(m)(f_im)
             filterChF(i_re) += kalman_re * pred_re - kalman_im * pred_im
             filterChF(i_im) += kalman_re * pred_im + kalman_im * pred_re
             m += 1
@@ -847,6 +851,7 @@ object WPE_ReverbFrame {
 //    private[this] var STAGE_1_COUNT = 0
     private[this] var FRAME_COUNT = 0
     private[this] val SKIP_FRAMES = true
+    private[this] val OUT_VERB    = true
 
     @tailrec
     private def process(): Unit = {

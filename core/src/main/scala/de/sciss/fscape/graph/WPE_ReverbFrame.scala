@@ -89,14 +89,16 @@ final case class WPE_Dereverberate(in: GE, fftSize: GE = 512, winStep: GE = 128,
     //    Length(fft).poll("Length(fft)")
 //    val psdLenC = psdLen.max(0) + 1 // XXX TODO
     val numCh   = NumChannels(in)
-    val psd1    = Reduce.+(BufferDisk(fft).complex.absSquared.complex.real) // / numCh
-//    val psd     = fft.out(0).complex.mag // psd1  // XXX TODO -- we need something like ReduceWindows or AvgWindows
+    val psd0    = Reduce.+(BufferDisk(fft).complex.absSquared.complex.real)
     val T       = (delay + taps + 1)
+    val psd1    = Sliding(psd0, bins * T, bins)
+    val psd2    = psd1
+    //    val psd     = fft.out(0).complex.mag // psd1  // XXX TODO -- we need something like ReduceWindows or AvgWindows
 //    Plot1D(psd1, bins * T, "psd1")
-    val psd2    = TransposeMatrix(psd1, columns = bins, rows = T)
+    val psd3    = TransposeMatrix(psd2, columns = bins, rows = T)
 //    Plot1D(psd2, bins * T, "psd")
-    val psd3    = ReduceWindow.+(psd2, size = T) / (T  * numCh)
-    val psd = DC(0.0).take(bins * (taps + delay)) ++ psd3
+    val psd4    = ReduceWindow.+(psd3, size = T) / (T  * numCh)
+    val psd = DC(0.0).take(bins * (taps + delay)) ++ psd4
 //    Sheet1D(psd3, bins) // OK
 //    Plot1D(psd3, bins)
 //    NumChannels(psd).poll("psd.channels")
@@ -108,9 +110,13 @@ final case class WPE_Dereverberate(in: GE, fftSize: GE = 512, winStep: GE = 128,
 //    val TEST = (est).drop(bins * 2 * (taps + delay + 1))
 //    Plot1D(TEST/*.drop(bins * 2 * (taps + delay + 1))*/.complex.mag, bins)
 
+    val OUT_VERB = true
+
     val gain    = winStep / (fftSize * fftSizeH) // compensation for overlap-add
-    val ifft    = Real1IFFT(BufferDisk(fft).complex - est, fftSize, mode = 1)
+    val de      = if (OUT_VERB) BufferDisk(fft).complex - est else est
+    val ifft    = Real1IFFT(de, fftSize, mode = 1)
     val rec     = OverlapAdd(ifft, fftSize, winStep) * gain
+    // est.complex.mag * 0.1
     rec
   }
 }
