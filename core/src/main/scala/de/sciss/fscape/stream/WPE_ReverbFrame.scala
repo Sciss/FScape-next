@@ -635,6 +635,7 @@ object WPE_ReverbFrame {
         }
         // now we divide by the denominator
         val denomAbsSq  = denom_re * denom_re + denom_im * denom_im
+        // if (denomAbsSq == 0.0) println("Woopa!")
         val denomR_re   = if (denomAbsSq == 0.0) 0.0 else  denom_re / denomAbsSq
         val denomR_im   = if (denomAbsSq == 0.0) 0.0 else -denom_im / denomAbsSq
 
@@ -644,8 +645,8 @@ object WPE_ReverbFrame {
         while (i < DK) {
           val nom_re    = kalmanF(i_re)
           val nom_im    = kalmanF(i_im)
-          kalmanF(i_re) = nom_re * denomR_re - nom_im * denomR_im
-          kalmanF(i_im) = nom_re * denomR_im + nom_im * denomR_re
+          kalmanF(i_re) = /*math.min(100.0,*/ nom_re * denomR_re - nom_im * denomR_im /*)*/
+          kalmanF(i_im) = /*math.min(100.0,*/ nom_re * denomR_im + nom_im * denomR_re /*)*/
 
           // if (DEBUG) {
           //   println(f"  ${kalmanF(i_re)}% 6.5e${kalmanF(i_im)}%+6.5ej,")
@@ -843,9 +844,9 @@ object WPE_ReverbFrame {
       }
     }
 
-//    var STAGE_1_COUNT = 0
-    var FRAME_COUNT = 0
-    val SKIP_FRAMES = true
+//    private[this] var STAGE_1_COUNT = 0
+    private[this] var FRAME_COUNT = 0
+    private[this] val SKIP_FRAMES = true
 
     @tailrec
     private def process(): Unit = {
@@ -919,7 +920,12 @@ object WPE_ReverbFrame {
 
           stage       = 1
 //          STAGE_1_COUNT += 1
-          // println(s"stage = 1 ($STAGE_1_COUNT)")
+//          println(s"stage = 1 ($STAGE_1_COUNT)")
+//          if (STAGE_1_COUNT == 85) {
+//            de.sciss.fscape.showStreamLog  = true
+//            de.sciss.fscape.showControlLog = true
+//          }
+
           stateChange = false // "reset" for next stage
 //          if (STAGE_1_COUNT == 22) {
 //            println("here")
@@ -984,20 +990,28 @@ object WPE_ReverbFrame {
                 // println(s"closed; readOff = $readOff")
                 val inReadOff = insReadOff(ch)
                 val isPSD = ch == numChannels
-                if (!isPSD) inCloseCount += 1
-                if (inReadOff > 0) {
-                  hasInReadOff = true
+                if (isPSD) {
                   val chunk = frameSize - inReadOff
                   if (chunk > 0) {
-                    if (isPSD) {
-                      clearInputTail(psd, readOff = inReadOff >> 1, chunk = chunk >> 1)
-                    } else {
-                      val winBufCh  = winBuf(ch)
-                      val t         = taps + delay
-                      clearInputTail(winBufCh(t), readOff = inReadOff, chunk = chunk)
-                    }
+                    clearInputTail(psd, readOff = inReadOff >> 1, chunk = chunk >> 1)
                     insReadOff(ch)  = frameSize
+                    checkMin        = true
                     stateChange     = true
+                  }
+
+                } else {
+                  inCloseCount += 1
+                  if (inReadOff > 0) {
+                    hasInReadOff = true
+                    val chunk = frameSize - inReadOff
+                    if (chunk > 0) {
+                      val winBufCh    = winBuf(ch)
+                      val t           = taps + delay
+                      clearInputTail(winBufCh(t), readOff = inReadOff, chunk = chunk)
+                      insReadOff(ch)  = frameSize
+                      checkMin        = true
+                      stateChange     = true
+                    }
                   }
                 }
               }

@@ -79,7 +79,8 @@ final case class WPE_Dereverberate(in: GE, fftSize: GE = 512, winStep: GE = 128,
     val fftSizeH = fftSize / 2
     val bins    = fftSizeH + (1: GE)
     val sl0     = Sliding(in, fftSize, winStep)
-    val sl      = sl0 * GenWindow(fftSize, GenWindow.Hann).matchLen(sl0)
+    // WTF: BufferDisk
+    val sl      = BufferDisk(sl0) * GenWindow(fftSize, GenWindow.Hann).matchLen(sl0.out(0)/*.elastic(2)*/)
     // RunningSum(sl.take(fftSize).squared).last.poll("time")
     // `* fftSizeH` to match the scaling in nara_wpe
     val fft     = Real1FFT(sl, fftSize, mode = 1) * fftSizeH // .elastic()
@@ -107,7 +108,7 @@ final case class WPE_Dereverberate(in: GE, fftSize: GE = 512, winStep: GE = 128,
 //    val TEST = (est).drop(bins * 2 * (taps + delay + 1))
 //    Plot1D(TEST/*.drop(bins * 2 * (taps + delay + 1))*/.complex.mag, bins)
 
-    val gain    = (winStep / fftSize) // compensation for overlap-add
+    val gain    = winStep / (fftSize * fftSizeH) // compensation for overlap-add
     val ifft    = Real1IFFT(BufferDisk(fft).complex - est, fftSize, mode = 1)
     val rec     = OverlapAdd(ifft, fftSize, winStep) * gain
     rec
