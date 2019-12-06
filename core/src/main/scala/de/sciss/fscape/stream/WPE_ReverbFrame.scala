@@ -378,38 +378,52 @@ object WPE_ReverbFrame {
       updateInvCov()
       updateFilter()
 
-      if (FRAME_COUNT == taps + delay + 1) {
-        DEBUG_INV_COV()
-      }
-    }
-
-    private def DEBUG_INV_COV(): Unit = {
-      println("inv_cov:")
-      val c0 = invCov(0)
-      var row = 0
-      while (row < c0.length) {
-        println("[")
-        val cr = c0(row)
-        var col = 0
-        var i = 0
-        while (i < cr.length) {
-          val v_re = cr(i)
-          val v_im = cr(i + 1)
-          println(f"${v_re}%g ${if (v_im >= 0) "+" else ""}${v_im}%gj")
-          col += 1
-          i += 2
-        }
-        println("]")
-        row += 1
-      }
-
-//      while (f < c0.length) {
-//        val v_re = c0(f)(0)(0)
-//        val v_im = c0(f)(0)(1)
-//        println(f"${v_re}%g ${if (v_im > 0) "+" else ""}${v_im}%gj")
-//        f += 1
+//      if (FRAME_COUNT == taps + delay + 1) {
+//        DEBUG_FILTER()
 //      }
     }
+
+//    private def DEBUG_FILTER(): Unit = {
+//      println("filter:")
+//      val c0 = filter(0)
+//      var row = 0
+//      while (row < c0.length) {
+//        println("[")
+//        val cr = c0(row)
+//        var col = 0
+//        var i = 0
+//        while (i < cr.length) {
+//          val v_re = cr(i)
+//          val v_im = cr(i + 1)
+//          println(f"  ${v_re}% 6.5e${v_im}%+6.5ej")
+//          col += 1
+//          i += 2
+//        }
+//        println("]")
+//        row += 1
+//      }
+//    }
+
+//    private def DEBUG_INV_COV(): Unit = {
+//      println("inv_cov[200]:")
+//      val c0 = invCov(200)
+//      var row = 0
+//      while (row < c0.length) {
+//        println("[")
+//        val cr = c0(row)
+//        var col = 0
+//        var i = 0
+//        while (i < cr.length) {
+//          val v_re = cr(i)
+//          val v_im = cr(i + 1)
+//          println(f"  ${v_re}% 6.5e${v_im}%+6.5ej")
+//          col += 1
+//          i += 2
+//        }
+//        println("]")
+//        row += 1
+//      }
+//    }
 
     // eq. (11)
     private def updatePrediction(): Unit = {
@@ -462,8 +476,9 @@ object WPE_ReverbFrame {
           val fltChF  = fltCh(bin)      // [numChannels, taps C]
           var i_re    = 0
           var i_im    = 1
-          var tI      = 0
-          while (tI < _taps) {
+          var tI      = _taps // window is in reverse access order
+          while (tI > 0) {
+            tI -= 1
             val winChT  = winCh(tI)    // [bins C]
             val yD_re   = winChT(f_re)
             val yD_im   = winChT(f_im)
@@ -477,7 +492,7 @@ object WPE_ReverbFrame {
               i_re += 2
               i_im += 2
             }
-            tI += 1
+            // tI += 1
           }
 
           val x_re  = /*y_re -*/ sum_re
@@ -495,6 +510,7 @@ object WPE_ReverbFrame {
     }
 
     // eq. (14)
+    // -- correct
     private def updateKalmanGain(): Unit = {
       /*
         inv_cov     : [F][D * K][D * K] complex
@@ -515,7 +531,7 @@ object WPE_ReverbFrame {
           for (i <- 0 until DK) {
             n = out[f][i] = sum(t = 0 until taps; d = 0 until numChannels) {
               j = d * taps + t
-              inv_cov[f][i][j] * window[d][t][f]
+              inv_cov[f][i][j] * window[d][t_rvs][f]
             }
           }
         }
@@ -523,13 +539,18 @@ object WPE_ReverbFrame {
         denominatorPlus: for(f <- 0 until bins) {
           sum (t = 0 until taps; d = 0 until numChannels) {
             i = d * taps + t
-            conj(window[d][t][f]) * nominator[f][i]
+            conj(window[d][t_rvs][f]) * nominator[f][i]
           }
         }
 
         We calculate nominator first (in kalman), then the denominator and divide in-place in kalman
 
        */
+
+      // val DEBUG = FRAME_COUNT <= taps + delay + 1
+      // if (DEBUG) {
+      //   println("kalman_gain:")
+      // }
 
       val _bins   = bins
       val _alpha  = alpha
@@ -549,14 +570,18 @@ object WPE_ReverbFrame {
         var i       = 0
         var i_re    = 0
         var i_im    = 1
+
+        // if (DEBUG) println("[")
+
         while (i < DK) {
           val invCovFI = invCovF(i) // [numChannels * taps C]
-          var tJ      = 0
+          var tJ      = _taps // window is in reverse access order
           var j_re    = 0
           var j_im    = 1
           var nom_re  = 0.0
           var nom_im  = 0.0
-          while (tJ < _taps) {
+          while (tJ > 0) {
+            tJ -= 1
             var chJ = 0
             while (chJ < numChannels) {
               val inv_re  = invCovFI(j_re)
@@ -570,8 +595,12 @@ object WPE_ReverbFrame {
               j_re += 2
               j_im += 2
             }
-            tJ += 1
+            // tJ += 1
           }
+          // if (DEBUG) {
+          //   println(f"  ${nom_re}% 6.5e${nom_im}%+6.5ej,")
+          // }
+
           // here kalman becomes nominator
           kalmanF(i_re) = nom_re
           kalmanF(i_im) = nom_im
@@ -579,15 +608,16 @@ object WPE_ReverbFrame {
           i_re += 2
           i_im += 2
         }
+
         // now we construct the denominator vector
         val denomA = _alpha * _psd(bin) // real
         var denom_re  = denomA
         var denom_im  = 0.0
-        var tI      = 0
+        var tI      = _taps // window is in reverse access order
         /*var*/ i_re    = 0
         /*var*/ i_im    = 1
-        while (tI < _taps) {
-          tI += 1
+        while (tI > 0) {
+          tI -= 1
           var chI = 0
           while (chI < numChannels) {
             val winChT  = _winBuf(chI)(tI)
@@ -601,6 +631,7 @@ object WPE_ReverbFrame {
             i_re += 2
             i_im += 2
           }
+          // tI += 1
         }
         // now we divide by the denominator
         val denomAbsSq  = denom_re * denom_re + denom_im * denom_im
@@ -615,10 +646,17 @@ object WPE_ReverbFrame {
           val nom_im    = kalmanF(i_im)
           kalmanF(i_re) = nom_re * denomR_re - nom_im * denomR_im
           kalmanF(i_im) = nom_re * denomR_im + nom_im * denomR_re
+
+          // if (DEBUG) {
+          //   println(f"  ${kalmanF(i_re)}% 6.5e${kalmanF(i_im)}%+6.5ej,")
+          // }
+
           i    += 1
           i_re += 2
           i_im += 2
         }
+
+        // if (DEBUG) println("]")
 
         bin  += 1
         f_re += 2
@@ -627,6 +665,7 @@ object WPE_ReverbFrame {
     }
 
     // eq. (15)
+    // -- correct
     private def updateInvCov(): Unit = {
       /*
         window      : [F][D * K]        complex
@@ -692,9 +731,10 @@ object WPE_ReverbFrame {
           while (m < DK) {
             var sum_re    = 0.0
             var sum_im    = 0.0
-            var tJ = 0
+            var tJ = _taps // window is in reverse access order
             var j  = 0
-            while (tJ < _taps) {
+            while (tJ > 0) {
+              tJ -= 1
               var chJ = 0
               while (chJ < numChannels) {
                 val winChT    = _winBuf(chJ)(tJ) // [bins C]
@@ -708,7 +748,7 @@ object WPE_ReverbFrame {
                 chJ += 1
                 j   += 1
               }
-              tJ += 1
+              // tJ += 1
             }
             auxI(m_re) = sum_re * kalman_re - sum_im * kalman_im
             auxI(m_im) = sum_re * kalman_im + sum_im * kalman_re
@@ -746,6 +786,7 @@ object WPE_ReverbFrame {
     }
 
     // eq. (16)
+    // -- correct
     private def updateFilter(): Unit = {
       /*
         filter_taps : [F][D * K][D]   complex

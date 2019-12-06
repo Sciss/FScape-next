@@ -101,11 +101,14 @@ final case class WPE_Dereverberate(in: GE, fftSize: GE = 512, winStep: GE = 128,
 //    NumChannels(psd).poll("psd.channels")
     val est     = WPE_ReverbFrame(BufferDisk(fft), bins = bins, delay = delay, taps = taps, alpha = alpha,
       psd = /*BufferMemory(psd, bins * T)*/ BufferDisk(psd))
-    Plot1D(est.drop(bins * 2 * (taps + delay + 1)), bins * 2)
-    val TEST = fft.complex - est
+//    Plot1D(est.drop(bins * 2 * (taps + delay + 1)).complex.real, bins)
+//    val TEST = BufferDisk(fft) /*.complex - est*/ .drop(bins * 2 * (taps + delay /*+ 1*/))
+//    val TEST = (BufferDisk(fft).complex - est).drop(bins * 2 * (taps + delay + 1))
+//    val TEST = (est).drop(bins * 2 * (taps + delay + 1))
+//    Plot1D(TEST/*.drop(bins * 2 * (taps + delay + 1))*/.complex.mag, bins)
 
     val gain    = (winStep / fftSize) // compensation for overlap-add
-    val ifft    = Real1IFFT(/*fft.complex -*/ est, fftSize, mode = 1)
+    val ifft    = Real1IFFT(BufferDisk(fft).complex - est, fftSize, mode = 1)
     val rec     = OverlapAdd(ifft, fftSize, winStep) * gain
     rec
   }
