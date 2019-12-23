@@ -90,7 +90,7 @@ final case class WPE_Dereverberate(in: GE, fftSize: GE = 512, winStep: GE = 128,
 //    val psdLenC = psdLen.max(0) + 1 // XXX TODO
     val numCh   = NumChannels(in)
     val psd0    = Reduce.+(BufferDisk(fft).complex.absSquared.complex.real)
-    val T       = (delay + taps + 1)
+    val T       = delay + taps + 1
     val psd1    = Sliding(psd0, bins * T, bins)
     val psd2    = psd1
     //    val psd     = fft.out(0).complex.mag // psd1  // XXX TODO -- we need something like ReduceWindows or AvgWindows
