@@ -30,6 +30,8 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * in Numpy and Tensorflow for online and offline processing' and its Numpy implementation
   * (MIT licensed).
   *
+  * '''Note:''' this does not yet work correctly with multi-channel input.
+  *
   * @param in         the sequence of complex FFT'ed frames. Should have been obtained through
   *                   `Real1FFT` with `mode = 1`.
   * @param psd        the power spectrum density estimation, frame by frame corresponding with `in`. It
@@ -62,6 +64,8 @@ final case class WPE_ReverbFrame(in: GE, psd: GE, bins: GE, delay: GE = 3, taps:
 
 /** A graph element performing end-to-end blind de-reverberation of an input signal.
   * It performs the FFT/IFFT setup around invocations of `WPE_ReverbFrame`.
+  *
+  * '''Note:''' this does not yet work correctly with multi-channel input.
   *
   * @param in         the reverberant time domain signal
   * @param fftSize    the fft-size

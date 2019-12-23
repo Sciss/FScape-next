@@ -3,6 +3,7 @@
 [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/Sciss/FScape?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![Build Status](https://travis-ci.org/Sciss/FScape-next.svg?branch=master)](https://travis-ci.org/Sciss/FScape-next)
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/de.sciss/fscape_2.12/badge.svg)](https://maven-badges.herokuapp.com/maven-central/de.sciss/fscape_2.12)
+<a href="https://liberapay.com/sciss/donate"><img alt="Donate using Liberapay" src="https://liberapay.com/assets/widgets/donate.svg" height="24"></a>
 
 ## statement
 
@@ -22,6 +23,8 @@ To contact the author, send an email to `contact at sciss.de`.
 FScape contains code adapted from Praat by Paul Boersma and David Weenink, published under the 
 GNU General Public License v2+.
 
+Please consider supporting this project through Liberapay (see badge above) – thank you!
+
 ## building
 
 FScape 2 builds with sbt and Scala 2.13, 2.12 (last version to support Scala 2.11 was 2.28.0). It requires Java 8.
@@ -32,7 +35,7 @@ The following dependency is necessary:
 
     "de.sciss" %% "fscape" % v
 
-The current version `v` is `"2.32.1"`.
+The current version `v` is `"2.33.0"`.
 
 The following sub modules are available:
 
