@@ -6,13 +6,13 @@ import de.sciss.fscape.{Graph, graph}
 object HistogramTest extends App {
   val config        = Control.Config()
   config.useAsync   = false
-  config.blockSize  = 1024    // problem is independent of block-size
+  config.blockSize  = 128 // 1024
 
   val g = Graph {
     import graph._
-    val sz      = config.blockSize + 1 // 1024
+    val sz      = config.blockSize // 1024
     val period  = 1024 // 100
-    val bins    = 256 // 200
+    val bins    = 16 // 256 // 200
 //    val gen0    = SinOsc(1.0/period)
     val gen0    = LFSaw(1.0/period)
     val gen     = gen0.take(sz) // * Line(0.5, 1.0, sz)
@@ -22,8 +22,5 @@ object HistogramTest extends App {
   }
 
 //  fscape.showStreamLog = true
-  println("--1")
-
   Control(config).run(g)
-  println("--2")
 }

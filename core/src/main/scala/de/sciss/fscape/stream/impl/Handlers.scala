@@ -199,14 +199,10 @@ object Handlers {
         buf = grab(inlet)
         off = 0
         tryPull(inlet)
-        signalNext()
+        assert (!_hasNext)
+        _hasNext = true
+        process() // ready
       }
-    }
-
-    private def signalNext(): Unit = {
-      assert (!_hasNext)
-      _hasNext = true
-      process() // ready
     }
 
     override def onUpstreamFinish(): Unit = {
@@ -214,7 +210,7 @@ object Handlers {
       log(s"$this onUpstreamFinish() - $ok")
       if (ok) {
         _isDone = true
-        process()
+        onDone(inlet)
       }
     }
 
@@ -307,17 +303,18 @@ object Handlers {
         buf = null
         if (_flush) {
           _isDone   = true
+          onDone(outlet)
         } else {
           _hasNext  = true
+          process()
         }
-        process()
       }
     }
 
     final override def onDownstreamFinish(cause: Throwable): Unit = {
       log(s"$this onDownstreamFinish()")
       _isDone = true
-      process()
+      onDone(outlet)
       // super.onDownstreamFinish(cause)
     }
 
@@ -334,4 +331,7 @@ abstract class Handlers[+S <: Shape](name: String, layer: Layer, shape: S)(impli
   extends NodeImpl[S](name, layer, shape) {
 
   protected def process(): Unit
+
+  protected def onDone(inlet  : Inlet [_]): Unit
+  protected def onDone(outlet : Outlet[_]): Unit = completeStage()
 }

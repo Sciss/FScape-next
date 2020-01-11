@@ -21,9 +21,6 @@ import de.sciss.fscape.{logStream => log}
 
 import scala.concurrent.{ExecutionContext, Future}
 
-//object NodeImpl {
-//  var BLA = false
-//}
 abstract class NodeImpl[+S <: Shape](protected final val name: String, val layer: Layer,
                                      final override val shape: S)
                                     (implicit final protected val control: Control)

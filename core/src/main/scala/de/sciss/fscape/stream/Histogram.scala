@@ -13,7 +13,7 @@
 
 package de.sciss.fscape.stream
 
-import akka.stream.{Attributes, FanInShape6}
+import akka.stream.{Attributes, FanInShape6, Inlet}
 import de.sciss.fscape.stream.impl.{Handlers, StageImpl}
 import de.sciss.fscape.{Util, logStream => log}
 import de.sciss.numbers.Implicits._
@@ -79,14 +79,25 @@ object Histogram {
     private[this] var histogramOff: Int  = _
     private[this] var stage         = 0 // 0 -- read, 1 -- write
 
+    protected def onDone(inlet: Inlet[_]): Unit =
+      if (inlet == shape.in0 && stage == 0) {
+        if (hMode.value == 0) {
+          histogramOff  = 0
+          stage         = 1
+          process()
+        } else if (hOut.flush()) {
+          completeStage()
+        }
+      }
+
     @tailrec
     protected def process(): Unit = {
       log(s"$this process()")
 
-      if (hOut.isDone) {
-        completeStage()
-        return
-      }
+//      if (hOut.isDone) {
+//        completeStage()
+//        return
+//      }
 
       if (stage == 0) { // read
         while (stage == 0) {
