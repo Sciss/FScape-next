@@ -80,6 +80,9 @@ object ReduceWindow {
       value  = _value
     }
 
+    // fixes #56
+    override protected def clearInputTail(win: Array[Double], readOff: Int, chunk: Int): Unit = ()
+
     override protected def prepareWindow(win: Array[Double], winInSize: Int, inSignalDone: Boolean): Long =
       if (inSignalDone && winInSize == 0) 0 else 1
 
