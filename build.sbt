@@ -5,7 +5,7 @@ lazy val baseName   = "FScape"
 lazy val baseNameL  = baseName.toLowerCase
 lazy val gitRepo    = "FScape-next"
 
-lazy val projectVersion = "2.33.2"
+lazy val projectVersion = "2.33.3-SNAPSHOT"
 lazy val mimaVersion    = "2.33.0"
 
 lazy val baseDescription = "An audio rendering library"
@@ -31,7 +31,7 @@ lazy val commonSettings = Seq(
 
 lazy val deps = new {
   val main = new {
-    val akka            = "2.6.1"
+    val akka            = "2.6.3"
     val audioFile       = "1.5.3"
     val dsp             = "1.3.2"
     val fileUtil        = "1.1.3"

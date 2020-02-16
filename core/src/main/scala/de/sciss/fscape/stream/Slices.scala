@@ -164,7 +164,8 @@ object Slices {
       if (canFillOutBuf) {
         if (bufOut == null) {
           bufOut        = ctrl.borrowBufD()
-          outOff        = 0
+          // we set `outOff` to zero now after writing to out
+          // outOff        = 0
           outRemain     = bufOut.size
           stateChanged  = true
         }
@@ -199,6 +200,7 @@ object Slices {
           } else {
             freeOutputBuffer()
           }
+          outOff = 0
           if (flush) {
             stateChanged = false
             completeStage()
