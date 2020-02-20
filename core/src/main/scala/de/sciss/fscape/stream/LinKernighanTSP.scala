@@ -152,7 +152,7 @@ object LinKernighanTSP {
           }
 
           if (tour0Rem == 0 && weightsRem == 0) {
-            assert (weightsOffA == size)
+            // assert (weightsOffA == size - 1, weightsOffA.toString)
             val lk = LinKernighan(edgeWeights = weights, tour0 = tour0)
             lk.run()  // XXX TODO --- should we allow for time-out?
             outTour     = lk.tour
