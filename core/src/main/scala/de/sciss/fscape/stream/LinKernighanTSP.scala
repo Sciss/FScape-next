@@ -14,35 +14,37 @@
 package de.sciss.fscape.stream
 
 import akka.stream.{Attributes, Inlet, Outlet}
-import de.sciss.fscape.stream.impl.{Handlers, In4Out2Shape, NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.{Handlers, In5Out2Shape, NodeImpl, StageImpl}
 import de.sciss.fscape.{logStream => log}
 import de.sciss.tsp.LinKernighan
 
 import scala.annotation.tailrec
 
 object LinKernighanTSP {
-  def apply(init: OutI, weights: OutD, size: OutI, mode: OutI)(implicit b: Builder): (OutI, OutD) = {
+  def apply(init: OutI, weights: OutD, size: OutI, mode: OutI, timeOut: OutD)(implicit b: Builder): (OutI, OutD) = {
     val stage0  = new Stage(b.layer)
     val stage   = b.add(stage0)
     b.connect(init    , stage.in0)
     b.connect(weights , stage.in1)
     b.connect(size    , stage.in2)
     b.connect(mode    , stage.in3)
+    b.connect(timeOut , stage.in4)
     (stage.out0, stage.out1)
   }
 
   private final val name = "LinKernighanTSP"
 
-  private type Shape = In4Out2Shape[BufI, BufD, BufI, BufI,   BufI, BufD]
+  private type Shape = In5Out2Shape[BufI, BufD, BufI, BufI, BufD,   BufI, BufD]
 
   private final class Stage(layer: Layer)(implicit ctrl: Control)
     extends StageImpl[Shape](name) {
 
-    val shape: Shape = In4Out2Shape(
+    val shape: Shape = In5Out2Shape(
       in0     = InI (s"$name.init"    ),
       in1     = InD (s"$name.weights" ),
       in2     = InI (s"$name.size"    ),
       in3     = InI (s"$name.mode"    ),
+      in4     = InD (s"$name.timeOut" ),
       out0    = OutI(s"$name.tour"    ),
       out1    = OutD(s"$name.cost"    ),
     )
@@ -58,6 +60,7 @@ object LinKernighanTSP {
     private[this] val hWeights  = new Handlers.InDMain  (this, shape.in1)(identity)
     private[this] val hSize     = new Handlers.InIAux   (this, shape.in2)(math.max(1, _)) // or should it be 2 ?
     private[this] val hMode     = new Handlers.InIAux   (this, shape.in3)(identity) // not used
+    private[this] val hTimeOut  = new Handlers.InDAux   (this, shape.in4)(identity) // not used
     private[this] val hOutTour  = new Handlers.OutIMain (this, shape.out0)
     private[this] val hOutCost  = new Handlers.OutDMain (this, shape.out1)
 
@@ -83,6 +86,7 @@ object LinKernighanTSP {
       hWeights.free()
       hSize   .free()
       hMode   .free()
+      hTimeOut.free()
       hOutTour.free()
       hOutCost.free()
 
@@ -93,7 +97,7 @@ object LinKernighanTSP {
 
     protected def onDone(inlet: Inlet[_]): Unit =
       if ((inlet == shape.in0 || inlet == shape.in1) && stage != 2) {
-        if (hOutTour.flush() && hOutCost.flush()) {
+        if (hOutTour.flush() & hOutCost.flush()) {
           completeStage()
         }
       }
@@ -126,7 +130,8 @@ object LinKernighanTSP {
         weightsOffB = 1
         weightsRem  = size * (size - 1) / 2
 
-        if (hMode.hasNext) hMode.next() // ignore
+        if (hMode   .hasNext) hMode   .next() // ignore
+        if (hTimeOut.hasNext) hTimeOut.next() // ignore
         stage = 1
 
       } else if (stage == 1) {  // read init and weights

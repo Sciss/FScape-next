@@ -33,13 +33,14 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   *                   sorted as vertex connections (0,1), (0,2), (0,3), ... (0,size-1),
   *                   (1,2), (1,3), ... (1,size-1), etc., until (size-2,size-1).
   * @param size       for each complete graph, the number of vertices.
-  * @param mode       currently unused and should remain the default value of zero.
+  * @param mode       currently unused and should remain at the default value of zero.
+  * @param timeOut    currently unused and should remain at the default value of zero.
   */
-final case class LinKernighanTSP(init: GE, weights: GE, size: GE, mode: GE = 0)
+final case class LinKernighanTSP(init: GE, weights: GE, size: GE, mode: GE = 0, timeOut: GE = 0.0)
   extends UGenSource.MultiOut {
 
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
-    unwrap(this, Vector(init.expand, weights.expand, size.expand, mode.expand))
+    unwrap(this, Vector(init.expand, weights.expand, size.expand, mode.expand, timeOut.expand))
 
   def tour: GE = ChannelProxy(this, 0)
   def cost: GE = ChannelProxy(this, 1)
@@ -48,10 +49,13 @@ final case class LinKernighanTSP(init: GE, weights: GE, size: GE, mode: GE = 0)
     UGen.MultiOut(this, args, numOutputs = 2)
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Vec[StreamOut] = {
-    val Vec(init, weights, size, mode) = args
-    val (out0, out1) = stream.LinKernighanTSP(init = init.toInt, weights = weights.toDouble,
-      size = size.toInt,
-      mode = mode.toInt
+    val Vec(init, weights, size, mode, timeOut) = args
+    val (out0, out1) = stream.LinKernighanTSP(
+      init    = init    .toInt,
+      weights = weights .toDouble,
+      size    = size    .toInt,
+      mode    = mode    .toInt,
+      timeOut = timeOut .toDouble,
     )
     Vector[StreamOut](out0, out1)
   }

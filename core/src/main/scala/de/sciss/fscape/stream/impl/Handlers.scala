@@ -263,10 +263,7 @@ object Handlers {
       _hasNext  = false
       buf == null || {
         val now = isAvailable(outlet)
-        if (now) {
-          push(outlet, buf)
-          buf   = null
-        }
+        if (now) write()
         now
       }
     }
@@ -284,9 +281,7 @@ object Handlers {
       _off += 1
       if (_off == _buf.size) {
         if (isAvailable(outlet)) {
-          push(outlet, _buf)
-          buf   = null
-          // not necessary here: _off  = 0
+          write()
         } else {
           _hasNext = false
         }
@@ -299,8 +294,7 @@ object Handlers {
       val ok    = _buf != null && (off == _buf.size || _flush)
       log(s"$this onPull()")
       if (ok) {
-        push(outlet, _buf)
-        buf = null
+        write()
         if (_flush) {
           _isDone   = true
           onDone(outlet)
@@ -316,6 +310,17 @@ object Handlers {
       _isDone = true
       onDone(outlet)
       // super.onDownstreamFinish(cause)
+    }
+
+    private def write(): Unit = {
+      if (off > 0) {
+        buf.size = off
+        push(outlet, buf)
+      } else {
+        buf.release()
+      }
+      buf = null
+      // not necessary here: _off  = 0
     }
 
     final def free(): Unit =

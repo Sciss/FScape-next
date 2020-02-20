@@ -46,8 +46,9 @@ object LinKernighanTest extends App {
   
 /*
 
-cost: 28019.89775833068
+expected output:
 
+cost: 28019.89775833068
 out: 1
 out: 0
 out: 4
