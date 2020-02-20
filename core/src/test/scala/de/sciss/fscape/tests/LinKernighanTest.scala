@@ -81,13 +81,22 @@ out: 5
 
  */
 
+  def any2stringadd: Any = ()
+
   val g = Graph {
     import graph._
     val init    : GE = tour0    .map(ConstantI(_): GE).reduce(_ ++ _)
     val weights : GE = weights0 .map(ConstantD(_): GE).reduce(_ ++ _)
     val lk = LinKernighanTSP(init = init, weights = weights, size = size)
     lk.cost.poll("cost")
-    lk.tour.poll(DC(1), "out")
+    val sliceIndices = lk.tour
+    sliceIndices.poll(DC(1), "out")
+
+//    val chunkSize = 65536
+//    val spanStart = sliceIndices * chunkSize
+//    val spanStop  = spanStart + chunkSize
+//    val spans     = spanStart zip spanStop
+//    Length(spans).poll("spans.length")
   }
 
   stream.Control().run(g)

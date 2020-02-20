@@ -95,11 +95,16 @@ object LinKernighanTSP {
       weights = null
     }
 
+    private def hotInsDone(): Unit =
+      if (hOutTour.flush() & hOutCost.flush()) {
+        completeStage()
+      }
+
     protected def onDone(inlet: Inlet[_]): Unit =
-      if ((inlet == shape.in0 || inlet == shape.in1) && stage != 2) {
-        if (hOutTour.flush() & hOutCost.flush()) {
-          completeStage()
-        }
+      if (inlet == shape.in0) {
+        if (stage == 0 || (stage == 1 && tour0Rem > 0)) hotInsDone()
+      } else if (inlet == shape.in1) {
+        if (stage == 0 || (stage == 1 && outCostRem))   hotInsDone()
       }
 
     override protected def onDone(outlet: Outlet[_]): Unit =
@@ -136,7 +141,7 @@ object LinKernighanTSP {
 
       } else if (stage == 1) {  // read init and weights
         while (stage == 1) {
-          if ((tour0Rem > 0 && !hInit.hasNext) && (weightsRem > 0 && !hWeights.hasNext)) return
+          if ((tour0Rem == 0 || !hInit.hasNext) && (weightsRem == 0 || !hWeights.hasNext)) return
 
           while (tour0Rem > 0 && hInit.hasNext) {
             tour0(tour0Off) = hInit.next()
@@ -171,7 +176,7 @@ object LinKernighanTSP {
 
       } else {  // write
         while (stage == 2) {
-          if ((outTourRem > 0 && !hOutTour.hasNext) && (outCostRem && !hOutCost.hasNext)) return
+          if ((outTourRem == 0 || !hOutTour.hasNext) && (!outCostRem || !hOutCost.hasNext)) return
 
           while (outTourRem > 0 && hOutTour.hasNext) {
             hOutTour.next(outTour(outTourOff))

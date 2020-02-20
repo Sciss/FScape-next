@@ -54,20 +54,12 @@ object ZipWindowN {
 
     override def deepCopy(): Shape =
       Shape(inputs.map(_.carbonCopy()), size.carbonCopy(), out.carbonCopy())
-
-//    override def copyFromPorts(inlets: ISeq[Inlet[_]], outlets: ISeq[Outlet[_]]): Shape = {
-//      require(inlets .size == this.inlets .size, s"number of inlets [${inlets.size}] does not match [${this.inlets.size}]")
-//      require(outlets.size == this.outlets.size, s"number of outlets [${outlets.size}] does not match [${this.outlets.size}]")
-//      val init = inlets.init.asInstanceOf[ISeq[Inlet[BufD]]]
-//      val last = inlets.last.asInstanceOf[Inlet[BufI]]
-//      Shape(init, last, outlets.head.asInstanceOf[OutD])
-//    }
   }
 
   private final class Stage(layer: Layer, numInputs: Int)(implicit ctrl: Control)
     extends StageImpl[Shape]("ZipWindow") {
 
-    val shape = Shape(
+    val shape: Shape = Shape(
       inputs  = Vector.tabulate(numInputs)(idx => InD(s"ZipWindow.in$idx")),
       size    = InI ("ZipWindow.size"),
       out     = OutD("ZipWindow.out" )
@@ -196,7 +188,7 @@ object ZipWindowN {
       if (shouldNext) {
         inIndex += 1
         if (inIndex == numInputs) inIndex = 0
-        if (sizeOff < sizeRemain) {
+        if (sizeRemain > 0) {
           size = math.max(1, bufIn1.buf(sizeOff))
         }
         winRemain     = size
@@ -239,7 +231,7 @@ object ZipWindowN {
         }
       }
 
-      val flush = in.remain == 0 && isClosed(in.let) && !isAvailable(in.let)
+      val flush = in.remain == 0 && !isNextWindow && isClosed(in.let) && !isAvailable(in.let)
       if (!outSent && (outRemain == 0 || flush) && isAvailable(shape.out)) {
         if (outOff > 0) {
           bufOut.size = outOff
@@ -268,9 +260,13 @@ object ZipWindowN {
       }
 
       override def onUpstreamFinish(): Unit = {
-        logStream(s"onUpstreamFinish(${shape.size})")
-        process()
-        ()  // keep running
+        val valid = isAvailable(shape.size) || size > 0 || sizeRemain > 0
+        logStream(s"onUpstreamFinish(${shape.size}); valid = $valid")
+        if (valid) {
+          process()
+        } else {
+          super.onUpstreamFinish()
+        }
       }
     })
 
