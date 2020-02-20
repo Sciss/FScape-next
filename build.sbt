@@ -35,6 +35,7 @@ lazy val deps = new {
     val audioFile       = "1.5.3"
     val dsp             = "1.3.2"
     val fileUtil        = "1.1.3"
+    val linKernighan    = "0.1.0"
     val numbers         = "0.2.0"
     val optional        = "1.0.0"
     val scalaChart      = "0.7.1"
@@ -104,6 +105,7 @@ lazy val core = project
       "com.typesafe.akka" %%  "akka-stream-testkit" % deps.main.akka,
       "de.sciss"          %%  "audiofile"           % deps.main.audioFile,
       "de.sciss"          %%  "fileutil"            % deps.main.fileUtil,
+      "de.sciss"          %%  "linkernighantsp"     % deps.main.linKernighan,
       "de.sciss"          %%  "numbers"             % deps.main.numbers,
       "de.sciss"          %%  "optional"            % deps.main.optional,
       "de.sciss"          %%  "scissdsp"            % deps.main.dsp,
@@ -112,11 +114,6 @@ lazy val core = project
       "de.sciss"          %%  "kollflitz"           % deps.test.kollFlitz % Test
     ),
     libraryDependencies += {
-      // if (scalaVersion.value == "2.13.0-RC2") {
-      //   "com.github.scopt" % "scopt_2.13.0-RC1" % deps.test.scopt % Test
-      // } else {
-      //   "com.github.scopt" %% "scopt" % deps.test.scopt % Test
-      // }
       "org.rogach" %% "scallop" % deps.test.scallop % Test
     },
     mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-core" % mimaVersion),

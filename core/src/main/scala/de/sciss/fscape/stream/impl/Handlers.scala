@@ -1,8 +1,3 @@
-package de.sciss.fscape.stream.impl
-
-import akka.stream.Outlet
-import akka.stream.stage.{InHandler, OutHandler}
-import de.sciss.fscape.stream.OutD
 /*
  *  Handlers.scala
  *  (FScape)
@@ -16,8 +11,11 @@ import de.sciss.fscape.stream.OutD
  *  contact@sciss.de
  */
 
-import akka.stream.{Inlet, Shape}
-import de.sciss.fscape.stream.{BufD, BufElem, BufI, Control, InD, InI, Layer, OutI}
+package de.sciss.fscape.stream.impl
+
+import akka.stream.stage.{InHandler, OutHandler}
+import akka.stream.{Inlet, Outlet, Shape}
+import de.sciss.fscape.stream.{BufD, BufElem, BufI, Control, InD, InI, Layer, OutD, OutI}
 import de.sciss.fscape.{logStream => log}
 
 /** In the mess of all the different implementation classes, this is a new
@@ -263,12 +261,14 @@ object Handlers {
     final def flush(): Boolean = {
       _flush    = true
       _hasNext  = false
-      val now = isAvailable(outlet)
-      if (now) {
-        push(outlet, buf)
-        buf   = null
+      buf == null || {
+        val now = isAvailable(outlet)
+        if (now) {
+          push(outlet, buf)
+          buf   = null
+        }
+        now
       }
-      now
     }
 
     final def next(v: A): Unit = {
