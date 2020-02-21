@@ -95,10 +95,13 @@ object LinKernighanTSP {
       weights = null
     }
 
-    private def hotInsDone(): Unit =
-      if (hOutTour.flush() & hOutCost.flush()) {
+    private def hotInsDone(): Boolean = {
+      val res = hOutTour.flush() & hOutCost.flush()
+      if (res) {
         completeStage()
       }
+      res
+    }
 
     protected def onDone(inlet: Inlet[_]): Unit =
       if (inlet == shape.in0) {
@@ -192,10 +195,7 @@ object LinKernighanTSP {
           if (outTourRem == 0 && !outCostRem) {
             stage = 0
             if (hInit.isDone || hWeights.isDone) {
-              if (hOutTour.flush() && hOutCost.flush()) {
-                completeStage()
-                return
-              }
+              if (hotInsDone()) return
             }
           }
         }

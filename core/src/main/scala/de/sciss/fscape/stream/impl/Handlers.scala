@@ -263,7 +263,10 @@ object Handlers {
       _hasNext  = false
       buf == null || {
         val now = isAvailable(outlet)
-        if (now) write()
+        if (now) {
+          write()
+          _isDone = true
+        }
         now
       }
     }

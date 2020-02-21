@@ -1,5 +1,6 @@
 package de.sciss.fscape.tests
 
+import de.sciss.file._
 import de.sciss.fscape.{GE, Graph, graph, stream}
 import de.sciss.tsp.{LinKernighan, Point => Pt}
 
@@ -99,5 +100,74 @@ out: 5
 //    Length(spans).poll("spans.length")
   }
 
-  stream.Control().run(g)
+  val g2 = Graph {
+    import graph._
+    // bug -- stops at `lk runs: 6144` without flushing
+    // numEdges: 528
+    // numChunks: 8038.0
+
+    def mkIn() = AudioFileIn(file("/data/audio_work/beyond-s1-living-room.aif"), numChannels = 1)
+    val in        = mkIn()
+    val fftSize   = 64
+    val numMag    = fftSize/2 + 1
+    val numEdges  = numMag * (numMag - 1) / 2
+    println(s"numMag = $numMag")      // numMag.poll("numMag")
+    println(s"numEdges = $numEdges")  // numEdges.poll("numEdges")
+
+    val numFramesSl = 4000 // in.numFrames
+    val numChunks = ((numFramesSl + (fftSize - 1)) / fftSize).floor
+    println(s"numChunks = $numChunks")  // numChunks.poll("numChunks")
+
+    val inW = in.take(numFramesSl)
+    val inF       = Real1FFT(inW, fftSize, mode = 1)
+    val mag       = inF.complex.mag
+    Length(mag).poll("mag.length")
+
+    def chunkSeq  = ArithmSeq(length = numMag)
+    val chunkA    = RepeatWindow(chunkSeq, 1     , numMag)
+    val chunkB    = RepeatWindow(chunkSeq, numMag, numMag)
+    val guard     = chunkA < chunkB
+    val startA0   = FilterSeq(chunkA, guard)
+    val startB0   = FilterSeq(chunkB, guard)
+
+    val startA  = RepeatWindow(startA0, numEdges, numChunks)
+    val startB  = RepeatWindow(startB0, numEdges, numChunks)
+
+    //Length(startA).poll("startA.length")
+    //Length(startB).poll("startB.length")
+
+    val aBins = WindowApply(RepeatWindow(mag, numMag, numEdges),
+      size = numMag, index = startA)
+    val bBins = WindowApply(RepeatWindow(mag, numMag, numEdges),
+      size = numMag, index = startB)
+
+    //Length(aBins).poll("aBins.length")
+    //Length(bBins).poll("bBins.length")
+
+    val aW    = aBins * fftSize // * awt
+    val bW    = bBins * fftSize // * awt
+
+    val corr  = aW absDif bW // Pearson(aW, bW, size = 1)
+    Length(corr).poll("corr.length")
+
+    //33*63
+    //528*63
+
+    val sliceIndices: GE = {
+      val init0   = ArithmSeq(length = numMag)
+      val init = RepeatWindow(init0, numMag, numChunks)
+      Length(init).poll("init.length")
+      val weights = corr // corr.max(-320.ampDb).reciprocal // 1.0 - corr // high correlation = low cost
+      Length(weights).poll("weights.length")
+      val lk      = LinKernighanTSP(init = init, weights = weights, size = numMag)
+      Frames(lk.cost).poll(1, "lk runs")
+      val t       = lk.tour
+      t
+    }
+
+    Length(sliceIndices).poll("result")
+
+  }
+
+  stream.Control().run(g2)
 }
