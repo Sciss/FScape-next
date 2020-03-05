@@ -113,6 +113,16 @@ object LinKernighanTSP {
     override protected def onDone(outlet: Outlet[_]): Unit =
       if (hOutTour.isDone && hOutCost.isDone) {
         completeStage()
+      } else if (outlet == shape.out0) {
+        if (stage == 2 && outTourRem > 0) {
+          outTourRem = 0
+          process()
+        }
+      } else if (outlet == shape.out1) {
+        if (stage == 2 && outCostRem) {
+          outCostRem = false
+          process()
+        }
       }
 
     @tailrec
@@ -171,8 +181,8 @@ object LinKernighanTSP {
             outTour     = lk.tour
             outCost     = lk.tourCost
             outTourOff  = 0
-            outTourRem  = size
-            outCostRem  = true
+            outTourRem  = if (hOutTour.isDone) 0 else size
+            outCostRem  = !hOutCost.isDone // true
             stage       = 2
           }
         }

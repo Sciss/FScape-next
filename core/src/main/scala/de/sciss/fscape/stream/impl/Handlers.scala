@@ -310,7 +310,9 @@ object Handlers {
 
     final override def onDownstreamFinish(cause: Throwable): Unit = {
       log(s"$this onDownstreamFinish()")
-      _isDone = true
+      _isDone   = true
+      _hasNext  = false
+      free()
       onDone(outlet)
       // super.onDownstreamFinish(cause)
     }
