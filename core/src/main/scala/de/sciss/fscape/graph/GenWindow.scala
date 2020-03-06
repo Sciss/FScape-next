@@ -34,10 +34,11 @@ object GenWindow {
       case Gauss        .id => Gauss
       case Sinc         .id => Sinc
       case RaisedCosine .id => RaisedCosine
+      case Line         .id => Line
     }
 
-    final val MinId: Int = Hamming      .id
-    final val MaxId: Int = RaisedCosine .id
+    final val MinId: Int = Hamming.id
+    final val MaxId: Int = Line   .id
 
     implicit def toGE(in: Shape): GE = in.id
   }
@@ -46,6 +47,7 @@ object GenWindow {
     def id: Int
     def fill(winSize: Long, winOff: Long, buf: Array[Double], bufOff: Int, len: Int, param: Double): Unit
   }
+
   case object Hamming extends Shape {
     final val id = 0
 
@@ -62,6 +64,7 @@ object GenWindow {
       }
     }
   }
+
   case object Blackman extends Shape {
     final val id = 1
 
@@ -78,6 +81,7 @@ object GenWindow {
       }
     }
   }
+
   case object Kaiser extends Shape {
     final val id = 2
 
@@ -125,6 +129,7 @@ object GenWindow {
       }
     }
   }
+
   case object Rectangle extends Shape {
     final val id = 3
 
@@ -137,6 +142,7 @@ object GenWindow {
       }
     }
   }
+
   case object Hann extends Shape {
     final val id = 4
 
@@ -153,6 +159,7 @@ object GenWindow {
       }
     }
   }
+
   case object Triangle extends Shape {
     final val id = 5
 
@@ -169,6 +176,7 @@ object GenWindow {
       }
     }
   }
+
   case object Gauss extends Shape {
     final val id = 6
 
@@ -243,6 +251,27 @@ object GenWindow {
       }
     }
   }
+
+  /** Line begins at zero and moves linearly towards one, but not reaching it.
+    * For example, a `GenWindow(10, GenWindow.Line) * 10` would count in integer
+    * steps from `0` to `9`, then wrapping back to zero.
+    */
+  case object Line extends Shape {
+    final val id = 9
+
+    def fill(winSize: Long, winOff: Long, buf: Array[Double], bufOff: Int, len: Int, param: Double): Unit = {
+      val norm  = 1.0 / winSize
+      var i     = winOff
+      val stop  = i + len
+      var j     = bufOff
+      while (i < stop) {
+        buf(j) = i * norm
+        i += 1
+        j += 1
+      }
+    }
+  }
+
 
   // XXX TODO --- we should add some standard SuperCollider curve shapes like Welch
 }
