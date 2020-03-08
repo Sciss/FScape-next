@@ -26,6 +26,8 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * @param size   the window size in the input
   * @param step   the step between successive windows in the output.
   *               when smaller than `size`, the overlapping portions are summed together.
+  *               Currently `step` values larger than `size` are clipped to `size`. This may
+  *               change in the future
   *
   * @see [[Sliding]]
   */
