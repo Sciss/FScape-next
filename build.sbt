@@ -5,7 +5,7 @@ lazy val baseName   = "FScape"
 lazy val baseNameL  = baseName.toLowerCase
 lazy val gitRepo    = "FScape-next"
 
-lazy val projectVersion = "2.33.6-SNAPSHOT"
+lazy val projectVersion = "2.33.6"
 lazy val mimaVersion    = "2.33.0"
 
 lazy val baseDescription = "An audio rendering library"
@@ -81,7 +81,8 @@ lazy val root = project.withId(baseNameL).in(file("."))
     publishArtifact in(Compile, packageDoc) := false, // there are no javadocs
     publishArtifact in(Compile, packageSrc) := false, // there are no sources
     // packagedArtifacts := Map.empty
-    autoScalaLibrary := false
+    autoScalaLibrary := false,
+    mimaFailOnNoPrevious := false
   )
 
 lazy val core = project
