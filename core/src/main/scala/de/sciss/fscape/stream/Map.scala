@@ -64,9 +64,9 @@ object Map {
       super.onUpstreamFinish()
     }
 
-    override def onDownstreamFinish(): Unit = {
+    override def onDownstreamFinish(cause: Throwable): Unit = {
       logStream(s"onDownstreamFinish() $self")
-      super.onDownstreamFinish()
+      super.onDownstreamFinish(cause)
     }
 
     setHandlers(in, out, this)

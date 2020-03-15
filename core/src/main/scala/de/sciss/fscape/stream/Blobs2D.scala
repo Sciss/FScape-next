@@ -146,10 +146,10 @@ object Blobs2D {
         if (canWrite) process()
       }
 
-      override def onDownstreamFinish(): Unit = {
+      override def onDownstreamFinish(cause: Throwable): Unit = {
         logStream(s"onDownstreamFinish($out)")
         val allClosed = shape.outlets.forall(isClosed(_))
-        if (allClosed) super.onDownstreamFinish()
+        if (allClosed) super.onDownstreamFinish(cause)
       }
 
       setOutHandler(out, this)

@@ -124,9 +124,9 @@ object IfThenGE {
       if (!isAvailable(shape.in)) super.onUpstreamFinish()
     }
 
-    override def onDownstreamFinish(): Unit = {
+    override def onDownstreamFinish(cause: Throwable): Unit = {
       logStream(s"$this - onDownstreamFinish")
-      super.onDownstreamFinish()
+      super.onDownstreamFinish(cause)
     }
 
     setHandlers(shape.in, shape.out, this)
@@ -269,12 +269,12 @@ object IfThenGE {
 
       // N.B.: see BranchInHandlerImpl for the same reasons (?)
 
-      override def onDownstreamFinish(): Unit = {
+      override def onDownstreamFinish(cause: Throwable): Unit = {
         val all = shape.outlets.forall(isClosed(_)) // IntelliJ highlight bug
         logStream(s"onDownstreamFinish() $self - $all")
         if (all) {
           completeAll()
-          super.onDownstreamFinish()
+          super.onDownstreamFinish(cause)
         }
       }
 

@@ -5,9 +5,11 @@ import de.sciss.lucre.expr.DoubleObj
 import de.sciss.lucre.stm.Durable
 import de.sciss.lucre.stm.store.BerkeleyDB
 import de.sciss.synth.proc.SoundProcesses
-import org.scalatest.{Matchers, Outcome, fixture}
+import org.scalatest.Outcome
+import org.scalatest.flatspec.FixtureAnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
-class SerializationSpec extends fixture.FlatSpec with Matchers {
+class SerializationSpec extends FixtureAnyFlatSpec with Matchers {
   type S = Durable
   type FixtureParam = S
 
@@ -30,7 +32,7 @@ class SerializationSpec extends fixture.FlatSpec with Matchers {
       val g = Graph {
         import graph._
         import lucre.graph._
-        1.poll(0, label = "rendering")
+        1.poll("rendering")
         val value = WhiteNoise(100).take(100000000).last
         MkDouble("out-1", value)
         MkDouble("out-2", value + 1)

@@ -6,12 +6,14 @@ import de.sciss.fscape.lucre.FScape
 import de.sciss.lucre.artifact.{Artifact, ArtifactLocation}
 import de.sciss.lucre.stm.store.BerkeleyDB
 import de.sciss.synth.proc.{Durable, SoundProcesses, Universe}
-import org.scalatest.{Matchers, Outcome, fixture}
+import org.scalatest.Outcome
+import org.scalatest.flatspec.FixtureAnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 
-class ImageFileOutSpec extends fixture.FlatSpec with Matchers {
+class ImageFileOutSpec extends FixtureAnyFlatSpec with Matchers {
   type S = Durable
   type FixtureParam = S
 

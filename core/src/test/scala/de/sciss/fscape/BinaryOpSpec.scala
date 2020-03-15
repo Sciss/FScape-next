@@ -1,14 +1,14 @@
 package de.sciss.fscape
 
 import de.sciss.kollflitz.Vec
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Promise}
-import scala.language.implicitConversions
 import scala.util.Success
 
-class BinaryOpSpec extends FlatSpec with Matchers {
+class BinaryOpSpec extends AnyFlatSpec with Matchers {
   "The binary-op ugen" should "work as intended" in {
     val p1    = Promise[Vec[Int]]()
     val p2    = Promise[Vec[Int]]()

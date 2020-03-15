@@ -143,17 +143,17 @@ object Broadcast {
         decPendingAndCheck()
       }
 
-      override def onDownstreamFinish(): Unit = {
+      override def onDownstreamFinish(cause: Throwable): Unit = {
         logStream(s"onDownstreamFinish() $self.${out.s}")
         if (eagerCancel) {
           logStream(s"completeStage() $self")
-          super.onDownstreamFinish()
+          super.onDownstreamFinish(cause)
         }
         else {
           sinksRunning -= 1
           if (sinksRunning == 0) {
             logStream(s"completeStage() $self")
-            super.onDownstreamFinish()
+            super.onDownstreamFinish(cause)
           } else {
             decPendingAndCheck()
           }

@@ -101,10 +101,10 @@ object StrongestLocalMaxima {
         if (canWrite) process()
       }
 
-      override def onDownstreamFinish(): Unit = {
+      override def onDownstreamFinish(cause: Throwable): Unit = {
         val allClosed = shape.outlets.forall(isClosed(_))
         logStream(s"onDownstreamFinish($out) allClosed = $allClosed")
-        if (allClosed) super.onDownstreamFinish()
+        if (allClosed) super.onDownstreamFinish(cause)
       }
 
       setOutHandler(out, this)

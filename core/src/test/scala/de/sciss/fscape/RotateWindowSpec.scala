@@ -2,14 +2,15 @@ package de.sciss.fscape
 
 import de.sciss.kollflitz.Vec
 import de.sciss.numbers.IntFunctions
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 import scala.annotation.tailrec
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Promise}
 import scala.util.Success
 
-class RotateWindowSpec extends FlatSpec with Matchers {
+class RotateWindowSpec extends AnyFlatSpec with Matchers {
   def mkExpected(in: Vec[Int], amount: Int): Vec[Int] = {
     // e.g. winSize = 4, amt = 1, expected = [DABC]
     // -> amtM = 1, amtI = 3

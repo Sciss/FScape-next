@@ -69,9 +69,9 @@ object Length {
       if (isClosed(shape.in) /*&& !isAvailable(shape.in)*/) writeAndFinish()
     }
 
-    override def onDownstreamFinish(): Unit = {
+    override def onDownstreamFinish(cause: Throwable): Unit = {
       logStream(s"onDownstreamFinish() $this")
-      super.onDownstreamFinish()
+      super.onDownstreamFinish(cause)
     }
 
     private def writeAndFinish(): Unit = {

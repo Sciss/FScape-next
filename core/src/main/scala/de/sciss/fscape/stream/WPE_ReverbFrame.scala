@@ -296,10 +296,10 @@ object WPE_ReverbFrame {
         if (stage == 2) process()
       }
 
-      override def onDownstreamFinish(): Unit = {
+      override def onDownstreamFinish(cause: Throwable): Unit = {
         logStream(s"onDownstreamFinish($out)")
         if (outlets.forall(out => isClosed(out))) {
-          super.onDownstreamFinish()
+          super.onDownstreamFinish(cause)
         }
       }
 

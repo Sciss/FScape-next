@@ -2,9 +2,10 @@ package de.sciss.fscape
 
 import de.sciss.fscape.lucre.GraphObj
 import de.sciss.serial.{DataInput, DataOutput}
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
-class SerializationSpec2 extends FlatSpec with Matchers {
+class SerializationSpec2 extends AnyFlatSpec with Matchers {
   var dfs = Map.empty[String, Graph]
 
   import graph._

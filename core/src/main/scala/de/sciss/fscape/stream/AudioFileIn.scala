@@ -37,7 +37,7 @@ object AudioFileIn {
   private final class Stage(layer: Layer, f: File, numChannels: Int)(implicit ctrl: Control)
     extends BlockingGraphStage[Shape](s"$name(${f.name})") {
 
-    val shape = UniformSourceShape(Vector.tabulate(numChannels)(ch => OutD(s"$name.out$ch")))
+    val shape: Shape = UniformSourceShape(Vector.tabulate(numChannels)(ch => OutD(s"$name.out$ch")))
 
     def createLogic(attr: Attributes): NodeImpl[Shape] =
       new Logic(shape, layer = layer, f = f, numChannels = numChannels)
@@ -84,11 +84,11 @@ object AudioFileIn {
 //      }
     }
 
-    override def onDownstreamFinish(): Unit = {
+    override def onDownstreamFinish(cause: Throwable): Unit = {
       val all = shape.outlets.forall(out => isClosed(out))
       logStream(s"completeStage() $this - $all")
       if (all) {
-        super.onDownstreamFinish()
+        super.onDownstreamFinish(cause)
       } else {
         onPull()
       }

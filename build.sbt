@@ -5,8 +5,8 @@ lazy val baseName   = "FScape"
 lazy val baseNameL  = baseName.toLowerCase
 lazy val gitRepo    = "FScape-next"
 
-lazy val projectVersion = "2.33.6"
-lazy val mimaVersion    = "2.33.0"
+lazy val projectVersion = "2.34.0-SNAPSHOT"
+lazy val mimaVersion    = "2.34.0"
 
 lazy val baseDescription = "An audio rendering library"
 
@@ -14,11 +14,11 @@ lazy val commonSettings = Seq(
   organization       := "de.sciss",
   description        := baseDescription,
   version            := projectVersion,
-  scalaVersion       := "2.12.10",
+  scalaVersion       := "2.13.1",
   crossScalaVersions := Seq("2.13.1", "2.12.10"),
   licenses           := Seq("AGPL v3+" -> url("http://www.gnu.org/licenses/agpl-3.0.txt")),
   homepage           := Some(url(s"https://git.iem.at/sciss/$gitRepo")),
-  scalacOptions in (Compile, compile) ++= Seq(
+  scalacOptions ++= Seq(
     "-deprecation", "-unchecked", "-feature", "-encoding", "utf8", "-Xlint", "-Xsource:2.13"
   ),
   scalacOptions in (Compile, compile) ++= (if (scala.util.Properties.isJavaAtLeast("9")) Seq("-release", "8") else Nil), // JDK >8 breaks API; skip scala-doc
@@ -31,7 +31,7 @@ lazy val commonSettings = Seq(
 
 lazy val deps = new {
   val main = new {
-    val akka            = "2.6.3"
+    val akka            = "2.6.4"
     val audioFile       = "1.5.3"
     val dsp             = "1.3.2"
     val fileUtil        = "1.1.3"
@@ -43,14 +43,14 @@ lazy val deps = new {
   }
   val lucre = new {
     val fileCache       = "0.5.1"
-    val lucre           = "3.16.2"
-    val soundProcesses  = "3.33.0"
+    val lucre           = "3.16.3"
+    val soundProcesses  = "3.34.0-SNAPSHOT"
   }
   val views = new {
     val lucreSwing      = "1.20.0"
   }
   val modules = new {
-    val scallop         = "3.3.2"
+    val scallop         = "3.4.0"
   }
   val test = new {
     val kollFlitz       = "0.2.3"

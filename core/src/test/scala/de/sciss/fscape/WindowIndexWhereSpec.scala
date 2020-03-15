@@ -1,14 +1,15 @@
 package de.sciss.fscape
 
 import de.sciss.kollflitz.Vec
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 import scala.annotation.tailrec
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Promise}
 import scala.util.Success
 
-class WindowIndexWhereSpec extends FlatSpec with Matchers {
+class WindowIndexWhereSpec extends AnyFlatSpec with Matchers {
   def mkExpected(in: Vec[Int]): Int = in.indexWhere(_ > 0)
 
   "The WindowIndexWhere UGen" should "work as intended" in {

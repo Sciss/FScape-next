@@ -1,13 +1,13 @@
 package de.sciss.fscape
 
 import de.sciss.kollflitz.Vec
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Promise}
-import scala.language.implicitConversions
 
-class ComplexSpec extends FlatSpec with Matchers {
+class ComplexSpec extends AnyFlatSpec with Matchers {
   "The .complex math operations" should "work as intended" in {
     def run(expected: Vec[Double], mce: Boolean = false)(thunk: => GE): Unit = {
       val p   = Promise[Vec[Double]]()

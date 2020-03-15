@@ -1,15 +1,17 @@
 package de.sciss.fscape.modules
 
-import de.sciss.fscape.{Graph => FGraph}
 import de.sciss.fscape.lucre.FScape
+import de.sciss.fscape.{Graph => FGraph}
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.Durable
 import de.sciss.lucre.stm.store.BerkeleyDB
 import de.sciss.synth.proc.Widget.{Graph => WGraph}
 import de.sciss.synth.proc.{SoundProcesses, Widget}
-import org.scalatest.{Matchers, Outcome, fixture}
+import org.scalatest.Outcome
+import org.scalatest.flatspec.FixtureAnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
-class SerializationSpec extends fixture.FlatSpec with Matchers {
+class SerializationSpec extends FixtureAnyFlatSpec with Matchers {
   type S = Durable
   type FixtureParam = S
 

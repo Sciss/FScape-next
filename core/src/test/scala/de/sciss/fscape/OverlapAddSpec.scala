@@ -1,13 +1,14 @@
 package de.sciss.fscape
 
 import de.sciss.kollflitz.Vec
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Promise}
 import scala.util.Success
 
-class OverlapAddSpec extends FlatSpec with Matchers {
+class OverlapAddSpec extends AnyFlatSpec with Matchers {
   "The OverlapAdd UGen" should "run for the expected time (issue 27)" in {
     val n           = 1000
     val win         = 100

@@ -1,13 +1,14 @@
 package de.sciss.fscape
 
 import de.sciss.kollflitz.Vec
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
-import scala.concurrent.{Await, Promise}
 import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, Promise}
 import scala.util.Success
 
-class ReverseWindowSpec extends FlatSpec with Matchers {
+class ReverseWindowSpec extends AnyFlatSpec with Matchers {
   "The ReverseWindow UGen" should "work as intended" in {
     def variant(inLen: Int, winSize: Int, clump: Int): Unit = {
       val p   = Promise[Vec[Int]]()

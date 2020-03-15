@@ -1,13 +1,14 @@
 package de.sciss.fscape
 
 import de.sciss.kollflitz.Vec
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Promise}
 import scala.util.{Success, Try}
 
-class FramesSpec extends FlatSpec with Matchers {
+class FramesSpec extends AnyFlatSpec with Matchers {
   "The Frames UGen" should "work as specified" in {
     val lengths = List(
       0, 1, 10, 100, 1000, 10000

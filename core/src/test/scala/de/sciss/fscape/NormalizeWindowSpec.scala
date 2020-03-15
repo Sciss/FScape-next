@@ -2,14 +2,15 @@ package de.sciss.fscape
 
 import de.sciss.fscape.graph.NormalizeWindow._
 import de.sciss.kollflitz.Vec
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 import scala.annotation.{switch, tailrec}
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Promise}
 import scala.util.Success
 
-class NormalizeWindowSpec extends FlatSpec with Matchers {
+class NormalizeWindowSpec extends AnyFlatSpec with Matchers {
   def mkExpected(win: Vector[Double], mode: Int): Vector[Double] = {
     val (add, mul, add2) = (mode: @switch) match {
       case Normalize    => val gain = win.map(math.abs).max; (0.0, 1.0 / gain, 0.0)

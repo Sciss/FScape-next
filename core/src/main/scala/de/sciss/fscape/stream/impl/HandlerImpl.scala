@@ -136,9 +136,9 @@ final class ProcessOutHandlerImpl[A, S <: Shape](out: Outlet[A], logic: InOutImp
     if (logic.canWrite) logic.process()
   }
 
-  override def onDownstreamFinish(): Unit = {
+  override def onDownstreamFinish(cause: Throwable): Unit = {
     logStream(s"onDownstreamFinish($out)")
-    super.onDownstreamFinish()
+    super.onDownstreamFinish(cause)
   }
 
   logic.setOutHandler(out, this)

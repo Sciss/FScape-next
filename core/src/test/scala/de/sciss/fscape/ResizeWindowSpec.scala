@@ -1,15 +1,15 @@
 package de.sciss.fscape
 
-import de.sciss.fscape.stream.impl.NodeImpl
 import de.sciss.kollflitz.Vec
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 import scala.annotation.tailrec
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Promise}
 import scala.util.Success
 
-class ResizeWindowSpec extends FlatSpec with Matchers {
+class ResizeWindowSpec extends AnyFlatSpec with Matchers {
   "The ResizeWindow UGen" should "work as intended" in {
 //    var count = 0
 //    showControlLog  = true

@@ -64,11 +64,11 @@ object DebugThrough {
       }
     }
 
-    override def onDownstreamFinish(): Unit = {
+    override def onDownstreamFinish(cause: Throwable): Unit = {
 //      val ok = isAvailable(shape.out)
 //      if (!ok) {
         println(s"$label: onDownstreamFinish. frames = $framesSeen") // ; avail? ${isAvailable(shape.out)}")
-        super.onDownstreamFinish()
+        super.onDownstreamFinish(cause)
 //      }
     }
 

@@ -204,9 +204,9 @@ object PenImage {
       }
     }
 
-    override def onDownstreamFinish(): Unit = {
+    override def onDownstreamFinish(cause: Throwable): Unit = {
       log(s"onDownstreamFinish() $logic")
-      super.onDownstreamFinish()
+      super.onDownstreamFinish(cause)
     }
 
     setHandler(shape.out, this)

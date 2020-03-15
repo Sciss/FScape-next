@@ -2,7 +2,7 @@
 
 [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/Sciss/FScape?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![Build Status](https://travis-ci.org/Sciss/FScape-next.svg?branch=master)](https://travis-ci.org/Sciss/FScape-next)
-[![Maven Central](https://maven-badges.herokuapp.com/maven-central/de.sciss/fscape_2.12/badge.svg)](https://maven-badges.herokuapp.com/maven-central/de.sciss/fscape_2.12)
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/de.sciss/fscape_2.13/badge.svg)](https://maven-badges.herokuapp.com/maven-central/de.sciss/fscape_2.13)
 <a href="https://liberapay.com/sciss/donate"><img alt="Donate using Liberapay" src="https://liberapay.com/assets/widgets/donate.svg" height="24"></a>
 
 ## statement
@@ -35,7 +35,7 @@ The following dependency is necessary:
 
     "de.sciss" %% "fscape" % v
 
-The current version `v` is `"2.33.6"`.
+The current version `v` is `"2.34.0"`.
 
 The following sub modules are available:
 

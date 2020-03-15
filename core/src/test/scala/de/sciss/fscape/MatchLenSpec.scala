@@ -1,13 +1,14 @@
 package de.sciss.fscape
 
 import de.sciss.kollflitz.Vec
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Promise}
 import scala.util.Success
 
-class MatchLenSpec extends FlatSpec with Matchers {
+class MatchLenSpec extends AnyFlatSpec with Matchers {
   "The .matchLen op" should "work as specified" in {
     val pairs = List(
       (10, 17),

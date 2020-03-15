@@ -149,7 +149,7 @@ object AudioFileOut {
       if (isInitialized && canProcess) process()
 
     // we do not care if the consumer of the frame information closes early.
-    override def onDownstreamFinish(): Unit =
+    override def onDownstreamFinish(cause: Throwable): Unit =
       onPull()
 
     private def process(): Unit = {

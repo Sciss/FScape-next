@@ -182,9 +182,9 @@ object ResampleOLD {
         process()
       }
 
-      override def onDownstreamFinish(): Unit = {
+      override def onDownstreamFinish(cause: Throwable): Unit = {
         logStream(s"onDownstreamFinish(${shape.out})")
-        super.onDownstreamFinish()
+        super.onDownstreamFinish(cause)
       }
     })
 

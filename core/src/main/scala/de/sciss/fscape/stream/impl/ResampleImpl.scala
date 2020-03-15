@@ -146,9 +146,9 @@ trait ResampleImpl[S <: Shape] extends FullInOutImpl[S] {
       if (canWrite) process()
     }
 
-    override def onDownstreamFinish(): Unit = {
+    override def onDownstreamFinish(cause: Throwable): Unit = {
       logStream(s"onDownstreamFinish($out0)")
-      super.onDownstreamFinish()
+      super.onDownstreamFinish(cause)
     }
   })
 

@@ -194,11 +194,11 @@ trait ImageFileInImpl[S <: Shape] extends NodeHasInitImpl with OutHandler {
     }
   }
 
-  override final def onDownstreamFinish(): Unit = {
+  override final def onDownstreamFinish(cause: Throwable): Unit = {
     val all = shape.outlets.forall(isClosed(_))
     logStream(s"onDownstreamFinish() $this - $all")
     if (all) {
-      super.onDownstreamFinish()
+      super.onDownstreamFinish(cause)
     } else {
       onPull()
     }

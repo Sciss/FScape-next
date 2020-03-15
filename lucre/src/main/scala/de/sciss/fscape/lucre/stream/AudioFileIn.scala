@@ -104,11 +104,11 @@ object AudioFileIn {
       //      }
     }
 
-    override def onDownstreamFinish(): Unit = {
+    override def onDownstreamFinish(cause: Throwable): Unit = {
       val all = shape.outlets.forall(out => isClosed(out))
       logStream(s"completeStage() $this - $all")
       if (all) {
-        super.onDownstreamFinish()
+        super.onDownstreamFinish(cause)
       } else {
         onPull()
       }
