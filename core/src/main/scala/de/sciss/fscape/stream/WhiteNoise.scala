@@ -41,7 +41,7 @@ object WhiteNoise {
 
   private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
-      with GenChunkImpl[BufD, BufD, Shape]
+      with GenChunkImpl[Shape]
       with GenIn0DImpl {
 
     private[this] val rnd: Random = ctrl.mkRandom()

@@ -21,7 +21,7 @@ import scala.collection.mutable
 
 /*
 
-  TODO:
+  XXX TODO:
    - introduce type class that gives access to allocBuf
 
  */

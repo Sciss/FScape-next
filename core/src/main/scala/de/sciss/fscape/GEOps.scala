@@ -169,13 +169,12 @@ final class GEOps2(val `this`: GE) extends AnyVal { me =>
   def poll: Poll = poll()
 
   /** Polls a single value from the element, and prints it with a given label. */
-  def poll(label: String): Poll = poll(trig = 0, label = Some(label))
+  def poll(label: String): Poll = poll(gate = 0, label = Some(label))
 
-  // XXX TODO --- rename `trig` to `gate`
   /** Polls the output values of this graph element, and prints the result to the console.
     * This is a convenient method for wrapping this graph element in a `Poll` UGen.
     *
-    * @param   trig     a gate signal for the printing. If this is a constant, it is
+    * @param   gate     a gate signal for the printing. If this is a constant, it is
     *                   interpreted as a period and a `Metro` generator with
     *                   this period is used. Will be renamed to '''gate''' in the next
     *                   major version
@@ -184,12 +183,12 @@ final class GEOps2(val `this`: GE) extends AnyVal { me =>
     *                   automatic useful labels using information from the polled graph element
     * @see  [[de.sciss.fscape.graph.Poll]]
     */
-  def poll(trig: GE = 0, label: Optional[String] = None): Poll = {
-    val trig1 = trig match {
+  def poll(gate: GE = 0, label: Optional[String] = None): Poll = {
+    val gate1 = gate match {
       case c: Constant  => Metro(c)
       case other        => other
     }
-    Poll(in = g, gate = trig1, label = label.getOrElse {
+    Poll(in = g, gate = gate1, label = label.getOrElse {
       val str = g.toString
       val i   = str.indexOf('(')
       if (i >= 0) str.substring(0, i)

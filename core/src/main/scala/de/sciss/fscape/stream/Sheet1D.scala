@@ -37,7 +37,7 @@ object Sheet1D {
   private type Shape = SinkShape2[BufD, BufI]
 
   private final class Stage(layer: Layer, label: String)(implicit ctrl: Control) extends StageImpl[Shape](name) {
-    val shape = SinkShape2(
+    val shape: Shape = SinkShape2(
       in0 = InD (s"$name.in"  ),
       in1 = InI (s"$name.trig")
     )

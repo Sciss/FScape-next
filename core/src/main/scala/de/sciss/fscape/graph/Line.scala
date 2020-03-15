@@ -42,7 +42,4 @@ final case class Line(start: GE, end: GE, length: GE) extends UGenSource.SingleO
     val Vec(start, end, length) = args
     stream.Line(start = start.toDouble, end = end.toDouble, length = length.toLong)
   }
-
-  // XXX TODO --- remove in next major release
-  def len: GE = length
 }

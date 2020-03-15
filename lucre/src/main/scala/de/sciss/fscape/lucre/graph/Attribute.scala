@@ -101,13 +101,17 @@ final case class Attribute(key: String, default: Option[Attribute.Default], fixe
       val d = default.getOrElse(sys.error(s"Missing Attribute $key"))
       if (fixed < 0) d.expand else d.tabulate(fixed)
     } { value =>
-      // XXX TODO --- should support double-vector, but we cannot
-      // pattern match against Vec[Double] because of erasure
       val res0: UGenInLike = value match {
         case d: Double  => ConstantD(d)
         case i: Int     => ConstantI(i)
         case n: Long    => ConstantL(n)
         case b: Boolean => ConstantI(if (b) 1 else 0)
+        case sq: Vec[_] if sq.forall(_.isInstanceOf[Double]) =>
+          val sqT = sq.asInstanceOf[Vec[Double]]
+          UGenInGroup(sqT.map(ConstantD(_)))
+        case sq: Vec[_] if sq.forall(_.isInstanceOf[Int]) =>
+          val sqT = sq.asInstanceOf[Vec[Int]]
+          UGenInGroup(sqT.map(ConstantI(_)))
         case other      => sys.error(s"Cannot use value $other as Attribute UGen $key")
       }
       val sz = res0.outputs.size

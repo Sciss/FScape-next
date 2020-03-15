@@ -45,7 +45,7 @@ object Impulse {
   // (cf. Resample)
   private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
-      with GenChunkImpl[BufD, BufI, Shape]
+      with GenChunkImpl[Shape]
       with GenIn2IImpl[BufD, BufD] {
 
     private[this] var incr    : Double = _

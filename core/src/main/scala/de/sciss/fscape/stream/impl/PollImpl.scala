@@ -17,7 +17,6 @@ import akka.stream.stage.GraphStageLogic
 import de.sciss.fscape.logStream
 import de.sciss.fscape.stream.{BufI, BufLike, Node}
 
-// XXX TODO --- rename `trigger` to `gate`?
 /** Common building block for `Poll` and `Progress`. */
 trait PollImpl[In0 >: Null <: BufLike] extends Sink2Impl[In0, BufI] {
   _ : GraphStageLogic with Node =>

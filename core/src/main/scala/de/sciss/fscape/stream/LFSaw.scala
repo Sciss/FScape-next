@@ -44,7 +44,7 @@ object LFSaw {
   // (cf. Resample)
   private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
-      with GenChunkImpl[BufD, BufD, Shape]
+      with GenChunkImpl[Shape]
       with GenIn2DImpl[BufD, BufD] {
 
     private[this] var incr    : Double = _  // single sample delay

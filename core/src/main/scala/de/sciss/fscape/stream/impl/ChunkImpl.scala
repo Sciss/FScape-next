@@ -119,8 +119,7 @@ trait FilterChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape
     inRemain == 0 && isClosed(in0) && !isAvailable(in0)
 }
 
-// XXX TODO --- remove unused type parameters
-trait GenChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape] extends SameChunkImpl[S] {
+trait GenChunkImpl[S <: Shape] extends SameChunkImpl[S] {
   _: GraphStageLogic =>
 
   protected final def shouldComplete(): Boolean = false
