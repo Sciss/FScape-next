@@ -29,7 +29,7 @@ final class ActionRefImpl[S <: Sys[S]](val key: String,
 
   def execute(value: Option[Any]): Unit = {
     import universe.cursor
-    SoundProcesses.atomic[S, Unit] { implicit tx: S#Tx =>
+    SoundProcesses.step[S](s"FScape Action($key)") { implicit tx: S#Tx =>
       val a   = aH()
       val r   = Runner(a)
       val m0: SourcesAsRunnerMap.Map[S] = Map("invoker" -> Left(fH))

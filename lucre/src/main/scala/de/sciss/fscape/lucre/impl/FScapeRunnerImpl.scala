@@ -24,7 +24,7 @@ import de.sciss.lucre.stm.{Disposable, Obj, Sys}
 import de.sciss.lucre.{stm, synth}
 import de.sciss.synth.proc.Runner.{Done, Failed, Stopped}
 import de.sciss.synth.proc.impl.BasicRunnerImpl
-import de.sciss.synth.proc.{Runner, Universe}
+import de.sciss.synth.proc.{Runner, SoundProcesses, Universe}
 
 import scala.concurrent.ExecutionException
 import scala.concurrent.stm.Ref
@@ -93,7 +93,7 @@ object FScapeRunnerImpl extends Runner.Factory {
 
       def actionPerformed(e: ActionEvent): Unit = {
         lastReported = System.currentTimeMillis()
-        cursor.step { implicit tx =>
+        SoundProcesses.step[S]("FScape Runner progress") { implicit tx =>
           current = guiValue
         }
       }

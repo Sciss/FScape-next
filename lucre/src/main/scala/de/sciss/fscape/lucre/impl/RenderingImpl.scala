@@ -26,7 +26,7 @@ import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{Disposable, Obj, Sys, TxnLike}
 import de.sciss.lucre.synth.{Sys => SSys}
 import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer}
-import de.sciss.synth.proc.{GenView, Runner, Universe}
+import de.sciss.synth.proc.{GenView, Runner, SoundProcesses, Universe}
 
 import scala.concurrent.stm.{Ref, TMap, atomic}
 import scala.concurrent.{Future, Promise}
@@ -317,7 +317,7 @@ object RenderingImpl {
 
     def completeWith(t: Try[CacheValue]): Unit =
       if (!_disposed.single.get)
-        cursor.step { implicit tx =>
+        SoundProcesses.step[S]("FScape completeWith") { implicit tx =>
           import TxnLike.peer
           if (!_disposed()) {
             // update first...
