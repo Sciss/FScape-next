@@ -13,6 +13,7 @@ object DetectLocalMaxTest extends App {
 //    val gen     = Metro(period, period/2).take(sz) * Line(0.5, 1.0, sz)
     val det     = DetectLocalMax(gen, size = block)
     Plot1D(det, size = sz, label = "Detect")
+//    Length(det).poll("len")
   }
 
   val config        = Control.Config()

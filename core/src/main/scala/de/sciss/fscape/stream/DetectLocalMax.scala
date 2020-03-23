@@ -168,13 +168,17 @@ object DetectLocalMax {
       if (readMode) processRead() else processWrite()
 
     private def processRead(): Boolean =
-      if (inRemain == 0) {
+      if (inRemain == 0 /*&& !_complete*/) {
         val terminate = isClosed(shape.in0) && !isAvailable(shape.in0)
         if (terminate) {
-          state     = if (state == 1) 2 else 0
+          if (state != 1) {
+            foundFrame = framesRead // place a virtual found frame at the end
+          }
+          state       = 2 // stay in this mode (we will never switch back to read-mode)
+//          state       = if (state == 1) 2 else 0
           debug(s"up-stream terminated. state -> $state")
-          readMode  = false
-          _complete = true
+          readMode    = false
+          _complete   = true
         }
         terminate
 
@@ -214,7 +218,7 @@ object DetectLocalMax {
                 foundFrame  = framesRead - 1
 
                 // the following two alternative definitions yield
-                // very different outcomes. THe first `foundFrame + size`
+                // very different outcomes. The first `foundFrame + size`
                 // tends to produce "more sparse" results, but is better
                 // at catching the highest peaks. The second
                 // `max(writtenTrig + size, foundFrame)` is more dense,
@@ -283,17 +287,20 @@ object DetectLocalMax {
 
       if (state != 0) {
         val reachedFoundFrame = framesWritten == foundFrame
-        if (reachedFoundFrame & outRemain > 0) {
+        if (reachedFoundFrame && outRemain > 0) {
           debug(s"... and consume trigger ------------------- $foundFrame")
 //          println(s" T: $foundValue")
-          bufOut0.buf(outOff) = 1
-          outOff             += 1
-          outRemain          -= 1
-          framesWritten      += 1
-          stopFrame           = foundFrame + size + 1
-          writtenTrig         = foundFrame
-          readMode            = true  // continue 'blocked' read
-          stateChanged        = true
+          if (!_complete || framesWritten < framesRead) {
+            bufOut0.buf(outOff) = 1
+            outOff             += 1
+            outRemain          -= 1
+            framesWritten      += 1
+            stopFrame           = foundFrame + size + 1
+            //          stopFrame = math.min(stopFrame, framesRead)
+            writtenTrig         = foundFrame
+            readMode            = true  // continue 'blocked' read
+            stateChanged        = true
+          }
         }
       }
 
