@@ -48,7 +48,15 @@ object GenWindow {
     def fill(winSize: Long, winOff: Long, buf: Array[Double], bufOff: Int, len: Int, param: Double): Unit
   }
 
-  case object Hamming extends Shape {
+  sealed trait SimpleShape extends Shape {
+    def apply(size: GE): GE = GenWindow(size, this)
+  }
+
+  sealed trait ParamShape extends Shape {
+    def apply(size: GE, param: GE = 0.0): GE = GenWindow(size, this, param)
+  }
+
+  case object Hamming extends SimpleShape {
     final val id = 0
 
     def fill(winSize: Long, winOff: Long, buf: Array[Double], bufOff: Int, len: Int, param: Double): Unit = {
@@ -65,7 +73,7 @@ object GenWindow {
     }
   }
 
-  case object Blackman extends Shape {
+  case object Blackman extends SimpleShape {
     final val id = 1
 
     def fill(winSize: Long, winOff: Long, buf: Array[Double], bufOff: Int, len: Int, param: Double): Unit = {
@@ -82,7 +90,7 @@ object GenWindow {
     }
   }
 
-  case object Kaiser extends Shape {
+  case object Kaiser extends ParamShape {
     final val id = 2
 
     private def calcBesselZero(x: Double): Double = {
@@ -130,7 +138,7 @@ object GenWindow {
     }
   }
 
-  case object Rectangle extends Shape {
+  case object Rectangle extends SimpleShape {
     final val id = 3
 
     def fill(winSize: Long, winOff: Long, buf: Array[Double], bufOff: Int, len: Int, param: Double): Unit = {
@@ -143,7 +151,7 @@ object GenWindow {
     }
   }
 
-  case object Hann extends Shape {
+  case object Hann extends SimpleShape {
     final val id = 4
 
     def fill(winSize: Long, winOff: Long, buf: Array[Double], bufOff: Int, len: Int, param: Double): Unit = {
@@ -160,7 +168,7 @@ object GenWindow {
     }
   }
 
-  case object Triangle extends Shape {
+  case object Triangle extends SimpleShape {
     final val id = 5
 
     def fill(winSize: Long, winOff: Long, buf: Array[Double], bufOff: Int, len: Int, param: Double): Unit = {
@@ -177,7 +185,7 @@ object GenWindow {
     }
   }
 
-  case object Gauss extends Shape {
+  case object Gauss extends SimpleShape {
     final val id = 6
 
     def fill(winSize: Long, winOff: Long, buf: Array[Double], bufOff: Int, len: Int, param: Double): Unit = {
@@ -201,7 +209,7 @@ object GenWindow {
   /** The sinc or "cardinal sine" function.
     * The parameter is the normalized frequency (frequency divided by sampleRate).
     */
-  case object Sinc extends Shape {
+  case object Sinc extends ParamShape {
     final val id = 7
 
     def fill(winSize: Long, winOff: Long, buf: Array[Double], bufOff: Int, len: Int, param: Double): Unit = {
@@ -230,7 +238,7 @@ object GenWindow {
     * `param`, and the singularity of `x(0) = 1.0`.
     *
     */
-  case object RaisedCosine extends Shape {
+  case object RaisedCosine extends ParamShape {
     final val id = 8
 
     def fill(winSize: Long, winOff: Long, buf: Array[Double], bufOff: Int, len: Int, param: Double): Unit = {
@@ -256,7 +264,7 @@ object GenWindow {
     * For example, a `GenWindow(10, GenWindow.Line) * 10` would count in integer
     * steps from `0` to `9`, then wrapping back to zero.
     */
-  case object Line extends Shape {
+  case object Line extends SimpleShape {
     final val id = 9
 
     def fill(winSize: Long, winOff: Long, buf: Array[Double], bufOff: Int, len: Int, param: Double): Unit = {
@@ -271,7 +279,6 @@ object GenWindow {
       }
     }
   }
-
 
   // XXX TODO --- we should add some standard SuperCollider curve shapes like Welch
 }

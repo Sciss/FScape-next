@@ -30,7 +30,7 @@ object ModSincFilter extends Module {
     val f = FScape[S]()
     import de.sciss.fscape.lucre.MacroImplicits._
     f.setGraph {
-      // version: 17-Jun-2019
+      // version: 24-Mar-2020
       val in        = AudioFileIn("in")
       val sr        = in.sampleRate
       val f1        = "freq1".attr( 500.0)
@@ -59,22 +59,22 @@ object ModSincFilter extends Module {
 
       val flt0: GE = If (tpe sig_== 0) Then {
         // low-pass
-        GenWindow(fltLen, shape = GenWindow.Sinc, param = f1N) * f1N
+        GenWindow.Sinc(fltLen, param = f1N) * f1N
       } ElseIf (tpe sig_== 1) Then {
         // high-pass
-        GenWindow(fltLen, shape = GenWindow.Sinc, param = 0.5) * 0.5 -
-          GenWindow(fltLen, shape = GenWindow.Sinc, param = f1N) * f1N
+        GenWindow.Sinc(fltLen, param = 0.5) * 0.5 -
+        GenWindow.Sinc(fltLen, param = f1N) * f1N
       } ElseIf (tpe sig_== 2) Then {
         // band-pass
-        GenWindow(fltLen, shape = GenWindow.Sinc, param = f2N) * f2N -
-          GenWindow(fltLen, shape = GenWindow.Sinc, param = f1N) * f1N
+        GenWindow.Sinc(fltLen, param = f2N) * f2N -
+        GenWindow.Sinc(fltLen, param = f1N) * f1N
       } Else {
         // band-stop
-        GenWindow(fltLen, shape = GenWindow.Sinc, param = 0.5) * 0.5 -
-          GenWindow(fltLen, shape = GenWindow.Sinc, param = f2N) * f2N +
-          GenWindow(fltLen, shape = GenWindow.Sinc, param = f1N) * f1N
+        GenWindow.Sinc(fltLen, param = 0.5) * 0.5 -
+        GenWindow.Sinc(fltLen, param = f2N) * f2N +
+        GenWindow.Sinc(fltLen, param = f1N) * f1N
       }
-      val win = GenWindow(fltLen, shape = GenWindow.Kaiser, param = kaiser)
+      val win = GenWindow.Kaiser(fltLen, param = kaiser)
       val flt = (flt0 * win).take(fltLen)
       //val flt  = RepeatWindow(flt1, fltLen, (inLen / chunkLen).ceil)
       //Plot1D(flt, fltLen)

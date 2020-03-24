@@ -56,11 +56,11 @@ object LinKernighanTSP {
   private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
     extends Handlers(name, layer, shape) {
 
-    private[this] val hInit     = new Handlers.InIMain  (this, shape.in0)(identity)
-    private[this] val hWeights  = new Handlers.InDMain  (this, shape.in1)(identity)
+    private[this] val hInit     = new Handlers.InIMain  (this, shape.in0)()
+    private[this] val hWeights  = new Handlers.InDMain  (this, shape.in1)()
     private[this] val hSize     = new Handlers.InIAux   (this, shape.in2)(math.max(1, _)) // or should it be 2 ?
-    private[this] val hMode     = new Handlers.InIAux   (this, shape.in3)(identity) // not used
-    private[this] val hTimeOut  = new Handlers.InDAux   (this, shape.in4)(identity) // not used
+    private[this] val hMode     = new Handlers.InIAux   (this, shape.in3)() // not used
+    private[this] val hTimeOut  = new Handlers.InDAux   (this, shape.in4)() // not used
     private[this] val hOutTour  = new Handlers.OutIMain (this, shape.out0)
     private[this] val hOutCost  = new Handlers.OutDMain (this, shape.out1)
 

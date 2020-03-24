@@ -27,16 +27,31 @@ import de.sciss.fscape.{logStream => log}
 object Handlers {
   // ---- input ----
 
-  final class InDMain(n: Handlers[_], inlet: InD)(cond: Double => Double)
-    extends AbstractInMain[Double, BufD](n, inlet)(cond)
+  private val idD: Double => Double = x => x
+  private val idI: Int    => Int    = x => x
 
-  final class InIMain(n: Handlers[_], inlet: InI)(cond: Int => Int)
-    extends AbstractInMain[Int, BufI](n, inlet)(cond)
+  final class InDMain(n: Handlers[_], inlet: InD)(cond: Double => Double = idD)
+    extends AbstractInMain[Double, BufD](n, inlet)(cond) {
 
-  final class InDAux(n: Handlers[_], inlet: InD)(cond: Double => Double)
+    private[this] val condId = cond eq idD
+
+    override protected def condN(a: Array[Double], off: Int, len: Int): Unit =
+      if (!condId) super.condN(a, off, len)
+  }
+
+  final class InIMain(n: Handlers[_], inlet: InI)(cond: Int => Int = idI)
+    extends AbstractInMain[Int, BufI](n, inlet)(cond) {
+
+    private[this] val condId = cond eq idI
+
+    override protected def condN(a: Array[Int], off: Int, len: Int): Unit =
+      if (!condId) super.condN(a, off, len)
+  }
+
+  final class InDAux(n: Handlers[_], inlet: InD)(cond: Double => Double = idD)
     extends AbstractInAux[Double, BufD](n, inlet)(cond)
 
-  final class InIAux(n: Handlers[_], inlet: InI)(cond: Int => Int)
+  final class InIAux(n: Handlers[_], inlet: InI)(cond: Int => Int = idI)
     extends AbstractInAux[Int, BufI](n, inlet)(cond)
 
   abstract class AbstractInAux[@specialized(Int, Long, Double) A, E >: Null <: BufElem[A]](n: Handlers[_],
@@ -149,6 +164,15 @@ object Handlers {
 
     import n._
 
+    protected def condN(a: Array[A], off: Int, len: Int): Unit = {
+      var i = off
+      while (i < len) {
+        val v = cond(a(i))
+        a(i) = v
+        i += 1
+      }
+    }
+
     override def toString: String = inlet.toString()
 
     private[this] var buf   : E       = _
@@ -164,6 +188,13 @@ object Handlers {
       cond(buf.buf(off))
     }
 
+    final def available: Int =
+      if (_hasNext) {
+        val _buf = buf
+        val _off = off
+        _buf.size - _off
+      } else 0
+
     final def next(): A = {
       require (_hasNext)
       val _buf = buf
@@ -171,23 +202,42 @@ object Handlers {
       val v = cond(_buf.buf(_off))
       _off += 1
       if (_off == _buf.size) {
-        _buf.release()
-        if (isAvailable(inlet)) {
-          buf = grab(inlet)
-          off = 0
-          tryPull(inlet)
-        } else {
-          buf = null
-          _hasNext = false
-          if (isClosed(inlet)) {
-            _isDone = true
-          }
-        }
-
+        bufExhausted()
       } else {
         off = _off
       }
       v
+    }
+
+    private def bufExhausted(): Unit = {
+      buf.release()
+      if (isAvailable(inlet)) {
+        buf = grab(inlet)
+        off = 0
+        tryPull(inlet)
+      } else {
+        buf = null
+        _hasNext = false
+        if (isClosed(inlet)) {
+          _isDone = true
+        }
+      }
+    }
+
+    final def nextN(a: Array[A], off: Int, len: Int): Unit = {
+      require (_hasNext)
+      val _buf   = buf
+      var _off  = this.off
+      val avail = _buf.size - _off
+      require (len <= avail)
+      System.arraycopy(_buf.buf, _off, a, off, len)
+      condN(a, off, len)
+      _off += len
+      if (_off == _buf.size) {
+        bufExhausted()
+      } else {
+        this.off = _off
+      }
     }
 
     final def onPush(): Unit = {
@@ -274,22 +324,20 @@ object Handlers {
     final def next(v: A): Unit = {
       require (_hasNext)
       var _buf = buf
-      var _off = off
       if (_buf == null) {
         _buf  = mkBuf()
         buf   = _buf
-        _off  = 0
+        off   = 0
       }
-      _buf.buf(_off) = v
-      _off += 1
-      if (_off == _buf.size) {
+      _buf.buf(off) = v
+      off += 1
+      if (off == _buf.size) {
         if (isAvailable(outlet)) {
           write()
         } else {
           _hasNext = false
         }
       }
-      off = _off
     }
 
     final def onPull(): Unit = {

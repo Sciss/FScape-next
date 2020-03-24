@@ -11,11 +11,13 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape
-package stream
+package de.sciss.fscape.stream
 
-import akka.stream.{Attributes, FanInShape3}
-import de.sciss.fscape.stream.impl.{FilterIn3DImpl, FilterLogicImpl, NodeImpl, StageImpl, WindowedLogicImpl}
+import akka.stream.{Attributes, FanInShape3, Inlet}
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
+import de.sciss.fscape.{logStream => log}
+
+import scala.annotation.tailrec
 
 object Pearson {
   def apply(x: OutD, y: OutD, size: OutI)(implicit b: Builder): OutD = {
@@ -31,78 +33,73 @@ object Pearson {
 
   private type Shape = FanInShape3[BufD, BufD, BufI, BufD]
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
-    val shape = new FanInShape3(
+  private final class Stage(layer: Layer)(implicit ctrl: Control)
+    extends StageImpl[Shape](name) {
+
+    val shape: Shape = new FanInShape3(
       in0 = InD (s"$name.x"   ),
       in1 = InD (s"$name.y"   ),
       in2 = InI (s"$name.size"),
-      out = OutD(s"$name.out" )
+      out = OutD(s"$name.out" ),
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] =
+      new Logic(shape, layer = layer)
   }
 
   private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape)
-      with WindowedLogicImpl[Shape]
-      with FilterLogicImpl[BufD, Shape]
-      with FilterIn3DImpl[BufD, BufD, BufI] {
+    extends Handlers(name, layer, shape) {
 
-    private[this] var xBuf: Array[Double] = _
-    private[this] var yBuf: Array[Double] = _
-    private[this] var size: Int = _
-    private[this] var coef: Double  = _
+    private[this] val hX    = new Handlers.InDMain  (this, shape.in0)()
+    private[this] val hY    = new Handlers.InDMain  (this, shape.in1)()
+    private[this] val hSize = new Handlers.InIAux   (this, shape.in2)(math.max(1, _))
+    private[this] val hOut  = new Handlers.OutDMain (this, shape.out)
+
+    private[this] var outValue  = 0.0
+    private[this] var stage     = 0   // 0 -- read size, 1 -- read x and y, 2 -- write
+
+    private[this] var size        = 0
+    private[this] var xBuf    : Array[Double] = _
+    private[this] var yBuf    : Array[Double] = _
+    private[this] var xOff    = 0
+    private[this] var xRem    = 0
+    private[this] var yOff    = 0
+    private[this] var yRem    = 0
 
     override protected def stopped(): Unit = {
-      super.stopped()
+      hX    .free()
+      hY    .free()
+      hSize .free()
+      hOut  .free()
       xBuf = null
       yBuf = null
     }
 
-    protected def startNextWindow(inOff: Int): Long = {
-      val oldSize = size
-      if (bufIn2 != null && inOff < bufIn2.size) {
-        size = math.max(1, bufIn2.buf(inOff))
+//    private var PUT = 0
+
+    private def hotInsDone(): Boolean = {
+//      println(s"hotInsDone(); stage = $stage, xRem = $xRem, yRem = $yRem, put $PUT")
+      val res = hOut.flush()
+      if (res) {
+        completeStage()
       }
-      if (size != oldSize) {
-        xBuf = new Array[Double](size)
-        yBuf = new Array[Double](size)
-      }
-      size
+      res
     }
 
-    protected def copyInputToWindow(inOff: Int, writeToWinOff: Long, chunk: Int): Unit = {
-      val writeOffI = writeToWinOff.toInt
-      Util.copy(bufIn0.buf, inOff, xBuf, writeOffI, chunk)
-      val _in1 = bufIn1
-      if (_in1 != null) {
-        val stop    = math.min(_in1.size, inOff + chunk)
-        val chunk1  = math.max(0, stop - inOff)
-        if (chunk1 > 0)
-          Util.copy(_in1.buf, inOff, yBuf, writeOffI, chunk1)
-        val chunk2  = chunk - chunk1
-        if (chunk2 > 0) {
-          Util.clear(yBuf, writeOffI + chunk1, chunk2)
-        }
-      } else {
-        Util.clear(yBuf, writeOffI, chunk)
+    protected def onDone(inlet: Inlet[_]): Unit =
+      if (inlet == shape.in0) {
+        if (stage == 0 || (stage == 1 && xRem > 0)) hotInsDone()
+      } else if (inlet == shape.in1) {
+        if (stage == 0 || (stage == 1 && yRem > 0)) hotInsDone()
       }
-    }
 
-    protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit = {
-      require(chunk <= 1 && readFromWinOff == 0)
-      if (chunk == 1) {
-        bufOut0.buf(outOff) = coef
-      }
-    }
-
-    protected def processWindow(lenL: Long): Long = {
+    private def calc(): Double = {
       val _x  = xBuf
       val _y  = yBuf
       var xm  = 0.0
       var ym  = 0.0
       var i   = 0
-      val len = lenL.toInt
+      val len = size
       while (i < len) {
         xm += _x(i)
         ym += _y(i)
@@ -125,8 +122,69 @@ object Pearson {
       }
       // now xsq = variance(x), ysq = variance(y)
       val denom = math.sqrt(xsq * ysq)
-      coef = if (denom > 0) sum / denom else sum
-      1
+      val coef = if (denom > 0) sum / denom else sum
+      coef
+    }
+
+    @tailrec
+    protected def process(): Unit = {
+      log(s"$this process()")
+
+      //      if (hOutTour.isDone && hOutCost.isDone) {
+      //        completeStage()
+      //        return
+      //      }
+
+      if (stage == 0) { // read size
+        if (!hSize.hasNext) return
+
+        size = hSize.next()
+        if (xBuf == null || xBuf.length != size) {
+          xBuf = new Array(size)
+          yBuf = new Array(size)
+        }
+        xOff  = 0
+        xRem  = size
+        yOff  = 0
+        yRem  = size
+        stage = 1
+
+      } else if (stage == 1) {  // read init and weights
+        while (stage == 1) {
+          val numX = math.min(hX.available, xRem)
+          val numY = math.min(hY.available, yRem)
+          if (numX == 0 && numY == 0) return
+
+          if (numX > 0) {
+            hX.nextN(xBuf, xOff, numX)
+            xOff += numX
+            xRem -= numX
+          }
+          if (numY > 0) {
+            hY.nextN(yBuf, yOff, numY)
+            yOff += numY
+            yRem -= numY
+          }
+
+          if (xRem == 0 && yRem == 0) {
+            outValue  = calc()
+            stage     = 2
+          }
+        }
+
+      } else {  // write
+        if (!hOut.hasNext) return
+
+        hOut.next(outValue)
+//        PUT += 1
+
+        stage = 0
+        if (hX.isDone || hY.isDone) {
+          if (hotInsDone()) return
+        }
+      }
+
+      process()
     }
   }
 }

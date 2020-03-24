@@ -31,7 +31,7 @@ object ModFreqShift extends Module {
     val f = FScape[S]()
     import de.sciss.fscape.lucre.MacroImplicits._
     f.setGraph {
-      // version: 07-Apr-2019
+      // version: 24-Mar-2020
       // TODO: anti-aliasing filter
       // TODO: compensate for filter gain
 
@@ -50,8 +50,8 @@ object ModFreqShift extends Module {
       val lpFreqN     = 0.245 // Fs/4 minus roll-off
       val lpWinSz     = 1024
       val lpWinSzH    = lpWinSz >> 1
-      val lpSinc      = GenWindow(size = lpWinSz, shape = GenWindow.Sinc, param = lpFreqN)
-      val lpSincW     = GenWindow(size = lpWinSz, shape = GenWindow.Kaiser, param = 8.0) * lpSinc
+      val lpSinc      = GenWindow.Sinc  (lpWinSz, param = lpFreqN)
+      val lpSincW     = GenWindow.Kaiser(lpWinSz, param = 8.0) * lpSinc
       //Plot1D(lpSincW, size = 1024)
 
       val modWSin     = SinOsc(0.25, phase = 0.0)

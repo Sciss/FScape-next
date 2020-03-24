@@ -57,12 +57,12 @@ object Histogram {
     private[this] var histogram: Array[Int] = _
     private[this] var init    = true
 
-    private[this] val hIn     = new Handlers.InDMain  (this, shape.in0)(identity)
+    private[this] val hIn     = new Handlers.InDMain  (this, shape.in0)()
     private[this] val hBins   = new Handlers.InIAux   (this, shape.in1)(math.max(1, _))
-    private[this] val hLo     = new Handlers.InDAux   (this, shape.in2)(identity)
-    private[this] val hHi     = new Handlers.InDAux   (this, shape.in3)(identity)
+    private[this] val hLo     = new Handlers.InDAux   (this, shape.in2)()
+    private[this] val hHi     = new Handlers.InDAux   (this, shape.in3)()
     private[this] val hMode   = new Handlers.InIAux   (this, shape.in4)(_.clip(0, 1))
-    private[this] val hReset  = new Handlers.InIAux   (this, shape.in5)(identity)
+    private[this] val hReset  = new Handlers.InIAux   (this, shape.in5)()
     private[this] val hOut    = new Handlers.OutIMain (this, shape.out)
 
     override protected def stopped(): Unit = {
