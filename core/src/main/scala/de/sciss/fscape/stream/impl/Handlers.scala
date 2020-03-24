@@ -165,8 +165,9 @@ object Handlers {
     import n._
 
     protected def condN(a: Array[A], off: Int, len: Int): Unit = {
-      var i = off
-      while (i < len) {
+      var i     = off
+      val stop  = off + len
+      while (i < stop) {
         val v = cond(a(i))
         a(i) = v
         i += 1
