@@ -99,6 +99,14 @@ object Handlers {
 
     final def value: A = _value
 
+    final def available: Int =
+      if (_hasNext) {
+        val _buf = buf
+        if (_buf == null) Int.MaxValue else {
+          _buf.size - off
+        }
+      } else 0
+
     final def next(): A = {
       require (_hasNext)
       val _buf = buf
@@ -197,36 +205,25 @@ object Handlers {
 
     final def peek: A = {
       require (_hasNext)
-      cond(buf.buf(off))
+      buf.buf(off)
     }
 
     final def available: Int =
       if (_hasNext) {
-        val _buf = buf
-        val _off = off
-        _buf.size - _off
+        buf.size - off
       } else 0
 
     final def next(): A = {
       require (_hasNext)
-      val _buf = buf
-      var _off = off
-      val v = cond(_buf.buf(_off))
-      _off += 1
-      if (_off == _buf.size) {
-        bufExhausted()
-      } else {
-        off = _off
-      }
+      val v = buf.buf(off)
+      postNextN(1)
       v
     }
 
     private def bufExhausted(): Unit = {
       buf.release()
       if (isAvailable(inlet)) {
-        buf = grab(inlet)
-        off = 0
-        tryPull(inlet)
+        doGrab()
       } else {
         buf = null
         _hasNext = false
@@ -236,29 +233,44 @@ object Handlers {
       }
     }
 
-    final def nextN(a: Array[A], off: Int, len: Int): Unit = {
+    private def preNextN(len: Int): Unit = {
       require (_hasNext)
-      val _buf   = buf
-      var _off  = this.off
-      val avail = _buf.size - _off
+      val avail = buf.size - off
       require (len <= avail)
-      System.arraycopy(_buf.buf, _off, a, off, len)
-      condN(a, off, len)
-      _off += len
-      if (_off == _buf.size) {
+    }
+
+    private def postNextN(len: Int): Unit = {
+      off += len
+      if (off == buf.size) {
         bufExhausted()
-      } else {
-        this.off = _off
       }
+    }
+
+    final def nextN(a: Array[A], off: Int, len: Int): Unit = {
+      preNextN(len)
+      System.arraycopy(buf.buf, this.off, a, off, len)
+      postNextN(len)
+    }
+
+    final def copy(to: AbstractOutMain[A, E], len: Int): Unit = {
+      preNextN(len)
+      to.nextN(buf.buf, off, len)
+      postNextN(len)
+    }
+
+    private def doGrab(): Unit = {
+      val _buf = grab(inlet)
+      buf = _buf
+      off = 0
+      condN(_buf.buf, 0, _buf.size)
+      tryPull(inlet)
     }
 
     final def onPush(): Unit = {
       val ok = buf == null
       log(s"$this onPush() - $ok")
       if (ok) {
-        buf = grab(inlet)
-        off = 0
-        tryPull(inlet)
+        doGrab()
         assert (!_hasNext)
         _hasNext = true
         process() // ready
@@ -341,23 +353,47 @@ object Handlers {
       }
     }
 
-    final def next(v: A): Unit = {
-      require (_hasNext)
+    private def ensureBuf(): E = {
       var _buf = buf
       if (_buf == null) {
-        _buf  = mkBuf()
-        buf   = _buf
-        off   = 0
+        _buf = mkBuf()
+        buf = _buf
+        off = 0
       }
-      _buf.buf(off) = v
-      off += 1
-      if (off == _buf.size) {
+      _buf
+    }
+
+    final def available: Int =
+      if (_hasNext) {
+        val _buf = ensureBuf()
+        _buf.size - off
+      } else 0
+
+    private def postNextN(len: Int): Unit = {
+      off += len
+      if (off == buf.size) {
         if (isAvailable(outlet)) {
           write()
         } else {
           _hasNext = false
         }
       }
+    }
+
+    final def next(v: A): Unit = {
+      require (_hasNext)
+      val _buf = ensureBuf()
+      _buf.buf(off) = v
+      postNextN(1)
+    }
+
+    final def nextN(a: Array[A], off: Int, len: Int): Unit = {
+      require (_hasNext)
+      val _buf  = ensureBuf()
+      val avail = _buf.size - this.off
+      require (len <= avail)
+      System.arraycopy(a, off, _buf.buf, this.off, len)
+      postNextN(len)
     }
 
     final def onPull(): Unit = {
