@@ -11,9 +11,9 @@ import scala.util.Success
 class DropWhileSpec extends AnyFlatSpec with Matchers {
   "The DropWhile UGen" should "work as intended" in {
     for {
-      inLen   <- Seq(1025) // Seq(0, 1, 10, 100, 1024, 1025)
-      pLen    <- Seq(1) // Seq(0, 1, 10, 100, 1024, 1025, 2000)
-      pThresh <- Seq(10) // Seq(0, 1, 10, 100, 1024, 1025, 2000)
+      inLen   <- Seq(0, 1, 10, 100, 1024, 1025)
+      pLen    <- Seq(0, 1, 10, 100, 1024, 1025, 2000)
+      pThresh <- Seq(0, 1, 10, 100, 1024, 1025, 2000)
     } {
       val p = Promise[Vec[Int]]()
       val g = Graph {

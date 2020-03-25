@@ -58,6 +58,12 @@ object DropWhile {
       if (hOut.flush()) completeStage()
     }
 
+    private def checkInDone(): Boolean = {
+      val res = hIn.isDone && hOut.flush()
+      if (res) completeStage()
+      res
+    }
+
     def process(): Unit = {
       logStream(s"process() $this")
 
@@ -76,22 +82,20 @@ object DropWhile {
           }
           if (count > 0) {
             hIn.skip(count)
-          }
-          if (hIn.isDone) {
-            if (hOut.flush()) {
-              completeStage()
-              return
-            }
+            if (checkInDone()) return
           }
           gate = _gate
         }
       }
 
       // always enter here -- `gate` must be `false` now
-      {
+      while ({
         val len = math.min(hIn.available, hOut.available)
-        if (len > 0) hIn.copy(hOut, len)
-      }
+        (len > 0) && {
+          hIn.copy(hOut, len)
+          !checkInDone()
+        }
+      }) ()
     }
   }
 }
