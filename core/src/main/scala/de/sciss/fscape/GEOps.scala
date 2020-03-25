@@ -15,7 +15,7 @@ package de.sciss.fscape
 
 import de.sciss.fscape.graph.BinaryOp._
 import de.sciss.fscape.graph.UnaryOp._
-import de.sciss.fscape.graph.{BinaryOp, ChannelProxy, Clip, ComplexBinaryOp, ComplexUnaryOp, Concat, Constant, Distinct, Drop, Elastic, FilterSeq, Fold, Length, MatchLen, Metro, Poll, ResizeWindow, RunningMax, RunningMin, RunningSum, Take, TakeRight, UnaryOp, UnzipWindow, Wrap, ZipWindow}
+import de.sciss.fscape.graph.{BinaryOp, ChannelProxy, Clip, ComplexBinaryOp, ComplexUnaryOp, Concat, Constant, Distinct, Drop, Elastic, FilterSeq, Fold, Length, MatchLen, Metro, Poll, ResizeWindow, RunningMax, RunningMin, RunningProduct, RunningSum, Take, TakeRight, UnaryOp, UnzipWindow, Wrap, ZipWindow}
 import de.sciss.optional.Optional
 
 /** `GEOps1` are operations for graph elements (`GE`). Instead of having these operations directly defined
@@ -208,13 +208,16 @@ final class GEOps1(val `this`: GE) extends AnyVal { me =>
   /** Prepends a single frame. */
   def prepended(elem: GE): GE = Concat(single(elem), g)
 
-  def product: GE = ??? // RunningProduct(g).last
+  def product: GE = RunningProduct(g).last
 
   def reverse: GE = ???
 
   def size: GE = length
 
-  def slice(from: GE, until: GE): GE = ???
+  def slice(from: GE, until: GE): GE = {
+    val sz = until - from
+    g.drop(from).take(sz)
+  }
 
   def sorted: GE = ???
 

@@ -50,7 +50,7 @@ abstract class AbstractSeqGen[A, E >: Null <: BufElem[A]](name: String, layer: L
         //  println("init")
         x       = bufIn0.buf(0)
         step    = bufIn1.buf(0)
-        len     = math.max(1L, bufIn2.buf(0))
+        len     = math.max(0L, bufIn2.buf(0))
         init    = false
       }
     }
