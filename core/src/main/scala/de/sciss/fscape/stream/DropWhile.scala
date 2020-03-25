@@ -1,5 +1,5 @@
 /*
- *  TakeWhile.scala
+ *  DropWhile.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2020 Hanns Holger Rutz. All rights reserved.
@@ -17,7 +17,7 @@ package stream
 import akka.stream.{Attributes, FanInShape2, Inlet, Outlet}
 import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
 
-object TakeWhile {
+object DropWhile {
   def apply[A, Buf >: Null <: BufElem[A]](in: Outlet[Buf], p: OutI)
                                          (implicit b: Builder, aTpe: StreamType[A, Buf]): Outlet[Buf] = {
     val stage0  = new Stage[A, Buf](b.layer)
@@ -27,7 +27,7 @@ object TakeWhile {
     stage.out
   }
 
-  private final val name = "TakeWhile"
+  private final val name = "DropWhile"
 
   private type Shape[A, Buf >: Null <: BufElem[A]] = FanInShape2[Buf, BufI, Buf]
 
@@ -41,7 +41,7 @@ object TakeWhile {
       out = Outlet[Buf](s"$name.out")
     )
 
-    def createLogic(attr: Attributes): NodeImpl[TakeWhile.Shape[A, Buf]] = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[DropWhile.Shape[A, Buf]] = new Logic(shape, layer)
   }
 
   private final class Logic[A, E >: Null <: BufElem[A]](shape: Shape[A, E], layer: Layer)
@@ -75,15 +75,23 @@ object TakeWhile {
             }
           }
           if (count > 0) {
-            hIn.copy(hOut, count)
+            hIn.skip(count)
           }
-          if (hIn.isDone) _gate = false
+          if (hIn.isDone) {
+            if (hOut.flush()) {
+              completeStage()
+              return
+            }
+          }
           gate = _gate
         }
-        if (hOut.flush()) completeStage()
       }
 
-      // XXX TODO --- should we advance hIn and hPred ? Probably not...
+      // always enter here -- `gate` must be `false` now
+      {
+        val len = math.min(hIn.available, hOut.available)
+        if (len > 0) hIn.copy(hOut, len)
+      }
     }
   }
 }

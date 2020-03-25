@@ -15,7 +15,7 @@ package de.sciss.fscape
 
 import de.sciss.fscape.graph.BinaryOp._
 import de.sciss.fscape.graph.UnaryOp._
-import de.sciss.fscape.graph.{BinaryOp, ChannelProxy, Clip, ComplexBinaryOp, ComplexUnaryOp, Concat, Constant, Distinct, Drop, Elastic, FilterSeq, Fold, Length, MatchLen, Metro, Poll, ResizeWindow, RunningMax, RunningMin, RunningProduct, RunningSum, Take, TakeRight, TakeWhile, UnaryOp, UnzipWindow, Wrap, ZipWindow}
+import de.sciss.fscape.graph.{BinaryOp, ChannelProxy, Clip, ComplexBinaryOp, ComplexUnaryOp, Concat, Constant, Distinct, Drop, DropWhile, Elastic, FilterSeq, Fold, Length, MatchLen, Metro, Poll, ResizeWindow, RunningMax, RunningMin, RunningProduct, RunningSum, Take, TakeRight, TakeWhile, UnaryOp, UnzipWindow, Wrap, ZipWindow}
 import de.sciss.optional.Optional
 
 /** `GEOps1` are operations for graph elements (`GE`). Instead of having these operations directly defined
@@ -136,13 +136,7 @@ final class GEOps1(val `this`: GE) extends AnyVal { me =>
 
   def dropRight(length: GE): GE = ??? // Drop(in = g, length = length)
 
-  /** XXX TODO --- this doesn't have a dedicated UGen yet. Callers must assume an extra block of delay */
-  def dropWhile(p: GE): GE = {
-//    val off = !gate
-//    val p   = SetResetFF(trig = off)
-//    FilterSeq(g.elastic(), p)
-    ???
-  }
+  def dropWhile(p: GE): GE = DropWhile(g, p)
 
   def endsWith(that: GE): GE = ??? // BinOp(BinOp.SeqEndsWith[A, A](), x, that)
 

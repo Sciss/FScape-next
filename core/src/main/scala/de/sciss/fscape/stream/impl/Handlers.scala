@@ -247,15 +247,20 @@ object Handlers {
     }
 
     final def nextN(a: Array[A], off: Int, len: Int): Unit = {
-      preNextN(len)
+      preNextN  (len)
       System.arraycopy(buf.buf, this.off, a, off, len)
-      postNextN(len)
+      postNextN (len)
+    }
+
+    final def skip(len: Int): Unit = {
+      preNextN  (len)
+      postNextN (len)
     }
 
     final def copy(to: AbstractOutMain[A, E], len: Int): Unit = {
-      preNextN(len)
+      preNextN  (len)
       to.nextN(buf.buf, off, len)
-      postNextN(len)
+      postNextN (len)
     }
 
     private def doGrab(): Unit = {
