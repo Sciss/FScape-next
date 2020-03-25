@@ -18,8 +18,7 @@ class ResizeWindowSpec extends AnyFlatSpec with Matchers {
     def variant(inLen: Int, winInSz: Int, start: Int, stop: Int): Unit = {
       val p = Promise[Vec[Int]]()
 
-      val inData      = 1 to inLen
-      val inDataP     = if (inData.nonEmpty) inData else Vector(1)
+      val inDataP     = if (inLen < 1) Vector.empty else 1 to inLen
       val inDataSq    = inDataP.grouped(winInSz)
       val expected: Vector[Int] = inDataSq.flatMap { in0 =>
         val in1 = if (in0.size >= winInSz) in0 else in0.padTo(winInSz, 0)

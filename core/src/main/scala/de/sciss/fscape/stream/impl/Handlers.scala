@@ -16,7 +16,7 @@ package de.sciss.fscape.stream.impl
 import akka.stream.stage.{InHandler, OutHandler}
 import akka.stream.{Inlet, Outlet, Shape}
 import de.sciss.fscape.stream.{BufD, BufElem, BufI, Control, InD, InI, Layer, OutD, OutI, StreamType}
-import de.sciss.fscape.{stream, logStream => log}
+import de.sciss.fscape.{logStream => log}
 
 /** In the mess of all the different implementation classes, this is a new
   * approach for collecting standard type of handlers which correctly handle the
