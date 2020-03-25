@@ -35,3 +35,20 @@ final case class Frames(in: GE) extends UGenSource.SingleOut {
     stream.Frames(in = in.toAny)
   }
 }
+
+/** A UGen that generates a signal that incrementally counts the frames of its input.
+  * The first value output will be `0`, and the last will correspond to the number
+  * of frames seen minutes one.
+  */
+final case class Indices(in: GE) extends UGenSource.SingleOut {
+  protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
+    unwrap(this, Vector(in.expand))
+
+  protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
+    UGen.SingleOut(this, args)
+
+  private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
+    val Vec(in) = args
+    stream.Frames(in = in.toAny, init = 0, name = name)
+  }
+}

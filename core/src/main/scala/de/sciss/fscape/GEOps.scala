@@ -15,7 +15,7 @@ package de.sciss.fscape
 
 import de.sciss.fscape.graph.BinaryOp._
 import de.sciss.fscape.graph.UnaryOp._
-import de.sciss.fscape.graph.{BinaryOp, ChannelProxy, Clip, ComplexBinaryOp, ComplexUnaryOp, Concat, Constant, Distinct, Drop, DropWhile, Elastic, FilterSeq, Fold, Length, MatchLen, Metro, Poll, ResizeWindow, RunningMax, RunningMin, RunningProduct, RunningSum, Take, TakeRight, TakeWhile, UnaryOp, UnzipWindow, Wrap, ZipWindow}
+import de.sciss.fscape.graph.{BinaryOp, ChannelProxy, Clip, ComplexBinaryOp, ComplexUnaryOp, Concat, Constant, Distinct, Drop, DropWhile, Elastic, FilterSeq, Fold, Indices, Length, MatchLen, Metro, Poll, ResizeWindow, RunningMax, RunningMin, RunningProduct, RunningSum, Take, TakeRight, TakeWhile, UnaryOp, UnzipWindow, Wrap, ZipWindow}
 import de.sciss.optional.Optional
 
 /** `GEOps1` are operations for graph elements (`GE`). Instead of having these operations directly defined
@@ -127,7 +127,7 @@ final class GEOps1(val `this`: GE) extends AnyVal { me =>
   /** Concatenates another signal to this (finite) signal. */
   def concat(that: GE): GE = Concat(g, that)
 
-  def contains(elem: GE): GE = indexOf(elem) >= 0
+//  def contains(elem: GE): GE = indexOf(elem) >= 0
 
   def distinct: GE = Distinct(g)
 
@@ -138,32 +138,32 @@ final class GEOps1(val `this`: GE) extends AnyVal { me =>
 
   def dropWhile(p: GE): GE = DropWhile(g, p)
 
-  def endsWith(that: GE): GE = ??? // BinOp(BinOp.SeqEndsWith[A, A](), x, that)
+//  def endsWith(that: GE): GE = ...
 
   def filter(p: GE): GE = FilterSeq(g, p)
 
   def filterNot(p: GE): GE = filter(!p)
 
-  /** Returns the first element for which the predicate holds, or an empty stream if no predicate holds. */
-  def find(p: GE): GE = ???
+//  /** Returns the first element for which the predicate holds, or an empty stream if no predicate holds. */
+//  def find(p: GE): GE = ...
 
-  /** Returns the last element for which the predicate holds, or an empty stream if no predicate holds. */
-  def findLast(p: GE): GE = ???
+//  /** Returns the last element for which the predicate holds, or an empty stream if no predicate holds. */
+//  def findLast(p: GE): GE = ...
 
     /** Outputs the first element of this signal, then terminates. */
   def head: GE = take(1)
 
-  def indexOf(elem: GE): GE = indexOfSlice(single(elem))
+//  def indexOf(elem: GE): GE = indexOfSlice(single(elem))
+//
+//  def indexOf(elem: GE, from: GE): GE = indexOfSlice(single(elem), from)
+//
+//  def indexOfSlice(that: GE): GE = indexOfSlice(that, from = 0)
+//
+//  def indexOfSlice(that: GE, from: GE): GE = ...
+//
+//  def indexWhere(p: GE): GE = ...
 
-  def indexOf(elem: GE, from: GE): GE = indexOfSlice(single(elem), from)
-
-  def indexOfSlice(that: GE): GE = indexOfSlice(that, from = 0)
-
-  def indexOfSlice(that: GE, from: GE): GE = ???
-
-  def indexWhere(p: GE): GE = ???
-
-  def indices: GE = ???
+  def indices: GE = Indices(g)
 
   def init: GE = dropRight(1)
 
@@ -174,16 +174,16 @@ final class GEOps1(val `this`: GE) extends AnyVal { me =>
   /** Outputs the last element of this (finite) signal, then terminates. */
   def last: GE = takeRight(1)
 
-  def lastIndexOf(elem: GE): GE = lastIndexOfSlice(single(elem))
-
-  /** The index of the last occurrence of `elem` at or before `end` in this sequence, or `-1` if not found */
-  def lastIndexOf(elem: GE, end: GE): GE = lastIndexOfSlice(single(elem), end)
-
-  /** Last index where this sequence contains `that` sequence as a slice, or `-1` if not found */
-  def lastIndexOfSlice(that: GE): GE = ???
-
-  /** Last index at or before `end` where this sequence contains `that` sequence as a slice, or `-1` if not found */
-  def lastIndexOfSlice(that: GE, end: GE): GE = ???
+//  def lastIndexOf(elem: GE): GE = lastIndexOfSlice(single(elem))
+//
+//  /** The index of the last occurrence of `elem` at or before `end` in this sequence, or `-1` if not found */
+//  def lastIndexOf(elem: GE, end: GE): GE = lastIndexOfSlice(single(elem), end)
+//
+//  /** Last index where this sequence contains `that` sequence as a slice, or `-1` if not found */
+//  def lastIndexOfSlice(that: GE): GE = ...
+//
+//  /** Last index at or before `end` where this sequence contains `that` sequence as a slice, or `-1` if not found */
+//  def lastIndexOfSlice(that: GE, end: GE): GE = ...
 
   def length: GE = Length(g)
 
@@ -197,7 +197,7 @@ final class GEOps1(val `this`: GE) extends AnyVal { me =>
 
   def padTo(len: GE, elem: GE = 0.0): GE = ???
 
-  def patch(from: GE, other: GE, replaced: GE): GE = ???
+//  def patch(from: GE, other: GE, replaced: GE): GE = ...
 
   /** Prepends a single frame. */
   def prepended(elem: GE): GE = Concat(single(elem), g)
@@ -221,7 +221,7 @@ final class GEOps1(val `this`: GE) extends AnyVal { me =>
     (_1, _2)
   }
 
-  def startsWith(that: GE, offset: GE = 0L): GE = ???
+//  def startsWith(that: GE, offset: GE = 0L): GE = ...
 
   def sum: GE = RunningSum(g).last
 
@@ -240,10 +240,10 @@ final class GEOps1(val `this`: GE) extends AnyVal { me =>
     (u.out(0), u.out(1))
   }
 
-  /** A new sequence equal to this sequence with one single replaced `elem` at `index`.
-    * If the index lies outside the sequence, the behavior is undefined.
-    */
-  def updated(index: GE, elem: GE): GE = patch(index, single(elem), 1)
+//  /** A new sequence equal to this sequence with one single replaced `elem` at `index`.
+//    * If the index lies outside the sequence, the behavior is undefined.
+//    */
+//  def updated(index: GE, elem: GE): GE = patch(index, single(elem), 1)
 
   def zip(that: GE): GE = ZipWindow(g, that)
 }

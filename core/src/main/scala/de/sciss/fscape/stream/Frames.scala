@@ -18,32 +18,36 @@ import akka.stream.{Attributes, FlowShape}
 import de.sciss.fscape.stream.impl.{FilterChunkImpl, FilterIn1LImpl, NodeImpl, StageImpl}
 
 object Frames {
-  def apply(in: OutA)(implicit b: Builder): OutL = {
-    val stage0  = new Stage(b.layer)
+  def apply(in: OutA)(implicit b: Builder): OutL = apply(in, init = 1, name = nameFr)
+
+  def apply(in: OutA, init: Int, name: String)(implicit b: Builder): OutL = {
+    val stage0  = new Stage(b.layer, init = init, name = name)
     val stage   = b.add(stage0)
     b.connect(in, stage.in)
     stage.out
   }
 
-  private final val name = "Frames"
+  private final val nameFr = "Frames"
 
   private type Shape = FlowShape[BufLike, BufL]
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
+  private final class Stage(layer: Layer, init: Int, name: String)(implicit ctrl: Control)
+    extends StageImpl[Shape](name) {
+
     val shape = new FlowShape(
       in  = InA (s"$name.in" ),
       out = OutL(s"$name.out")
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes) = new Logic(shape, layer, init = init, name = name)
   }
 
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+  private final class Logic(shape: Shape, layer: Layer, init: Int, name: String)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
       with FilterChunkImpl[BufLike, BufL, Shape]
       with FilterIn1LImpl[BufLike] {
 
-    private[this] var framesRead = 0L
+    private[this] var framesRead = init.toLong
 
     protected def processChunk(inOff: Int, outOff: Int, len: Int): Unit = {
       val bufOut  = bufOut0
@@ -52,8 +56,8 @@ object Frames {
       val stop    = i + len
       var j       = framesRead
       while (i < stop) {
-        j += 1
         arr(i) = j
+        j += 1
         i += 1
       }
       framesRead  = j
