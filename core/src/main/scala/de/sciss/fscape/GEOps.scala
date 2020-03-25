@@ -15,7 +15,7 @@ package de.sciss.fscape
 
 import de.sciss.fscape.graph.BinaryOp._
 import de.sciss.fscape.graph.UnaryOp._
-import de.sciss.fscape.graph.{BinaryOp, ChannelProxy, Clip, ComplexBinaryOp, ComplexUnaryOp, Concat, Constant, Drop, Elastic, FilterSeq, Fold, MatchLen, Metro, Poll, ResizeWindow, SetResetFF, Take, TakeRight, UnaryOp, Wrap, ZipWindow}
+import de.sciss.fscape.graph.{BinaryOp, ChannelProxy, Clip, ComplexBinaryOp, ComplexUnaryOp, Concat, Constant, Distinct, Drop, Elastic, FilterSeq, Fold, Length, MatchLen, Metro, Poll, ResizeWindow, RunningMax, RunningMin, RunningSum, Take, TakeRight, UnaryOp, UnzipWindow, Wrap, ZipWindow}
 import de.sciss.optional.Optional
 
 /** `GEOps1` are operations for graph elements (`GE`). Instead of having these operations directly defined
@@ -37,6 +37,12 @@ final class GEOps1(val `this`: GE) extends AnyVal { me =>
   def out(index: Int): GE = ChannelProxy(g, index)
 
   @inline private def unOp(op: UnaryOp.Op): GE = op.make(g)
+
+  private def single(in: GE): GE =
+    in match {
+      case c: Constant  => c
+      case _            => in.head
+    }
 
   // unary ops
   def unary_-   : GE  = unOp(Neg       )
@@ -104,49 +110,149 @@ final class GEOps1(val `this`: GE) extends AnyVal { me =>
 
   def elastic(n: GE = 1): GE = Elastic(g, n)
 
+  // ---- sequence ----
+
+  /** Concatenates another signal to this (finite) signal. */
+  def ++ (that: GE): GE = Concat(g, that)
+
+  /** Prepends a single frame. */
+  def +: (elem: GE): GE = prepended(elem)
+
+  /** Appends a single frame. */
+  def :+ (elem: GE): GE = appended(elem)
+
+  /** Appends a single frame. */
+  def appended(elem: GE): GE = Concat(g, single(elem))
+
+  /** Concatenates another signal to this (finite) signal. */
+  def concat(that: GE): GE = Concat(g, that)
+
+  def contains(elem: GE): GE = indexOf(elem) >= 0
+
+  def distinct: GE = Distinct(g)
+
+  /** Drops the first `length` elements of this signal. */
+  def drop(length: GE): GE = Drop(in = g, length = length)
+
+  def dropRight(length: GE): GE = ??? // Drop(in = g, length = length)
+
+  /** XXX TODO --- this doesn't have a dedicated UGen yet. Callers must assume an extra block of delay */
+  def dropWhile(gate: GE): GE = {
+//    val off = !gate
+//    val p   = SetResetFF(trig = off)
+//    FilterSeq(g.elastic(), p)
+    ???
+  }
+
+  def endsWith(that: GE): GE = ??? // BinOp(BinOp.SeqEndsWith[A, A](), x, that)
+
+  def filter(p: GE): GE = FilterSeq(g, p)
+
+  def filterNot(p: GE): GE = filter(!p)
+
+  /** Returns the first element for which the predicate holds, or an empty stream if no predicate holds. */
+  def find(p: GE): GE = ???
+
+  /** Returns the last element for which the predicate holds, or an empty stream if no predicate holds. */
+  def findLast(p: GE): GE = ???
+
+    /** Outputs the first element of this signal, then terminates. */
+  def head: GE = take(1)
+
+  def indexOf(elem: GE): GE = indexOfSlice(single(elem))
+
+  def indexOf(elem: GE, from: GE): GE = indexOfSlice(single(elem), from)
+
+  def indexOfSlice(that: GE): GE = indexOfSlice(that, from = 0)
+
+  def indexOfSlice(that: GE, from: GE): GE = ???
+
+  def indexWhere(p: GE): GE = ???
+
+  def indices: GE = ???
+
+  def init: GE = dropRight(1)
+
+  def isDefinedAt(index: GE): GE = (index >= 0) & (index < size)
+
+  def isEmpty: GE = size sig_== 0L
+
+  /** Outputs the last element of this (finite) signal, then terminates. */
+  def last: GE = takeRight(1)
+
+  def lastIndexOf(elem: GE): GE = lastIndexOfSlice(single(elem))
+
+  /** The index of the last occurrence of `elem` at or before `end` in this sequence, or `-1` if not found */
+  def lastIndexOf(elem: GE, end: GE): GE = lastIndexOfSlice(single(elem), end)
+
+  /** Last index where this sequence contains `that` sequence as a slice, or `-1` if not found */
+  def lastIndexOfSlice(that: GE): GE = ???
+
+  /** Last index at or before `end` where this sequence contains `that` sequence as a slice, or `-1` if not found */
+  def lastIndexOfSlice(that: GE, end: GE): GE = ???
+
+  def length: GE = Length(g)
+
+  /** Returns the maximum value cross all elements (or an empty stream if the input is empty) */
+  def maximum: GE = RunningMax(g).last
+
+  /** Returns the minimum value cross all elements (or an empty stream if the input is empty) */
+  def minimum: GE = RunningMin(g).last
+
+  def nonEmpty: GE = size > 0L
+
+  def padTo(len: GE, elem: GE = 0.0): GE = ???
+
+  def patch(from: GE, other: GE, replaced: GE): GE = ???
+
+  /** Prepends a single frame. */
+  def prepended(elem: GE): GE = Concat(single(elem), g)
+
+  def product: GE = ??? // RunningProduct(g).last
+
+  def reverse: GE = ???
+
+  def size: GE = length
+
+  def slice(from: GE, until: GE): GE = ???
+
+  def sorted: GE = ???
+
+  def splitAt(n: GE): (GE, GE) = {
+    val _1 = take(n)
+    val _2 = drop(n)
+    (_1, _2)
+  }
+
+  def startsWith(that: GE, offset: GE = 0L): GE = ???
+
+  def sum: GE = RunningSum(g).last
+
+  def tail: GE = drop(1)
+
   /** Takes at most `length` elements of this signal, then terminates. */
   def take(length: GE): GE = Take(in = g, length = length)
 
   /** Takes at most the last `length` elements of this (finite) signal. */
   def takeRight(length: GE): GE = TakeRight(in = g, length = length)
 
-  /** Drops the first `length` elements of this signal. */
-  def drop(length: GE): GE = Drop(in = g, length = length)
-
-  /** XXX TODO --- this doesn't have a dedicated UGen yet. Callers must assume an extra block of delay */
-  def dropWhile(gate: GE): GE = {
-    val off = !gate
-    val p   = SetResetFF(trig = off)
-    FilterSeq(g.elastic(), p)
-  }
-
   /** XXX TODO --- this doesn't have a dedicated UGen yet. Callers must assume an extra block of delay */
   def takeWhile(gate: GE): GE = {
-    val off = !gate
-    val p   = -SetResetFF(trig = off) + 1
-    FilterSeq(g.elastic(), p)
+//    val off = !gate
+//    val p   = -SetResetFF(trig = off) + 1
+//    FilterSeq(g.elastic(), p)
+    ???
   }
 
-  //  /** Drops the last `len` elements of this (finite) signal. */
-//  def dropRight(len: GE): GE = ...
-//  def init: GE = DropRight(in = g, len = 1)
+  def unzip: (GE, GE) = {
+    val u = UnzipWindow(g)
+    (u.out(0), u.out(1))
+  }
 
-  /** Outputs the first element of this signal, then terminates. */
-  def head: GE = take(1)
-
-  /** Outputs the last element of this (finite) signal, then terminates. */
-  def last: GE = takeRight(1)
-
-  def tail: GE = Drop(in = g, length = 1)
-
-  /** Concatenates another signal to this (finite) signal. */
-  def ++ (that: GE): GE = Concat(g, that)
-
-  /** Appends a single frame. */
-  def :+ (that: Constant): GE = Concat(g, that)
-
-  /** Prepends a single frame. */
-  def +: (that: Constant): GE = Concat(that, g)
+  /** A new sequence equal to this sequence with one single replaced `elem` at `index`.
+    * If the index lies outside the sequence, the behavior is undefined.
+    */
+  def updated(index: GE, elem: GE): GE = patch(index, single(elem), 1)
 
   def zip(that: GE): GE = ZipWindow(g, that)
 }

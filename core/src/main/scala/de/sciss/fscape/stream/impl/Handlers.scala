@@ -15,8 +15,8 @@ package de.sciss.fscape.stream.impl
 
 import akka.stream.stage.{InHandler, OutHandler}
 import akka.stream.{Inlet, Outlet, Shape}
-import de.sciss.fscape.stream.{BufD, BufElem, BufI, Control, InD, InI, Layer, OutD, OutI}
-import de.sciss.fscape.{logStream => log}
+import de.sciss.fscape.stream.{BufD, BufElem, BufI, Control, InD, InI, Layer, OutD, OutI, StreamType}
+import de.sciss.fscape.{stream, logStream => log}
 
 /** In the mess of all the different implementation classes, this is a new
   * approach for collecting standard type of handlers which correctly handle the
@@ -29,6 +29,7 @@ object Handlers {
 
   private val idD: Double => Double = x => x
   private val idI: Int    => Int    = x => x
+  private val idA: Any    => Any    = x => x
 
   final class InDMain(n: Handlers[_], inlet: InD)(cond: Double => Double = idD)
     extends AbstractInMain[Double, BufD](n, inlet)(cond) {
@@ -45,6 +46,16 @@ object Handlers {
     private[this] val condId = cond eq idI
 
     override protected def condN(a: Array[Int], off: Int, len: Int): Unit =
+      if (!condId) super.condN(a, off, len)
+  }
+
+  final class InMain[A, E >: Null <: BufElem[A]](n: Handlers[_], inlet: Inlet[E])
+                                                (cond: A => A = idA.asInstanceOf[A => A])
+    extends AbstractInMain[A, E](n, inlet)(cond) {
+
+    private[this] val condId = cond eq idA
+
+    override protected def condN(a: Array[A], off: Int, len: Int): Unit =
       if (!condId) super.condN(a, off, len)
   }
 
@@ -288,6 +299,14 @@ object Handlers {
     import n._
 
     protected def mkBuf(): BufI = control.borrowBufI()
+  }
+
+  final class OutMain[A, E >: Null <: BufElem[A]](n: Handlers[_], outlet: Outlet[E])(implicit tpe: StreamType[A, E])
+    extends AbstractOutMain[A, E](n, outlet) {
+
+    import n._
+
+    protected def mkBuf(): E = tpe.allocBuf()
   }
 
   abstract class AbstractOutMain[@specialized(Int, Long, Double) A, E >: Null <: BufElem[A]](n: Handlers[_],
