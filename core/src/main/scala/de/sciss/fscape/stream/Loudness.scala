@@ -97,15 +97,17 @@ object Loudness {
       val lt    = LT
       val _spl  = spl
 
-      zwickerBandsBody(winBuf, numFrames = writeToWinOff.toInt, sampleRate = sampleRate, LT = lt)
-
-      var i = 0
-      while (i < lt.length) {
-        lt(i) += _spl
-        i += 1
+      val nonZero = zwickerBandsBody(winBuf, numFrames = writeToWinOff.toInt, sampleRate = sampleRate, LT = lt)
+      val res = if (nonZero) {
+        var i = 0
+        while (i < lt.length) {
+          lt(i) += _spl
+          i += 1
+        }
+        zwicker(lt, diffuse = diffuse)
+      } else {
+        0.0
       }
-
-      val res   = zwicker(lt, diffuse = diffuse)
       winBuf(0) = res
       1
     }
@@ -115,6 +117,11 @@ object Loudness {
 
   /*
       quick and dirty translation and adaptation to Scala by H.H.Rutz 20-Aug-2017
+      
+      26-Mar-2020 : some corrections:
+      - do not mutate ZUP
+      - do not clip at 3 phon
+      - fix bug for `pkMaxMid == pkMinMid`
 
       Original copyright below:
 
@@ -154,7 +161,7 @@ object Loudness {
   DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
   DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
   GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, 
   WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
   NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
@@ -172,13 +179,18 @@ object Loudness {
 
   // Zwicker 1/3rd octave bands
   //  private[this] val FR = Array[Int](
-  //    25,31  ,40,50,63,80,100,125,160,200,250,315,400,500,630,800,1000,1250,1600,2000,2500,3150,4000,5000,6300,8000,10000,12500)
+  //    25, 31  , 40, 50, 63, 80, 100, 125, 160, 200, 250, 315, 400, 500, 630, 800, 1000, 1250, 1600, 2000, 2500, 3150, 4000, 5000, 6300, 8000, 10000, 12500)
 
   private[this] val FR = Array[Double](
-    25,31.5,40,50,63,80,100,125,160,200,250,315,400,500,630,800,1000,1250,1600,2000,2500,3150,4000,5000,6300,8000,10000,12500)
+       25,   31.5, 40,   50,   63,   80,  100,  125,   160,
+      200,  250,  315,  400,  500,  630,  800, 1000,  1250,
+     1600, 2000, 2500, 3150, 4000, 5000, 6300, 8000, 10000,
+    12500
+  )
 
   // LT: must be Array of size 28, this is the result
-  private def zwickerBandsBody(buf: Array[Double], numFrames: Int, sampleRate: Double, LT: Array[Double]): Unit = {
+  // returns `true` if input is non-zero.
+  private def zwickerBandsBody(buf: Array[Double], numFrames: Int, sampleRate: Double, LT: Array[Double]): Boolean = {
     import math.exp
 
     var pkdEnable   = false
@@ -188,6 +200,7 @@ object Loudness {
     // Perform 28 steps to define the 28 normalized LT[i]'s...
     //    println("\nStep 2: Normalized data, three-band filter and scanning...\n")
     var passCounter = 0
+    var nonZero     = false
     while (passCounter < 28) {
       // Initialize 3-band filter (params = f( FR[] ) )
       val f0            = FR(passCounter) // .toDouble
@@ -234,16 +247,18 @@ object Loudness {
       }
       // Convert peak-peak amplitude to LT[]
 
-      if(pkMaxMid == pkMinMid) {
-        pkMaxMid = pkMinMid + 1
+      if (pkMaxMid == pkMinMid) {
+        LT(passCounter) = Double.NegativeInfinity
+      } else {
+        // Returns normalized amplitudes (0 dB corresponds to mid-amp)
+        import de.sciss.numbers.Implicits._
+        LT(passCounter) = (pkMaxMid - pkMinMid).ampDb
+        nonZero         = true
       }
-      // Returns normalized amplitudes (0 dB corresponds to mid-amp)
-      import de.sciss.numbers.Implicits._
-      LT(passCounter) = (pkMaxMid - pkMinMid).ampDb
-
       passCounter += 1
     }
-    // LT
+
+    nonZero
   }
 
   // CONSTANT TABLES
@@ -251,50 +266,52 @@ object Loudness {
   // Center frequencies of 1/3 oct. bands (FR)
 
   // Ranges of 1/3 oct. levels for correction at low frequencies according to equal loudness contours (RAP)
-  private[this] val RAP = Array[Double](45,55,65,71,80,90,100,120)
+  private[this] val RAP = Array[Double](45, 55, 65, 71, 80, 90, 100, 120)
 
   // Reduction of 1/3 oct. band levels at low frequencies according to equal loudness contours within the
   // eight ranges defined by RAP (DLL)
   private[this] val DLL = Array[Array[Double]](
-    Array[Double](-32,-24,-16,-10,-5,0,-7,-3,0,-2,0),Array[Double](-29,-22,-15,-10,-4,0,-7,-2,0,-2,0),
-    Array[Double](-27,-19,-14, -9,-4,0,-6,-2,0,-2,0),Array[Double](-25,-17,-12, -9,-3,0,-5,-2,0,-2,0),
-    Array[Double](-23,-16,-11, -7,-3,0,-4,-1,0,-1,0),Array[Double](-20,-14,-10, -6,-3,0,-4,-1,0,-1,0),
-    Array[Double](-18,-12, -9, -6,-2,0,-3,-1,0,-1,0),Array[Double](-15,-10, -8, -4,-2,0,-3,-1,0,-1,0)
+    Array[Double](-32, -24, -16, -10, -5, 0, -7, -3, 0, -2, 0), Array[Double](-29, -22, -15, -10, -4, 0, -7, -2, 0, -2, 0),
+    Array[Double](-27, -19, -14,  -9, -4, 0, -6, -2, 0, -2, 0), Array[Double](-25, -17, -12,  -9, -3, 0, -5, -2, 0, -2, 0),
+    Array[Double](-23, -16, -11,  -7, -3, 0, -4, -1, 0, -1, 0), Array[Double](-20, -14, -10,  -6, -3, 0, -4, -1, 0, -1, 0),
+    Array[Double](-18, -12,  -9,  -6, -2, 0, -3, -1, 0, -1, 0), Array[Double](-15, -10,  -8,  -4, -2, 0, -3, -1, 0, -1, 0)
   )
 
   // Critical band level at absolute threshold without taking into account the transmission
   // characteristics of the ear (LTQ)
-  private[this] val LTQ = Array[Double](30,18,12,8,7,6,5,4,3,3,3,3,3,3,3,3,3,3,3,3)
+  private[this] val LTQ = Array[Double](30, 18, 12, 8, 7, 6, 5, 4, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3)
 
   // Correction of levels according to the transmission characteristics of the ear (AO)
-  private[this] val AO = Array[Double](0,0,0,0,0,0,0,0,0,0,-0.5,-1.6,-3.2,-5.4,-5.6,-4,-1.6,2,5,12)
+  private[this] val AO = Array[Double](0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -0.5, -1.6, -3.2, -5.4, -5.6, -4, -1.6, 2, 5, 12)
 
   // Level difference between free and diffuse sound fields (DDF)
-  private[this] val DDF = Array[Double](0,0,0.5,0.9,1.2,1.6,2.3,2.8,3,2,0,-1.4,-2,-1.9,-1,0.5,3,4,4.3,4)
+  private[this] val DDF = Array[Double](0, 0, 0.5, 0.9, 1.2, 1.6, 2.3, 2.8, 3, 2, 0, -1.4, -2, -1.9, -1, 0.5, 3, 4, 4.3, 4)
 
   // Adaptation of 1/3 oct. band levels to the corresponding critical band level (DCB)
-  private[this] val DCB = Array[Double](-0.25,-0.6,-0.8,-0.8,-0.5,0,0.5,1.1,1.5,1.7,1.8,1.8,1.7,1.6,1.4,1.2,0.8,0.5,0,-0.5)
+  private[this] val DCB = Array[Double](-0.25, -0.6, -0.8, -0.8, -0.5, 0, 0.5, 1.1, 1.5, 1.7, 1.8, 1.8, 1.7, 1.6, 1.4, 1.2, 0.8, 0.5, 0, -0.5)
 
   // Upper limits of approximated critical bands in terms of critical band rate (ZUP)
-  private[this] val ZUP = Array[Double](0.9,1.8,2.8,3.5,4.4,5.4,6.6,7.9,9.2,10.6,12.3,13.6,15.2,16.7,16.1,19.3,20.6,21.8,22.7,23.6,24.0)
+  private[this] val ZUP0 = Array[Double](0.9, 1.8, 2.8, 3.5, 4.4, 5.4, 6.6, 7.9, 9.2, 10.6, 12.3, 13.6, 15.2, 16.7, 16.1, 19.3, 20.6, 21.8, 22.7, 23.6, 24.0)
 
   // Range of specific loudness for the determination of the steepness of the upper slopes in the specific loudness
   // Critical band rate pattern (RNS)
-  private[this] val RNS = Array[Double](21.5,18,15.1,11.5,9,6.1,4.4,3.1,2.13,1.36,0.82,0.42,0.30,0.22,0.15,0.1,0.035,0)
+  private[this] val RNS = Array[Double](21.5, 18, 15.1, 11.5, 9, 6.1, 4.4, 3.1, 2.13, 1.36, 0.82, 0.42, 0.30, 0.22, 0.15, 0.1, 0.035, 0)
 
   // Steepness of the upper slopes in the specific loudness - Critical band rate pattern for the ranges
   // RNS as a function of the number
   // of the critical band (USL)
   private[this] val USL = Array[Array[Double]](
-    Array(13 ,9  ,7.8,6.2,4.5,3.7 ,2.9,2.4 ,1.95,1.5 ,0.72,0.59,0.40,0.27,0.16,0.12,0.09,0.06),
-    Array(8.2,7.5,6.7,5.4,3.8,3   ,2.3,1.7 ,1.45,1.2 ,0.07,0.53,0.33,0.21,0.16,0.11,0.08,0.05),
-    Array(6.3,6  ,5.6,4.6,3.6,2.8 ,2.1,1.5 ,1.3 ,0.94,0.64,0.51,0.26,0.2 ,0.14,0.1 ,0.07,0.03),
-    Array(5.5,5.1,4.8,4  ,3.2,2.35,1  ,1.35,1.15,0.86,0.63,0.5 ,0.24,0.18,0.12,0.08,0.06,0.02),
-    Array(5.5,4.5,4.4,3.5,2.9,2.2 ,1.8,1.3 ,1.1 ,0.82,0.62,0.42,0.22,0.17,0.11,0.08,0.06,0.02),
-    Array(5.5,4.5,3.9,3.2,2.7,2.2 ,1.7,1.3 ,1.1 ,0.82,0.62,0.42,0.22,0.17,0.11,0.08,0.06,0.02),
-    Array(5.5,4.5,3.9,3.2,2.7,2.2 ,1.7,1.3 ,1.1 ,0.82,0.62,0.42,0.22,0.17,0.11,0.08,0.06,0.02),
-    Array(5.5,4.5,3.9,3.2,2.7,2.2 ,1.7,1.3 ,1.1 ,0.82,0.62,0.42,0.22,0.17,0.11,0.08,0.05,0.02)
+    Array(13 , 9  , 7.8, 6.2, 4.5, 3.7 , 2.9, 2.4 , 1.95, 1.5 , 0.72, 0.59, 0.40, 0.27, 0.16, 0.12, 0.09, 0.06),
+    Array(8.2, 7.5, 6.7, 5.4, 3.8, 3   , 2.3, 1.7 , 1.45, 1.2 , 0.07, 0.53, 0.33, 0.21, 0.16, 0.11, 0.08, 0.05),
+    Array(6.3, 6  , 5.6, 4.6, 3.6, 2.8 , 2.1, 1.5 , 1.3 , 0.94, 0.64, 0.51, 0.26, 0.2 , 0.14, 0.1 , 0.07, 0.03),
+    Array(5.5, 5.1, 4.8, 4  , 3.2, 2.35, 1  , 1.35, 1.15, 0.86, 0.63, 0.5 , 0.24, 0.18, 0.12, 0.08, 0.06, 0.02),
+    Array(5.5, 4.5, 4.4, 3.5, 2.9, 2.2 , 1.8, 1.3 , 1.1 , 0.82, 0.62, 0.42, 0.22, 0.17, 0.11, 0.08, 0.06, 0.02),
+    Array(5.5, 4.5, 3.9, 3.2, 2.7, 2.2 , 1.7, 1.3 , 1.1 , 0.82, 0.62, 0.42, 0.22, 0.17, 0.11, 0.08, 0.06, 0.02),
+    Array(5.5, 4.5, 3.9, 3.2, 2.7, 2.2 , 1.7, 1.3 , 1.1 , 0.82, 0.62, 0.42, 0.22, 0.17, 0.11, 0.08, 0.06, 0.02),
+    Array(5.5, 4.5, 3.9, 3.2, 2.7, 2.2 , 1.7, 1.3 , 1.1 , 0.82, 0.62, 0.42, 0.22, 0.17, 0.11, 0.08, 0.05, 0.02)
   )
+
+  private[this] val _10_DIV_LN2 = 10.0 / math.log(2)
 
   private def zwicker(LT: Array[Double], diffuse: Boolean): Double = {
     import math.{log, log10, max, min, pow}
@@ -305,6 +322,7 @@ object Loudness {
     val NM  = new Array[Double]( 21)
     val NS  = new Array[Double](270)
     val TI  = new Array[Double]( 11)
+    val ZUP = ZUP0.clone()
 
     val S   = 0.25
     var XP  = 0.0
@@ -315,27 +333,27 @@ object Loudness {
     while (i1 < 11) {
       var j = 0
       if (LT(i1) <= (RAP(j) - DLL(j)(i1))) {
-        XP = LT(i1) + DLL(j)(i1)
-        TI(i1) = pow(10.0, 0.1 * XP)
+        XP      = LT(i1) + DLL(j)(i1)
+        TI(i1)  = pow(10.0, 0.1 * XP)
       } else {
         j += 1
-        if(j >= 7) {
-          XP = LT(i1) + DLL(j)(i1)
-          TI(i1) = pow(10.0, 0.1 * XP)
+        if (j >= 7) {
+          XP      = LT(i1) + DLL(j)(i1)
+          TI(i1)  = pow(10.0, 0.1 * XP)
         } else {
           var flagOut = false
           while (j < 7 && !flagOut) {
             if (LT(i1) <= RAP(j) - DLL(j)(i1)) {
-              XP=LT(i1) + DLL(j)(i1)
-              TI(i1) = pow(10.0, 0.1 * XP)
-              flagOut=true
+              XP      = LT(i1) + DLL(j)(i1)
+              TI(i1)  = pow(10.0, 0.1 * XP)
+              flagOut = true
             } else {
               j += 1
             }
           }
           if (!flagOut) {
-            XP=LT(i1) + DLL(j)(i1)
-            TI(i1)=pow(10.0, 0.1 * XP)
+            XP      = LT(i1) + DLL(j)(i1)
+            TI(i1)  = pow(10.0, 0.1 * XP)
           }
         }
       }
@@ -374,7 +392,7 @@ object Loudness {
         // S = .25
         val MP1 = 0.0635 * pow(10.0, 0.025 * LTQ(i3))
         val MP2 = pow(1.0 - S + S * pow(10.0, 0.1 * (LE(i3) - LTQ(i3))), 0.25) - 1.0
-        NM(i3) = max(0.0, MP1 * MP2)
+        NM(i3)  = max(0.0, MP1 * MP2)
       }
       i3 += 1
     }
@@ -437,9 +455,9 @@ object Loudness {
             }
             K += 0.1
           }
-          K = Z2 + 0.1
-          Z = K
-          IZ = IZ_MAX
+          K   = Z2 + 0.1
+          Z   = K
+          IZ  = IZ_MAX
 
         } else {
           // Decision whether the critical band in question is completely or partly masked by accessory loudness
@@ -466,9 +484,9 @@ object Loudness {
             }
             K += 0.1
           }
-          K = Z2 + 0.1
-          Z = K
-          IZ = IZ_MAX
+          K   = Z2 + 0.1
+          Z   = K
+          IZ  = IZ_MAX
         }
 
         // Step to next segment
@@ -490,14 +508,16 @@ object Loudness {
     if (N < 0.0) {
       N = 0.0
     }
-    // Calculation of loudness level for LN < 40 Phon or N < 1 Sone
-    var LN = max(3.0, 40.0 * pow(N + 0.0005, 0.35))
 
-    // Calculation of loudness level for LN >= 40 Phon or N >= 1 Sone
-    if (N >= 1.0) {
-      LN = (10.0 * log(N) / log(2)) + 40.0
+    if (N < 1.0) {
+      // Calculation of loudness level for LN < 40 Phon or N < 1 Sone
+      // -- note hhr: the lowest number output is 2.797 if N == 0.0,
+      // that's why it is probably clipped to 3.0 to be "nicer"
+      max(3.0, 40.0 * pow(N + 0.0005, 0.35))
+    } else {
+      // Calculation of loudness level for LN >= 40 Phon or N >= 1 Sone
+//      (10.0 * log(N) / log(2)) + 40.0
+      (_10_DIV_LN2 * log(N)) + 40.0
     }
-
-    LN
   }
 }

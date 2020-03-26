@@ -22,6 +22,12 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 /** A loudness measurement UGen, using Zwicker bands.
   * One value in Phon per window is output.
   *
+  * The original algorithm outputs a
+  * minimum value of 3.0. This is still the case, but if a window is entirely
+  * silent (all values are zero), the output value is also 0.0. Thus one may
+  * either distinguish between these two cases, or just treat output value
+  * of `<= 3.0` as silences.
+  *
   * '''Warning:''' window parameter modulation is currently not working correctly (issue #30)
   *
   * @param  in          the signal to analyse
