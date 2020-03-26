@@ -120,6 +120,7 @@ object DelayN {
         if (hIn.isDone && !tailCleared) {
           // clear dirty region
           val numClear = bufLen - advance
+//          val numClear = maxDlyLen - advance
           if (numClear > 0) {
             val chunk = math.min(numClear, bufLen - bufPosIn)
             aTpe.clear(buf, bufPosIn, chunk)
@@ -128,13 +129,13 @@ object DelayN {
               aTpe.clear(buf, 0, chunk2)
             }
           }
-          advance    += numClear
+//          advance    += numClear
           tailCleared = true
         }
 
         // N.B. `numOut` can be negative if `advance < maxDlyLen`
-//        val maxOut = if (hIn.isDone) advance else advance - maxDlyLen
-        val numOut = math.min(remOut, advance - maxDlyLen)
+        val maxOut = if (hIn.isDone) advance else advance - maxDlyLen
+        val numOut = math.min(remOut, maxOut) // advance - maxDlyLen)
         if (numOut > 0) {
           if (hDlyLen.isConstant) { // more efficient
             dlyLen      = math.min(maxDlyLen, hDlyLen.next())
