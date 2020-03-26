@@ -196,7 +196,7 @@ final class GEOps1(val `this`: GE) extends AnyVal { me =>
 
   def nonEmpty: GE = size > 0L
 
-  def padTo(len: GE, elem: GE = 0.0): GE = ???
+//  def padTo(len: GE, elem: GE = 0.0): GE = ...
 
 //  def patch(from: GE, other: GE, replaced: GE): GE = ...
 
@@ -205,7 +205,7 @@ final class GEOps1(val `this`: GE) extends AnyVal { me =>
 
   def product: GE = RunningProduct(g).last
 
-  def reverse: GE = ???
+//  def reverse: GE = ...
 
   def size: GE = length
 
@@ -214,7 +214,7 @@ final class GEOps1(val `this`: GE) extends AnyVal { me =>
     g.drop(from).take(sz)
   }
 
-  def sorted: GE = ???
+//  def sorted: GE = ...
 
   def splitAt(n: GE): (GE, GE) = {
     val _1 = take(n)
