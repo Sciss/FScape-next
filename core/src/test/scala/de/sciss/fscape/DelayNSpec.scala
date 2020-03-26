@@ -10,11 +10,11 @@ import scala.concurrent.{Await, Promise}
 import scala.util.Success
 
 class DelayNSpec extends AnyFlatSpec with Matchers {
-  ignore /*"The DelayNSpec UGen"*/ should "work as intended" in {
+  "The DelayNSpec UGen" should "work as intended" in {
     for {
-      padLen  <- Seq(0, 1, 10, 100, 512)
-      dlyLen  <- Seq(-1, 0, 1, 10, 100, 512, 513, 2000)
-      maxLen  <- Seq(-1, 0, 1, 10, 100, 512, 513, 2000)
+      padLen  <- Seq(512) // Seq(0, 1, 10, 100, 512)
+      dlyLen  <- Seq(1) // Seq(-1, 0, 1, 10, 100, 512, 513, 2000)
+      maxLen  <- Seq(1) // Seq(-1, 0, 1, 10, 100, 512, 513, 2000)
     } {
       val p = Promise[Vec[Int]]()
       val g = Graph {
@@ -34,13 +34,13 @@ class DelayNSpec extends AnyFlatSpec with Matchers {
       val res         = p.future.value.get
       val inSq        = (1 to 4) ++ Vector.fill(padLen)(0)
       val dlyLenClip  = math.max(0, math.min(dlyLen, maxLen))
-//      val postLen     = maxLen - dlyLenClip
-      val exp         = Vector.fill(dlyLenClip)(0) ++ inSq // ++ Vector.fill(postLen)(0)
+      val postLen     = maxLen - dlyLenClip
+      val exp         = Vector.fill(dlyLenClip)(0) ++ inSq ++ Vector.fill(postLen)(0)
       assert (res === Success(exp), s"padLen $padLen, dlyLen $dlyLen, maxLen $maxLen")
     }
   }
 
-  it should "support delay time modulation" in {
+  ignore /*it*/ should "support delay time modulation" in {
     val p = Promise[Vec[Int]]()
     val g = Graph {
       import graph._

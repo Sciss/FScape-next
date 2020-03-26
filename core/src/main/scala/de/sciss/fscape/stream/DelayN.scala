@@ -58,6 +58,7 @@ object DelayN {
     private[this] val hDlyLen     = new Handlers.InIAux       (this, shape.in2)(math.max(0, _))
     private[this] val hOut        = new Handlers.OutMain[A, E](this, shape.out)
     private[this] var needsLen    = true
+    private[this] var tailCleared = false
     private[this] var buf: Array[A] = _   // circular
     private[this] var maxDlyLen   = 0
     private[this] var dlyLen      = 0
@@ -72,10 +73,10 @@ object DelayN {
     }
 
     private def checkInDone(): Boolean = {
-      if (dlyLen < maxDlyLen) {
-        advance   = math.max(0, advance + dlyLen - maxDlyLen)
-        maxDlyLen = dlyLen
-      }
+//      if (dlyLen < maxDlyLen) {
+//        advance   = math.max(0, advance + dlyLen - maxDlyLen)
+//        maxDlyLen = dlyLen
+//      }
       val res = advance == 0 && hOut.flush()
       if (res) completeStage()
       res
@@ -93,55 +94,77 @@ object DelayN {
         bufLen    = ctrl.blockSize + maxDlyLen
         buf       = aTpe.newArray(bufLen)
         advance   = maxDlyLen
+        bufPosIn  = maxDlyLen
         needsLen  = false
       }
 
       // always enter here -- `needsLen` must be `false` now
       while (true) {
-        val remIn   = math.min(hIn.available, hDlyLen.available)
-        val remOut  = hOut.available
+        val remIn   = hIn.available
+        val remOut  = math.min(hOut.available, hDlyLen.available)
 
         // never be ahead more than `bufLen` frames
         val numIn = math.min(remIn, bufLen - advance)
         if (numIn > 0) {
-          if (hDlyLen.isConstant) { // more efficient
-            dlyLen      = math.min(maxDlyLen, hDlyLen.next())
-            val dlyPos  = (bufPosIn + dlyLen) % bufLen
-            val chunk   = math.min(numIn, bufLen - dlyPos)
-            hIn.nextN(buf, dlyPos, chunk)
-            val chunk2  = numIn - chunk
-            if (chunk2 > 0) {
-              hIn.nextN(buf, 0, chunk2)
-            }
-
-          } else {
-            var i = 0
-            while (i < numIn) {
-              dlyLen      = math.min(maxDlyLen, hDlyLen.next())
-              val dlyPos  = (bufPosIn + dlyLen + i) % bufLen
-              buf(dlyPos) = hIn.next()
-              i += 1
-            }
+          val chunk = math.min(numIn, bufLen - bufPosIn)
+          hIn.nextN(buf, bufPosIn, chunk)
+          val chunk2 = numIn - chunk
+          if (chunk2 > 0) {
+            hIn.nextN(buf, 0, chunk2)
           }
           bufPosIn  = (bufPosIn + numIn) % bufLen
           advance  += numIn
         }
 
-        if (hIn.isDone && checkInDone()) return
+//        if (hIn.isDone && checkInDone()) return
+        if (hIn.isDone && !tailCleared) {
+          // clear dirty region
+          val numClear = bufLen - advance
+          if (numClear > 0) {
+            val chunk = math.min(numClear, bufLen - bufPosIn)
+            aTpe.clear(buf, bufPosIn, chunk)
+            val chunk2 = numClear - chunk
+            if (chunk2 > 0) {
+              aTpe.clear(buf, 0, chunk2)
+            }
+          }
+          advance    += numClear
+          tailCleared = true
+        }
 
         // N.B. `numOut` can be negative if `advance < maxDlyLen`
-        val maxOut = if (hIn.isDone) advance else advance - maxDlyLen
-        val numOut = math.min(remOut, math.min(maxOut, bufLen - bufPosOut))
+//        val maxOut = if (hIn.isDone) advance else advance - maxDlyLen
+        val numOut = math.min(remOut, advance - maxDlyLen)
         if (numOut > 0) {
-          hOut.nextN(buf, bufPosOut, numOut)
+          if (hDlyLen.isConstant) { // more efficient
+            dlyLen      = math.min(maxDlyLen, hDlyLen.next())
+            val dlyPos  = (bufPosOut + maxDlyLen - dlyLen) % bufLen
+            val chunk   = math.min(numOut, bufLen - dlyPos)
+            hOut.nextN(buf, dlyPos, chunk)
+            val chunk2  = numIn - chunk
+            if (chunk2 > 0) {
+              hOut.nextN(buf, 0, chunk2)
+            }
+
+          } else {
+            var i = 0
+            while (i < numOut) {
+              dlyLen      = math.min(maxDlyLen, hDlyLen.next())
+              val dlyPos  = (bufPosOut + maxDlyLen - dlyLen + i) % bufLen
+              val v       = buf(dlyPos)
+              hOut.next(v)
+              i += 1
+            }
+          }
+
           bufPosOut = (bufPosOut + numOut) % bufLen
           advance  -= numOut
         }
 
+        if (hIn.isDone && checkInDone()) return
+
         // N.B. `numOut` can be negative if `advance < maxDlyLen`
         if (numIn == 0 && numOut <= 0) return
-
-        if (hIn.isDone && checkInDone()) return
       }
     }
 
