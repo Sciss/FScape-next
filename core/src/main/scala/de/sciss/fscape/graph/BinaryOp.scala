@@ -111,6 +111,13 @@ object BinaryOp {
     final val id = 0
     override val name = "+"
 
+    override def make(a: GE, b: GE): GE =
+      (a, b) match {
+        case (Constant(0), _)  => b
+        case (_, Constant(0))  => a
+        case _                 => super.make(a, b)
+      }
+
     def apply(a: Double, b: Double): Double = rd.+(a, b)
 
     override def apply(a: Constant, b: Constant): Constant = (a, b) match {
@@ -129,6 +136,13 @@ object BinaryOp {
   case object Minus extends Op {
     final val id = 1
     override val name = "-"
+
+    override def make(a: GE, b: GE): GE =
+      (a, b) match {
+        case (Constant(0), _)  => b
+        case (_, Constant(0))  => a
+        case _                 => super.make(a, b)
+      }
 
     def apply(a: Double, b: Double): Double = rd.-(a, b)
 
@@ -151,8 +165,9 @@ object BinaryOp {
 
     override def make(a: GE, b: GE): GE =
       (a, b) match {
-      case (Constant(0), _)  => a
-      case (_, Constant(0))  => b
+          // N.B. do not replace by Constant(0), because lengths might differ!
+//      case (Constant(0), _)  => a
+//      case (_, Constant(0))  => b
       case (Constant(1), _)  => b
       case (_, Constant(1))  => a
       case (Constant(-1), _) => UnaryOp.Neg.make(b) // -b
