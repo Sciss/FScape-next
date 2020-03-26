@@ -60,6 +60,7 @@ object DelayN {
     private[this] var needsLen    = true
     private[this] var buf: Array[A] = _   // circular
     private[this] var maxDlyLen   = 0
+    private[this] var dlyLen      = 0
     private[this] var bufLen      = 0
     private[this] var bufPosIn    = 0   // the base position before adding delay
     private[this] var bufPosOut   = 0
@@ -71,6 +72,10 @@ object DelayN {
     }
 
     private def checkInDone(): Boolean = {
+      if (dlyLen < maxDlyLen) {
+        advance   = math.max(0, advance + dlyLen - maxDlyLen)
+        maxDlyLen = dlyLen
+      }
       val res = advance == 0 && hOut.flush()
       if (res) completeStage()
       res
@@ -100,7 +105,7 @@ object DelayN {
         val numIn = math.min(remIn, bufLen - advance)
         if (numIn > 0) {
           if (hDlyLen.isConstant) { // more efficient
-            val dlyLen  = math.min(maxDlyLen, hDlyLen.next())
+            dlyLen      = math.min(maxDlyLen, hDlyLen.next())
             val dlyPos  = (bufPosIn + dlyLen) % bufLen
             val chunk   = math.min(numIn, bufLen - dlyPos)
             hIn.nextN(buf, dlyPos, chunk)
@@ -112,8 +117,8 @@ object DelayN {
           } else {
             var i = 0
             while (i < numIn) {
-              val dlyLen  = math.min(maxDlyLen, hDlyLen.next())
-              val dlyPos  = (bufPosIn + dlyLen) % bufLen
+              dlyLen      = math.min(maxDlyLen, hDlyLen.next())
+              val dlyPos  = (bufPosIn + dlyLen + i) % bufLen
               buf(dlyPos) = hIn.next()
               i += 1
             }
@@ -121,6 +126,8 @@ object DelayN {
           bufPosIn  = (bufPosIn + numIn) % bufLen
           advance  += numIn
         }
+
+        if (hIn.isDone && checkInDone()) return
 
         // N.B. `numOut` can be negative if `advance < maxDlyLen`
         val maxOut = if (hIn.isDone) advance else advance - maxDlyLen
@@ -134,9 +141,7 @@ object DelayN {
         // N.B. `numOut` can be negative if `advance < maxDlyLen`
         if (numIn == 0 && numOut <= 0) return
 
-        if (hIn.isDone) {
-          if (checkInDone()) return
-        }
+        if (hIn.isDone && checkInDone()) return
       }
     }
 
