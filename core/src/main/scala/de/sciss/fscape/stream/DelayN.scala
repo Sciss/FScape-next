@@ -58,10 +58,8 @@ object DelayN {
     private[this] val hDlyLen     = new Handlers.InIAux       (this, shape.in2)(math.max(0, _))
     private[this] val hOut        = new Handlers.OutMain[A, E](this, shape.out)
     private[this] var needsLen    = true
-    private[this] var tailCleared = false
     private[this] var buf: Array[A] = _   // circular
     private[this] var maxDlyLen   = 0
-    private[this] var dlyLen      = 0
     private[this] var bufLen      = 0
     private[this] var bufPosIn    = 0   // the base position before adding delay
     private[this] var bufPosOut   = 0
@@ -73,10 +71,6 @@ object DelayN {
     }
 
     private def checkInDone(): Boolean = {
-//      if (dlyLen < maxDlyLen) {
-//        advance   = math.max(0, advance + dlyLen - maxDlyLen)
-//        maxDlyLen = dlyLen
-//      }
       val res = advance == 0 && hOut.flush()
       if (res) completeStage()
       res
@@ -107,30 +101,15 @@ object DelayN {
         val numIn = math.min(remIn, bufLen - advance)
         if (numIn > 0) {
           val chunk = math.min(numIn, bufLen - bufPosIn)
+//          println(s"IN  $bufPosIn ... ${bufPosIn + chunk}")
           hIn.nextN(buf, bufPosIn, chunk)
           val chunk2 = numIn - chunk
           if (chunk2 > 0) {
+//            println(s"IN  0 ... $chunk2")
             hIn.nextN(buf, 0, chunk2)
           }
           bufPosIn  = (bufPosIn + numIn) % bufLen
           advance  += numIn
-        }
-
-//        if (hIn.isDone && checkInDone()) return
-        if (hIn.isDone && !tailCleared) {
-          // clear dirty region
-          val numClear = bufLen - advance
-//          val numClear = maxDlyLen - advance
-          if (numClear > 0) {
-            val chunk = math.min(numClear, bufLen - bufPosIn)
-            aTpe.clear(buf, bufPosIn, chunk)
-            val chunk2 = numClear - chunk
-            if (chunk2 > 0) {
-              aTpe.clear(buf, 0, chunk2)
-            }
-          }
-//          advance    += numClear
-          tailCleared = true
         }
 
         // N.B. `numOut` can be negative if `advance < maxDlyLen`
@@ -138,23 +117,37 @@ object DelayN {
         val numOut = math.min(remOut, maxOut) // advance - maxDlyLen)
         if (numOut > 0) {
           if (hDlyLen.isConstant) { // more efficient
-            dlyLen      = math.min(maxDlyLen, hDlyLen.next())
+            val dlyLen  = math.min(maxDlyLen, hDlyLen.next())
             val dlyPos  = (bufPosOut + maxDlyLen - dlyLen) % bufLen
             val chunk   = math.min(numOut, bufLen - dlyPos)
+//            println(s"OUT $dlyPos ... ${dlyPos + chunk}")
             hOut.nextN(buf, dlyPos, chunk)
-            val chunk2  = numIn - chunk
+            val chunk2  = numOut - chunk
             if (chunk2 > 0) {
+//              println(s"OUT 0 ... $chunk2")
               hOut.nextN(buf, 0, chunk2)
             }
 
           } else {
             var i = 0
             while (i < numOut) {
-              dlyLen      = math.min(maxDlyLen, hDlyLen.next())
+              val dlyLen  = math.min(maxDlyLen, hDlyLen.next())
               val dlyPos  = (bufPosOut + maxDlyLen - dlyLen + i) % bufLen
               val v       = buf(dlyPos)
+//              println(s"OUT $dlyPos")
               hOut.next(v)
               i += 1
+            }
+          }
+
+          // we always have to clear behind
+          // to avoid dirty buffer when the input terminates
+          {
+            val chunk = math.min(numOut, bufLen - bufPosOut)
+            aTpe.clear(buf, bufPosOut, chunk)
+            val chunk2 = numOut - chunk
+            if (chunk2 > 0) {
+              aTpe.clear(buf, 0, chunk2)
             }
           }
 
@@ -168,52 +161,5 @@ object DelayN {
         if (numIn == 0 && numOut <= 0) return
       }
     }
-
-    //    protected def processChunk(): Boolean = {
-//      val len = math.min(inRemain, outRemain)
-//      val res = len > 0
-//      if (res) {
-//        if (_init) {
-//          maxLength = math.max(1, bufIn1.buf(0))
-//          delayBuf  = new Array[Double](maxLength)
-//          _init     = false
-//        }
-//        var inOffI  = inOff
-//        var outOffI = outOff
-//        val inArr   = bufIn0 .buf
-//        val outArr  = bufOut0.buf
-//        val dlyArr  = if (bufIn2 == null) null else bufIn2.buf
-//        val dlyStop = if (bufIn2 == null) 0    else bufIn2.size
-//        val dlyBuf  = delayBuf
-//        var _delay  = delay
-//        val _maxLen = maxLength
-//        val _maxLen1= _maxLen - 1
-//        var _bufWr  = bufPtr
-//        var _bufRd  = (_bufWr - _delay + _maxLen) % _maxLen
-//        var rem     = len
-//        while (rem > 0) {
-//          if (inOffI < dlyStop) {
-//            _delay  = math.max(0, math.min(dlyArr(inOffI), _maxLen1))
-//            _bufRd  = (_bufWr - _delay + _maxLen) % _maxLen
-//          }
-//          dlyBuf(_bufWr)  = inArr(inOffI)
-//          outArr(outOffI) = dlyBuf(_bufRd)
-//          _bufWr  += 1; if (_bufWr == _maxLen) _bufWr = 0
-//          _bufRd  += 1; if (_bufRd == _maxLen) _bufRd = 0
-//          inOffI  += 1
-//          outOffI += 1
-//          rem     -= 1
-//        }
-//        bufPtr      = _bufWr
-//        delay       = _delay
-//        inOff       = inOffI
-//        outOff      = outOffI
-//        inRemain   -= len
-//        outRemain  -= len
-//      }
-//      res
-//    }
-
-//    protected def shouldComplete(): Boolean = inRemain == 0 && isClosed(in0) && !isAvailable(in0)
   }
 }
