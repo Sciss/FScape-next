@@ -99,6 +99,11 @@ object Handlers {
 
     final def value: A = _value
 
+    /** Returns `true` if the inlet is closed and a valid value had been obtained
+      * which will thus be the "constant" value returned henceforth.
+      */
+    final def isConstant: Boolean = closedValid
+
     final def available: Int =
       if (_hasNext) {
         val _buf = buf

@@ -28,6 +28,8 @@ final case class DelayN(in: GE, maxLength: GE, length: GE) extends UGenSource.Si
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
     val Vec(in, maxLength, length) = args
-    stream.DelayN(in = in.toDouble, maxLength = maxLength.toInt, length = length.toInt)
+    import in.tpe
+    val out = stream.DelayN[in.A, in.Buf](in = in.toElem, maxLength = maxLength.toInt, length = length.toInt)
+    tpe.mkStreamOut(out)
   }
 }

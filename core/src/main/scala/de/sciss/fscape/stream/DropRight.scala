@@ -18,9 +18,9 @@ import akka.stream.{Attributes, FanInShape2, Inlet, Outlet}
 import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
 
 object DropRight {
-  def apply[A, Buf >: Null <: BufElem[A]](in: Outlet[Buf], length: OutI)
-                                         (implicit b: Builder, aTpe: StreamType[A, Buf]): Outlet[Buf] = {
-    val stage0  = new Stage[A, Buf](b.layer)
+  def apply[A, E >: Null <: BufElem[A]](in: Outlet[E], length: OutI)
+                                       (implicit b: Builder, aTpe: StreamType[A, E]): Outlet[E] = {
+    val stage0  = new Stage[A, E](b.layer)
     val stage   = b.add(stage0)
     b.connect(in    , stage.in0)
     b.connect(length, stage.in1)
@@ -29,19 +29,19 @@ object DropRight {
 
   private final val name = "DropRight"
 
-  private type Shape[A, Buf >: Null <: BufElem[A]] = FanInShape2[Buf, BufI, Buf]
+  private type Shape[A, E >: Null <: BufElem[A]] = FanInShape2[E, BufI, E]
 
-  private final class Stage[A, Buf >: Null <: BufElem[A]](layer: Layer)
-                                                         (implicit ctrl: Control, aTpe: StreamType[A, Buf])
-    extends StageImpl[Shape[A, Buf]](name) {
+  private final class Stage[A, E >: Null <: BufElem[A]](layer: Layer)
+                                                       (implicit ctrl: Control, aTpe: StreamType[A, E])
+    extends StageImpl[Shape[A, E]](name) {
 
     val shape = new FanInShape2(
-      in0 = Inlet [Buf](s"$name.in"     ),
-      in1 = InI        (s"$name.length" ),
-      out = Outlet[Buf](s"$name.out"    )
+      in0 = Inlet [E](s"$name.in"     ),
+      in1 = InI      (s"$name.length" ),
+      out = Outlet[E](s"$name.out"    )
     )
 
-    def createLogic(attr: Attributes): NodeImpl[DropRight.Shape[A, Buf]] = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[DropRight.Shape[A, E]] = new Logic(shape, layer)
   }
 
   private final class Logic[A, E >: Null <: BufElem[A]](shape: Shape[A, E], layer: Layer)
@@ -70,7 +70,7 @@ object DropRight {
       res
     }
 
-    def process(): Unit = {
+    protected def process(): Unit = {
       logStream(s"process() $this")
 
       if (needsLen) {
@@ -79,7 +79,7 @@ object DropRight {
         dropLen   = hLen.next()
         // because we always process in before out,
         // it is crucial that the buffer be _larger_ than the `dropLen`
-        bufLen    = 256 + dropLen
+        bufLen    = ctrl.blockSize + dropLen
         buf       = aTpe.newArray(bufLen)
         needsLen  = false
 //        println(s"-- dropLen $dropLen, bufLen $bufLen")
