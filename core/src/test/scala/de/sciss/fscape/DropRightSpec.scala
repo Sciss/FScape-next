@@ -12,8 +12,8 @@ import scala.util.Success
 class DropRightSpec extends AnyFlatSpec with Matchers {
   "The DropRight UGen" should "work as intended" in {
     for {
-      inLen   <- Seq(10) // Seq(0, 1, 10, 100, 300, 500, 1024, 1025)
-      dropLen <- Seq(100) // Seq(-1, 0, 1, 10, 100, 200, 600, 1024, 1025, 2000)
+      inLen   <- Seq(0, 1, 10, 100, 300, 500, 1024, 1025)
+      dropLen <- Seq(-1, 0, 1, 10, 100, 200, 600, 1024, 1025, 2000)
     } {
       val p = Promise[Vec[Int]]()
       val g = Graph {

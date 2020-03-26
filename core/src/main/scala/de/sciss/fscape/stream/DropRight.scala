@@ -57,7 +57,6 @@ object DropRight {
     private[this] var bufLen    = 0
     private[this] var bufPosIn  = 0
     private[this] var bufPosOut = 0
-    private[this] var initRem   = 0   // initial "free" space
     private[this] var advance   = 0   // in-pointer ahead of out-pointer
 
     protected def onDone(inlet: Inlet[_]): Unit = {
@@ -66,7 +65,7 @@ object DropRight {
     }
 
     private def checkInDone(): Boolean = {
-      val res = advance == dropLen && hOut.flush()
+      val res = advance <= dropLen && hOut.flush()
       if (res) completeStage()
       res
     }
@@ -78,45 +77,44 @@ object DropRight {
         if (!hLen.hasNext) return
 
         dropLen   = hLen.next()
-        bufLen    = math.max(256 /*ctrl.blockSize*/, dropLen)
+        // because we always process in before out,
+        // it is crucial that the buffer be _larger_ than the `dropLen`
+        bufLen    = 256 + dropLen
         buf       = aTpe.newArray(bufLen)
-        initRem   = dropLen
         needsLen  = false
+//        println(s"-- dropLen $dropLen, bufLen $bufLen")
       }
 
-      {
-        // always enter here -- `needsLen` must be `false` now
-        while (true) {
-          if (initRem > 0) {
-            val remIn = hIn.available
-            if (remIn == 0) return
-            val numIn = math.min(initRem, remIn)
-            hIn.nextN(buf, bufPosIn, numIn)
-            bufPosIn  = (bufPosIn + numIn) % bufLen
-            initRem  -= numIn
-            advance  += numIn
+      // always enter here -- `needsLen` must be `false` now
+      while (true) {
+        val remIn   = hIn .available
+        val remOut  = hOut.available
 
-          } else {
-            val remIn   = hIn .available
-            val remOut  = hOut.available
-            // never go beyond buffer end, or be ahead more than `bufLen` frames
-            val numIn = math.min(remIn, bufLen - math.max(bufPosIn, advance))
-            if (numIn > 0) {
-              hIn .nextN(buf, bufPosIn, numIn)
-              bufPosIn  = (bufPosIn + numIn) % bufLen
-              advance  += numIn
-            }
-            val numOut = math.min(remOut, math.min(advance - dropLen, bufLen - bufPosOut))
-            if (numOut > 0) {
-              hOut.nextN(buf, bufPosOut, numOut)
-              bufPosOut = (bufPosOut + numOut) % bufLen
-              advance  -= numOut
-            }
-            if (numIn == 0 && numOut == 0) return
-          }
-          if (hIn.isDone) {
-            if (checkInDone()) return
-          }
+//        println(s"-- remIn $remIn, remOut $remOut, bufPosIn $bufPosIn, bufPosOut $bufPosOut, advance $advance")
+
+        // never go beyond buffer end, or be ahead more than `bufLen` frames
+        val numIn = math.min(remIn, bufLen - math.max(bufPosIn, advance))
+        if (numIn > 0) {
+          hIn .nextN(buf, bufPosIn, numIn)
+          bufPosIn  = (bufPosIn + numIn) % bufLen
+          advance  += numIn
+        }
+        // N.B. `numOut` can be negative if `advance < dropLen`
+        val numOut = math.min(remOut, math.min(advance - dropLen, bufLen - bufPosOut))
+        if (numOut > 0) {
+          hOut.nextN(buf, bufPosOut, numOut)
+          bufPosOut = (bufPosOut + numOut) % bufLen
+          advance  -= numOut
+        }
+
+//        println(s"  -- numIn $numIn, numOut $numOut, bufPosIn $bufPosIn, bufPosOut $bufPosOut, advance $advance")
+
+        // N.B. `numOut` can be negative if `advance < dropLen`
+        if (numIn == 0 && numOut <= 0) return
+
+        if (hIn.isDone) {
+//          println(s"(hIn.isDone) ; advance $advance")
+          if (checkInDone()) return
         }
       }
     }
