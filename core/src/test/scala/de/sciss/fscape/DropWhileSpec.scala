@@ -1,5 +1,6 @@
 package de.sciss.fscape
 
+import de.sciss.fscape.stream.Control.Config
 import de.sciss.kollflitz.Vec
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -27,7 +28,9 @@ class DropWhileSpec extends AnyFlatSpec with Matchers {
         DebugIntPromise(dw, p)
       }
 
-      val ctl = stream.Control()
+      val cfg = Config()
+      cfg.blockSize = 1024
+      val ctl = stream.Control(cfg)
       ctl.run(g)
       Await.result(ctl.status, Duration.Inf)
 

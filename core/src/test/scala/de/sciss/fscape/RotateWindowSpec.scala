@@ -57,7 +57,7 @@ class RotateWindowSpec extends AnyFlatSpec with Matchers {
     }
 
     for {
-      inLen   <- List(0, 1, 2, 10, 200)
+      inLen   <- List(0, 1, 2, 10, 128, 129, 200)
       winSz   <- List(1, 2, 9)
       amount  <- -3 to +3
     } {

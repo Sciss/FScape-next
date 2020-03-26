@@ -1,5 +1,6 @@
 package de.sciss.fscape
 
+import de.sciss.fscape.stream.Control.Config
 import de.sciss.kollflitz.Vec
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -11,7 +12,7 @@ import scala.util.{Success, Try}
 class MetroSpec extends AnyFlatSpec with Matchers {
   "The Metro UGen" should "work as specified" in {
     val lengths = List(
-      0, 1, 10, 100, 1000, 10000
+      0, 1, 10, 100, 1000, 1024, 1025, 10000
     )
     val phases = List(0, 1, 2)
 
@@ -28,10 +29,9 @@ class MetroSpec extends AnyFlatSpec with Matchers {
           DebugIntPromise(v, p)
         }
 
-        val cfg = stream.Control.Config()
-        cfg.blockSize = 512
-        val ctl = stream.Control()
-        //      showStreamLog = true
+        val cfg = Config()
+        cfg.blockSize = 1024
+        val ctl = stream.Control(cfg)
         ctl.run(g)
 //        println(s"n = $n")
         Await.result(ctl.status, Duration.Inf)

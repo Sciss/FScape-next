@@ -15,7 +15,7 @@ package de.sciss.fscape
 
 import de.sciss.fscape.graph.BinaryOp._
 import de.sciss.fscape.graph.UnaryOp._
-import de.sciss.fscape.graph.{BinaryOp, ChannelProxy, Clip, ComplexBinaryOp, ComplexUnaryOp, Concat, Constant, Distinct, Drop, DropWhile, Elastic, FilterSeq, Fold, Indices, Length, MatchLen, Metro, Poll, ResizeWindow, RunningMax, RunningMin, RunningProduct, RunningSum, Take, TakeRight, TakeWhile, UnaryOp, UnzipWindow, Wrap, ZipWindow}
+import de.sciss.fscape.graph.{BinaryOp, ChannelProxy, Clip, ComplexBinaryOp, ComplexUnaryOp, Concat, Constant, Distinct, Drop, DropRight, DropWhile, Elastic, FilterSeq, Fold, Indices, Length, MatchLen, Metro, Poll, ResizeWindow, RunningMax, RunningMin, RunningProduct, RunningSum, Take, TakeRight, TakeWhile, UnaryOp, UnzipWindow, Wrap, ZipWindow}
 import de.sciss.optional.Optional
 
 /** `GEOps1` are operations for graph elements (`GE`). Instead of having these operations directly defined
@@ -132,9 +132,10 @@ final class GEOps1(val `this`: GE) extends AnyVal { me =>
   def distinct: GE = Distinct(g)
 
   /** Drops the first `length` elements of this signal. */
-  def drop(length: GE): GE = Drop(in = g, length = length)
+  def drop(length: GE): GE = Drop(g, length = length)
 
-  def dropRight(length: GE): GE = ??? // Drop(in = g, length = length)
+  /** Drops the last `length` elements of this signal. */
+  def dropRight(length: GE): GE = DropRight(g, length = length)
 
   def dropWhile(p: GE): GE = DropWhile(g, p)
 
