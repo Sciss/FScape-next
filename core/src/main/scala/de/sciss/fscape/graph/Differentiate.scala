@@ -23,7 +23,7 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * adjacent input samples.
   *
   * The length of the signal is the length of the input.
-  * The first output will the the first input (internal
+  * The first output will be the first input (internal
   * x1 state is zero).
   */
 final case class Differentiate(in: GE) extends UGenSource.SingleOut {
