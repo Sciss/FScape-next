@@ -67,7 +67,7 @@ object DelayN {
 
     protected def onDone(inlet: Inlet[_]): Unit = {
       assert (inlet == shape.in0)
-      checkInDone()
+      if (!checkInDone()) process() // the rules change (`maxOut`)
     }
 
     private def checkInDone(): Boolean = {

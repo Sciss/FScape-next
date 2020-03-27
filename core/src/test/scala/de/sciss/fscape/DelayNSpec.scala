@@ -11,15 +11,16 @@ import scala.util.Success
 
 class DelayNSpec extends AnyFlatSpec with Matchers {
   "The DelayNSpec UGen" should "work as intended" in {
+    val n = 4
     for {
-      padLen  <- Seq(0, 1, 10, 100, 512)
+      padLen  <- Seq(0, 1, 10, 100, 512, 2049 - n)
       dlyLen  <- Seq(-1, 0, 1, 10, 100, 512, 513, 2000)
       maxLen  <- Seq(-1, 0, 1, 10, 100, 512, 513, 2000)
     } {
       val p = Promise[Vec[Int]]()
       val g = Graph {
         import graph._
-        val in  = ArithmSeq(start = 1, length = 4) ++ DC(0).take(padLen)
+        val in  = ArithmSeq(start = 1, length = n) ++ DC(0).take(padLen)
         val d   = DelayN(in, maxLength = maxLen, length = dlyLen)
         DebugIntPromise(d, p)
       }
@@ -32,7 +33,7 @@ class DelayNSpec extends AnyFlatSpec with Matchers {
 
       assert(p.isCompleted)
       val res         = p.future.value.get
-      val inSq        = (1 to 4) ++ Vector.fill(padLen)(0)
+      val inSq        = (1 to n) ++ Vector.fill(padLen)(0)
       val dlyLenClip  = math.max(0, math.min(dlyLen, maxLen))
       val postLen     = maxLen - dlyLenClip
       val exp         = Vector.fill(dlyLenClip)(0) ++ inSq ++ Vector.fill(postLen)(0)
