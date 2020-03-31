@@ -1,11 +1,9 @@
 package de.sciss.fscape.tests
 
-import de.sciss.fscape.gui.SimpleGUI
 import de.sciss.fscape.{GE, Graph, graph, stream}
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
-import scala.swing.Swing
 
 object FFTTest extends App {
   lazy val g1 = Graph {
@@ -50,11 +48,16 @@ object FFTTest extends App {
     val sigLen    = fftSizes.sum
     println(s"sigLen = $sigLen")
     val fftSizesGE: GE = fftSizes.map(x => x: GE).reduce(_ ++ _)
-    val sig     = DelayN(Metro(fftSizesGE).take(sigLen), 1, 1).init
-    Plot1D(sig, sigLen, "in")
+    val sig0    = DelayN(Metro(fftSizesGE).take(sigLen), 1, 1).init
+    val sig     = sig0 // * (Frames(sig0) > 20) * (Frames(sig0) < 90)
+//    Plot1D(sig, sigLen, "in")
     val fft     = Real1FFT(sig, size = fftSizesGE, mode = 1)
+//    val fft     = Real1FullFFT(sig, size = fftSizesGE)
+//    val mag     = fft.complex.mag
+//    Plot1D(mag * 32, 48, "mag")
     val phase   = fft.complex.phase
     val ifft    = Real1IFFT(fft, size = fftSizesGE, mode = 1)
+//    val ifft    = Real1FullIFFT(fft, size = fftSizesGE)
     Length(phase).poll("phase.length")
     Length(ifft ).poll("ifft.length")
     Plot1D(ifft, sigLen, "out")
@@ -62,9 +65,9 @@ object FFTTest extends App {
 
   val ctrl = stream.Control()
 
-  Swing.onEDT {
-    SimpleGUI(ctrl)
-  }
+//  scala.swing.Swing.onEDT {
+//    de.sciss.fscape.gui.SimpleGUI(ctrl)
+//  }
 
   ctrl.run(g)
 

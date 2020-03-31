@@ -21,7 +21,6 @@ import edu.emory.mathcs.jtransforms.fft.DoubleFFT_1D
 
 import scala.annotation.switch
 
-// XXX TODO rename in next major version
 /** Base class for 1-dimensional FFT transforms. */
 trait FFTLogicImpl[S <: Shape] extends WindowedLogicNew[Double, BufD, S] {
   _: Handlers[S] =>
@@ -36,13 +35,17 @@ trait FFTLogicImpl[S <: Shape] extends WindowedLogicNew[Double, BufD, S] {
 
   protected final var fft: DoubleFFT_1D = _
 
-  protected final var timeSize  : Int = _
-  protected final var fftSize   : Int = -1
+  protected final var timeSize  : Int     = _
+  protected final var fftSize   : Int     = -1
+  protected final var gain      : Double  = _
+
+  protected def gainFor(fftSize: Int): Double
 
   protected final def setFFTSize(n: Int): Unit =
     if (fftSize != n) {
       fftSize = n
       fft     = new DoubleFFT_1D (n)
+      gain    = gainFor(n)
     }
 
   override protected final def processWindow(): Unit = {
@@ -128,7 +131,6 @@ final class Complex1IFFTStageImpl(layer: Layer)(implicit ctrl: Control) extends 
   def createLogic(attr: Attributes): NodeImpl[S] = new Complex1IFFTLogicImpl(name, shape, layer)
 }
 
-// XXX TODO rename in next major version
 abstract class FFTHalfLogicImpl(name: String, shape: FanInShape4[BufD, BufI, BufI, BufI, BufD], layer: Layer)
                                (implicit ctrl: Control)
   extends Handlers[FanInShape4[BufD, BufI, BufI, BufI, BufD]](name, shape = shape, layer = layer)
@@ -158,13 +160,14 @@ abstract class FFTHalfLogicImpl(name: String, shape: FanInShape4[BufD, BufI, Buf
   final def winBufSize: Int = fftSize + 2
 }
 
-// XXX TODO rename in next major version
 final class Real1FFTLogicImpl(name: String, shape: FanInShape4[BufD, BufI, BufI, BufI, BufD], layer: Layer)
                              (implicit ctrl: Control)
   extends FFTHalfLogicImpl(name, shape, layer) {
 
   override protected def readWinSize  : Long = timeSize
   override protected def writeWinSize : Long = if (mode == 1) fftSize + 2 else fftSize
+
+  protected def gainFor(fftSize: Int): Double = 2.0 / fftSize
 
   protected def tryObtainWinParams(): Boolean = {
     val ok = hSize.hasNext && hPadding.hasNext && hMode.hasNext
@@ -181,7 +184,7 @@ final class Real1FFTLogicImpl(name: String, shape: FanInShape4[BufD, BufI, BufI,
     val fftBuf    = winBuf
     val _fftSize  = fftSize
     fft.realForward(fftBuf)
-    Util.mul(fftBuf, 0, _fftSize, 2.0 / _fftSize) // scale correctly
+    Util.mul(fftBuf, 0, _fftSize, gain) // scale correctly
     (mode: @switch) match {
       case 0 => // packed
       case 1 => // unpacked
@@ -195,13 +198,17 @@ final class Real1FFTLogicImpl(name: String, shape: FanInShape4[BufD, BufI, BufI,
   }
 }
 
-// XXX TODO rename in next major version
 final class Real1IFFTLogicImpl(name: String, shape: FanInShape4[BufD, BufI, BufI, BufI, BufD], layer: Layer)
                                  (implicit ctrl: Control)
   extends FFTHalfLogicImpl(name, shape, layer) {
 
   override protected def readWinSize  : Long = if (mode == 1) fftSize + 2 else fftSize
   override protected def writeWinSize : Long = timeSize
+
+  protected def gainFor(fftSize: Int): Double = {
+    import numbers.Implicits._
+    if (fftSize.isPowerOfTwo) 1.0 else 0.5  // XXX TODO: bug in JTransforms it seems
+  }
 
   protected def tryObtainWinParams(): Boolean = {
     val ok = hSize.hasNext && hPadding.hasNext && hMode.hasNext
@@ -226,13 +233,13 @@ final class Real1IFFTLogicImpl(name: String, shape: FanInShape4[BufD, BufI, BufI
         fftBuf(1) = 0.0
     }
     fft.realInverse(fftBuf, false)
+    if (gain != 1.0) Util.mul(fftBuf, 0, timeSize, gain)
   }
 }
 
 
-// XXX TODO rename in next major version
 abstract class FFTFullLogicImpl(name: String, shape: FanInShape3[BufD, BufI, BufI, BufD], layer: Layer)
-                                  (implicit ctrl: Control)
+                               (implicit ctrl: Control)
   extends Handlers[FanInShape3[BufD, BufI, BufI, BufD]](name, shape = shape, layer = layer)
     with FFTLogicImpl[FanInShape3[BufD, BufI, BufI, BufD]] {
 
@@ -259,9 +266,10 @@ trait FFTFullForwardLogicImpl {
   final protected def tryObtainWinParams(): Boolean = {
     val ok = hSize.hasNext && hPadding.hasNext
     if (ok) {
-      timeSize    = hSize   .next()
-      val padding = hPadding.next()
-      setFFTSize(timeSize + padding)
+      timeSize      = hSize   .next()
+      val padding   = hPadding.next()
+      val _fftSize  = timeSize + padding
+      setFFTSize(_fftSize)
     }
     ok
   }
@@ -289,10 +297,12 @@ final class Real1FullFFTLogicImpl(name: String, shape: FanInShape3[BufD, BufI, B
   override protected def readWinSize  : Long = timeSize
   override protected def writeWinSize : Long = fftSize << 1
 
+  protected def gainFor(fftSize: Int): Double = 2.0 / fftSize
+
   protected def performFFT(): Unit = {
     val _fftBuf = winBuf
     fft.realForwardFull(_fftBuf)
-    Util.mul(_fftBuf, 0, _fftBuf.length, 2.0 / fftSize) // scale correctly
+    Util.mul(_fftBuf, 0, _fftBuf.length, gain) // scale correctly
   }
 }
 
@@ -303,13 +313,16 @@ final class Real1FullIFFTLogicImpl(name: String, shape: FanInShape3[BufD, BufI, 
   override protected def readWinSize  : Long = fftSize << 1
   override protected def writeWinSize : Long = timeSize
 
+  protected def gainFor(fftSize: Int): Double = 0.5
+
   protected def performFFT(): Unit = {
     val _fftBuf = winBuf
     fft.complexInverse(_fftBuf, false)
     var i = 0
     var j = 0
+    val g = gain
     while (j < _fftBuf.length) {
-      _fftBuf(i) = _fftBuf(j) * 0.5
+      _fftBuf(i) = _fftBuf(j) * g
       i += 1
       j += 2
     }
@@ -322,6 +335,8 @@ final class Complex1FFTLogicImpl(name: String, shape: FanInShape3[BufD, BufI, Bu
 
   override protected def readWinSize  : Long = timeSize << 1
   override protected def writeWinSize : Long = fftSize  << 1
+
+  protected def gainFor(fftSize: Int): Double = 1.0 / fftSize
 
   protected def performFFT(): Unit = {
     val _fftBuf = winBuf
@@ -336,6 +351,8 @@ final class Complex1IFFTLogicImpl(name: String, shape: FanInShape3[BufD, BufI, B
 
   override protected def readWinSize  : Long = fftSize  << 1
   override protected def writeWinSize : Long = timeSize << 1
+
+  protected def gainFor(fftSize: Int): Double = 1.0
 
   protected def performFFT(): Unit = {
     val _fftBuf = winBuf
