@@ -2,6 +2,7 @@ package de.sciss.fscape
 
 import de.sciss.fscape.stream.Control.Config
 import de.sciss.kollflitz.Vec
+import de.sciss.numbers
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -9,6 +10,46 @@ import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Promise}
 
 class FFTSpec extends AnyFlatSpec with Matchers {
+
+  import math.Pi
+
+  val eps: Double = 1.0e-5
+  val Pi2: Double = 2 * Pi
+  val PiH: Double = 0.5 * Pi
+
+  def difOk(obs: Vec[Double], exp: Vec[Double]): Unit = {
+    assert (obs.size === exp.size)
+    (obs zip exp).zipWithIndex.foreach { case ((obsV, expV), idx) =>
+      assert (obsV === expV +- eps, s"For idx $idx of ${obs.size}")
+    }
+  }
+
+  def difRadiansOk(obs: Vec[Double], exp: Vec[Double]): Unit = {
+    assert (obs.size === exp.size)
+    (obs zip exp).zipWithIndex.foreach { case ((obsV, expV), idx) =>
+      val a = (expV - obsV + Pi) % Pi2 - Pi
+      // https://stackoverflow.com/questions/1878907/the-smallest-difference-between-2-angles
+      assert (a < eps, s"For idx $idx of ${obs.size}")
+    }
+  }
+
+  def getPromiseVec[A](in: Promise[Vec[A]]): Vec[A] =
+    in.future.value.get.get
+
+  def getPromise[A](in: Promise[Vec[A]]): A = {
+    val sq = getPromiseVec(in)
+    assert (sq.size === 1)
+    sq.head
+  }
+
+  def runGraph(g: Graph): Unit = {
+    val cfg = Config()
+    cfg.blockSize = 1024
+    val ctl = stream.Control(cfg)
+    ctl.run(g)
+    Await.result(ctl.status, Duration.Inf)
+  }
+
   "The real-valued FFT UGens" should "work as specified" in {
     val fftSizeHs = List(
       16, 512, 1024, 4096
@@ -25,10 +66,9 @@ class FFTSpec extends AnyFlatSpec with Matchers {
       val phaseP    = Promise[Vec[Double]]()
       val sigOutP   = Promise[Vec[Double]]()
       val rmsExp    = math.sqrt(0.5)
-      val eps       = 1.0e-5
       val fftSize   = fftSizeH << 1
       val period    = fftSize / 2
-      val phase0    = math.Pi/2
+      val phase0    = PiH
 
       val g = Graph {
         import graph._
@@ -70,21 +110,7 @@ class FFTSpec extends AnyFlatSpec with Matchers {
         DebugDoublePromise(phase, phaseP  )
       }
 
-      val cfg = Config()
-      cfg.blockSize = 1024
-      val ctl = stream.Control(cfg)
-      ctl.run(g)
-      Await.result(ctl.status, Duration.Inf)
-//      Thread.sleep(10000)
-
-      def getPromiseVec(in: Promise[Vec[Double]]): Vec[Double] =
-        in.future.value.get.get
-
-      def getPromise(in: Promise[Vec[Double]]): Double = {
-        val sq = getPromiseVec(in)
-        assert (sq.size === 1)
-        sq.head
-      }
+      runGraph(g)
 
       val resRmsIn  : Double = getPromise(rmsInP  )
       val resRmsFreq: Double = getPromise(rmsFreqP)
@@ -94,8 +120,7 @@ class FFTSpec extends AnyFlatSpec with Matchers {
       assert (resRmsOut   === (rmsExp +- eps))
 
       val resOut  = getPromiseVec(sigOutP)
-      val pi2     = math.Pi * 2
-      val expOut  = Vector.tabulate(fftSize)(idx => math.sin(idx * pi2 / period + phase0))
+      val expOut  = Vector.tabulate(fftSize)(idx => math.sin(idx * Pi2 / period + phase0))
 
       val resMag  = getPromiseVec(magP)
       val expMag  = Vector.tabulate(if (full) fftSize else fftSizeH + 1) { idx =>
@@ -107,13 +132,6 @@ class FFTSpec extends AnyFlatSpec with Matchers {
 //      println(resMag.mkString("GOT: ", ", ", ""))
 //      println(expOut.mkString("EXP: ", ", ", ""))
 
-      def difOk(a: Vec[Double], b: Vec[Double]): Unit = {
-        assert (a.size === b.size)
-        (a zip b).zipWithIndex.foreach { case ((av, bv), idx) =>
-          assert (av === bv +- eps, s"For fftSize $fftSize, full? $full, idx $idx")
-        }
-      }
-
       difOk(resOut, expOut)
       difOk(resMag, expMag)
 
@@ -122,14 +140,16 @@ class FFTSpec extends AnyFlatSpec with Matchers {
   }
 
   they should "allow fft-size modulation" in {
+    // reconstruction works for odd fft sizes,
+    // but obviously something is weird in the spectrum, as we don't have
+    // an integer number of complex re/im pairs
     val fftSizes = Vector(
-      16, 32, 48, 57, 511, 512, 513, 1023, 1024, 1025
+      16, 32, 48, 58 /*57*/, 510 /*511*/, 512, 514 /*513*/, 1022 /*1023*/, 1024, 1026 /*1025*/
     )
 
     val sigLen    = fftSizes.sum
     val phaseP    = Promise[Vec[Double]]()
     val sigOutP   = Promise[Vec[Double]]()
-    val eps       = 1.0e-5
 
     val g = Graph {
       import graph._
@@ -144,40 +164,70 @@ class FFTSpec extends AnyFlatSpec with Matchers {
       DebugDoublePromise(phase, phaseP  )
     }
 
-    val cfg = Config()
-    cfg.blockSize = 1024
-    val ctl = stream.Control(cfg)
-    ctl.run(g)
-    Await.result(ctl.status, Duration.Inf)
-    //      Thread.sleep(10000)
-
-    def getPromiseVec(in: Promise[Vec[Double]]): Vec[Double] =
-      in.future.value.get.get
-
-    def getPromise(in: Promise[Vec[Double]]): Double = {
-      val sq = getPromiseVec(in)
-      assert (sq.size === 1)
-      sq.head
-    }
+    runGraph(g)
 
     val resOut  = getPromiseVec(sigOutP)
     val expOut  = (0.0 +: fftSizes.flatMap(n => Vector.tabulate(n)(i => if (i == 0) 1.0 else 0.0))).init
 
-    val resPhaseSq  = getPromiseVec(phaseP)
-    val resPhase    = resPhaseSq(2)
-
-    def difOk(obs: Vec[Double], exp: Vec[Double]): Unit = {
-      assert (obs.size === exp.size)
-      (obs zip exp).zipWithIndex.foreach { case ((obsV, expV), idx) =>
-        assert (obsV === expV +- eps, s"For idx $idx of ${obs.size}")
-      }
-    }
+    val resPhase  = getPromiseVec(phaseP)
+    import numbers.Implicits._
+    val expPhase  = fftSizes.flatMap(n => Vector.tabulate((n + 2)/2)(_.linLin(0, n, 0, -Pi2)))
 
     assert (resOut.size === sigLen)
 
-    difOk(resOut, expOut)
-//    difOk(resMag, expMag)
+    difOk       (resOut  , expOut  )
+    difRadiansOk(resPhase, expPhase)
 
 //    assert (resPhase === (0.0 +- eps))
+  }
+
+  "The complex-valued FFT UGens" should "work as specified" in {
+    val reOutP    = Promise[Vec[Double]]()
+    val imOutP    = Promise[Vec[Double]]()
+    val magP      = Promise[Vec[Double]]()
+    val phaseP    = Promise[Vec[Double]]()
+    val peakBandP = Promise[Vec[Int]]()
+    val fftSizeH  = 1024
+    val fftSize   = fftSizeH << 1
+    val div       = 4
+    val period    = fftSize / div
+
+    val g = Graph {
+      import graph._
+
+      val sin       = SinOsc(1.0 / period, phase = 0.0  ).take(fftSize)
+      val cos       = SinOsc(1.0 / period, phase = PiH  ).take(fftSize)
+      val sig       = sin zip cos
+      val fft       = Complex1FFT(sig, fftSize)
+      val mag       = fft.complex.mag
+      val phase     = fft.complex.phase
+      val ifft      = Complex1IFFT(fft, fftSize)
+      val reOut     = ifft.complex.real
+      val imOut     = ifft.complex.imag
+      val peakBand  = WindowMaxIndex(mag  , fftSize)
+      val peakPhase = WindowApply   (phase, fftSize, peakBand)
+
+      DebugDoublePromise(reOut, reOutP  )
+      DebugDoublePromise(imOut, imOutP  )
+      DebugDoublePromise(mag  , magP    )
+      DebugDoublePromise(peakPhase, phaseP  )
+      DebugIntPromise   (peakBand, peakBandP)
+    }
+
+    runGraph(g)
+
+    val resRe   = getPromiseVec(reOutP)
+    val resIm   = getPromiseVec(imOutP)
+    val expRe   = Vector.tabulate(fftSize)(idx => math.sin(idx * Pi2 / period + 0.0))
+    val expIm   = Vector.tabulate(fftSize)(idx => math.sin(idx * Pi2 / period + PiH))
+
+    val resPhase    = getPromise(phaseP)
+    val peakBand    = getPromise(peakBandP)
+
+    difOk(resRe, expRe)
+    difOk(resIm, expIm)
+
+    assert (peakBand === fftSize - div)
+    assert (resPhase === PiH +- eps)
   }
 }
