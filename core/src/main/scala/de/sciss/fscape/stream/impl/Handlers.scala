@@ -31,6 +31,9 @@ object Handlers {
   private val idI: Int    => Int    = x => x
   private val idA: Any    => Any    = x => x
 
+  // XXX TODO handlers should register themselves for `free()` in `stopped`
+  // so we don't have to take care of that manually
+
   final class InDMain(n: Handlers[_], inlet: InD)(cond: Double => Double = idD)
     extends AbstractInMain[Double, BufD](n, inlet)(cond) {
 

@@ -15,7 +15,7 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape10}
-import de.sciss.fscape.stream.impl.{FilterIn10DImpl, FilterLogicImpl, StageImpl, NodeImpl, WindowedLogicImpl}
+import de.sciss.fscape.stream.impl.{Handlers, StageImpl, WindowedLogicNew}
 
 object FoldCepstrum {
   def apply(in: OutD, size: OutI,
@@ -60,83 +60,68 @@ object FoldCepstrum {
 
   // XXX TODO -- abstract over data type (BufD vs BufI)?
   private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape)
-      with WindowedLogicImpl[Shape]
-      with FilterLogicImpl[BufD, Shape]
-      with FilterIn10DImpl[BufD, BufI, BufD, BufD, BufD, BufD, BufD, BufD, BufD, BufD] {
+    extends Handlers(name, layer, shape)
+      with WindowedLogicNew[Double, BufD, Shape] {
 
-    private[this] var winBuf      : Array[Double] = _
-    private[this] var size        : Int = _
+    private[this] var size: Int = _
 
-    private[this] var crr : Double = _
-    private[this] var cri : Double = _
-    private[this] var clr : Double = _
-    private[this] var cli : Double = _
-    private[this] var ccr : Double = _
-    private[this] var cci : Double = _
-    private[this] var car : Double = _
-    private[this] var cai : Double = _
+    protected val aTpe: StreamType[Double, BufD] = StreamType.double
 
-    protected def startNextWindow(inOff: Int): Long = {
-      val oldSize = size
-      if (bufIn1 != null && inOff < bufIn1.size) {
-        size = math.max(1, bufIn1.buf(inOff))
-      }
-      val fullSize = size << 1
-      if (size != oldSize) {
-        winBuf = new Array[Double](fullSize)
-      }
-      if (bufIn2 != null && inOff < bufIn2.size) crr = bufIn2.buf(inOff)
-      if (bufIn3 != null && inOff < bufIn3.size) cri = bufIn3.buf(inOff)
-      if (bufIn4 != null && inOff < bufIn4.size) clr = bufIn4.buf(inOff)
-      if (bufIn5 != null && inOff < bufIn5.size) cli = bufIn5.buf(inOff)
-      if (bufIn6 != null && inOff < bufIn6.size) ccr = bufIn6.buf(inOff)
-      if (bufIn7 != null && inOff < bufIn7.size) cci = bufIn7.buf(inOff)
-      if (bufIn8 != null && inOff < bufIn8.size) car = bufIn8.buf(inOff)
-      if (bufIn9 != null && inOff < bufIn9.size) cai = bufIn9.buf(inOff)
-      
-      fullSize
+    protected     val hIn   = new Handlers.InDMain  (this, shape.in0)()
+    protected     val hOut  = new Handlers.OutDMain (this, shape.out)
+    private[this] val hSize = new Handlers.InIAux   (this, shape.in1)(math.max(0, _))
+    private[this] val hCRR  = new Handlers.InDAux   (this, shape.in2)()
+    private[this] val hCRI  = new Handlers.InDAux   (this, shape.in3)()
+    private[this] val hCLR  = new Handlers.InDAux   (this, shape.in4)()
+    private[this] val hCLI  = new Handlers.InDAux   (this, shape.in5)()
+    private[this] val hCCR  = new Handlers.InDAux   (this, shape.in6)()
+    private[this] val hCCI  = new Handlers.InDAux   (this, shape.in7)()
+    private[this] val hCAR  = new Handlers.InDAux   (this, shape.in8)()
+    private[this] val hCAI  = new Handlers.InDAux   (this, shape.in9)()
+
+    override protected def stopped(): Unit = {
+      super.stopped()
+      hIn   .free()
+      hOut  .free()
+      hSize .free()
+      hCRR  .free()
+      hCRI  .free()
+      hCLR  .free()
+      hCLI  .free()
+      hCCR  .free()
+      hCCI  .free()
+      hCAR  .free()
+      hCAI  .free()
     }
 
-    protected def copyInputToWindow(inOff: Int, writeToWinOff: Long, chunk: Int): Unit =
-      Util.copy(bufIn0.buf, inOff, winBuf, writeToWinOff.toInt, chunk)
+    protected def tryObtainWinParams(): Boolean = {
+      val ok = hSize.hasNext &&
+        hCRR.hasNext &&
+        hCRI.hasNext &&
+        hCLR.hasNext &&
+        hCLI.hasNext &&
+        hCCR.hasNext &&
+        hCCI.hasNext &&
+        hCAR.hasNext &&
+        hCAI.hasNext
 
-    protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit =
-      Util.copy(winBuf, readFromWinOff.toInt, bufOut0.buf, outOff, chunk)
+      if (ok) {
+        size = hSize.next()
+      }
+      ok
+    }
 
-    protected def processWindow(writeToWinOff: Long): Long = {
-      // println(s"crr = $crr, cri = $cri, clr = $clr, cli = $cli, ccr = $ccr, cci = $cci, car = $car, cai = $cai")
+    protected def winBufSize: Int = size << 1
 
-      // 'variant 1'
-      // gain: 1.0/2097152
-//      val crr =  0; val cri =  0
-//      val clr = +1; val cli = +1
-//      val ccr = +1; val cci = -1
-//      val car = +1; val cai = -1
-
-      // 'bypass'
-      // gain: 1.0/4
-//      val crr = +1; val cri = +1
-//      val clr = +1; val cli = +1
-//      val ccr =  0; val cci =  0
-//      val car =  0; val cai =  0
-
-      // 'variant 2'
-      // gain: 1.0/16
-//      val crr = +1; val cri = +1
-//      val clr =  0; val cli =  0
-//      val ccr = +1; val cci = -1
-//      val car = +1; val cai = -1
-
-//      if (DEBUG) {
-//        import de.sciss.file._
-//        import de.sciss.synth.io._
-//        val afBefore = AudioFile.openWrite(userHome/"Music"/"work"/"_NEXT_BEFORE.aif",
-//          AudioFileSpec(numChannels = 1, sampleRate = 44100.0))
-//        val afBuf = Array(winBuf.map(_.toFloat))
-//        afBefore.write(afBuf)
-//        afBefore.close()
-//      }
+    override protected def processWindow(): Unit = {
+      val crr = hCRR.next()
+      val cri = hCRI.next()
+      val clr = hCLR.next()
+      val cli = hCLI.next()
+      val ccr = hCCR.next()
+      val cci = hCCI.next()
+      val car = hCAR.next()
+      val cai = hCAI.next()
 
       val arr = winBuf
       arr(0) = arr(0) * crr
@@ -144,10 +129,6 @@ object FoldCepstrum {
 
       val sz  = size
       val szC = sz << 1
-      if (writeToWinOff < szC) {
-        val writeOffI = writeToWinOff.toInt
-        Util.clear(arr, writeOffI, szC - writeOffI)
-      }
 
       var i = 2
       var j = szC - 2
@@ -166,21 +147,6 @@ object FoldCepstrum {
       arr(i) = arr(i) * (ccr + clr)
       i += 1
       arr(i) = arr(i) * (cci + cli)
-      // i += 1
-
-//      if (DEBUG) {
-//        import de.sciss.file._
-//        import de.sciss.synth.io._
-//        val afAfter = AudioFile.openWrite(userHome/"Music"/"work"/"_NEXT_AFTER.aif",
-//          AudioFileSpec(numChannels = 1, sampleRate = 44100.0))
-//        val afBuf = Array(winBuf.map(_.toFloat))
-//        afAfter.write(afBuf)
-//        afAfter.close()
-//
-//        DEBUG = false
-//      }
-
-      szC
     }
   }
 }

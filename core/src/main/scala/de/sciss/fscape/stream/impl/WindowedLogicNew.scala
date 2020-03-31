@@ -25,6 +25,9 @@ trait WindowedLogicNew[A, E >: Null <: BufElem[A], S <: Shape] extends Node {
   /** The size for the window buffer, or zero if this buffer should no be used. */
   protected def winBufSize: Int
 
+  /** Called after a window has been fully read in. */
+  protected def processWindow(): Unit
+
   // ---- default implementations that can be overridden if `super` is called ----
 
   protected def onDone(inlet: Inlet[_]): Unit =
@@ -64,9 +67,6 @@ trait WindowedLogicNew[A, E >: Null <: BufElem[A], S <: Shape] extends Node {
 
   /** The default number of frames to write out per window equals the window buffer size */
   protected def writeWinSize: Long = winBufSize
-
-  /** The default buffer transformation, called after a window has been fully read in, is a no-op */
-  protected def processWindow(): Unit = ()
 
   /** Reads in a number of frames. The default implementation copies to the window buffer. */
   protected def readIntoWindow(n: Int): Unit = {
