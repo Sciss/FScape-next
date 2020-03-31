@@ -48,13 +48,16 @@ object FFTTest extends App {
       16, 32, 48, 57, 511, 512, 513, 1023, 1024, 1025
     )
     val sigLen    = fftSizes.sum
+    println(s"sigLen = $sigLen")
     val fftSizesGE: GE = fftSizes.map(x => x: GE).reduce(_ ++ _)
-    val sig     = DelayN(Metro(fftSizesGE).take(sigLen), 1, 1)
+    val sig     = DelayN(Metro(fftSizesGE).take(sigLen), 1, 1).init
+    Plot1D(sig, sigLen, "in")
     val fft     = Real1FFT(sig, size = fftSizesGE, mode = 1)
     val phase   = fft.complex.phase
     val ifft    = Real1IFFT(fft, size = fftSizesGE, mode = 1)
     Length(phase).poll("phase.length")
     Length(ifft ).poll("ifft.length")
+    Plot1D(ifft, sigLen, "out")
   }
 
   val ctrl = stream.Control()

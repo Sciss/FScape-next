@@ -32,8 +32,25 @@ trait WindowedLogicNew[A, E >: Null <: BufElem[A], S <: Shape] extends Node {
       if (stage == 0 || (stage == 1 && readOff == 0)) {
         stage = 2
         if (hOut.flush()) completeStage()
+      } else if (stage == 1) { // i.e. readOff > 0
+        flushStage1Enter2()
+        process()
       }
     }
+
+  private def flushStage1Enter2(): Unit = {
+    if (readRem > 0) clearWindowTail()
+    readOff += readRem
+    readRem  = 0
+    enterStage2()
+  }
+
+  private def enterStage2(): Unit = {
+    processWindow()
+    writeOff    = 0
+    writeRem    = writeWinSize
+    stage       = 2
+  }
 
   override protected def stopped(): Unit = {
     super.stopped()
@@ -93,7 +110,7 @@ trait WindowedLogicNew[A, E >: Null <: BufElem[A], S <: Shape] extends Node {
 
       val _winBufSz = winBufSize
       if (winBuf == null || winBuf.length != _winBufSz) {
-        if (_winBufSz > 0) winBuf = aTpe.newArray(_winBufSz)
+        winBuf = if (_winBufSz == 0) null else aTpe.newArray(_winBufSz)
       }
 
       readOff  = 0
@@ -110,16 +127,9 @@ trait WindowedLogicNew[A, E >: Null <: BufElem[A], S <: Shape] extends Node {
         readOff += numIn
         readRem -= numIn
         if (hIn.isDone) {
-          if (readRem > 0) clearWindowTail()
-          readOff += readRem
-          readRem  = 0
-        }
-
-        if (readRem == 0) {
-          processWindow()
-          writeOff    = 0
-          writeRem    = writeWinSize
-          stage       = 2
+          flushStage1Enter2()
+        } else if (readRem == 0) {
+          enterStage2()
         }
       }
     }

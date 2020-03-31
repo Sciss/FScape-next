@@ -127,7 +127,6 @@ class FFTSpec extends AnyFlatSpec with Matchers {
     )
 
     val sigLen    = fftSizes.sum
-    val sigLenD   = sigLen + 1
     val phaseP    = Promise[Vec[Double]]()
     val sigOutP   = Promise[Vec[Double]]()
     val eps       = 1.0e-5
@@ -136,7 +135,7 @@ class FFTSpec extends AnyFlatSpec with Matchers {
       import graph._
 
       val fftSizesGE: GE = fftSizes.map(x => x: GE).reduce(_ ++ _)
-      val sig     = DelayN(Metro(fftSizesGE).take(sigLen), 1, 1)
+      val sig     = DelayN(Metro(fftSizesGE).take(sigLen - 1), 1, 1)
       val fft     = Real1FFT(sig, size = fftSizesGE, mode = 1)
       val phase   = fft.complex.phase
       val ifft    = Real1IFFT(fft, size = fftSizesGE, mode = 1)
@@ -162,19 +161,19 @@ class FFTSpec extends AnyFlatSpec with Matchers {
     }
 
     val resOut  = getPromiseVec(sigOutP)
-    val expOut  = 0.0 +: fftSizes.flatMap(n => Vector.tabulate(n)(i => if (i == 0) 1.0 else 0.0))
+    val expOut  = (0.0 +: fftSizes.flatMap(n => Vector.tabulate(n)(i => if (i == 0) 1.0 else 0.0))).init
 
     val resPhaseSq  = getPromiseVec(phaseP)
     val resPhase    = resPhaseSq(2)
 
-    def difOk(a: Vec[Double], b: Vec[Double]): Unit = {
-      assert (a.size === b.size)
-      (a zip b).zipWithIndex.foreach { case ((av, bv), idx) =>
-        assert (av === bv +- eps, s"For idx $idx")
+    def difOk(obs: Vec[Double], exp: Vec[Double]): Unit = {
+      assert (obs.size === exp.size)
+      (obs zip exp).zipWithIndex.foreach { case ((obsV, expV), idx) =>
+        assert (obsV === expV +- eps, s"For idx $idx of ${obs.size}")
       }
     }
 
-    assert (resOut.size === sigLenD)
+    assert (resOut.size === sigLen)
 
     difOk(resOut, expOut)
 //    difOk(resMag, expMag)

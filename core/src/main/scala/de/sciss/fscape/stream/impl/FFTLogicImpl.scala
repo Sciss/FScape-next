@@ -37,7 +37,7 @@ trait FFTLogicImpl[S <: Shape] extends WindowedLogicNew[Double, BufD, S] {
   protected final var fft: DoubleFFT_1D = _
 
   protected final var timeSize  : Int = _
-  protected final var fftSize   : Int = _
+  protected final var fftSize   : Int = -1
 
   protected final def setFFTSize(n: Int): Unit =
     if (fftSize != n) {
