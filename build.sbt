@@ -1,11 +1,8 @@
-// shadow sbt-scalajs' crossProject and CrossType from Scala.js 0.6.x
-//import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
-
 lazy val baseName   = "FScape"
 lazy val baseNameL  = baseName.toLowerCase
 lazy val gitRepo    = "FScape-next"
 
-lazy val projectVersion = "2.35.0"
+lazy val projectVersion = "2.35.1-SNAPSHOT"
 lazy val mimaVersion    = "2.35.0"
 
 lazy val baseDescription = "An audio rendering library"
@@ -22,7 +19,6 @@ lazy val commonSettings = Seq(
     "-deprecation", "-unchecked", "-feature", "-encoding", "utf8", "-Xlint", "-Xsource:2.13"
   ),
   scalacOptions in (Compile, compile) ++= (if (scala.util.Properties.isJavaAtLeast("9")) Seq("-release", "8") else Nil), // JDK >8 breaks API; skip scala-doc
-//  resolvers          += "Oracle Repository" at "http://download.oracle.com/maven",  // required for sleepycat
   updateOptions      := updateOptions.value.withLatestSnapshots(false),
   javacOptions        := commonJavaOptions ++ Seq("-target", "1.8", "-g", "-Xlint:deprecation" /*, "-Xlint:unchecked" */),
   javacOptions in doc := commonJavaOptions,
@@ -86,9 +82,6 @@ lazy val root = project.withId(baseNameL).in(file("."))
   )
 
 lazy val core = project
-  // crossProject(JSPlatform, JVMPlatform)
-  // .withoutSuffixFor(JVMPlatform)
-  // .crossType(CrossType.Pure)
   .withId(s"$baseNameL-core")
   .in(file("core"))
   .enablePlugins(BuildInfoPlugin)
@@ -118,18 +111,10 @@ lazy val core = project
       "org.rogach" %% "scallop" % deps.test.scallop % Test
     },
     mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-core" % mimaVersion),
-    // scalaJSUseMainModuleInitializer in Test := true,
     mainClass in Test := Some("de.sciss.fscape.FramesTest")
   )
-  // .jsSettings(
-  //   libraryDependencies ++= Seq(
-  //     "org.akka-js" %%% "akkajsactorstream" % "1.2.5.21"
-  //   )
-  // )
 
 lazy val lucre = project
-  // crossProject(JVMPlatform)
-  // .withoutSuffixFor(JVMPlatform)
   .withId(s"$baseNameL-lucre")
   .in(file("lucre"))
   .dependsOn(core)
@@ -150,8 +135,6 @@ lazy val lucre = project
   )
 
 lazy val macros = project
-  // crossProject(JVMPlatform)
-  // .withoutSuffixFor(JVMPlatform)
   .withId(s"$baseNameL-macros")
   .in(file("macros"))
   .dependsOn(lucre)
@@ -167,8 +150,6 @@ lazy val macros = project
   )
 
 lazy val views = project
-  // crossProject(JVMPlatform)
-  // .withoutSuffixFor(JVMPlatform)
   .withId(s"$baseNameL-views")
   .in(file("views"))
   .dependsOn(lucre)
@@ -185,8 +166,6 @@ lazy val views = project
   )
 
 lazy val modules = project
-  // crossProject(JVMPlatform)
-  // .withoutSuffixFor(JVMPlatform)
   .withId(s"$baseNameL-modules")
   .in(file("modules"))
   .dependsOn(macros, views)
@@ -202,15 +181,12 @@ lazy val modules = project
       "de.sciss"          %% "lucre-bdb"            % deps.lucre.lucre,
       "de.sciss"          %% "lucre-swing"          % deps.views.lucreSwing,
       "de.sciss"          %% "soundprocesses-views" % deps.lucre.soundProcesses,
-      // "com.github.scopt"  %% "scopt"                % deps.modules.scopt,
       "org.rogach"        %% "scallop"              % deps.modules.scallop
     ),
     mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-modules" % mimaVersion)
   )
 
 lazy val cdp = project
-  // crossProject(JVMPlatform)
-  // .withoutSuffixFor(JVMPlatform)
   .withId(s"$baseNameL-cdp")
   .in(file("cdp"))
   .dependsOn(core)

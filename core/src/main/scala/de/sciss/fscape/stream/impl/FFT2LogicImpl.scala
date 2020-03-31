@@ -67,7 +67,7 @@ abstract class FFT2FullStageImpl(name: String)
   }
 }
 
-/** Base class for 1-dimensional FFT transforms. */
+/** Base class for 2-dimensional FFT transforms. */
 trait FFT2LogicImpl extends Node {
   _: GraphStageLogic =>
 

@@ -182,7 +182,7 @@ object Handlers {
   }
 
   abstract class AbstractInMain[@specialized(Int, Long, Double) A, E >: Null <: BufElem[A]](n: Handlers[_],
-                                                                                            inlet: Inlet[E])
+                                                                                            final val inlet: Inlet[E])
                                                                                            (cond: A => A)
     extends InHandler {
 

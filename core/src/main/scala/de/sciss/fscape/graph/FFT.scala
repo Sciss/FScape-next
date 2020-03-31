@@ -66,7 +66,7 @@ sealed trait FFTHalfUGen extends UGenSource.SingleOut {
   * @param in       the real signal to transform. If overlapping windows
   *                 are desired, a `Sliding` should already have been applied
   *                 to this signal, as well as multiplication with a window function.
-  * @param size     the input window size
+  * @param size     the time domain input window size
   * @param padding  amount of zero padding for each input window.
   * @param mode     packing mode.
   *                 `0` (default) is standard "packed" mode,
@@ -90,6 +90,32 @@ final case class Real1FFT(in: GE, size: GE, padding: GE = 0, mode: GE = 0) exten
     stream.Real1FFT(in = in, size = size, padding = padding, mode = mode)
 }
 
+/** Backward or inverse short-time Fourier transform UGen for a real-valued output signal.
+  * The FFT size is equal to `size`. The output is a succession of time domain signals
+  * of length `size - padding`. Depending on `mode`,
+  * the output input size is supposed to be either `size` or `size + 2`.
+  *
+  * @param in       the complex signal to transform.
+  * @param size     the frequency domain input window size (fft size)
+  * @param padding  amount of zero padding for each output window. These are the number
+  *                 of sample frames to drop from each output window after the FFT.
+  * @param mode     packing mode of the input signal.
+  *                 `0` (default) is standard "packed" mode,
+  *                 whereby the real part of the bin at Nyquist is stored in the imaginary
+  *                 slot of the DC. This mode allows perfect reconstruction with a
+  *                 `Real1IFFT` using the same mode.
+  *                 `1` is "unpacked" mode,
+  *                 whereby the output windows are made two samples longer,
+  *                 so that the Nyquist bin is included in the very end. By
+  *                 definition, the imaginary parts of DC and Nyquist are zero.
+  *                 This mode allows perfect reconstruction with a
+  *                 `Real1IFFT` using the same mode.
+  *                 `2` is "discarded" mode,
+  *                 whereby the Nyquist bin is omitted. While it doesn't allow
+  *                 a perfect reconstruction, this mode is useful for analysis,
+  *                 because the output window size is equal to the fft-size,
+  *                 and the imaginary part of DC is correctly zero'ed.
+  */
 final case class Real1IFFT(in: GE, size: GE, padding: GE = 0, mode: GE = 0) extends FFTHalfUGen {
   protected def apply(in: OutD, size: OutI, padding: OutI, mode: OutI)(implicit b: stream.Builder): OutD =
     stream.Real1IFFT(in = in, size = size, padding = padding, mode = mode)

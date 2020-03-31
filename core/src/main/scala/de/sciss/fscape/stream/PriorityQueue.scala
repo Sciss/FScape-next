@@ -19,12 +19,6 @@ import de.sciss.fscape.stream.impl.{FilterIn3Impl, NodeImpl, StageImpl}
 
 import scala.collection.mutable
 
-/*
-
-  XXX TODO:
-   - introduce type class that gives access to allocBuf
-
- */
 object PriorityQueue {
   def apply[A, K >: Null <: BufElem[A],
             B, V >: Null <: BufElem[B]](keys: Outlet[K],
@@ -170,7 +164,7 @@ object PriorityQueue {
 
     protected def tryWrite(): Unit = {
       if (outSent) {
-        bufOut0        = allocOutBuf0()
+        bufOut0       = allocOutBuf0()
         outRemain     = bufOut0.size
         outOff        = 0
         outSent       = false

@@ -47,6 +47,7 @@ object FoldCepstrum {
   * `crr = 1, ccr = 1, cri = 1, cci = -1`
   * and clear the anti-causal (right) part:
   * `clr = 0, car = 0, cli = 0, cai = 0`
+  * (you can just call `FoldCepstrum.minPhase` for this case)
   */
 final case class FoldCepstrum(in: GE, size: GE,
             crr: GE, cri: GE, clr: GE, cli: GE,
