@@ -256,9 +256,17 @@ object DetectLocalMax {
           debug(s"reachedStopFrame? $reachedStopFrame; terminate? $terminate")
           if (reachedStopFrame || terminate) {
             // go from 'found' to 'blocked', from 'blocked' to 'empty'
+            if (terminate) {
+//              foundFrame  = framesRead // place a virtual found frame at the end
+//              state       = 2
+              _complete   = true
+//            } else {
+//              state = if (state == 1) 2 else 0
+            }
             state = if (state == 1) 2 else 0
             debug(s"... state -> $state")
-            if (terminate || state == 2) readMode = false
+            if (state == 2) readMode = false
+
             stateChanged = true
           }
         }
@@ -273,7 +281,8 @@ object DetectLocalMax {
     private def processWrite(): Boolean = {
       var stateChanged = false
 
-      val chunk = if (state == 0) outRemain else math.min(outRemain, foundFrame - framesWritten).toInt
+      val chunk0  = if (state == 0) outRemain else math.min(outRemain, foundFrame - framesWritten).toInt
+      val chunk   = if (_complete) math.min(chunk0, framesRead - framesWritten).toInt else chunk0
 
       debug(s"write $framesWritten - state $state chunk $chunk")
 
