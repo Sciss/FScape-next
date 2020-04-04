@@ -15,14 +15,14 @@ package de.sciss.fscape.stream.impl
 
 import akka.stream.{Attributes, FanInShape3, FanInShape4, Shape}
 import de.sciss.fscape.Util
-import de.sciss.fscape.stream.{BufD, BufI, Builder, Control, InD, InI, Layer, OutD, OutI, StreamType}
+import de.sciss.fscape.stream.{BufD, BufI, Builder, Control, InD, InI, Layer, OutD, OutI}
 import de.sciss.numbers
 import edu.emory.mathcs.jtransforms.fft.DoubleFFT_1D
 
 import scala.annotation.switch
 
 /** Base class for 1-dimensional FFT transforms. */
-trait FFTLogicImpl[S <: Shape] extends WindowedLogicNew[Double, BufD, S] {
+trait FFTLogicImpl[S <: Shape] extends WindowedLogicD[S] {
   _: Handlers[S] =>
 
   // ---- abstract ----
@@ -31,8 +31,6 @@ trait FFTLogicImpl[S <: Shape] extends WindowedLogicNew[Double, BufD, S] {
 
   // ---- impl ----
 
-  protected final val aTpe: StreamType[Double, BufD] = StreamType.double
-
   protected final var fft: DoubleFFT_1D = _
 
   protected final var timeSize  : Int     = _
@@ -40,6 +38,11 @@ trait FFTLogicImpl[S <: Shape] extends WindowedLogicNew[Double, BufD, S] {
   protected final var gain      : Double  = _
 
   protected def gainFor(fftSize: Int): Double
+
+  override protected def stopped(): Unit = {
+    super.stopped()
+    fft = null
+  }
 
   protected final def setFFTSize(n: Int): Unit =
     if (fftSize != n) {
@@ -146,16 +149,6 @@ abstract class FFTHalfLogicImpl(name: String, shape: FanInShape4[BufD, BufI, Buf
 
   protected final var mode      : Int = _   // 0 - packed, 1 - unpacked, 2 - discarded
 
-  override protected def stopped(): Unit = {
-    super.stopped()
-    fft = null
-    hIn     .free()
-    hOut    .free()
-    hSize   .free()
-    hPadding.free()
-    hMode   .free()
-  }
-
   // for half-spectra we add the extra "redundant" complex entry possibly needed for untangling DC and Nyquist
   final def winBufSize: Int = fftSize + 2
 }
@@ -247,15 +240,6 @@ abstract class FFTFullLogicImpl(name: String, shape: FanInShape3[BufD, BufI, Buf
   protected final val hOut      = new Handlers.OutDMain (this, shape.out)
   protected final val hSize     = new Handlers.InIAux   (this, shape.in1)(_.max(0))
   protected final val hPadding  = new Handlers.InIAux   (this, shape.in2)(_.max(0))
-
-  override protected def stopped(): Unit = {
-    super.stopped()
-    fft = null
-    hIn     .free()
-    hOut    .free()
-    hSize   .free()
-    hPadding.free()
-  }
 
   final def winBufSize: Int = fftSize << 1
 }

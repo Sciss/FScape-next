@@ -66,13 +66,7 @@ object Histogram {
     private[this] val hOut    = new Handlers.OutIMain (this, shape.out)
 
     override protected def stopped(): Unit = {
-      hIn   .free()
-      hBins .free()
-      hLo   .free()
-      hHi   .free()
-      hMode .free()
-      hReset.free()
-      hOut  .free()
+      super.stopped()
       histogram = null
     }
 

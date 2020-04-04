@@ -15,6 +15,7 @@ package de.sciss.fscape.stream.impl
 
 import akka.stream.stage.{InHandler, OutHandler}
 import akka.stream.{Inlet, Outlet, Shape}
+import de.sciss.fscape.stream.impl.Handlers.Resource
 import de.sciss.fscape.stream.{BufD, BufElem, BufI, Control, InD, InI, Layer, OutD, OutI, StreamType}
 import de.sciss.fscape.{logStream => log}
 
@@ -68,10 +69,14 @@ object Handlers {
   final class InIAux(n: Handlers[_], inlet: InI)(cond: Int => Int = idI)
     extends AbstractInAux[Int, BufI](n, inlet)(cond)
 
+  trait Resource {
+    def free(): Unit
+  }
+
   abstract class AbstractInAux[@specialized(Int, Long, Double) A, E >: Null <: BufElem[A]](n: Handlers[_],
                                                                                            inlet: Inlet[E])
                                                                                           (cond: A => A)
-    extends InHandler {
+    extends InHandler with Resource {
 
     import n._
 
@@ -182,12 +187,13 @@ object Handlers {
       }
 
     setHandler(inlet, this)
+    addResource(this)
   }
 
   abstract class AbstractInMain[@specialized(Int, Long, Double) A, E >: Null <: BufElem[A]](n: Handlers[_],
                                                                                             final val inlet: Inlet[E])
                                                                                            (cond: A => A)
-    extends InHandler {
+    extends InHandler with Resource {
 
     import n._
 
@@ -306,6 +312,7 @@ object Handlers {
       }
 
     setHandler(inlet, this)
+    addResource(this)
   }
 
   // ---- output ----
@@ -336,7 +343,7 @@ object Handlers {
 
   abstract class AbstractOutMain[@specialized(Int, Long, Double) A, E >: Null <: BufElem[A]](n: Handlers[_],
                                                                                              outlet: Outlet[E])
-    extends OutHandler {
+    extends OutHandler with Resource {
 
     protected def mkBuf(): E
 
@@ -452,10 +459,21 @@ object Handlers {
       }
 
     setHandler(outlet, this)
+    addResource(this)
   }
 }
 abstract class Handlers[+S <: Shape](name: String, layer: Layer, shape: S)(implicit control: Control)
   extends NodeImpl[S](name, layer, shape) {
+
+  private[this] final var resources: List[Resource] = Nil
+
+  protected final def addResource(r: Resource): Unit = resources ::= r
+
+  override protected def stopped(): Unit = {
+    super.stopped()
+    resources.reverseIterator.foreach(_.free())
+    resources = Nil
+  }
 
   protected def process(): Unit
 

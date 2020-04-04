@@ -18,6 +18,7 @@ package impl
 import akka.stream.stage.GraphStageLogic
 import akka.stream.{Outlet, Shape}
 
+@deprecated("Should move to using Handlers", since = "2.35.1")
 trait Out1LogicImpl[Out >: Null <: BufLike, S <: Shape] extends InOutImpl[S] {
 
   _: GraphStageLogic =>

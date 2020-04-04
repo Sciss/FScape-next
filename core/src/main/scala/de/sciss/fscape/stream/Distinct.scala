@@ -52,9 +52,8 @@ object Distinct {
     private[this] val hOut    = new Handlers.OutMain[A, E](this, shape.out)
 
     override protected def stopped(): Unit = {
-      hIn   .free()
-      hOut  .free()
-      seen  .clear()
+      super.stopped()
+      seen.clear()
     }
 
     protected def onDone(inlet: Inlet[_]): Unit =

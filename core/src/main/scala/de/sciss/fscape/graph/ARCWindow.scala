@@ -22,6 +22,8 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 /** Automatic range control UGen. It traces the
   * range of a windowed input signal.
   *
+  * If all values of a window are the same, the `lo` value is output.
+  *
   * @param in     signal to adjust
   * @param size   window size of input
   * @param lo     desired lower margin of output

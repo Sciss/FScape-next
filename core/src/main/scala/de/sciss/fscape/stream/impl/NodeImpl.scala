@@ -77,6 +77,8 @@ abstract class NodeImpl[+S <: Shape](protected final val name: String, val layer
     async.invokeWithFeedback(()).map(_ => ())
   }
 
+  // XXX TODO --- should use Handlers now?
+  @deprecated("Should move to using Handlers", since = "2.35.1")
   abstract class InHandlerImpl[A, E <: BufElem[A]](in: Inlet[E])
     extends InHandler {
 

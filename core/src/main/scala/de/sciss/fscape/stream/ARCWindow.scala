@@ -15,7 +15,7 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape5}
-import de.sciss.fscape.stream.impl.{DemandFilterIn5D, DemandFilterLogic, DemandWindowedLogicOLD, NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl, WindowedLogicD}
 
 object ARCWindow {
   def apply(in: OutD, size: OutI, lo: OutD, hi: OutD, lag: OutD)(implicit b: Builder): OutD = {
@@ -34,7 +34,7 @@ object ARCWindow {
   private type Shape = FanInShape5[BufD, BufI, BufD, BufD, BufD, BufD]
 
   private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
-    val shape = new FanInShape5(
+    val shape: Shape = new FanInShape5(
       in0 = InD (s"$name.in"  ),
       in1 = InI (s"$name.size"),
       in2 = InD (s"$name.lo"  ),
@@ -43,90 +43,55 @@ object ARCWindow {
       out = OutD(s"$name.out" )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
   }
 
   private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape)
-      with DemandFilterLogic[BufD, Shape]
-      with DemandWindowedLogicOLD[Shape]
-      with DemandFilterIn5D[BufD, BufI, BufD, BufD, BufD] {
+    extends Handlers(name, layer, shape) with WindowedLogicD[Shape] {
 
-    private[this] var winSize = 0
-    private[this] var lo      = 0.0
-    private[this] var hi      = 0.0
-    private[this] var lag     = 0.0
-    private[this] var winBuf  : Array[Double] = _
+    protected     val hIn     = new Handlers.InDMain  (this, shape.in0)()
+    protected     val hOut    = new Handlers.OutDMain (this, shape.out)
+    private[this] val hSize   = new Handlers.InIAux   (this, shape.in1)(math.max(0, _))
+    private[this] val hLo     = new Handlers.InDAux   (this, shape.in2)()
+    private[this] val hHi     = new Handlers.InDAux   (this, shape.in3)()
+    private[this] val hLag    = new Handlers.InDAux   (this, shape.in4)()
 
     private[this] var init    = true
     private[this] var minMem  = 0.0
     private[this] var maxMem  = 0.0
-    private[this] var mul     = 0.0
-    private[this] var add     = 0.0
 
-    override protected def stopped(): Unit = {
-      super.stopped()
-      winBuf = null
+    protected def tryObtainWinParams(): Boolean = {
+      val ok = hSize.hasNext && hLo.hasNext && hHi.hasNext && hLag.hasNext
+      if (ok) {
+        hSize.next()  // the others are called in `processWindow`
+      }
+      ok
     }
 
-    protected def startNextWindow(): Long = {
-      val oldSize = winSize
-      val inOff   = auxInOff
-      if (bufIn1 != null && inOff < bufIn1.size) {
-        winSize = math.max(1, bufIn1.buf(inOff))
-      }
-      if (bufIn2 != null && inOff < bufIn2.size) {
-        lo = bufIn2.buf(inOff)
-      }
-      if (bufIn3 != null && inOff < bufIn3.size) {
-        hi = bufIn3.buf(inOff)
-      }
-      if (bufIn4 != null && inOff < bufIn4.size) {
-        lag = bufIn4.buf(inOff)
-      }
-      if (winSize != oldSize) {
-        winBuf = new Array[Double](winSize)
-      }
-      winSize
-    }
+    protected def winBufSize: Int = hSize.value
 
-    protected def canStartNextWindow: Boolean = auxInRemain > 0 || (auxInValid && {
-      isClosed(in1) && isClosed(in2) && isClosed(in3) && isClosed(in4)
-    })
+    override protected val fullLastWindow: Boolean = false
 
-    protected def copyInputToWindow(writeToWinOff: Long, chunk: Int): Unit =
-      Util.copy(bufIn0.buf, mainInOff, winBuf, writeToWinOff.toInt, chunk)
+    protected def processWindow(): Unit = {
+      val lo  = hLo .next()
+      val hi  = hHi .next()
+      val lag = hLag.next()
 
-    protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit = {
-      val _add  = add
-      val _mul  = mul
-      val a     = winBuf
-      val b     = bufOut0.buf
-      var ai    = readFromWinOff.toInt
-      var bi    = outOff
-      val stop  = ai + chunk
-      while (ai < stop) {
-        val x0 = a(ai)
-        val y1 = x0 * _mul + _add
-        b(bi)  = y1
-        ai += 1
-        bi += 1
-      }
-    }
+      val num = readOff.toInt
+      if (num == 0) return
 
-    protected def processWindow(writeToWinOff: Long): Long = {
-      val writeOffI = writeToWinOff.toInt
-      if (writeOffI == 0) return writeToWinOff
+      val b   = winBuf
+      var min = b(0)
+      var max = b(0)
 
-      val b         = winBuf
-      var min       = b(0)
-      var max       = b(0)
-      var i         = 1
-      while (i < writeOffI) {
-        val x = b(i)
-        if      (x > max) max = x
-        else if (x < min) min = x
-        i += 1
+      {
+        var i = 1
+        while (i < num) {
+          val x = b(i)
+          if      (x > max) max = x
+          else if (x < min) min = x
+          i += 1
+        }
       }
 
       if (init) {
@@ -140,25 +105,19 @@ object ARCWindow {
         maxMem = maxMem * cy + max * cx
       }
 
-      // linlin := (in - min) / (max - min) * (hi - lo) + lo
-      // mul := (hi - lo) / (max - min)
-      // linlin := (in - min) * mul + lo
-      // linlin := (in - min + lo/mul) * mul
-      // add := lo/mul - min
-      // linlin := (in + add) * mul
-      // linlin := in * mul + add * mul
-      // add2 := lo - min * mul
-      // linlin := in * mul + add2
-
       if (minMem == maxMem) {
-        mul = 0
-        add = lo
+        Util.fill(b, 0, num, lo)
       } else {
-        mul = (hi - lo) / (maxMem - minMem)
-        add = lo - minMem * mul
+        val mul = (hi - lo) / (maxMem - minMem)
+        val add = lo - minMem * mul
+        var i = 0
+        while (i < num) {
+          val x0 = b(i)
+          val y1 = x0 * mul + add
+          b(i) = y1
+          i += 1
+        }
       }
-
-      writeToWinOff
     }
   }
 }

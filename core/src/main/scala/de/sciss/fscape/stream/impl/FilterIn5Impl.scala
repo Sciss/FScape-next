@@ -19,6 +19,7 @@ import akka.stream.stage.GraphStageLogic
 import akka.stream.{FanInShape5, Inlet, Outlet}
 
 /** Building block for `FanInShape5` type graph stage logic. */
+@deprecated("Does not allow individual aux inputs to advance at different block sizes", since = "2.35.1")
 trait FilterIn5Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: BufLike,
 In3 >: Null <: BufLike, In4 >: Null <: BufLike, Out >: Null <: BufLike]
   extends Out1LogicImpl[Out, FanInShape5[In0, In1, In2, In3, In4, Out]]
@@ -131,6 +132,7 @@ In3 >: Null <: BufLike, In4 >: Null <: BufLike, Out >: Null <: BufLike]
   new ProcessOutHandlerImpl(shape.out, this)
 }
 
+@deprecated("Does not allow individual aux inputs to advance at different block sizes", since = "2.35.1")
 trait FilterIn5DImpl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: BufLike,
 In3 >: Null <: BufLike, In4 >: Null <: BufLike]
   extends FilterIn5Impl[In0, In1, In2, In3, In4, BufD]

@@ -10,7 +10,7 @@ import scala.concurrent.{Await, Promise}
 import scala.util.Success
 
 class DelayNSpec extends AnyFlatSpec with Matchers {
-  "The DelayNSpec UGen" should "work as intended" in {
+  "The DelayN UGen" should "work as intended" in {
     val n = 4
     for {
       padLen  <- Seq(0, 1, 10, 100, 512, 2049 - n)

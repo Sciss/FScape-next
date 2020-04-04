@@ -18,18 +18,21 @@ package impl
 import akka.stream.Shape
 import akka.stream.stage.GraphStageLogic
 
+@deprecated("Should move to using Handlers", since = "2.35.1")
 trait Out1DoubleImpl[S <: Shape] extends InOutImpl[S] {
   _: GraphStageLogic =>
 
   protected final def allocOutBuf0(): BufD = control.borrowBufD()
 }
 
+@deprecated("Should move to using Handlers", since = "2.35.1")
 trait Out1IntImpl[S <: Shape] extends InOutImpl[S] {
   _: GraphStageLogic =>
 
   protected final def allocOutBuf0(): BufI = control.borrowBufI()
 }
 
+@deprecated("Should move to using Handlers", since = "2.35.1")
 trait Out1LongImpl[S <: Shape] extends InOutImpl[S] {
   _: GraphStageLogic =>
 

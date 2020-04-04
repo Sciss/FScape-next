@@ -18,6 +18,7 @@ package impl
 import akka.stream.stage.{GraphStageLogic, InHandler, OutHandler}
 import akka.stream.{Inlet, Outlet, Shape}
 
+@deprecated("Should move to using Handlers", since = "2.35.1")
 trait InOutImpl[S <: Shape] extends Node {
   _: GraphStageLogic =>
 
@@ -60,6 +61,7 @@ trait InOutImpl[S <: Shape] extends Node {
   final def setOutHandler[A](out: Outlet[A], h: OutHandler): Unit = setHandler(out, h)
 }
 
+@deprecated("Should move to using Handlers", since = "2.35.1")
 trait FullInOutImpl[S <: Shape] extends InOutImpl[S] {
   _: GraphStageLogic =>
 
@@ -74,6 +76,7 @@ trait FullInOutImpl[S <: Shape] extends InOutImpl[S] {
   protected def freeInputBuffers(): Unit
 }
 
+@deprecated("Should move to using Handlers", since = "2.35.1")
 trait DemandInOutImpl[S <: Shape] extends InOutImpl[S] {
   _: GraphStageLogic =>
 

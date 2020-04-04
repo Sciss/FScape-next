@@ -15,7 +15,7 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape10}
-import de.sciss.fscape.stream.impl.{Handlers, StageImpl, WindowedLogicNew}
+import de.sciss.fscape.stream.impl.{Handlers, StageImpl, WindowedLogicD}
 
 object FoldCepstrum {
   def apply(in: OutD, size: OutI,
@@ -61,11 +61,9 @@ object FoldCepstrum {
   // XXX TODO -- abstract over data type (BufD vs BufI)?
   private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
     extends Handlers(name, layer, shape)
-      with WindowedLogicNew[Double, BufD, Shape] {
+      with WindowedLogicD[Shape] {
 
     private[this] var size: Int = _
-
-    protected val aTpe: StreamType[Double, BufD] = StreamType.double
 
     protected     val hIn   = new Handlers.InDMain  (this, shape.in0)()
     protected     val hOut  = new Handlers.OutDMain (this, shape.out)
@@ -78,21 +76,6 @@ object FoldCepstrum {
     private[this] val hCCI  = new Handlers.InDAux   (this, shape.in7)()
     private[this] val hCAR  = new Handlers.InDAux   (this, shape.in8)()
     private[this] val hCAI  = new Handlers.InDAux   (this, shape.in9)()
-
-    override protected def stopped(): Unit = {
-      super.stopped()
-      hIn   .free()
-      hOut  .free()
-      hSize .free()
-      hCRR  .free()
-      hCRI  .free()
-      hCLR  .free()
-      hCLI  .free()
-      hCCR  .free()
-      hCCI  .free()
-      hCAR  .free()
-      hCAI  .free()
-    }
 
     protected def tryObtainWinParams(): Boolean = {
       val ok = hSize.hasNext &&

@@ -67,10 +67,7 @@ object Pearson {
     private[this] var yRem    = 0
 
     override protected def stopped(): Unit = {
-      hX    .free()
-      hY    .free()
-      hSize .free()
-      hOut  .free()
+      super.stopped()
       xBuf = null
       yBuf = null
     }

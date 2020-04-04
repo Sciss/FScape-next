@@ -82,14 +82,7 @@ object LinKernighanTSP {
     private[this] var weightsRem  = 0
 
     override protected def stopped(): Unit = {
-      hInit   .free()
-      hWeights.free()
-      hSize   .free()
-      hMode   .free()
-      hTimeOut.free()
-      hOutTour.free()
-      hOutCost.free()
-
+      super.stopped()
       outTour = null
       tour0   = null
       weights = null

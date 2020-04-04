@@ -73,9 +73,6 @@ object DropRight {
     override protected def stopped(): Unit = {
       super.stopped()
       buf = null
-      hIn .free()
-      hLen.free()
-      hOut.free()
     }
 
     protected def process(): Unit = {

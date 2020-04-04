@@ -79,10 +79,6 @@ object DelayN {
     override protected def stopped(): Unit = {
       super.stopped()
       buf = null
-      hIn       .free()
-      hMaxDlyLen.free()
-      hDlyLen   .free()
-      hOut      .free()
     }
 
     protected def process(): Unit = {

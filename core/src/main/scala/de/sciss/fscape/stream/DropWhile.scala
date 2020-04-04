@@ -64,13 +64,6 @@ object DropWhile {
       res
     }
 
-    override protected def stopped(): Unit = {
-      super.stopped()
-      hIn   .free()
-      hPred .free()
-      hOut  .free()
-    }
-
     def process(): Unit = {
       logStream(s"process() $this")
 

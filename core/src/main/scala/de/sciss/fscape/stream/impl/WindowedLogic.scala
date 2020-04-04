@@ -1,8 +1,21 @@
+/*
+ *  WindowedLogic.scala
+ *  (FScape)
+ *
+ *  Copyright (c) 2001-2020 Hanns Holger Rutz. All rights reserved.
+ *
+ *  This software is published under the GNU Affero General Public License v3+
+ *
+ *
+ *  For further information, please contact Hanns Holger Rutz at
+ *  contact@sciss.de
+ */
+
 package de.sciss.fscape.stream.impl
 
 import akka.stream.{Inlet, Shape}
 import de.sciss.fscape.logStream
-import de.sciss.fscape.stream.{BufElem, Node, StreamType}
+import de.sciss.fscape.stream.{BufD, BufElem, Node, StreamType}
 
 import scala.annotation.tailrec
 
@@ -10,7 +23,7 @@ import scala.annotation.tailrec
   * This is for window processing UGens where window parameters include
   * `winSize` and possibly others, and will be polled per window.
   */
-trait WindowedLogicNew[A, E >: Null <: BufElem[A], S <: Shape] extends Node {
+trait WindowedLogic[A, E >: Null <: BufElem[A], S <: Shape] extends Node {
   _: Handlers[S] =>
 
   // ---- abstract ----
@@ -20,9 +33,18 @@ trait WindowedLogicNew[A, E >: Null <: BufElem[A], S <: Shape] extends Node {
   protected def hIn   : Handlers.AbstractInMain [A, E]
   protected def hOut  : Handlers.AbstractOutMain[A, E]
 
+  /** Tries to prepare the parameters for the next window.
+    * If successful, returns `true` otherwise `false`. If successful,
+    * it must be possible to successively call `winBufSize`.
+    */
   protected def tryObtainWinParams(): Boolean
 
-  /** The size for the window buffer, or zero if this buffer should no be used. */
+  /** The size for the window buffer, or zero if this buffer should no be used.
+    * This can be polled multiple times per window, the element might thus need to be saved
+    * (in `tryObtainWinParams()`). In most cases, it will be sufficient to poll the value
+    * in `tryObtainWinParams` and implement `winBufSize` by calling the `value` method of the
+    * corresponding input handler.
+    */
   protected def winBufSize: Int
 
   /** Called after a window has been fully read in. */
@@ -32,7 +54,7 @@ trait WindowedLogicNew[A, E >: Null <: BufElem[A], S <: Shape] extends Node {
 
   protected def onDone(inlet: Inlet[_]): Unit =
     if (inlet == hIn.inlet) {
-      if (stage == 0 || (stage == 1 && readOff == 0)) {
+      if (stage == 0 || (stage == 1 && readOff == 0L)) {
         stage = 2
         if (hOut.flush()) completeStage()
       } else if (stage == 1) { // i.e. readOff > 0
@@ -42,15 +64,13 @@ trait WindowedLogicNew[A, E >: Null <: BufElem[A], S <: Shape] extends Node {
     }
 
   private def flushStage1Enter2(): Unit = {
-    if (readRem > 0) clearWindowTail()
-    readOff += readRem
-    readRem  = 0
+    if (readRem > 0L && fullLastWindow) clearWindowTail()
     enterStage2()
   }
 
   private def enterStage2(): Unit = {
     processWindow()
-    writeOff    = 0
+    writeOff    = 0L
     writeRem    = writeWinSize
     stage       = 2
   }
@@ -62,11 +82,18 @@ trait WindowedLogicNew[A, E >: Null <: BufElem[A], S <: Shape] extends Node {
 
   // ---- default implementations that can be overridden ----
 
+  protected val fullLastWindow: Boolean = true
+
   /** The default number of frames to read in per window equals the window buffer size */
   protected def readWinSize : Long = winBufSize
 
-  /** The default number of frames to write out per window equals the window buffer size */
-  protected def writeWinSize: Long = winBufSize
+  /** The number of frames to write out per window. This is polled once after `processWindow`.
+    * The default equals the window buffer size (`winBufSize`).
+    * If an implementation wants to truncate the last window when the input terminates,
+    * it should override `fullLastWindow` to return `false`, in which case the default
+    * implemention of `writeWinSize` will return ``
+    */
+  protected def writeWinSize: Long = if (fullLastWindow) winBufSize else readOff
 
   /** Reads in a number of frames. The default implementation copies to the window buffer. */
   protected def readIntoWindow(n: Int): Unit = {
@@ -80,13 +107,17 @@ trait WindowedLogicNew[A, E >: Null <: BufElem[A], S <: Shape] extends Node {
     hOut.nextN(winBuf, offI, n)
   }
 
-  /** The default implementation clears from `readOff` to the end of the window buffer. */
-  protected def clearWindowTail(): Unit = {
+  /** The default implementation clears from `readOff` to the end of the window buffer.
+    * This method is not called if `fullLastWindow` returns `false`!
+    */
+  protected final def clearWindowTail(): Unit = {
     val _buf = winBuf
     if (_buf != null && _buf.length > readOff) {
       val offI = readOff.toInt
       aTpe.clear(winBuf, offI, _buf.length - offI)
     }
+    readOff += readRem
+    readRem  = 0L
   }
 
   // ---- visible impl ----
@@ -113,7 +144,7 @@ trait WindowedLogicNew[A, E >: Null <: BufElem[A], S <: Shape] extends Node {
         winBuf = if (_winBufSz == 0) null else aTpe.newArray(_winBufSz)
       }
 
-      readOff  = 0
+      readOff  = 0L
       readRem  = readWinSize
       stage     = 1
     }
@@ -157,4 +188,11 @@ trait WindowedLogicNew[A, E >: Null <: BufElem[A], S <: Shape] extends Node {
 
     process()
   }
+}
+
+/** Windowed logic for double I/O */
+trait WindowedLogicD[S <: Shape] extends WindowedLogic[Double, BufD, S] {
+  _: Handlers[S] =>
+
+  protected final val aTpe: StreamType[Double, BufD] = StreamType.double
 }

@@ -499,19 +499,19 @@ object AffineTransform2D {
 
       if (mainShouldRead) {
         _mainInRemain = readMainIns()
-        mainInOff    = 0
+        mainInOff     = 0
         stateChange   = true
       }
 
       if (aux1ShouldRead) {
-        aux1InRemain = readAux1Ins()
-        aux1InOff    = 0
+        aux1InRemain  = readAux1Ins()
+        aux1InOff     = 0
         stateChange   = true
       }
 
       if (aux2ShouldRead) {
-        aux2InRemain = readAux2Ins()
-        aux2InOff    = 0
+        aux2InRemain  = readAux2Ins()
+        aux2InOff     = 0
         stateChange   = true
       }
 

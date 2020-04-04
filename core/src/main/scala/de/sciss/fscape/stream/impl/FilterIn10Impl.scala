@@ -21,6 +21,7 @@ import akka.stream.{FanInShape10, Inlet, Outlet}
 /** Building block for `FanInShape10` type graph stage logic.
   * XXX TODO -- should be macro- or template-generated
   */
+@deprecated("Does not allow individual aux inputs to advance at different block sizes", since = "2.35.1")
 trait FilterIn10Impl[
     In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: BufLike, In3 >: Null <: BufLike,
     In4 >: Null <: BufLike, In5 >: Null <: BufLike, In6 >: Null <: BufLike, In7 >: Null <: BufLike,
@@ -185,6 +186,7 @@ trait FilterIn10Impl[
   new ProcessOutHandlerImpl(shape.out, this)
 }
 
+@deprecated("Does not allow individual aux inputs to advance at different block sizes", since = "2.35.1")
 trait FilterIn10DImpl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: BufLike, In3 >: Null <: BufLike,
 In4 >: Null <: BufLike, In5 >: Null <: BufLike, In6 >: Null <: BufLike, In7 >: Null <: BufLike,
 In8 >: Null <: BufLike, In9 >: Null <: BufLike]
