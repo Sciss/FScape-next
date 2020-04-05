@@ -15,7 +15,7 @@ package de.sciss.fscape
 
 import de.sciss.fscape.graph.BinaryOp._
 import de.sciss.fscape.graph.UnaryOp._
-import de.sciss.fscape.graph.{BinaryOp, ChannelProxy, Clip, ComplexBinaryOp, ComplexUnaryOp, Concat, Constant, Distinct, Drop, DropRight, DropWhile, Elastic, FilterSeq, Fold, Indices, Length, MatchLen, Metro, Poll, ResizeWindow, RunningMax, RunningMin, RunningProduct, RunningSum, Take, TakeRight, TakeWhile, UnaryOp, UnzipWindow, Wrap, ZipWindow}
+import de.sciss.fscape.graph.{BinaryOp, ChannelProxy, Clip, ComplexBinaryOp, ComplexUnaryOp, Concat, Constant, Distinct, Drop, DropRight, DropWhile, Elastic, FilterSeq, Fold, Indices, Length, MatchLen, Metro, Poll, ResizeWindow, RunningMax, RunningMin, RunningProduct, RunningSum, Take, TakeRight, TakeWhile, UnaryOp, UnzipWindow, Wrap, Zip}
 import de.sciss.optional.Optional
 
 /** `GEOps1` are operations for graph elements (`GE`). Instead of having these operations directly defined
@@ -247,7 +247,7 @@ final class GEOps1(val `this`: GE) extends AnyVal { me =>
 //    */
 //  def updated(index: GE, elem: GE): GE = patch(index, single(elem), 1)
 
-  def zip(that: GE): GE = ZipWindow(g, that)
+  def zip(that: GE): GE = Zip(g, that)
 }
 
 /** `GEOps2` are operations for graph elements (`GE`). Instead of having these operations directly defined

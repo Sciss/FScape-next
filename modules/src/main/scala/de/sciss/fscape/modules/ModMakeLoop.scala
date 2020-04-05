@@ -30,7 +30,7 @@ object ModMakeLoop extends Module {
     val f = FScape[S]()
     import de.sciss.fscape.lucre.MacroImplicits._
     f.setGraph {
-      // version: 03-Apr-2019
+      // version: 05-Apr-2020
       val numFramesIn   = AudioFileIn.NumFrames ("in")
       val sr            = AudioFileIn.SampleRate("in")
       val fileType      = "out-type"      .attr(0)
@@ -44,9 +44,9 @@ object ModMakeLoop extends Module {
       val fadePos       = "fade-pos"      .attr(0).clip(0, 1)
       val fadeType      = "fade-type"     .attr(1).clip(0, 1)
       val gainAmt       = gainDb.dbAmp
-      val fadeLen0      = ((fadeLenMs  /1000) * sr).roundTo(1)
-      val initSkip0     = ((initSkipMs /1000) * sr).roundTo(1)
-      val finalSkip0    = ((finalSkipMs/1000) * sr).roundTo(1)
+      val fadeLen0      = ((fadeLenMs  /1000) * sr).toInt
+      val initSkip0     = ((initSkipMs /1000) * sr).toInt
+      val finalSkip0    = ((finalSkipMs/1000) * sr).toInt
       val initSkip      = initSkip0   min numFramesIn
       val finalSkip     = finalSkip0  min (numFramesIn - initSkip)
       val fadeAvail     = (initSkip  * (fadePos sig_== 0)).max(
@@ -61,13 +61,13 @@ object ModMakeLoop extends Module {
       val faded = If (fadePos sig_== 0) Then {
         val c1  = mkIn().drop(initSkip).take(numFramesOut)
         val c1F = c1 * DEnvGen(
-          levels  = (1.0: GE) ++ (1.0: GE) ++ (0.0: GE),
+          levels  = ValueSeq(1.0, 1.0, 0.0),
           lengths = steadyLen ++ fadeLen,
           shapes  = (0: GE) ++ shapeId
         )
         val c2 = mkIn().drop(initSkip - fadeLen).take(fadeLen)
         val c2F = c2 * DEnvGen(
-          levels  = (0.0: GE) ++ (1.0: GE),
+          levels  = ValueSeq(0.0, 1.0),
           lengths = fadeLen,
           shapes  = shapeId
         )
@@ -77,13 +77,13 @@ object ModMakeLoop extends Module {
       } Else {
         val c1  = mkIn().drop(initSkip).take(numFramesOut)
         val c1F = c1 * DEnvGen(
-          levels  = (0.0: GE) ++ (1.0: GE) ++ (1.0: GE),
+          levels  = ValueSeq(0.0, 1.0, 1.0),
           lengths = fadeLen ++ steadyLen,
           shapes  = shapeId ++ (0: GE)
         )
         val c2 = mkIn().drop(initSkip + numFramesOut).take(fadeLen)
         val c2F = c2 * DEnvGen(
-          levels  = (1.0: GE) ++ (0.0: GE),
+          levels  = ValueSeq(1.0, 0.0),
           lengths = fadeLen,
           shapes  = shapeId
         )

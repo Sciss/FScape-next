@@ -13,7 +13,6 @@
 
 package de.sciss.fscape.modules
 
-import de.sciss.fscape.GE
 import de.sciss.fscape.lucre.FScape
 import de.sciss.lucre.stm.Sys
 import de.sciss.synth.proc.Widget
@@ -30,7 +29,7 @@ object ModSignalGenerator extends Module {
     val f = FScape[S]()
     import de.sciss.fscape.lucre.MacroImplicits._
     f.setGraph {
-      // version: 06-Apr-2019
+      // version: 05-Apr-2020
       val tpe         = "signal-type" .attr(0)
       val dur         = "dur"         .attr(10.0)
       val amp0        = "amp"         .attr(1.0)
@@ -46,9 +45,9 @@ object ModSignalGenerator extends Module {
       val freqN       = freq / sampleRate
       val amp         = amp0 // XXX TODO: channels
 
-      val numFrames   = (dur * sampleRate).roundTo(1.0) // .max(2)
-      val fadeInFr    = (fadeIn  * sampleRate).roundTo(1).min(numFrames)
-      val fadeOutFr   = (fadeOut * sampleRate).roundTo(1).min(numFrames + fadeInFr)
+      val numFrames   = (dur     * sampleRate).toLong
+      val fadeInFr    = (fadeIn  * sampleRate).toLong.min(numFrames)
+      val fadeOutFr   = (fadeOut * sampleRate).toLong.min(numFrames + fadeInFr)
 
       // numFrames.poll(0, "numFrames")
 
@@ -65,7 +64,7 @@ object ModSignalGenerator extends Module {
         WhiteNoise(amp)
       }
 
-      val lvl0    = (0.0: GE) ++ (1.0: GE) ++ (1.0: GE) ++ (0.0: GE)
+      val lvl0    = ValueSeq(0.0, 1.0, 1.0, 0.0)
       val lens0   = fadeInFr ++ (numFrames - fadeInFr - fadeOutFr) ++ fadeOutFr
       val noFdOut = fadeOutFr sig_== 0
       val lvl1    = lvl0 .take(4 - noFdOut)

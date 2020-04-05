@@ -1,5 +1,5 @@
 /*
- *  ZipWindow.scala
+ *  ZipWindowN.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2020 Hanns Holger Rutz. All rights reserved.
@@ -11,26 +11,15 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape
-package stream
+package de.sciss.fscape.stream
 
-import akka.stream.stage.{InHandler, OutHandler}
 import akka.stream.{Attributes, Inlet, Outlet}
+import akka.stream.stage.{InHandler, OutHandler}
+import de.sciss.fscape.{Util, logStream}
 import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 
 import scala.annotation.tailrec
 import scala.collection.immutable.{Seq => ISeq}
-
-/** Zips two signals into one based on a window length. */
-object ZipWindow {
-  /**
-    * @param a      the first signal to zip
-    * @param b      the second signal to zip
-    * @param size   the window size. this is clipped to be `&lt;= 1`
-    */
-  def apply(a: OutD, b: OutD, size: OutI)(implicit builder: Builder): OutD =
-    ZipWindowN(in = Vector(a, b), size = size)
-}
 
 /** Zips a number of signals into one output based on a window length. */
 object ZipWindowN {
@@ -48,6 +37,8 @@ object ZipWindowN {
     stage.out
   }
 
+  private final val name = "ZipWindowN"
+
   private final case class Shp(inputs: ISeq[InD], size: InI, out: OutD) extends akka.stream.Shape {
     val inlets : ISeq[Inlet [_]] = inputs :+ size
     val outlets: ISeq[Outlet[_]] = Vector(out)
@@ -57,12 +48,12 @@ object ZipWindowN {
   }
 
   private final class Stage(layer: Layer, numInputs: Int)(implicit ctrl: Control)
-    extends StageImpl[Shp]("ZipWindow") {
+    extends StageImpl[Shp](name) {
 
     val shape: Shape = Shp(
-      inputs  = Vector.tabulate(numInputs)(idx => InD(s"ZipWindow.in$idx")),
-      size    = InI ("ZipWindow.size"),
-      out     = OutD("ZipWindow.out" )
+      inputs  = Vector.tabulate(numInputs)(idx => InD(s"$name.in$idx")),
+      size    = InI (s"$name.size"),
+      out     = OutD(s"$name.out" )
     )
 
     def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
@@ -70,7 +61,7 @@ object ZipWindowN {
 
   // XXX TODO -- abstract over data type (BufD vs BufI)?
   private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
-    extends NodeImpl("ZipWindow", layer, shape) {
+    extends NodeImpl(name, layer, shape) {
 
     private[this] var bufOut: BufD = _
     private[this] var bufIn1: BufI = _
@@ -211,7 +202,7 @@ object ZipWindowN {
 
         val chunk0  = math.min(inWinRem, outRemain)
         val chunk   = if (sizeRemain == 0 && isClosed(shape.size) && !isAvailable(shape.size)) chunk0
-                      else math.min(chunk0, sizeRemain)
+        else math.min(chunk0, sizeRemain)
 
         if (chunk > 0) {
           Util.copy(in.buf.buf, in.off, bufOut.buf, outOff, chunk)

@@ -43,7 +43,7 @@ object ModInverseFilter extends Module {
     import de.sciss.fscape.GE
     import de.sciss.fscape.lucre.MacroImplicits._
     f.setGraph {
-      // version: 03-Oct-2019
+      // version: 05-Apr-2020
       val in            = AudioFileIn("in")
       val sr            = in.sampleRate
 
@@ -65,16 +65,7 @@ object ModInverseFilter extends Module {
         val logC        = log max -320.0 // -80
         val cep0        = Complex1IFFT  (in  = logC, size = fftSize, padding = 0)
         val cep         = cep0 * (1.0/fftSize)
-
-        val crr = +1; val cri = +1
-        val clr =  0; val cli =  0
-        val ccr = +1; val cci = -1
-        val car =  0; val cai =  0
-
-        val cepOut      = FoldCepstrum  (in = cep, size = fftSize,
-          crr = crr, cri = cri, clr = clr, cli = cli,
-          ccr = ccr, cci = cci, car = car, cai = cai)
-
+        val cepOut      = FoldCepstrum.minPhase(in = cep, size = fftSize)
         val freq0       = Complex1FFT   (in = cepOut, size = fftSize)
         val freq1       = freq0 * fftSize
         val freq        = freq1 // ComplexUnaryOp(in = freq1, op = ComplexUnaryOp.Conj)

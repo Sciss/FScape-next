@@ -28,7 +28,7 @@ final case class ZipWindow(a: GE, b: GE, size: GE = 1) extends UGenSource.Single
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit builder: stream.Builder): StreamOut = {
     val Vec(a, b, size) = args
-    stream.ZipWindow(a = a.toDouble, b = b.toDouble, size = size.toInt)
+    stream.ZipWindowN(in = a.toDouble :: b.toDouble :: Nil, size = size.toInt)
   }
 }
 

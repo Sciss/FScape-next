@@ -33,7 +33,7 @@ object MakeWorkspace {
       version(printedName)
       val target: Opt[File] = trailArg(descr = "Target .mllt Mellite workspace.")
       verify()
-      val config = Config(target = target())
+      val config: Config = Config(target = target())
     }
 
     run(parse.config)

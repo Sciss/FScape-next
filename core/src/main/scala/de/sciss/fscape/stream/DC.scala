@@ -40,10 +40,20 @@ object DC {
       out = Outlet[E](s"$name.out")
     )
 
-    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic[A, E](shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = {
+      val res: Logic[_, _] = if (tpe.isDouble) {
+        new Logic[Double, BufD](shape.asInstanceOf[Shp[BufD]], layer)
+      } else if (tpe.isInt) {
+        new Logic[Int   , BufI](shape.asInstanceOf[Shp[BufI]], layer)
+      } else {
+        assert (tpe.isLong)
+        new Logic[Long  , BufL](shape.asInstanceOf[Shp[BufL]], layer)
+      }
+      res.asInstanceOf[Logic[A, E]]
+    }
   }
 
-  private final class Logic[A, E <: BufElem[A]](shape: Shp[E], layer: Layer)
+  private final class Logic[@specialized(Args) A, E <: BufElem[A]](shape: Shp[E], layer: Layer)
                                                (implicit ctrl: Control, tpe: StreamType[A, E])
     extends NodeImpl(name, layer, shape) with OutHandler { logic =>
 
