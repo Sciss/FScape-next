@@ -1,15 +1,11 @@
 package de.sciss.fscape
 
-import de.sciss.fscape.stream.Control.Config
 import de.sciss.kollflitz.Vec
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
 
-import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, Promise}
+import scala.concurrent.Promise
 import scala.util.{Success, Try}
 
-class FramesSpec extends AnyFlatSpec with Matchers {
+class FramesSpec extends UGenSpec {
   "The Frames and Indices UGens" should "work as specified" in {
     val lengths = List(
       0, 1, 10, 100, 1024, 1025, 10000
@@ -29,11 +25,7 @@ class FramesSpec extends AnyFlatSpec with Matchers {
         DebugIntPromise(idx , pIdx)
       }
 
-      val cfg = Config()
-      cfg.blockSize = 1024
-      val ctl = stream.Control(cfg)
-      ctl.run(g)
-      Await.result(ctl.status, Duration.Inf)
+      runGraph(g, 1024)
 
       assert(pFr.isCompleted)
       val resFr : Try[Vec[Int]] = pFr .future.value.get

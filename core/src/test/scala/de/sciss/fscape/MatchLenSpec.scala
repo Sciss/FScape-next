@@ -1,14 +1,11 @@
 package de.sciss.fscape
 
 import de.sciss.kollflitz.Vec
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
 
-import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, Promise}
+import scala.concurrent.Promise
 import scala.util.Success
 
-class MatchLenSpec extends AnyFlatSpec with Matchers {
+class MatchLenSpec extends UGenSpec {
   "The .matchLen op" should "work as specified" in {
     val pairs = List(
       (10, 17),
@@ -35,9 +32,7 @@ class MatchLenSpec extends AnyFlatSpec with Matchers {
         DebugIntPromise(if (n1 > 0) sig21 else -1, p2)
       }
 
-      val ctl = stream.Control()
-      ctl.run(g)
-      Await.result(ctl.status, Duration.Inf)
+      runGraph(g)
 
       assert(p1.isCompleted)
       assert(p2.isCompleted)

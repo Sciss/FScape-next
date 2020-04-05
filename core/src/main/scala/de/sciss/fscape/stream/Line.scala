@@ -69,8 +69,8 @@ object Line {
 //          println("init")
           start   = bufIn0.buf(0)
           end     = bufIn1.buf(0)
-          len     = math.max(1L, bufIn2.buf(0))
-          slope   = (end - start) / (len - 1)
+          len     = math.max(0L, bufIn2.buf(0))
+          slope   = if (len > 1) (end - start) / (len - 1) else 0.0
           _init   = false
         }
       }
@@ -96,7 +96,9 @@ object Line {
         if (stop == _len) {
           // replace last frame to match exactly the end value
           // to avoid problems with floating point noise
-          out(chunk - 1) = end
+          if (chunk > 0 && _len > 1) {
+            out(chunk - 1) = end
+          }
           writeOuts(chunk)
           completeStage()
         } else {

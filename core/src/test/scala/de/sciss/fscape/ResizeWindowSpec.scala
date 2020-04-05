@@ -1,15 +1,12 @@
 package de.sciss.fscape
 
 import de.sciss.kollflitz.Vec
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
 
 import scala.annotation.tailrec
-import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, Promise}
+import scala.concurrent.Promise
 import scala.util.Success
 
-class ResizeWindowSpec extends AnyFlatSpec with Matchers {
+class ResizeWindowSpec extends UGenSpec {
   "The ResizeWindow UGen" should "work as intended" in {
 //    var count = 0
 //    showControlLog  = true
@@ -35,15 +32,8 @@ class ResizeWindowSpec extends AnyFlatSpec with Matchers {
         DebugIntPromise(r, p)
       }
 
-      val cfg = stream.Control.Config()
-      cfg.blockSize = 128
-      val ctl = stream.Control(cfg)
-//      NodeImpl.BLA = true
-      ctl.run(g)
-//      count += 1
+      runGraph(g, 128)
       val info = s"for inLen = $inLen, winInSz = $winInSz, start = $start, stop = $stop"
-//      println(info)
-      Await.result(ctl.status, Duration.Inf)
 
       assert(p.isCompleted)
       val res = p.future.value.get
@@ -99,11 +89,7 @@ class ResizeWindowSpec extends AnyFlatSpec with Matchers {
       DebugIntPromise(out, p)
     }
 
-    val cfg = stream.Control.Config()
-    cfg.blockSize = 128
-    val ctl = stream.Control(cfg)
-    ctl.run(g)
-    Await.result(ctl.status, Duration.Inf)
+    runGraph(g, 128)
 
     assert(p.isCompleted)
     val res = p.future.value.get

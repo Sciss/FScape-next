@@ -1,15 +1,11 @@
 package de.sciss.fscape
 
-import de.sciss.fscape.stream.Control.Config
 import de.sciss.kollflitz.Vec
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
 
-import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, Promise}
+import scala.concurrent.Promise
 import scala.util.Success
 
-class DropWhileSpec extends AnyFlatSpec with Matchers {
+class DropWhileSpec extends UGenSpec {
   "The DropWhile UGen" should "work as intended" in {
     for {
       inLen   <- Seq(0, 1, 10, 100, 1024, 1025)
@@ -28,11 +24,7 @@ class DropWhileSpec extends AnyFlatSpec with Matchers {
         DebugIntPromise(dw, p)
       }
 
-      val cfg = Config()
-      cfg.blockSize = 1024
-      val ctl = stream.Control(cfg)
-      ctl.run(g)
-      Await.result(ctl.status, Duration.Inf)
+      runGraph(g, 1024)
 
       assert(p.isCompleted)
       val res     = p.future.value.get

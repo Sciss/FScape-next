@@ -14,9 +14,12 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.{Attributes, FanInShape6}
-import de.sciss.fscape.stream.impl.deprecated.{FilterChunkImpl, FilterIn6DImpl}
-import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import akka.stream.{Attributes, FanInShape6, Inlet}
+import de.sciss.fscape.stream.impl.Handlers._
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
+
+import math.min
+import scala.annotation.tailrec
 
 object Biquad {
   def apply(in: OutD, b0: OutD, b1: OutD, b2: OutD, a1: OutD, a2: OutD)(implicit b: Builder): OutD = {
@@ -50,84 +53,73 @@ object Biquad {
   }
 
   private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape)
-      with FilterIn6DImpl [BufD, BufD, BufD, BufD, BufD, BufD]
-      with FilterChunkImpl[BufD, BufD, Shp] {
+    extends Handlers(name, layer, shape) {
+    
+    private[this] val hIn  = InDMain  (this, shape.in0)
+    private[this] val hB0  = InDAux   (this, shape.in1)()
+    private[this] val hB1  = InDAux   (this, shape.in2)()
+    private[this] val hB2  = InDAux   (this, shape.in3)()
+    private[this] val hA1  = InDAux   (this, shape.in4)()
+    private[this] val hA2  = InDAux   (this, shape.in5)()
+    private[this] val hOut = OutDMain (this, shape.out)
+    
+    private[this] var x1 = 0.0
+    private[this] var x2 = 0.0
+    private[this] var y1 = 0.0
+    private[this] var y2 = 0.0
 
-    private[this] var b0  = 0.0
-    private[this] var b1  = 0.0
-    private[this] var b2  = 0.0
-    private[this] var a1  = 0.0
-    private[this] var a2  = 0.0
+    protected def onDone(inlet: Inlet[_]): Unit =
+      if (hOut.flush()) completeStage()
 
-    private[this] var x1  = 0.0
-    private[this] var x2  = 0.0
-    private[this] var y1  = 0.0
-    private[this] var y2  = 0.0
-
-    protected def processChunk(inOff: Int, outOff: Int, len: Int): Unit = {
-      val bufIn   = bufIn0.buf
-      val bufB0   = if (bufIn1  == null) null else bufIn1.buf
-      val stopB0  = if (bufB0   == null) 0    else bufIn1.size
-      val bufB1   = if (bufIn2  == null) null else bufIn2.buf
-      val stopB1  = if (bufB1   == null) 0    else bufIn2.size
-      val bufB2   = if (bufIn3  == null) null else bufIn3.buf
-      val stopB2  = if (bufB2   == null) 0    else bufIn3.size
-      val bufA1   = if (bufIn4  == null) null else bufIn4.buf
-      val stopA1  = if (bufA1   == null) 0    else bufIn4.size
-      val bufA2   = if (bufIn5  == null) null else bufIn5.buf
-      val stopA2  = if (bufA2   == null) 0    else bufIn5.size
-      val out     = bufOut0.buf
+    @tailrec
+    protected def process(): Unit = {
+      val remIO = min(hIn.available, hOut.available)
+      if (remIO == 0) return
+      val remB0 = hB0.available
+      if (remB0 == 0) return
+      val remB1 = hB1.available
+      if (remB1 == 0) return
+      val remB2 = hB2.available
+      if (remB2 == 0) return
+      val remA1 = hA1.available
+      if (remA1 == 0) return
+      val remA2 = hA2.available
+      if (remA2 == 0) return
       
-      var _b0     = b0
-      var _b1     = b1
-      var _b2     = b2
-      var _a1     = a1
-      var _a2     = a2
-      var _x1     = x1
-      var _x2     = x2
-      var _y1     = y1
-      var _y2     = y2
+      val rem = min(remIO, min(remB0, min(remB1, min(remB2, min(remA1, remA2)))))
       
-      var inOffI  = inOff
-      var outOffI = outOff
-      val stop0   = inOff + len
-      while (inOffI < stop0) {
-        val x0    = bufIn(inOffI)
-        if (inOffI < stopB0) {
-          _b0 = bufB0(inOffI)
-        }
-        if (inOffI < stopB1) {
-          _b1 = bufB1(inOffI)
-        }
-        if (inOffI < stopB2) {
-          _b2 = bufB2(inOffI)
-        }
-        if (inOffI < stopA1) {
-          _a1 = bufA1(inOffI)
-        }
-        if (inOffI < stopA2) {
-          _a2 = bufA2(inOffI)
-        }
-        val y0        = _b0 * x0 + _b1 * _x1 + _b2 * _x2 - _a1 * _y1 - _a2 * _y2
-        out(outOffI)  = y0
-        inOffI       += 1
-        outOffI      += 1
-        _y2           = _y1
-        _y1           = y0
-        _x2           = _x1
-        _x1           = x0
+      var _x1 = x1
+      var _x2 = x2
+      var _y1 = y1
+      var _y2 = y2
+
+      var i = 0
+      while (i < rem) {
+        val x0 = hIn.next()
+        val b0 = hB0.next()
+        val b1 = hB1.next()
+        val b2 = hB2.next()
+        val a1 = hA1.next()
+        val a2 = hA2.next()
+        val y0 = b0 * x0 + b1 * _x1 + b2 * _x2 - a1 * _y1 - a2 * _y2
+        hOut.next(y0)
+        _y2 = _y1
+        _y1 = y0
+        _x2 = _x1
+        _x1 = x0
+        i += 1
+      }
+      x1 = _x1
+      x2 = _x2
+      y1 = _y1
+      y2 = _y2
+
+      if (hIn.isDone) {
+        if (hOut.flush()) completeStage()
+        return
       }
 
-      b0  = _b0
-      b1  = _b1
-      b2  = _b2
-      a1  = _a1
-      a2  = _a2
-      x1  = _x1
-      x2  = _x2
-      y1  = _y1
-      y2  = _y2
+      process()
     }
   }
 }

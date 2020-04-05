@@ -1,54 +1,11 @@
 package de.sciss.fscape
 
-import de.sciss.fscape.stream.Control.Config
 import de.sciss.kollflitz.Vec
 import de.sciss.numbers
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
 
-import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, Promise}
+import scala.concurrent.Promise
 
-class FFTSpec extends AnyFlatSpec with Matchers {
-
-  import math.Pi
-
-  val eps: Double = 1.0e-5
-  val Pi2: Double = 2 * Pi
-  val PiH: Double = 0.5 * Pi
-
-  def difOk(obs: Vec[Double], exp: Vec[Double]): Unit = {
-    assert (obs.size === exp.size)
-    (obs zip exp).zipWithIndex.foreach { case ((obsV, expV), idx) =>
-      assert (obsV === expV +- eps, s"For idx $idx of ${obs.size}")
-    }
-  }
-
-  def difRadiansOk(obs: Vec[Double], exp: Vec[Double]): Unit = {
-    assert (obs.size === exp.size)
-    (obs zip exp).zipWithIndex.foreach { case ((obsV, expV), idx) =>
-      val a = (expV - obsV + Pi) % Pi2 - Pi
-      // https://stackoverflow.com/questions/1878907/the-smallest-difference-between-2-angles
-      assert (a < eps, s"For idx $idx of ${obs.size}")
-    }
-  }
-
-  def getPromiseVec[A](in: Promise[Vec[A]]): Vec[A] =
-    in.future.value.get.get
-
-  def getPromise[A](in: Promise[Vec[A]]): A = {
-    val sq = getPromiseVec(in)
-    assert (sq.size === 1)
-    sq.head
-  }
-
-  def runGraph(g: Graph): Unit = {
-    val cfg = Config()
-    cfg.blockSize = 1024
-    val ctl = stream.Control(cfg)
-    ctl.run(g)
-    Await.result(ctl.status, Duration.Inf)
-  }
+class FFTSpec extends UGenSpec {
 
   "The real-valued FFT UGens" should "work as specified" in {
     val fftSizeHs = List(

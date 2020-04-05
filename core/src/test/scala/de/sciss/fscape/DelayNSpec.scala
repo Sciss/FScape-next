@@ -1,15 +1,11 @@
 package de.sciss.fscape
 
-import de.sciss.fscape.stream.Control.Config
 import de.sciss.kollflitz.Vec
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
 
-import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, Promise}
+import scala.concurrent.Promise
 import scala.util.Success
 
-class DelayNSpec extends AnyFlatSpec with Matchers {
+class DelayNSpec extends UGenSpec {
   "The DelayN UGen" should "work as intended" in {
     val n = 4
     for {
@@ -25,11 +21,7 @@ class DelayNSpec extends AnyFlatSpec with Matchers {
         DebugIntPromise(d, p)
       }
 
-      val cfg = Config()
-      cfg.blockSize = 512
-      val ctl = stream.Control(cfg)
-      ctl.run(g)
-      Await.result(ctl.status, Duration.Inf)
+      runGraph(g, 512)
 
       assert(p.isCompleted)
       val res         = p.future.value.get
@@ -51,11 +43,7 @@ class DelayNSpec extends AnyFlatSpec with Matchers {
       DebugIntPromise(d, p)
     }
 
-    val cfg = Config()
-    cfg.blockSize = 512
-    val ctl = stream.Control(cfg)
-    ctl.run(g)
-    Await.result(ctl.status, Duration.Inf)
+    runGraph(g, 512)
 
     assert(p.isCompleted)
     val res         = p.future.value.get

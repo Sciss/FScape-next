@@ -1,15 +1,11 @@
 package de.sciss.fscape
 
-import de.sciss.fscape.stream.Control.Config
 import de.sciss.kollflitz.Vec
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
 
-import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, Promise}
+import scala.concurrent.Promise
 import scala.util.Success
 
-class OverlapAddSpec extends AnyFlatSpec with Matchers {
+class OverlapAddSpec extends UGenSpec {
   "The OverlapAdd UGen" should "run for the expected time (issue 27)" in {
     val n           = 1000
     val win         = 100
@@ -32,11 +28,7 @@ class OverlapAddSpec extends AnyFlatSpec with Matchers {
       DebugIntPromise(Length(sig), p)
     }
 
-    val cfg = Config()
-    cfg.blockSize = 1024
-    val ctl = stream.Control(cfg)
-    ctl.run(g)
-    Await.result(ctl.status, Duration.Inf)
+    runGraph(g, 1024)
 
     assert(p.isCompleted)
     val res = p.future.value.get

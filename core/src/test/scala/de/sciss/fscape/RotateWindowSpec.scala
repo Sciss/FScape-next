@@ -2,15 +2,12 @@ package de.sciss.fscape
 
 import de.sciss.kollflitz.Vec
 import de.sciss.numbers.IntFunctions
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
 
 import scala.annotation.tailrec
-import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, Promise}
+import scala.concurrent.Promise
 import scala.util.Success
 
-class RotateWindowSpec extends AnyFlatSpec with Matchers {
+class RotateWindowSpec extends UGenSpec {
   def mkExpected(in: Vec[Int], amount: Int): Vec[Int] = {
     // e.g. winSize = 4, amt = 1, expected = [DABC]
     // -> amtM = 1, amtI = 3
@@ -44,12 +41,8 @@ class RotateWindowSpec extends AnyFlatSpec with Matchers {
         DebugIntPromise(r, p)
       }
 
-      val cfg = stream.Control.Config()
-      cfg.blockSize = 128
-      val ctl = stream.Control(cfg)
-      ctl.run(g)
+      runGraph(g, 128)
       val info = s"for inLen = $inLen, winInSz = $winSz, start = $amount"
-      Await.result(ctl.status, Duration.Inf)
 
       assert(p.isCompleted)
       val res = p.future.value.get
@@ -101,11 +94,7 @@ class RotateWindowSpec extends AnyFlatSpec with Matchers {
       DebugIntPromise(out, p)
     }
 
-    val cfg = stream.Control.Config()
-    cfg.blockSize = 128
-    val ctl = stream.Control(cfg)
-    ctl.run(g)
-    Await.result(ctl.status, Duration.Inf)
+    runGraph(g, 128)
 
     assert(p.isCompleted)
     val res = p.future.value.get

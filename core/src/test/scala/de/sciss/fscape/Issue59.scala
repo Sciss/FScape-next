@@ -1,14 +1,11 @@
 package de.sciss.fscape
 
 import de.sciss.kollflitz.Vec
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
 
-import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, Promise}
+import scala.concurrent.Promise
 import scala.util.Success
 
-class Issue59 extends AnyFlatSpec with Matchers {
+class Issue59 extends UGenSpec {
   "Multiplication by zero" should "not be replaced by constant" in {
     val p = Promise[Vec[Double]]()
     val n = 123
@@ -18,9 +15,7 @@ class Issue59 extends AnyFlatSpec with Matchers {
       DebugDoublePromise(in, p)
     }
 
-    val ctl = stream.Control()
-    ctl.run(g)
-    Await.result(ctl.status, Duration.Inf)
+    runGraph(g)
 
     assert(p.isCompleted)
     val res     = p.future.value.get

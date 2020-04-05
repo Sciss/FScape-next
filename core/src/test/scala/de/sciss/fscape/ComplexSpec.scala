@@ -1,13 +1,10 @@
 package de.sciss.fscape
 
 import de.sciss.kollflitz.Vec
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
 
-import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, Promise}
+import scala.concurrent.Promise
 
-class ComplexSpec extends AnyFlatSpec with Matchers {
+class ComplexSpec extends UGenSpec {
   "The .complex math operations" should "work as intended" in {
     def run(expected: Vec[Double], mce: Boolean = false)(thunk: => GE): Unit = {
       val p   = Promise[Vec[Double]]()
@@ -18,11 +15,7 @@ class ComplexSpec extends AnyFlatSpec with Matchers {
         DebugDoublePromise(sig, p)
       }
 
-      val cfg = stream.Control.Config()
-      cfg.blockSize = 128
-      val ctl = stream.Control(cfg)
-      ctl.run(g)
-      Await.result(ctl.status, Duration.Inf)
+      runGraph(g, 128)
 
       assert(p.isCompleted)
       val res = p.future.value.get
@@ -97,8 +90,6 @@ class ComplexSpec extends AnyFlatSpec with Matchers {
       val in: GE = Seq(toGE(in1), toGE(in2))
       in.complex.imag
     }
-
-    import math.Pi
 
     // .complex.phase
     run(Vec(0.0,  Pi/2,  -Pi/2,  Pi/4,  -Pi/4, -Pi*3/4)) {

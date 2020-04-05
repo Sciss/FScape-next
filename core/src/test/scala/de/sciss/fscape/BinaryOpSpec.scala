@@ -1,14 +1,11 @@
 package de.sciss.fscape
 
 import de.sciss.kollflitz.Vec
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
 
-import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, Promise}
+import scala.concurrent.Promise
 import scala.util.Success
 
-class BinaryOpSpec extends AnyFlatSpec with Matchers {
+class BinaryOpSpec extends UGenSpec {
   "The binary-op ugen" should "work as intended" in {
     val p1    = Promise[Vec[Int]]()
     val p2    = Promise[Vec[Int]]()
@@ -31,9 +28,7 @@ class BinaryOpSpec extends AnyFlatSpec with Matchers {
       DebugIntPromise(Length(E), p2)
     }
 
-    val ctl = stream.Control(cfg)
-    ctl.run(g)
-    Await.result(ctl.status, Duration.Inf)
+    runGraph(g)
 
     assert(p1.isCompleted)
     assert(p2.isCompleted)

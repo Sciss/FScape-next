@@ -1,15 +1,11 @@
 package de.sciss.fscape
 
-import de.sciss.fscape.stream.Control.Config
 import de.sciss.kollflitz.Vec
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
 
-import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, Promise}
+import scala.concurrent.Promise
 import scala.util.{Success, Try}
 
-class MetroSpec extends AnyFlatSpec with Matchers {
+class MetroSpec extends UGenSpec {
   "The Metro UGen" should "work as specified" in {
     val lengths = List(
       0, 1, 10, 100, 1000, 1024, 1025, 10000
@@ -29,12 +25,7 @@ class MetroSpec extends AnyFlatSpec with Matchers {
           DebugIntPromise(v, p)
         }
 
-        val cfg = Config()
-        cfg.blockSize = 1024
-        val ctl = stream.Control(cfg)
-        ctl.run(g)
-//        println(s"n = $n")
-        Await.result(ctl.status, Duration.Inf)
+        runGraph(g, 1024)
 
         assert(p.isCompleted)
         val res: Try[Vec[Int]] = p.future.value.get
@@ -62,11 +53,7 @@ class MetroSpec extends AnyFlatSpec with Matchers {
       DebugIntPromise(v, p)
     }
 
-    val cfg = stream.Control.Config()
-    cfg.blockSize = 512
-    val ctl = stream.Control()
-    ctl.run(g)
-    Await.result(ctl.status, Duration.Inf)
+    runGraph(g, 512)
 
     assert(p.isCompleted)
     val res: Try[Vec[Int]] = p.future.value.get

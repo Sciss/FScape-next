@@ -2,15 +2,12 @@ package de.sciss.fscape
 
 import de.sciss.fscape.graph.NormalizeWindow._
 import de.sciss.kollflitz.Vec
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
 
 import scala.annotation.{switch, tailrec}
-import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, Promise}
+import scala.concurrent.Promise
 import scala.util.Success
 
-class NormalizeWindowSpec extends AnyFlatSpec with Matchers {
+class NormalizeWindowSpec extends UGenSpec {
   def mkExpected(win: Vector[Double], mode: Int): Vector[Double] = {
     val (add, mul, add2) = (mode: @switch) match {
       case Normalize    => val gain = win.map(math.abs).max; (0.0, 1.0 / gain, 0.0)
@@ -42,12 +39,8 @@ class NormalizeWindowSpec extends AnyFlatSpec with Matchers {
         DebugDoublePromise(r, p)
       }
 
-      val cfg = stream.Control.Config()
-      cfg.blockSize = 128
-      val ctl = stream.Control(cfg)
-      ctl.run(g)
+      runGraph(g, 128)
       val info = s"for inLen = $inLen, winInSz = $winSz, mode = $mode"
-      Await.result(ctl.status, Duration.Inf)
 
       assert(p.isCompleted)
       val res = p.future.value.get
@@ -98,11 +91,7 @@ class NormalizeWindowSpec extends AnyFlatSpec with Matchers {
       DebugDoublePromise(r, p)
     }
 
-    val cfg = stream.Control.Config()
-    cfg.blockSize = 128
-    val ctl = stream.Control(cfg)
-    ctl.run(g)
-    Await.result(ctl.status, Duration.Inf)
+    runGraph(g, 128)
 
     assert(p.isCompleted)
     val res = p.future.value.get

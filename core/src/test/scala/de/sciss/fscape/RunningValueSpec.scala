@@ -1,14 +1,10 @@
 package de.sciss.fscape
 
-import de.sciss.fscape.stream.Control.Config
 import de.sciss.kollflitz.Vec
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
 
-import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, Promise}
+import scala.concurrent.Promise
 
-class RunningValueSpec extends AnyFlatSpec with Matchers {
+class RunningValueSpec extends UGenSpec {
   "The RunningMin/Max/Sum/Product UGens" should "work as specified" in {
     val lengths = List(
       0, 1, 10, 100, 1024, 1025
@@ -34,11 +30,7 @@ class RunningValueSpec extends AnyFlatSpec with Matchers {
         DebugDoublePromise(rPrd, pPrd)
       }
 
-      val cfg = Config()
-      cfg.blockSize = 1024
-      val ctl = stream.Control(cfg)
-      ctl.run(g)
-      Await.result(ctl.status, Duration.Inf)
+      runGraph(g, 1024)
 
       def get(p: Promise[Vec[Double]]): Vec[Double] = p.future.value.get.get
 
