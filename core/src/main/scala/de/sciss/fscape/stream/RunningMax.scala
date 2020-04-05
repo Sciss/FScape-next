@@ -15,7 +15,7 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape2}
-import de.sciss.fscape.stream.impl.{FilterIn2DImpl, RunningValueImpl, StageImpl, NodeImpl}
+import de.sciss.fscape.stream.impl.{FilterIn2DImpl, NodeImpl, RunningValueImpl, StageImpl}
 
 object RunningMax {
   def apply(in: OutD, trig: OutI)(implicit b: Builder): OutD = {

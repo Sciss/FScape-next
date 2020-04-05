@@ -15,7 +15,7 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape3}
-import de.sciss.fscape.stream.impl.{DemandGenIn3D, NodeImpl, StageImpl, DemandWindowedLogicOLD}
+import de.sciss.fscape.stream.impl.{DemandGenIn3D, DemandWindowedLogicOLD, NodeImpl, StageImpl}
 
 object GenWindow {
   import graph.GenWindow.{Hann, Shape => WinShape}

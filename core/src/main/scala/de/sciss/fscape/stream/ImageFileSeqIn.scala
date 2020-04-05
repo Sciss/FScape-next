@@ -17,8 +17,8 @@ package stream
 import akka.stream.stage.InHandler
 import akka.stream.{Attributes, UniformFanOutShape}
 import de.sciss.file._
-import de.sciss.fscape.stream.impl.{BlockingGraphStage, ImageFileInImpl, NodeImpl}
 import de.sciss.fscape.graph.ImageFileSeqIn.formatTemplate
+import de.sciss.fscape.stream.impl.{BlockingGraphStage, ImageFileInImpl, NodeImpl}
 
 import scala.annotation.tailrec
 import scala.collection.immutable.{IndexedSeq => Vec}

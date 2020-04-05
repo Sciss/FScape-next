@@ -17,10 +17,11 @@ import akka.stream.Attributes
 import akka.stream.stage.{GraphStageLogic, InHandler, OutHandler}
 import de.sciss.file._
 import de.sciss.fscape.logStream
-import de.sciss.fscape.stream.impl.{BlockingGraphStage, In3UniformFanInShape, NodeHasInitImpl, NodeImpl}
+import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeHasInitImpl, NodeImpl}
 import de.sciss.fscape.stream.{BufD, BufI, BufL, Builder, Control, InD, InI, Layer, OutD, OutI, OutL}
 import de.sciss.synth.io
 import de.sciss.fscape.lucre.graph.{AudioFileOut => AF}
+import de.sciss.fscape.stream.impl.shapes.In3UniformFanInShape
 import de.sciss.synth.io.AudioFileType
 
 import scala.collection.immutable.{Seq => ISeq}

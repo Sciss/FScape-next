@@ -14,8 +14,9 @@
 package de.sciss.fscape.stream
 
 import akka.stream.{Attributes, Inlet, Outlet}
-import de.sciss.fscape.stream.impl.{Handlers, In5Out2Shape, NodeImpl, StageImpl}
-import Handlers._
+import de.sciss.fscape.stream.impl.Handlers._
+import de.sciss.fscape.stream.impl.shapes.In5Out2Shape
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
 import de.sciss.fscape.{logStream => log}
 import de.sciss.tsp.LinKernighan
 

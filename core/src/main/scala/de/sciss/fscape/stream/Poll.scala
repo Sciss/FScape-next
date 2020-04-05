@@ -15,7 +15,8 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, Inlet, Outlet}
-import de.sciss.fscape.stream.impl.{NodeImpl, PollImpl, SinkShape2, StageImpl}
+import de.sciss.fscape.stream.impl.shapes.SinkShape2
+import de.sciss.fscape.stream.impl.{NodeImpl, PollImpl, StageImpl}
 
 // XXX TODO --- we could use an `Outlet[String]` for label, that might be making perfect sense
 object Poll {

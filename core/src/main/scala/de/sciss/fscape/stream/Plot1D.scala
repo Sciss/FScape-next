@@ -18,7 +18,8 @@ import java.awt.Color
 
 import akka.stream.Attributes
 import de.sciss.chart.module.Charting
-import de.sciss.fscape.stream.impl.{FilterLogicImpl, NodeImpl, Sink2Impl, SinkShape2, StageImpl}
+import de.sciss.fscape.stream.impl.shapes.SinkShape2
+import de.sciss.fscape.stream.impl.{FilterLogicImpl, NodeImpl, Sink2Impl, StageImpl}
 import org.jfree.chart.axis.NumberAxis
 import org.jfree.chart.plot.{PlotOrientation, XYPlot}
 import org.jfree.chart.{ChartFactory, ChartPanel}

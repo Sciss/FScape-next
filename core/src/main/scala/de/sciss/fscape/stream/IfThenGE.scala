@@ -17,7 +17,8 @@ package stream
 
 import akka.stream.stage.{InHandler, OutHandler}
 import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
-import de.sciss.fscape.stream.impl.{BiformShape, NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.shapes.BiformShape
+import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 
 import scala.collection.immutable.{IndexedSeq => Vec, Seq => ISeq}
 import scala.concurrent.Future

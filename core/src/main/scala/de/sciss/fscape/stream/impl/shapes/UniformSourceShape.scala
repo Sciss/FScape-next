@@ -11,8 +11,7 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape.stream
-package impl
+package de.sciss.fscape.stream.impl.shapes
 
 import akka.stream.{Inlet, Outlet, Shape}
 

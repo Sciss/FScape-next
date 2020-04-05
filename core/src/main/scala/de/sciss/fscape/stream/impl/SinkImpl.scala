@@ -17,6 +17,7 @@ package impl
 
 import akka.stream.{Inlet, Shape, SinkShape}
 import akka.stream.stage.GraphStageLogic
+import de.sciss.fscape.stream.impl.shapes.SinkShape2
 
 @deprecated("Should move to using Handlers", since = "2.35.1")
 trait SinkImpl[S <: Shape]

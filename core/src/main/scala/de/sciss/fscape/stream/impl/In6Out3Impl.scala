@@ -17,6 +17,7 @@ package impl
 
 import akka.stream.Inlet
 import akka.stream.stage.GraphStageLogic
+import de.sciss.fscape.stream.impl.shapes.In6Out3Shape
 
 // XXX TODO --- we could easily split now between input and output trait
 // and would reduce the number of implementation traits necessary

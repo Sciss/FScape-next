@@ -16,7 +16,8 @@ package de.sciss.fscape.lucre.stream
 import akka.stream.Attributes
 import akka.stream.stage.OutHandler
 import de.sciss.file._
-import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeHasInitImpl, NodeImpl, UniformSourceShape}
+import de.sciss.fscape.stream.impl.shapes.UniformSourceShape
+import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeHasInitImpl, NodeImpl}
 import de.sciss.fscape.stream.{BufD, Control, Layer, OutD}
 import de.sciss.fscape.{Util, logStream, stream}
 import de.sciss.synth.io

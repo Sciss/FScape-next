@@ -15,7 +15,7 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape3}
-import de.sciss.fscape.stream.impl.{GenIn3DImpl, StageImpl, NodeImpl}
+import de.sciss.fscape.stream.impl.{GenIn3DImpl, NodeImpl, StageImpl}
 
 import scala.annotation.tailrec
 

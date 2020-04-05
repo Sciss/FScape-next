@@ -15,7 +15,7 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape2}
-import de.sciss.fscape.stream.impl.{GenChunkImpl, GenIn2DImpl, StageImpl, NodeImpl}
+import de.sciss.fscape.stream.impl.{GenChunkImpl, GenIn2DImpl, NodeImpl, StageImpl}
 
 object LFSaw {
   def apply(freqN: OutD, phase: OutD)(implicit b: Builder): OutD = {

@@ -16,7 +16,7 @@ package stream
 
 import akka.stream.stage.{InHandler, OutHandler}
 import akka.stream.{Attributes, FlowShape}
-import de.sciss.fscape.stream.impl.{StageImpl, NodeImpl}
+import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 
 object Length {
   def apply(in: OutA)(implicit b: Builder): OutL = {

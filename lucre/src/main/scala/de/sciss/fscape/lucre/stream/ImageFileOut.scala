@@ -17,7 +17,8 @@ import akka.stream.Attributes
 import de.sciss.file._
 import de.sciss.fscape.graph.ImageFile
 import de.sciss.fscape.lucre.stream.impl.ImageFileOutReadsSpec
-import de.sciss.fscape.stream.impl.{BlockingGraphStage, ImageFileSingleOutImpl, In5UniformSinkShape, NodeImpl}
+import de.sciss.fscape.stream.impl.shapes.In5UniformSinkShape
+import de.sciss.fscape.stream.impl.{BlockingGraphStage, ImageFileSingleOutImpl, NodeImpl}
 import de.sciss.fscape.stream.{BufD, BufI, Builder, Control, InD, InI, Layer, OutD, OutI}
 import de.sciss.synth.UGenSource.Vec
 

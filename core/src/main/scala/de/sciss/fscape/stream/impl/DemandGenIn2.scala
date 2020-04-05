@@ -108,9 +108,3 @@ trait DemandGenIn2[In0 >: Null <: BufLike, In1 >: Null <: BufLike, Out >: Null <
   new AuxInHandlerImpl     (shape.in1, this)
   new ProcessOutHandlerImpl(shape.out, this)
 }
-
-trait DemandGenIn2D[In0 >: Null <: BufLike, In1 >: Null <: BufLike]
-  extends DemandGenIn2[In0, In1, BufD]
-    with Out1DoubleImpl[FanInShape2[In0, In1, BufD]] {
-  _: GraphStageLogic with Node =>
-}

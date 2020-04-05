@@ -15,7 +15,7 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, SourceShape}
-import de.sciss.fscape.stream.impl.{GenChunkImpl, GenIn0DImpl, StageImpl, NodeImpl}
+import de.sciss.fscape.stream.impl.{GenChunkImpl, GenIn0DImpl, NodeImpl, StageImpl}
 
 import scala.util.Random
 

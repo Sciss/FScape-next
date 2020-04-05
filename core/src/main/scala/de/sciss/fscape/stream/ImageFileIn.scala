@@ -16,7 +16,8 @@ package stream
 
 import akka.stream.Attributes
 import de.sciss.file._
-import de.sciss.fscape.stream.impl.{BlockingGraphStage, ImageFileInImpl, NodeHasInitImpl, NodeImpl, UniformSourceShape}
+import de.sciss.fscape.stream.impl.shapes.UniformSourceShape
+import de.sciss.fscape.stream.impl.{BlockingGraphStage, ImageFileInImpl, NodeHasInitImpl, NodeImpl}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 

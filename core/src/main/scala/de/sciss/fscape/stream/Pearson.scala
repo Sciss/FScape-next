@@ -14,8 +14,8 @@
 package de.sciss.fscape.stream
 
 import akka.stream.{Attributes, FanInShape3, Inlet}
+import de.sciss.fscape.stream.impl.Handlers._
 import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
-import Handlers._
 import de.sciss.fscape.{logStream => log}
 
 import scala.annotation.tailrec

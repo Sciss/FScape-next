@@ -15,7 +15,7 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape3}
-import de.sciss.fscape.stream.impl.{FilterIn3DImpl, FilterLogicImpl, StageImpl, NodeImpl, WindowedLogicImpl}
+import de.sciss.fscape.stream.impl.{FilterIn3DImpl, FilterLogicImpl, NodeImpl, StageImpl, WindowedLogicImpl}
 
 object OnePoleWindow {
   def apply(in: OutD, size: OutI, coef: OutD)(implicit b: Builder): OutD = {

@@ -16,7 +16,8 @@ package stream
 
 import akka.stream.Attributes
 import akka.stream.stage.InHandler
-import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl, UniformSinkShape}
+import de.sciss.fscape.stream.impl.shapes.UniformSinkShape
+import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 
 import scala.collection.immutable.{Seq => ISeq}
 import scala.concurrent.Future

@@ -15,7 +15,7 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape5}
-import de.sciss.fscape.stream.impl.{ChunkImpl, FilterIn5DImpl, FilterLogicImpl, StageImpl, NodeImpl}
+import de.sciss.fscape.stream.impl.{ChunkImpl, FilterIn5DImpl, FilterLogicImpl, NodeImpl, StageImpl}
 
 /** Overlapping window summation with offset (fuzziness) that can be modulated. */
 object OffsetOverlapAdd {

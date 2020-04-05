@@ -15,7 +15,8 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.Attributes
-import de.sciss.fscape.stream.impl.{NodeImpl, PollImpl, SinkShape2, StageImpl}
+import de.sciss.fscape.stream.impl.shapes.SinkShape2
+import de.sciss.fscape.stream.impl.{NodeImpl, PollImpl, StageImpl}
 
 object Progress {
   def apply(in: OutD, trig: OutI, label: String)(implicit b: Builder): Unit = {

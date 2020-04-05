@@ -16,7 +16,7 @@ package stream
 
 import akka.stream.stage.{InHandler, OutHandler}
 import akka.stream.{Attributes, Inlet, Outlet}
-import de.sciss.fscape.stream.impl.{StageImpl, NodeImpl}
+import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 
 import scala.annotation.tailrec
 import scala.collection.immutable.{Seq => ISeq}

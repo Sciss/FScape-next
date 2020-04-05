@@ -15,7 +15,8 @@ package de.sciss.fscape.stream
 
 import akka.stream.Attributes
 import akka.stream.stage.InHandler
-import de.sciss.fscape.stream.impl.{NodeImpl, SinkShape2, StageImpl}
+import de.sciss.fscape.stream.impl.shapes.SinkShape2
+import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 
 object ProgressFrames {
   def apply(in: OutA, numFrames: OutL, label: String)(implicit b: Builder): Unit = {

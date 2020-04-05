@@ -33,6 +33,7 @@ import akka.stream.{Inlet, Outlet, Shape}
   *
   * This function is used for a "hot" inlet.
   */
+@deprecated("Should move to using Handlers", since = "2.35.1")
 final class ProcessInHandlerImpl[A, S <: Shape](in: Inlet[A], logic: FullInOutImpl[S])
   extends InHandler {
 
@@ -63,32 +64,6 @@ final class ProcessInHandlerImpl[A, S <: Shape](in: Inlet[A], logic: FullInOutIm
 
 /** A handler that when pushed, calls `updateCanRead`,
   * and if this is `true`, calls `process.` If the
-  * inlet is closed, it will call `updateCanRead` and
-  * `process` The logic is responsible for closing the stage
-  * if this was the last one among the "hot" inlets.
-  *
-  * This function is used for one "hot" inlet among
-  * multiple "hot" peers.
-  */
-final class EquivalentInHandlerImpl[A, S <: Shape](in: Inlet[A], logic: FullInOutImpl[S])
-  extends InHandler {
-  def onPush(): Unit = {
-    logStream(s"onPush($in)")
-    logic.updateCanRead()
-    if (logic.canRead) logic.process()
-  }
-
-  override def onUpstreamFinish(): Unit = {
-    logStream(s"onUpstreamFinish($in)")
-    logic.updateCanRead()
-    logic.process()
-  }
-
-  logic.setInHandler(in, this)
-}
-
-/** A handler that when pushed, calls `updateCanRead`,
-  * and if this is `true`, calls `process.` If the
   * inlet is closed, and the logic's input was valid
   * or there was a not-yet-pulled content pending on
   * this inlet, it will call `process`.
@@ -97,6 +72,7 @@ final class EquivalentInHandlerImpl[A, S <: Shape](in: Inlet[A], logic: FullInOu
   *
   * This function is used for an "auxiliary" inlet.
   */
+@deprecated("Should move to using Handlers", since = "2.35.1")
 final class AuxInHandlerImpl[A, S <: Shape](in: Inlet[A], logic: FullInOutImpl[S])
   extends InHandler {
 
@@ -125,6 +101,7 @@ final class AuxInHandlerImpl[A, S <: Shape](in: Inlet[A], logic: FullInOutImpl[S
   logic.setInHandler(in, this)
 }
 
+@deprecated("Should move to using Handlers", since = "2.35.1")
 final class ProcessOutHandlerImpl[A, S <: Shape](out: Outlet[A], logic: InOutImpl[S])
   extends OutHandler {
 

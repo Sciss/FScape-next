@@ -15,7 +15,8 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.Attributes
-import de.sciss.fscape.stream.impl.{FilterLogicImpl, NodeImpl, Sink2Impl, SinkShape2, StageImpl}
+import de.sciss.fscape.stream.impl.shapes.SinkShape2
+import de.sciss.fscape.stream.impl.{FilterLogicImpl, NodeImpl, Sink2Impl, StageImpl}
 import de.sciss.swingplus.ListView
 import javax.swing.table.{AbstractTableModel, DefaultTableColumnModel, TableColumn}
 

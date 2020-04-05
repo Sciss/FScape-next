@@ -14,9 +14,10 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.{Attributes, Outlet}
 import akka.stream.stage.OutHandler
-import de.sciss.fscape.stream.impl.{AuxInHandlerImpl, FilterLogicImpl, FullInOutImpl, In7Out2Shape, NodeImpl, ProcessInHandlerImpl, StageImpl, WindowedLogicImpl}
+import akka.stream.{Attributes, Outlet}
+import de.sciss.fscape.stream.impl.shapes.In7Out2Shape
+import de.sciss.fscape.stream.impl.{AuxInHandlerImpl, FilterLogicImpl, FullInOutImpl, NodeImpl, ProcessInHandlerImpl, StageImpl, WindowedLogicImpl}
 
 object StrongestLocalMaxima {
   def apply(in: OutD, size: OutI, minLag: OutI, maxLag: OutI, thresh: OutD, octaveCost: OutD, num: OutI)
@@ -413,7 +414,7 @@ object StrongestLocalMaxima {
     // license: GPL v2+
     // source: https://github.com/praat/praat/blob/539a3212b662264d56feb1493ce2edbef721dbcf/melder/NUMinterpol.cpp
     private def sincInterp(xs: Array[Double], len: Int, x: Double, maxDepth: Int): Double = {
-      import math.{Pi, sin, cos}
+      import math.{Pi, cos, sin}
       val midLeft   = x.toInt
       val midRight  = midLeft + 1
 

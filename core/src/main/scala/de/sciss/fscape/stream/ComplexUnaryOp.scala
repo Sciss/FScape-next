@@ -15,7 +15,7 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FlowShape}
-import de.sciss.fscape.stream.impl.{FilterChunkImpl, FilterIn1DImpl, StageImpl, NodeImpl}
+import de.sciss.fscape.stream.impl.{FilterChunkImpl, FilterIn1DImpl, NodeImpl, StageImpl}
 
 /** Unary operator assuming stream is complex signal (real and imaginary interleaved).
   * Outputs another complex stream even if the operator yields a purely real-valued result
