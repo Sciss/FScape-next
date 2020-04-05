@@ -22,6 +22,7 @@ import akka.stream.{FanInShape3, Inlet, Outlet}
   * A generator keeps producing output until down-stream is closed, and does
   * not care about upstream inlets being closed.
   */
+@deprecated("Should move to using Handlers", since = "2.35.1")
 trait GenIn3Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: BufLike, Out >: Null <: BufLike]
   extends Out1LogicImpl[Out, FanInShape3[In0, In1, In2, Out]] with FullInOutImpl[FanInShape3[In0, In1, In2, Out]] {
   _: GraphStageLogic with Node =>

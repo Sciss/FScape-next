@@ -16,6 +16,7 @@ package stream
 
 import akka.stream.{Attributes, FanInShape5}
 import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl, WindowedLogicD}
+import Handlers._
 
 object ARCWindow {
   def apply(in: OutD, size: OutI, lo: OutD, hi: OutD, lag: OutD)(implicit b: Builder): OutD = {
@@ -49,12 +50,12 @@ object ARCWindow {
   private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
     extends Handlers(name, layer, shape) with WindowedLogicD[Shape] {
 
-    protected     val hIn     = new Handlers.InDMain  (this, shape.in0)()
-    protected     val hOut    = new Handlers.OutDMain (this, shape.out)
-    private[this] val hSize   = new Handlers.InIAux   (this, shape.in1)(math.max(0, _))
-    private[this] val hLo     = new Handlers.InDAux   (this, shape.in2)()
-    private[this] val hHi     = new Handlers.InDAux   (this, shape.in3)()
-    private[this] val hLag    = new Handlers.InDAux   (this, shape.in4)()
+    protected     val hIn   : InDMain   = InDMain  (this, shape.in0)
+    protected     val hOut  : OutDMain  = OutDMain (this, shape.out)
+    private[this] val hSize : InIAux    = InIAux   (this, shape.in1)(math.max(0, _))
+    private[this] val hLo   : InDAux    = InDAux   (this, shape.in2)()
+    private[this] val hHi   : InDAux    = InDAux   (this, shape.in3)()
+    private[this] val hLag  : InDAux    = InDAux   (this, shape.in4)()
 
     private[this] var init    = true
     private[this] var minMem  = 0.0

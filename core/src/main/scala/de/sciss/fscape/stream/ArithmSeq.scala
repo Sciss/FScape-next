@@ -15,12 +15,11 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape3, Inlet, Outlet}
-import de.sciss.fscape.stream.impl.{AbstractSeqGen, StageImpl}
+import de.sciss.fscape.stream.impl.{NodeImpl, SeqGenLogicD, SeqGenLogicI, SeqGenLogicL, StageImpl}
 
 object ArithmSeq {
   def apply[A, E >: Null <: BufElem[A]](start: Outlet[E], step: Outlet[E], length: OutL)
-                                       (implicit b: Builder, tpe: StreamType[A, E],
-                                        num: Numeric[A]): Outlet[E] = {
+                                       (implicit b: Builder, tpe: StreamType[A, E]): Outlet[E] = {
     val stage0  = new Stage[A, E](b.layer)
     val stage   = b.add(stage0)
     b.connect(start , stage.in0)
@@ -31,11 +30,10 @@ object ArithmSeq {
 
   private final val name = "ArithmSeq"
 
-  private type Shape[A, E >: Null <: BufElem[A]] = FanInShape3[E, E, BufL, E]
+  private type Shp[E] = FanInShape3[E, E, BufL, E]
 
-  private final class Stage[A, E >: Null <: BufElem[A]](layer: Layer)(implicit ctrl: Control, tpe: StreamType[A, E],
-                                                        num: Numeric[A])
-    extends StageImpl[Shape[A, E]](name) {
+  private final class Stage[A, E >: Null <: BufElem[A]](layer: Layer)(implicit ctrl: Control, tpe: StreamType[A, E])
+    extends StageImpl[Shp[E]](name) {
 
     val shape = new FanInShape3(
       in0 = Inlet[E] (s"$name.start" ),
@@ -44,14 +42,18 @@ object ArithmSeq {
       out = Outlet[E](s"$name.out"   )
     )
 
-    def createLogic(attr: Attributes) = new Logic[A, E](shape, layer)
-  }
+    // handle specialization
+    def createLogic(attr: Attributes): NodeImpl[Shape] = {
+      val res: NodeImpl[_] = if (tpe.isInt) {
+        new SeqGenLogicI(name, shape.asInstanceOf[Shp[BufI]], layer)((a, b) => a + b)
+      } else if (tpe.isLong) {
+        new SeqGenLogicL(name, shape.asInstanceOf[Shp[BufL]], layer)((a, b) => a + b)
+      } else /*if (tpe.isDouble)*/ {
+        assert (tpe.isDouble)
+        new SeqGenLogicD(name, shape.asInstanceOf[Shp[BufD]], layer)((a, b) => a + b)
+      }
 
-  private final class Logic[A, E >: Null <: BufElem[A]](shape: Shape[A, E], layer: Layer)
-                                                       (implicit ctrl: Control, tpe: StreamType[A, E],
-                                                        num: Numeric[A])
-    extends AbstractSeqGen[A, E](name, layer, shape) {
-
-    protected def inc(a: A, b: A): A = num.plus(a, b)
+      res.asInstanceOf[NodeImpl[Shape]]
+    }
   }
 }

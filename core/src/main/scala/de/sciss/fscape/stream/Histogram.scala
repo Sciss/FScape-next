@@ -15,6 +15,7 @@ package de.sciss.fscape.stream
 
 import akka.stream.{Attributes, FanInShape6, Inlet}
 import de.sciss.fscape.stream.impl.{Handlers, StageImpl}
+import Handlers._
 import de.sciss.fscape.{Util, logStream => log}
 import de.sciss.numbers.Implicits._
 
@@ -57,13 +58,13 @@ object Histogram {
     private[this] var histogram: Array[Int] = _
     private[this] var init    = true
 
-    private[this] val hIn     = new Handlers.InDMain  (this, shape.in0)()
-    private[this] val hBins   = new Handlers.InIAux   (this, shape.in1)(math.max(1, _))
-    private[this] val hLo     = new Handlers.InDAux   (this, shape.in2)()
-    private[this] val hHi     = new Handlers.InDAux   (this, shape.in3)()
-    private[this] val hMode   = new Handlers.InIAux   (this, shape.in4)(_.clip(0, 1))
-    private[this] val hReset  = new Handlers.InIAux   (this, shape.in5)()
-    private[this] val hOut    = new Handlers.OutIMain (this, shape.out)
+    private[this] val hIn     : InDMain   = InDMain  (this, shape.in0)
+    private[this] val hBins   : InIAux    = InIAux   (this, shape.in1)(math.max(1, _))
+    private[this] val hLo     : InDAux    = InDAux   (this, shape.in2)()
+    private[this] val hHi     : InDAux    = InDAux   (this, shape.in3)()
+    private[this] val hMode   : InIAux    = InIAux   (this, shape.in4)(_.clip(0, 1))
+    private[this] val hReset  : InIAux    = InIAux   (this, shape.in5)()
+    private[this] val hOut    : OutIMain  = OutIMain (this, shape.out)
 
     override protected def stopped(): Unit = {
       super.stopped()

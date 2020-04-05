@@ -18,6 +18,7 @@ import de.sciss.fscape.Util
 import de.sciss.fscape.stream.{BufD, BufI, Builder, Control, InD, InI, Layer, OutD, OutI}
 import de.sciss.numbers
 import edu.emory.mathcs.jtransforms.fft.DoubleFFT_1D
+import Handlers._
 
 import scala.annotation.switch
 
@@ -141,11 +142,11 @@ abstract class FFTHalfLogicImpl(name: String, shape: FanInShape4[BufD, BufI, Buf
 
   import numbers.Implicits._
 
-  protected final val hIn       = new Handlers.InDMain  (this, shape.in0)()
-  protected final val hOut      = new Handlers.OutDMain (this, shape.out)
-  protected final val hSize     = new Handlers.InIAux   (this, shape.in1)(_.max(0))
-  protected final val hPadding  = new Handlers.InIAux   (this, shape.in2)(_.max(0))
-  protected final val hMode     = new Handlers.InIAux   (this, shape.in3)(_.clip(0, 2))
+  protected final val hIn     : InDMain   = InDMain  (this, shape.in0)
+  protected final val hOut    : OutDMain  = OutDMain (this, shape.out)
+  protected final val hSize   : InIAux    = InIAux   (this, shape.in1)(_.max(0))
+  protected final val hPadding: InIAux    = InIAux   (this, shape.in2)(_.max(0))
+  protected final val hMode   : InIAux    = InIAux   (this, shape.in3)(_.clip(0, 2))
 
   protected final var mode      : Int = _   // 0 - packed, 1 - unpacked, 2 - discarded
 
@@ -236,10 +237,10 @@ abstract class FFTFullLogicImpl(name: String, shape: FanInShape3[BufD, BufI, Buf
   extends Handlers[FanInShape3[BufD, BufI, BufI, BufD]](name, shape = shape, layer = layer)
     with FFTLogicImpl[FanInShape3[BufD, BufI, BufI, BufD]] {
 
-  protected final val hIn       = new Handlers.InDMain  (this, shape.in0)()
-  protected final val hOut      = new Handlers.OutDMain (this, shape.out)
-  protected final val hSize     = new Handlers.InIAux   (this, shape.in1)(_.max(0))
-  protected final val hPadding  = new Handlers.InIAux   (this, shape.in2)(_.max(0))
+  protected final val hIn     : InDMain   = InDMain  (this, shape.in0)
+  protected final val hOut    : OutDMain  = OutDMain (this, shape.out)
+  protected final val hSize   : InIAux    = InIAux   (this, shape.in1)(_.max(0))
+  protected final val hPadding: InIAux    = InIAux   (this, shape.in2)(_.max(0))
 
   final def winBufSize: Int = fftSize << 1
 }

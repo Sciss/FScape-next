@@ -16,6 +16,7 @@ package stream
 
 import akka.stream.{Attributes, FanInShape2, Inlet, Outlet}
 import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
+import Handlers._
 
 object TakeWhile {
   def apply[A, Buf >: Null <: BufElem[A]](in: Outlet[Buf], p: OutI)
@@ -45,13 +46,14 @@ object TakeWhile {
   }
 
   private final class Logic[A, E >: Null <: BufElem[A]](shape: Shape[A, E], layer: Layer)
-                                                       (implicit ctrl: Control, aTpe: StreamType[A, E])
+                                                       (implicit ctrl: Control, tpe: StreamType[A, E])
     extends Handlers(name, layer, shape) {
 
-    private[this] val hIn   = new Handlers.InMain [A, E](this, shape.in0)()
-    private[this] val hPred = new Handlers.InIAux       (this, shape.in1)()
-    private[this] val hOut  = new Handlers.OutMain[A, E](this, shape.out)
-    private[this] var gate  = true
+    private[this] val hIn   : InMain [A, E] = InMain [A, E](this, shape.in0)
+    private[this] val hPred : InIAux        = InIAux       (this, shape.in1)()
+    private[this] val hOut  : OutMain[A, E] = OutMain[A, E](this, shape.out)
+
+    private[this] var gate = true
 
     protected def onDone(inlet: Inlet[_]): Unit = {
       assert (inlet == shape.in0)
@@ -75,7 +77,7 @@ object TakeWhile {
             }
           }
           if (count > 0) {
-            hIn.copy(hOut, count)
+            hIn.copyTo(hOut, count)
           }
           if (hIn.isDone) _gate = false
           gate = _gate

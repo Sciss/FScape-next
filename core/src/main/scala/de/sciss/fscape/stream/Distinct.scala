@@ -15,6 +15,7 @@ package de.sciss.fscape.stream
 
 import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
 import de.sciss.fscape.stream.impl.{Handlers, StageImpl}
+import Handlers._
 import de.sciss.fscape.{logStream => log}
 
 import scala.collection.mutable
@@ -48,8 +49,8 @@ object Distinct {
 
     private[this] val seen    = mutable.Set.empty[A]
 
-    private[this] val hIn     = new Handlers.InMain [A, E](this, shape.in)()
-    private[this] val hOut    = new Handlers.OutMain[A, E](this, shape.out)
+    private[this] val hIn : InMain  [A, E]  = InMain [A, E](this, shape.in )
+    private[this] val hOut: OutMain [A, E]  = OutMain[A, E](this, shape.out)
 
     override protected def stopped(): Unit = {
       super.stopped()

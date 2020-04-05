@@ -15,6 +15,7 @@ package de.sciss.fscape.stream
 
 import akka.stream.{Attributes, Inlet, Outlet}
 import de.sciss.fscape.stream.impl.{Handlers, In5Out2Shape, NodeImpl, StageImpl}
+import Handlers._
 import de.sciss.fscape.{logStream => log}
 import de.sciss.tsp.LinKernighan
 
@@ -34,10 +35,10 @@ object LinKernighanTSP {
 
   private final val name = "LinKernighanTSP"
 
-  private type Shape = In5Out2Shape[BufI, BufD, BufI, BufI, BufD,   BufI, BufD]
+  private type Shp = In5Out2Shape[BufI, BufD, BufI, BufI, BufD,   BufI, BufD]
 
   private final class Stage(layer: Layer)(implicit ctrl: Control)
-    extends StageImpl[Shape](name) {
+    extends StageImpl[Shp](name) {
 
     val shape: Shape = In5Out2Shape(
       in0     = InI (s"$name.init"    ),
@@ -53,16 +54,16 @@ object LinKernighanTSP {
       new Logic(shape, layer = layer)
   }
 
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
     extends Handlers(name, layer, shape) {
 
-    private[this] val hInit     = new Handlers.InIMain  (this, shape.in0)()
-    private[this] val hWeights  = new Handlers.InDMain  (this, shape.in1)()
-    private[this] val hSize     = new Handlers.InIAux   (this, shape.in2)(math.max(1, _)) // or should it be 2 ?
-    private[this] val hMode     = new Handlers.InIAux   (this, shape.in3)() // not used
-    private[this] val hTimeOut  = new Handlers.InDAux   (this, shape.in4)() // not used
-    private[this] val hOutTour  = new Handlers.OutIMain (this, shape.out0)
-    private[this] val hOutCost  = new Handlers.OutDMain (this, shape.out1)
+    private[this] val hInit   : InIMain   = InIMain  (this, shape.in0)
+    private[this] val hWeights: InDMain   = InDMain  (this, shape.in1)
+    private[this] val hSize   : InIAux    = InIAux   (this, shape.in2)(math.max(1, _)) // or should it be 2 ?
+    private[this] val hMode   : InIAux    = InIAux   (this, shape.in3)() // not used
+    private[this] val hTimeOut: InDAux    = InDAux   (this, shape.in4)() // not used
+    private[this] val hOutTour: OutIMain  = OutIMain (this, shape.out0)
+    private[this] val hOutCost: OutDMain  = OutDMain (this, shape.out1)
 
     private[this] var outTour: Array[Int] = _
     private[this] var outCost: Double     = _

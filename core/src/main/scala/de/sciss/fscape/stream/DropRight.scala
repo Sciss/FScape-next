@@ -16,10 +16,11 @@ package stream
 
 import akka.stream.{Attributes, FanInShape2, Inlet, Outlet}
 import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
+import Handlers._
 
 object DropRight {
   def apply[A, E >: Null <: BufElem[A]](in: Outlet[E], length: OutI)
-                                       (implicit b: Builder, aTpe: StreamType[A, E]): Outlet[E] = {
+                                       (implicit b: Builder, tpe: StreamType[A, E]): Outlet[E] = {
     val stage0  = new Stage[A, E](b.layer)
     val stage   = b.add(stage0)
     b.connect(in    , stage.in0)
@@ -29,11 +30,11 @@ object DropRight {
 
   private final val name = "DropRight"
 
-  private type Shape[A, E >: Null <: BufElem[A]] = FanInShape2[E, BufI, E]
+  private type Shp[E] = FanInShape2[E, BufI, E]
 
   private final class Stage[A, E >: Null <: BufElem[A]](layer: Layer)
-                                                       (implicit ctrl: Control, aTpe: StreamType[A, E])
-    extends StageImpl[Shape[A, E]](name) {
+                                                       (implicit ctrl: Control, tpe: StreamType[A, E])
+    extends StageImpl[Shp[E]](name) {
 
     val shape = new FanInShape2(
       in0 = Inlet [E](s"$name.in"     ),
@@ -41,16 +42,29 @@ object DropRight {
       out = Outlet[E](s"$name.out"    )
     )
 
-    def createLogic(attr: Attributes): NodeImpl[DropRight.Shape[A, E]] = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = {
+      new Logic[A, E](shape, layer)
+//      val res: Logic[_, _] = if (tpe.isInt) {
+//        new Logic[Int   , BufI](shape.asInstanceOf[Shp[BufI]], layer)
+//      } else if (tpe.isLong) {
+//        new Logic[Long  , BufL](shape.asInstanceOf[Shp[BufL]], layer)
+//      } else if (tpe.isDouble) {
+//        new Logic[Double, BufD](shape.asInstanceOf[Shp[BufD]], layer)
+//      } else {
+//        new Logic[A, E](shape, layer)
+//      }
+//
+//      res.asInstanceOf[Logic[A, E]]
+    }
   }
 
-  private final class Logic[A, E >: Null <: BufElem[A]](shape: Shape[A, E], layer: Layer)
+  private final class Logic[/*@specialized(Int, Long, Double)*/ A, E >: Null <: BufElem[A]](shape: Shp[E], layer: Layer)
                                                        (implicit ctrl: Control, aTpe: StreamType[A, E])
     extends Handlers(name, layer, shape) {
 
-    private[this] val hIn       = new Handlers.InMain [A, E](this, shape.in0)()
-    private[this] val hLen      = new Handlers.InIAux       (this, shape.in1)(math.max(0, _))
-    private[this] val hOut      = new Handlers.OutMain[A, E](this, shape.out)
+    private[this] val hIn     : InMain  [A, E]  = InMain [A, E](this, shape.in0)
+    private[this] val hLen    : InIAux          = InIAux       (this, shape.in1)(math.max(0, _))
+    private[this] val hOut    : OutMain [A, E]  = OutMain[A, E](this, shape.out)
     private[this] var needsLen  = true
     private[this] var buf: Array[A] = _   // circular
     private[this] var dropLen   = 0

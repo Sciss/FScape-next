@@ -1,12 +1,13 @@
 package de.sciss.fscape
 
+import de.sciss.fscape.graph.Constant
 import de.sciss.fscape.stream.Control.Config
 import de.sciss.kollflitz.Vec
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import scala.concurrent.{Await, Promise}
 import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, Promise}
 
 class UGenSpec extends AnyFlatSpec with Matchers {
   final val Pi  : Double = math.Pi
@@ -14,6 +15,9 @@ class UGenSpec extends AnyFlatSpec with Matchers {
   final val PiH : Double = 0.5 * Pi
 
   val eps: Double = 1.0e-5
+
+  def asGE[A](in: Seq[A])(implicit view: A => Constant): GE =
+    if (in.size == 1) in.head: GE else in.map(view(_): GE).reduce(_ ++ _)
 
   def difOk(obs: Vec[Double], exp: Vec[Double], info: String = ""): Unit = {
     assert (obs.size === exp.size, s"; $info")

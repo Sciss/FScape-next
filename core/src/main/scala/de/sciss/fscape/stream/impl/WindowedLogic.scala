@@ -23,15 +23,15 @@ import scala.annotation.tailrec
   * This is for window processing UGens where window parameters include
   * `winSize` and possibly others, and will be polled per window.
   */
-trait WindowedLogic[A, E >: Null <: BufElem[A], S <: Shape] extends Node {
+trait WindowedLogic[/*@specialized(Int, Long, Double)*/ A, E >: Null <: BufElem[A], S <: Shape] extends Node {
   _: Handlers[S] =>
 
   // ---- abstract ----
 
   protected def aTpe  : StreamType[A, E]
 
-  protected def hIn   : Handlers.AbstractInMain [A, E]
-  protected def hOut  : Handlers.AbstractOutMain[A, E]
+  protected def hIn   : Handlers.InMain [A, E]
+  protected def hOut  : Handlers.OutMain[A, E]
 
   /** Tries to prepare the parameters for the next window.
     * If successful, returns `true` otherwise `false`. If successful,
@@ -91,7 +91,7 @@ trait WindowedLogic[A, E >: Null <: BufElem[A], S <: Shape] extends Node {
     * The default equals the window buffer size (`winBufSize`).
     * If an implementation wants to truncate the last window when the input terminates,
     * it should override `fullLastWindow` to return `false`, in which case the default
-    * implemention of `writeWinSize` will return ``
+    * implementation of `writeWinSize` will return ``
     */
   protected def writeWinSize: Long = if (fullLastWindow) winBufSize else readOff
 

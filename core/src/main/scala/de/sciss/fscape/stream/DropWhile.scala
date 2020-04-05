@@ -16,6 +16,7 @@ package stream
 
 import akka.stream.{Attributes, FanInShape2, Inlet, Outlet}
 import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
+import Handlers._
 
 object DropWhile {
   def apply[A, Buf >: Null <: BufElem[A]](in: Outlet[Buf], p: OutI)
@@ -48,9 +49,9 @@ object DropWhile {
                                                        (implicit ctrl: Control, aTpe: StreamType[A, E])
     extends Handlers(name, layer, shape) {
 
-    private[this] val hIn   = new Handlers.InMain [A, E](this, shape.in0)()
-    private[this] val hPred = new Handlers.InIAux       (this, shape.in1)()
-    private[this] val hOut  = new Handlers.OutMain[A, E](this, shape.out)
+    private[this] val hIn   : InMain [A, E] = InMain [A, E](this, shape.in0)
+    private[this] val hPred : InIAux        = InIAux       (this, shape.in1)()
+    private[this] val hOut  : OutMain[A, E] = OutMain[A, E](this, shape.out)
     private[this] var gate  = true
 
     protected def onDone(inlet: Inlet[_]): Unit = {
@@ -92,7 +93,7 @@ object DropWhile {
       while ({
         val len = math.min(hIn.available, hOut.available)
         (len > 0) && {
-          hIn.copy(hOut, len)
+          hIn.copyTo(hOut, len)
           !checkInDone()
         }
       }) ()

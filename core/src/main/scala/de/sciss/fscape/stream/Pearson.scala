@@ -15,6 +15,7 @@ package de.sciss.fscape.stream
 
 import akka.stream.{Attributes, FanInShape3, Inlet}
 import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
+import Handlers._
 import de.sciss.fscape.{logStream => log}
 
 import scala.annotation.tailrec
@@ -50,10 +51,10 @@ object Pearson {
   private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
     extends Handlers(name, layer, shape) {
 
-    private[this] val hX    = new Handlers.InDMain  (this, shape.in0)()
-    private[this] val hY    = new Handlers.InDMain  (this, shape.in1)()
-    private[this] val hSize = new Handlers.InIAux   (this, shape.in2)(math.max(1, _))
-    private[this] val hOut  = new Handlers.OutDMain (this, shape.out)
+    private[this] val hX   : InDMain  = InDMain  (this, shape.in0)
+    private[this] val hY   : InDMain  = InDMain  (this, shape.in1)
+    private[this] val hSize: InIAux   = InIAux   (this, shape.in2)(math.max(1, _))
+    private[this] val hOut : OutDMain = OutDMain (this, shape.out)
 
     private[this] var outValue  = 0.0
     private[this] var stage     = 0   // 0 -- read size, 1 -- read x and y, 2 -- write

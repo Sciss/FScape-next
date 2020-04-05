@@ -16,8 +16,8 @@ package graph
 
 import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.UGenSource.unwrap
-import de.sciss.fscape.stream.{StreamIn, StreamOut}
-import de.sciss.numbers.{DoubleFunctions => rd, DoubleFunctions2 => rd2, IntFunctions => ri}
+import de.sciss.fscape.stream.{BufD, BufI, BufL, StreamIn, StreamOut}
+import de.sciss.numbers.{DoubleFunctions => rd, DoubleFunctions2 => rd2, IntFunctions => ri, IntFunctions2 => ri2, LongFunctions => rl, LongFunctions2 => rl2}
 
 import scala.annotation.switch
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -27,7 +27,10 @@ object UnaryOp {
     def apply(id: Int): Op = (id: @switch) match {
       case Neg            .id => Neg
       case Not            .id => Not
+      case BitNot         .id => BitNot
       case Abs            .id => Abs
+      case ToDouble       .id => ToDouble
+      case ToInt          .id => ToInt
       case Ceil           .id => Ceil
       case Floor          .id => Floor
       case Frac           .id => Frac
@@ -37,14 +40,14 @@ object UnaryOp {
       case Sqrt           .id => Sqrt
       case Exp            .id => Exp
       case Reciprocal     .id => Reciprocal
-      case Midicps        .id => Midicps
-      case Cpsmidi        .id => Cpsmidi
-      case Midiratio      .id => Midiratio
-      case Ratiomidi      .id => Ratiomidi
-      case Dbamp          .id => Dbamp
-      case Ampdb          .id => Ampdb
-      case Octcps         .id => Octcps
-      case Cpsoct         .id => Cpsoct
+      case MidiCps        .id => MidiCps
+      case CpsMidi        .id => CpsMidi
+      case MidiRatio      .id => MidiRatio
+      case RatioMidi      .id => RatioMidi
+      case DbAmp          .id => DbAmp
+      case AmpDb          .id => AmpDb
+      case OctCps         .id => OctCps
+      case CpsOct         .id => CpsOct
       case Log            .id => Log
       case Log2           .id => Log2
       case Log10          .id => Log10
@@ -63,6 +66,7 @@ object UnaryOp {
       //      case Scurve     .id => Scurve
       case IsNaN          .id => IsNaN
       case NextPowerOfTwo .id => NextPowerOfTwo
+      case ToLong         .id => ToLong
     }
   }
 
@@ -71,12 +75,14 @@ object UnaryOp {
 
     def id: Int
 
-    def apply(a: Double): Double
+    def funDD: Double => Double
+
+//    def apply(a: Double): Double
 
     /** The default converts to `Double`, but specific operators
       * may better preserve semantics and precision for other types such as `Int` and `Long`.
       */
-    def apply(a: Constant): Constant = ConstantD(apply(a.doubleValue))
+    def apply(a: Constant): Constant = ConstantD(funDD(a.doubleValue))
 
     def name: String = plainName.capitalize
 
@@ -93,218 +99,312 @@ object UnaryOp {
     }
   }
 
-  case object Neg extends Op {
-    final val id = 0
-    def apply(a: Double): Double = -a
+  sealed trait OpII extends Op {
+    def funII: Int => Int
 
     override def apply(a: Constant): Constant = a match {
-      case ConstantD(d) => ConstantD(apply(d))
-      case ConstantI(i) => ConstantI(-i)
-      case ConstantL(n) => ConstantL(-n)
+      case ConstantI(i) => ConstantI(funII(i))
+      case _            => ConstantD(funDD(a.doubleValue))
     }
   }
 
-  case object Not extends Op {
-    final val id = 1
-    def apply(a: Double): Double = if (a == 0.0) 1.0 else 0.0
+  sealed trait OpLL extends Op {
+    def funLL: Long => Long
 
     override def apply(a: Constant): Constant = a match {
-      case ConstantD(d) => ConstantD(apply(d))
-      case ConstantI(i) => ConstantI(if (i == 0 ) 1  else 0 )
-      case ConstantL(n) => ConstantL(if (n == 0L) 1L else 0L)
+      case ConstantL(n) => ConstantL(funLL(n))
+      case _            => ConstantD(funDD(a.doubleValue))
     }
+  }
+
+  sealed trait OpDI extends Op {
+    def funDI: Double => Int
+  }
+
+  sealed trait OpDL extends Op {
+    def funDL: Double => Long
+  }
+
+  sealed trait OpID extends Op {
+    def funID: Int => Double
+  }
+
+  sealed trait OpLD extends Op {
+    def funLD: Long => Double
+  }
+
+  sealed trait OpIL extends Op {
+    def funIL: Int => Long
+  }
+
+  sealed trait OpLI extends Op {
+    def funLI: Long => Int
+  }
+
+  sealed trait OpSame extends Op with OpII with OpLL {
+    override def apply(a: Constant): Constant = a match {
+      case ConstantD(d) => ConstantD(funDD(d))
+      case ConstantI(i) => ConstantI(funII(i))
+      case ConstantL(n) => ConstantL(funLL(n))
+    }
+  }
+
+  case object Neg extends OpSame {
+    final val id = 0
+
+    val funDD: Double => Double = -_
+    val funII: Int    => Int    = -_
+    val funLL: Long   => Long   = -_
+  }
+
+  case object Not extends OpII {
+    final val id = 1
+
+    val funDD: Double => Double = a => if (a == 0.0 ) 1.0 else 0.0
+    val funII: Int    => Int    = a => if (a == 0   ) 1   else 0
   }
 
   // case object IsNil       extends Op(  2 )
   // case object NotNil      extends Op(  3 )
-  // case object BitNot      extends Op(  4 )
-  case object Abs extends Op {
+
+  case object BitNot extends OpSame {
+    final val id = 4
+
+    val funDD: Double => Double = a => (~a.toLong).toDouble
+    val funII: Int    => Int    = a => ~a
+    val funLL: Long   => Long   = a => ~a
+  }
+
+  case object Abs extends OpSame {
     final val id = 5
-    def apply(a: Double): Double = rd.abs(a)
+
+    val funDD: Double => Double = a => rd.abs(a)
+    val funII: Int    => Int    = a => ri.abs(a)
+    val funLL: Long   => Long   = a => rl.abs(a)
+  }
+
+  case object ToDouble extends OpID with OpLD {
+    final val id = 6
+
+    val funDD: Double => Double = a => a
+    val funID: Int    => Double = a => a.toDouble
+    val funLD: Long   => Double = a => a.toDouble
 
     override def apply(a: Constant): Constant = a match {
-      case ConstantD(d) => ConstantD(apply(d))
-      case ConstantI(i) => ConstantI(math.abs(i))
-      case ConstantL(n) => ConstantL(math.abs(n))
+      case ConstantD(d) => ConstantD(funDD(d))
+      case ConstantI(i) => ConstantD(funID(i))
+      case ConstantL(n) => ConstantD(funLD(n))
     }
   }
 
-  // case object ToFloat     extends Op(  6 )
-  // case object ToInt       extends Op(  7 )
+  case object ToInt extends OpDI with OpLI with OpII {
+    final val id = 7
+
+    val funDD: Double => Double = a => a.toInt.toDouble
+
+    val funDI: Double => Int    = a => a.toInt
+    val funLI: Long   => Int    = a => a.toInt
+    val funII: Int    => Int    = a => a
+
+    override def apply(a: Constant): Constant = a match {
+      case ConstantD(d) => ConstantI(funDI(d))
+      case ConstantI(i) => ConstantI(funII(i))
+      case ConstantL(n) => ConstantI(funLI(n))
+    }
+  }
+
   case object Ceil extends Op {
     final val id = 8
-    def apply(a: Double): Double = rd.ceil(a)
+
+    val funDD: Double => Double = a => rd.ceil(a)
   }
 
   case object Floor extends Op {
     final val id = 9
-    def apply(a: Double): Double = rd.floor(a)
+
+    val funDD: Double => Double = a => rd.floor(a)
   }
 
   case object Frac extends Op {
     final val id = 10
-    def apply(a: Double): Double = rd.frac(a)
+
+    val funDD: Double => Double = a => rd.frac(a)
   }
 
-  case object Signum extends Op {
+  case object Signum extends OpSame {
     final val id = 11
-    def apply(a: Double): Double = math.signum(a)
 
-    override def apply(a: Constant): Constant = a match {
-      case ConstantD(d) => ConstantD(apply(d))
-      case ConstantI(i) => ConstantI(math.signum(i))
-      case ConstantL(n) => ConstantL(math.signum(n))
-    }
+    val funDD: Double => Double = a => rd.signum(a)
+    val funII: Int    => Int    = a => ri.signum(a)
+    val funLL: Long   => Long   = a => rl.signum(a)
   }
 
-  private def mkIntOrLong(n: Long): Constant =
-    if (n >= Int.MinValue && n <= Int.MaxValue)
-      ConstantI(n.toInt)
-    else
-      ConstantL(n)
-
-  case object Squared extends Op {
+  case object Squared extends Op with OpIL with OpLL {
     final val id = 12
-    def apply(a: Double): Double = rd.squared(a)
+
+    val funDD: Double => Double = a => rd.squared(a)
+    val funIL: Int    => Long   = a => ri.squared(a)
+    val funLL: Long   => Long   = a => rl.squared(a)
 
     override def apply(a: Constant): Constant = a match {
-      case ConstantD(d) => ConstantD(apply(d))
-      case ConstantI(i) =>
-        val n = i.toLong * i.toLong
-        if (n >= Int.MinValue && n <= Int.MaxValue)
-          ConstantI(n.toInt)
-        else
-          ConstantL(n)
-      case ConstantL(n) => ConstantL(n * n)
+      case ConstantD(d) => ConstantD(funDD(d))
+      case ConstantI(i) => ConstantL(funIL(i))
+      case ConstantL(n) => ConstantL(funLL(n))
     }
   }
 
-  case object Cubed extends Op {
+  case object Cubed extends Op with OpIL with OpLL {
     final val id = 13
-    def apply(a: Double): Double = rd2.cubed(a)
+
+    val funDD: Double => Double = a => rd2.cubed(a)
+    val funIL: Int    => Long   = a => ri2.cubed(a)
+    val funLL: Long   => Long   = a => rl2.cubed(a)
 
     override def apply(a: Constant): Constant = a match {
-      case ConstantD(d) => ConstantD(apply(d))
-      case ConstantI(i) =>
-        val n = i.toLong * i.toLong * i.toLong
-        mkIntOrLong(n)
-      case ConstantL(n) => ConstantL(n * n * n)
+      case ConstantD(d) => ConstantD(funDD(d))
+      case ConstantI(i) => ConstantL(funIL(i))
+      case ConstantL(n) => ConstantL(funLL(n))
     }
   }
 
   case object Sqrt extends Op {
     final val id = 14
-    def apply(a: Double): Double = rd.sqrt(a)
+
+    val funDD: Double => Double = a => rd.sqrt(a)
   }
 
   case object Exp extends Op {
     final val id = 15
-    def apply(a: Double): Double = rd.exp(a)
+
+    val funDD: Double => Double = a => rd.exp(a)
   }
 
-  case object Reciprocal extends Op {
+  case object Reciprocal extends Op with OpID with OpLD {
     final val id = 16
-    def apply(a: Double): Double = rd2.reciprocal(a)
+
+    val funDD: Double => Double = a => rd2.reciprocal(a)
+    val funID: Int    => Double = a => rd2.reciprocal(a.toDouble)
+    val funLD: Long   => Double = a => rd2.reciprocal(a.toDouble)
   }
 
-  case object Midicps extends Op {
+  case object MidiCps extends Op {
     final val id = 17
-    def apply(a: Double): Double = rd.midiCps(a)
+
+    val funDD: Double => Double = a => rd.midiCps(a)
   }
 
-  case object Cpsmidi extends Op {
+  case object CpsMidi extends Op {
     final val id = 18
-    def apply(a: Double): Double = rd.cpsMidi(a)
+
+    val funDD: Double => Double = a => rd.cpsMidi(a)
   }
 
-  case object Midiratio extends Op {
+  case object MidiRatio extends Op {
     final val id = 19
-    def apply(a: Double): Double = rd.midiRatio(a)
+
+    val funDD: Double => Double = a => rd.midiRatio(a)
   }
 
-  case object Ratiomidi extends Op {
+  case object RatioMidi extends Op {
     final val id = 20
-    def apply(a: Double): Double = rd.ratioMidi(a)
+
+    val funDD: Double => Double = a => rd.ratioMidi(a)
   }
 
-  case object Dbamp extends Op {
+  case object DbAmp extends Op {
     final val id = 21
-    def apply(a: Double): Double = rd.dbAmp(a)
+
+    val funDD: Double => Double = a => rd.dbAmp(a)
   }
 
-  case object Ampdb extends Op {
+  case object AmpDb extends Op {
     final val id = 22
-    def apply(a: Double): Double = rd.ampDb(a)
+
+    val funDD: Double => Double = a => rd.ampDb(a)
   }
 
-  case object Octcps extends Op {
+  case object OctCps extends Op {
     final val id = 23
-    def apply(a: Double): Double = rd.octCps(a)
+
+    val funDD: Double => Double = a => rd.octCps(a)
   }
 
-  case object Cpsoct extends Op {
+  case object CpsOct extends Op {
     final val id = 24
-    def apply(a: Double): Double = rd.cpsOct(a)
+
+    val funDD: Double => Double = a => rd.cpsOct(a)
   }
 
   case object Log extends Op {
     final val id = 25
-    def apply(a: Double): Double = rd.log(a)
+
+    val funDD: Double => Double = a => rd.log(a)
   }
 
   case object Log2 extends Op {
     final val id = 26
-    def apply(a: Double): Double = rd.log2(a)
+
+    val funDD: Double => Double = a => rd.log2(a)
   }
 
   case object Log10 extends Op {
     final val id = 27
-    def apply(a: Double): Double = rd.log10(a)
+
+    val funDD: Double => Double = a => rd.log10(a)
   }
 
   case object Sin extends Op {
     final val id = 28
-    def apply(a: Double): Double = rd.sin(a)
+
+    val funDD: Double => Double = a => rd.sin(a)
   }
 
   case object Cos extends Op {
     final val id = 29
-    def apply(a: Double): Double = rd.cos(a)
+
+    val funDD: Double => Double = a => rd.cos(a)
   }
 
   case object Tan extends Op {
     final val id = 30
-    def apply(a: Double): Double = rd.tan(a)
+
+    val funDD: Double => Double = a => rd.tan(a)
   }
 
   case object Asin extends Op {
     final val id = 31
-    def apply(a: Double): Double = rd.asin(a)
+
+    val funDD: Double => Double = a => rd.asin(a)
   }
 
   case object Acos extends Op {
     final val id = 32
-    def apply(a: Double): Double = rd.acos(a)
+
+    val funDD: Double => Double = a => rd.acos(a)
   }
 
   case object Atan extends Op {
     final val id = 33
-    def apply(a: Double): Double = rd.atan(a)
+
+    val funDD: Double => Double = a => rd.atan(a)
   }
 
   case object Sinh extends Op {
     final val id = 34
-    def apply(a: Double): Double = rd.sinh(a)
+
+    val funDD: Double => Double = a => rd.sinh(a)
   }
 
   case object Cosh extends Op {
     final val id = 35
-    def apply(a: Double): Double = rd.cosh(a)
+
+    val funDD: Double => Double = a => rd.cosh(a)
   }
 
   case object Tanh extends Op {
     final val id = 36
-    def apply(a: Double): Double = rd.tanh(a)
+
+    val funDD: Double => Double = a => rd.tanh(a)
   }
 
   // class Rand              extends Op( 37 )
@@ -342,14 +442,38 @@ object UnaryOp {
   //    def apply(a: Double): Double = rd2.sCurve(a)
   //  }
 
-  case object IsNaN extends Op {
+  case object IsNaN extends Op with OpDI {
     final val id = 100
-    def apply(a: Double): Double = if (java.lang.Double.isNaN(a)) 1.0 else 0.0
+
+    val funDD: Double => Double = a => if (java.lang.Double.isNaN(a)) 1.0 else 0.0
+    val funDI: Double => Int    = a => if (java.lang.Double.isNaN(a)) 1   else 0
+
+    override def apply(a: Constant): Constant =
+      ConstantI(funDI(a.doubleValue))
   }
 
-  case object NextPowerOfTwo extends Op {
+  case object NextPowerOfTwo extends OpSame {
     final val id = 101
-    def apply(a: Double): Double = ri.nextPowerOfTwo(Math.ceil(a).toInt).toDouble
+
+    val funDD: Double => Double = a => ri.nextPowerOfTwo(Math.ceil(a).toInt).toDouble
+    val funII: Int    => Int    = a => ri.nextPowerOfTwo(a)
+    val funLL: Long   => Long   = a => rl.nextPowerOfTwo(a)
+  }
+
+  case object ToLong extends OpDL with OpLL with OpIL {
+    final val id = 200
+
+    val funDD: Double => Double = a => a.toInt.toDouble
+
+    val funDL: Double => Long   = a => a.toLong
+    val funLL: Long   => Long   = a => a
+    val funIL: Int    => Long   = a => a.toLong
+
+    override def apply(a: Constant): Constant = a match {
+      case ConstantD(d) => ConstantL(funDL(d))
+      case ConstantI(i) => ConstantL(funIL(i))
+      case ConstantL(n) => ConstantL(funLL(n))
+    }
   }
 }
 final case class UnaryOp(op: Int, in: GE) extends UGenSource.SingleOut {
@@ -362,6 +486,47 @@ final case class UnaryOp(op: Int, in: GE) extends UGenSource.SingleOut {
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
     val Vec(in) = args
     val op0 = UnaryOp.Op(op)
-    stream.UnaryOp(op = op0, in = in.toDouble)
+
+    if (in.isDouble) {
+      op0 match {
+        case opDI: UnaryOp.OpDI =>
+          stream.UnaryOp[Double , BufD, Int   , BufI](op0.name, opDI.funDI, in = in.toDouble): StreamOut
+
+        case opDL: UnaryOp.OpDL =>
+          stream.UnaryOp[Double , BufD, Long  , BufL](op0.name, opDL.funDL, in = in.toDouble): StreamOut
+
+        case _ =>
+          stream.UnaryOp[Double , BufD, Double, BufD](op0.name, op0 .funDD, in = in.toDouble): StreamOut
+      }
+    } else if (in.isInt) {
+      op0 match {
+        case opII: UnaryOp.OpII =>
+          stream.UnaryOp[Int    , BufI, Int   , BufI](op0.name, opII.funII, in = in.toInt   ): StreamOut
+
+        case opIL: UnaryOp.OpIL =>
+          stream.UnaryOp[Int    , BufI, Long  , BufL](op0.name, opIL.funIL, in = in.toInt   ): StreamOut
+
+        case opID: UnaryOp.OpID =>
+          stream.UnaryOp[Int    , BufI, Double, BufD](op0.name, opID.funID, in = in.toInt   ): StreamOut
+
+        case _ =>
+          stream.UnaryOp[Double , BufD, Double, BufD](op0.name, op0 .funDD, in = in.toDouble): StreamOut
+      }
+      
+    } else /*if (in.isLong)*/ {
+      op0 match {
+        case opLI: UnaryOp.OpLI =>
+          stream.UnaryOp[Long   , BufL, Int   , BufI](op0.name, opLI.funLI, in = in.toLong  ): StreamOut
+
+        case opLL: UnaryOp.OpLL =>
+          stream.UnaryOp[Long   , BufL, Long  , BufL](op0.name, opLL.funLL, in = in.toLong  ): StreamOut
+
+        case opLD: UnaryOp.OpLD =>
+          stream.UnaryOp[Long   , BufL, Double, BufD](op0.name, opLD.funLD, in = in.toLong  ): StreamOut
+
+        case _ =>
+          stream.UnaryOp[Double , BufD, Double, BufD](op0.name, op0 .funDD, in = in.toDouble): StreamOut
+      }
+    }
   }
 }

@@ -21,6 +21,7 @@ import akka.stream.{Inlet, Shape}
 import scala.annotation.tailrec
 
 /** An I/O process that processes chunks. */
+@deprecated("Should move to using Handlers", since = "2.35.1")
 trait ChunkImpl[S <: Shape] extends FullInOutImpl[S] {
   _: GraphStageLogic =>
 
@@ -87,6 +88,7 @@ trait ChunkImpl[S <: Shape] extends FullInOutImpl[S] {
 /** An I/O process that processes chunks with equal number of
   * input and output frames.
   */
+@deprecated("Should move to using Handlers", since = "2.35.1")
 trait SameChunkImpl[S <: Shape] extends ChunkImpl[S] {
   _: GraphStageLogic =>
 
@@ -110,6 +112,7 @@ trait SameChunkImpl[S <: Shape] extends ChunkImpl[S] {
   }
 }
 
+@deprecated("Should move to using Handlers", since = "2.35.1")
 trait FilterChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape] extends SameChunkImpl[S] {
   _: GraphStageLogic =>
 
@@ -119,6 +122,7 @@ trait FilterChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape
     inRemain == 0 && isClosed(in0) && !isAvailable(in0)
 }
 
+@deprecated("Should move to using Handlers", since = "2.35.1")
 trait GenChunkImpl[S <: Shape] extends SameChunkImpl[S] {
   _: GraphStageLogic =>
 

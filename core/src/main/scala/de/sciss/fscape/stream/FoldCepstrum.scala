@@ -15,6 +15,7 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape10}
+import de.sciss.fscape.stream.impl.Handlers.{InDAux, InDMain, InIAux, OutDMain}
 import de.sciss.fscape.stream.impl.{Handlers, StageImpl, WindowedLogicD}
 
 object FoldCepstrum {
@@ -65,17 +66,17 @@ object FoldCepstrum {
 
     private[this] var size: Int = _
 
-    protected     val hIn   = new Handlers.InDMain  (this, shape.in0)()
-    protected     val hOut  = new Handlers.OutDMain (this, shape.out)
-    private[this] val hSize = new Handlers.InIAux   (this, shape.in1)(math.max(0, _))
-    private[this] val hCRR  = new Handlers.InDAux   (this, shape.in2)()
-    private[this] val hCRI  = new Handlers.InDAux   (this, shape.in3)()
-    private[this] val hCLR  = new Handlers.InDAux   (this, shape.in4)()
-    private[this] val hCLI  = new Handlers.InDAux   (this, shape.in5)()
-    private[this] val hCCR  = new Handlers.InDAux   (this, shape.in6)()
-    private[this] val hCCI  = new Handlers.InDAux   (this, shape.in7)()
-    private[this] val hCAR  = new Handlers.InDAux   (this, shape.in8)()
-    private[this] val hCAI  = new Handlers.InDAux   (this, shape.in9)()
+    protected     val hIn   : InDMain   = InDMain  (this, shape.in0)
+    protected     val hOut  : OutDMain  = OutDMain (this, shape.out)
+    private[this] val hSize : InIAux    = InIAux   (this, shape.in1)(math.max(0, _))
+    private[this] val hCRR  : InDAux    = InDAux   (this, shape.in2)()
+    private[this] val hCRI  : InDAux    = InDAux   (this, shape.in3)()
+    private[this] val hCLR  : InDAux    = InDAux   (this, shape.in4)()
+    private[this] val hCLI  : InDAux    = InDAux   (this, shape.in5)()
+    private[this] val hCCR  : InDAux    = InDAux   (this, shape.in6)()
+    private[this] val hCCI  : InDAux    = InDAux   (this, shape.in7)()
+    private[this] val hCAR  : InDAux    = InDAux   (this, shape.in8)()
+    private[this] val hCAI  : InDAux    = InDAux   (this, shape.in9)()
 
     protected def tryObtainWinParams(): Boolean = {
       val ok = hSize.hasNext &&

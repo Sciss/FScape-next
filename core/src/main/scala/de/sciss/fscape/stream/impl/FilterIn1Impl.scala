@@ -19,6 +19,7 @@ import akka.stream.{FlowShape, Inlet, Outlet}
 import akka.stream.stage.GraphStageLogic
 
 /** Building block for `FanInShape2` type graph stage logic. */
+@deprecated("Should move to using Handlers", since = "2.35.1")
 trait FilterIn1Impl[In >: Null <: BufLike, Out >: Null <: BufLike]
   extends Out1LogicImpl[Out, FlowShape[In, Out]] with FullInOutImpl[FlowShape[In, Out]] {
   _: GraphStageLogic with Node =>
@@ -71,16 +72,19 @@ trait FilterIn1Impl[In >: Null <: BufLike, Out >: Null <: BufLike]
   new ProcessOutHandlerImpl(out0, this)
 }
 
+@deprecated("Should move to using Handlers", since = "2.35.1")
 trait FilterIn1IImpl[In >: Null <: BufLike] extends FilterIn1Impl[In, BufI] with Out1IntImpl[FlowShape[In, BufI]] {
 
   _: GraphStageLogic with Node =>
 }
 
+@deprecated("Should move to using Handlers", since = "2.35.1")
 trait FilterIn1DImpl[In >: Null <: BufLike] extends FilterIn1Impl[In, BufD] with Out1DoubleImpl[FlowShape[In, BufD]] {
 
   _: GraphStageLogic with Node =>
 }
 
+@deprecated("Should move to using Handlers", since = "2.35.1")
 trait FilterIn1LImpl[In >: Null <: BufLike] extends FilterIn1Impl[In, BufL] with Out1LongImpl[FlowShape[In, BufL]] {
 
   _: GraphStageLogic with Node =>
