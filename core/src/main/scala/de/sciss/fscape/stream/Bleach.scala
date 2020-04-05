@@ -14,9 +14,12 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.{Attributes, FanInShape4}
-import de.sciss.fscape.stream.impl.deprecated.{FilterChunkImpl, FilterIn4DImpl}
-import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import akka.stream.{Attributes, FanInShape4, Inlet}
+import de.sciss.fscape.stream.impl.Handlers.{InDAux, InDMain, InIAux, OutDMain}
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
+
+import scala.annotation.tailrec
+import scala.math.min
 
 object Bleach {
   def apply(in: OutD, filterLen: OutI, feedback: OutD, filterClip: OutD)(implicit b: Builder): OutD = {
@@ -46,12 +49,14 @@ object Bleach {
   }
 
   private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape)
-      with FilterIn4DImpl [BufD, BufI, BufD, BufD]
-      with FilterChunkImpl[BufD, BufD, Shp] {
+    extends Handlers(name, layer, shape) {
 
-    private[this] var feedback    = 0.0
-    private[this] var filterClip  = 0.0
+    private[this] val hIn       = InDMain  (this, shape.in0)
+    private[this] val hFltLen   = InIAux   (this, shape.in1)(math.max(1, _))
+    private[this] val hFeedback = InDAux   (this, shape.in2)()
+    private[this] val hClip     = InDAux   (this, shape.in3)()
+    private[this] val hOut      = OutDMain (this, shape.out)
+
     private[this] var y1          = 0.0
 
     private[this] var kernel: Array[Double] = _
@@ -64,49 +69,50 @@ object Bleach {
 //    var STOP_FRAME  = START_FRAME + 16
 //    var FRAMES_DONE = 0L
 
-    protected def processChunk(inOff: Int, outOff: Int, len: Int): Unit = {
-      val b0        = bufIn0.buf
-      val b1        = if (bufIn1 == null) null else bufIn1.buf
-      val stop1     = if (b1     == null) 0    else bufIn1.size
-      val b2        = if (bufIn2 == null) null else bufIn2.buf
-      val stop2     = if (b2     == null) 0    else bufIn2.size
-      val b3        = if (bufIn3 == null) null else bufIn3.buf
-      val stop3     = if (b3     == null) 0    else bufIn3.size
-      val out       = bufOut0.buf
+    override protected def stopped(): Unit = {
+      super.stopped()
+      kernel  = null
+      winBuf  = null
+    }
 
-      var _feedback = feedback
-      var _fltClip  = filterClip
+    protected def onDone(inlet: Inlet[_]): Unit =
+      if (hOut.flush()) completeStage()
+
+    @tailrec
+    protected def process(): Unit = {
+      val remIO   = min(hIn.available, hOut.available)
+      if (remIO == 0) return
+      val remLen  = hFltLen.available
+      if (remLen == 0) return
+      val remFeed = hFeedback.available
+      if (remFeed == 0) return
+      val remClip = hClip.available
+      if (remClip == 0) return
+
+      val rem = min(remIO, min(remLen, min(remFeed, remClip)))
+
       var _kernel   = kernel
       var _winBuf   = winBuf
-      var _fltLen   = filterLen
       var _winIdx   = winIdx
       var _y1       = y1
 
-      var inOffI    = inOff
-      var outOffI   = outOff
-      val stop0     = inOff + len
-      while (inOffI < stop0) {
-        if (inOffI < stop1) {
-          _fltLen     = math.max(1, b1(inOffI))
-          if (_fltLen != filterLen) {
-            filterLen = _fltLen
-            _kernel   = new Array[Double](_fltLen)
-            kernel    = _kernel
-            _winBuf   = new Array[Double](_fltLen)
-            winBuf    = _winBuf
-            _winIdx   = 0 // actually doesn't matter as new buffer is zero'ed
-          }
-        }
-        if (inOffI < stop2) {
-          _feedback = b2(inOffI)
-//_feedback = 0.01
-        }
-        if (inOffI < stop3) {
-          _fltClip = b3(inOffI)
+      var k = 0
+      while (k < rem) {
+        val _fltLen = hFltLen.next()
+        if (_fltLen != filterLen) {
+          filterLen = _fltLen
+          _kernel   = new Array[Double](_fltLen)
+          kernel    = _kernel
+          _winBuf   = new Array[Double](_fltLen)
+          winBuf    = _winBuf
+          _winIdx   = 0 // actually doesn't matter as new buffer is zero'ed
         }
 
+        val _feedback = hFeedback .next()
+        val _fltClip  = hClip     .next()
+
         // grab last input sample
-        val x0    = b0(inOffI)
+        val x0    = hIn.next()
 
 //        if (FRAMES_DONE >= START_FRAME && FRAMES_DONE < STOP_FRAME) {
 //          println(s"---- frame $FRAMES_DONE")
@@ -124,7 +130,8 @@ object Bleach {
           i      += 1
           j       = (j + 1) % _fltLen
         }
-        out(outOffI) = y0
+
+        hOut.next(y0)
 
         // update kernel
         i           = 0
@@ -151,13 +158,18 @@ object Bleach {
         _winIdx   = (_winIdx + 1) % _fltLen
 
         _y1       = y0
-        inOffI   += 1
-        outOffI  += 1
+
+        k += 1
       }
-      feedback    = _feedback
-      filterClip  = _fltClip
       winIdx      = _winIdx
       y1          = _y1
+
+      if (hIn.isDone) {
+        if (hOut.flush()) completeStage()
+        return
+      }
+
+      process()
     }
   }
 }

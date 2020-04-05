@@ -54,8 +54,7 @@ object Zip {
     }
   }
 
-  private abstract class Logic[A, E <: BufElem[A]](shape: Shp[E], layer: Layer)
-                                                                  (implicit ctrl: Control, tpe: StreamType[A, E])
+  private abstract class Logic[A, E <: BufElem[A]](shape: Shp[E], layer: Layer)(implicit ctrl: Control)
     extends Handlers(name, layer, shape) {
 
     protected def hInA: InMain  [A, E]
