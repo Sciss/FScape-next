@@ -15,7 +15,8 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape6}
-import de.sciss.fscape.stream.impl.{FilterChunkImpl, FilterIn6DImpl, NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.deprecated.{FilterChunkImpl, FilterIn6DImpl}
+import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 
 object Biquad {
   def apply(in: OutD, b0: OutD, b1: OutD, b2: OutD, a1: OutD, a2: OutD)(implicit b: Builder): OutD = {

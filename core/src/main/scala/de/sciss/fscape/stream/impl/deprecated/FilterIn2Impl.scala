@@ -11,12 +11,11 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape
-package stream
-package impl
+package de.sciss.fscape.stream.impl.deprecated
 
 import akka.stream.FanInShape2
 import akka.stream.stage.GraphStageLogic
+import de.sciss.fscape.stream.{BufD, BufI, BufLike, Node}
 
 /** Building block for `FanInShape2` type graph stage logic,
   * where left inlet is "hot" and terminates process.

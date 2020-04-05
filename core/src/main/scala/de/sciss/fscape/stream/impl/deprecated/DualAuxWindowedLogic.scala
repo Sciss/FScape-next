@@ -1,5 +1,5 @@
 /*
- *  DemandWindowedLogic.scala
+ *  DualAuxWindowedLogic.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2020 Hanns Holger Rutz. All rights reserved.
@@ -11,18 +11,19 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape
-package stream
-package impl
+package de.sciss.fscape.stream.impl.deprecated
 
 import akka.stream.Shape
 import akka.stream.stage.GraphStageLogic
 
 /** A logic component for windowed processing, where window parameters
   * are obtained "on demand", i.e. at the speed of one per window.
+  *
+  * "aux 2" serves as additional buffer to the main window processing,
+  * and thus needs to be exhausted before main processing function is called.
   */
-@deprecated("Assumes that block-sizes for aux-ins always match", since = "2.32.0")
-trait DemandWindowedLogicOLD[S <: Shape] extends DemandChunkImpl[S] {
+@deprecated("Should move to using Handlers", since = "2.35.1")
+trait DualAuxWindowedLogic[S <: Shape] extends DualAuxChunkImpl[S] {
 
   _: GraphStageLogic =>
 
@@ -57,9 +58,9 @@ trait DemandWindowedLogicOLD[S <: Shape] extends DemandChunkImpl[S] {
     */
   protected def processWindow(writeToWinOff: Long /* , flush: Boolean */): Long
 
-  protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit
+  protected def processAux2(): Boolean
 
-  protected def canStartNextWindow: Boolean
+  protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit
 
   // ---- impl ----
 
@@ -77,7 +78,7 @@ trait DemandWindowedLogicOLD[S <: Shape] extends DemandChunkImpl[S] {
 
     if (canWriteToWindow) {
       val flushIn0 = inputsEnded // inRemain == 0 && shouldComplete()
-      if (isNextWindow && canStartNextWindow && !flushIn0) {
+      if (isNextWindow && !flushIn0) {
         writeToWinRemain  = startNextWindow()
         isNextWindow      = false
         stateChange       = true
@@ -97,15 +98,16 @@ trait DemandWindowedLogicOLD[S <: Shape] extends DemandChunkImpl[S] {
           stateChange       = true
         }
 
-        if (writeToWinRemain == 0 || flushIn) {
-          readFromWinRemain = processWindow(writeToWinOff = writeToWinOff) // , flush = flushIn)
+        val aux2Ok = processAux2()
+
+        if (aux2Ok && (writeToWinRemain == 0 || flushIn)) {
+          readFromWinRemain = processWindow(writeToWinOff = writeToWinOff)
           writeToWinOff     = 0
           readFromWinOff    = 0
           isNextWindow      = true
           stateChange       = true
-          auxInOff         += 1
-          auxInRemain      -= 1
-          // logStream(s"processWindow(); readFromWinRemain = $readFromWinRemain")
+          aux1InOff        += 1
+          aux1InRemain     -= 1
         }
       }
     }

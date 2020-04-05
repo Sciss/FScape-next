@@ -1,5 +1,5 @@
 /*
- *  GenIn3Impl.scala
+ *  GenIn2Impl.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2020 Hanns Holger Rutz. All rights reserved.
@@ -11,37 +11,33 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape
-package stream
-package impl
+package de.sciss.fscape.stream.impl.deprecated
 
 import akka.stream.stage.GraphStageLogic
-import akka.stream.{FanInShape3, Inlet, Outlet}
+import akka.stream.{FanInShape2, Inlet, Outlet}
+import de.sciss.fscape.stream.{BufD, BufI, BufLike, Node}
 
-/** Building block for generators with `FanInShape3` type graph stage logic.
+/** Building block for generators with `FanInShape2` type graph stage logic.
   * A generator keeps producing output until down-stream is closed, and does
   * not care about upstream inlets being closed.
   */
 @deprecated("Should move to using Handlers", since = "2.35.1")
-trait GenIn3Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: BufLike, Out >: Null <: BufLike]
-  extends Out1LogicImpl[Out, FanInShape3[In0, In1, In2, Out]] with FullInOutImpl[FanInShape3[In0, In1, In2, Out]] {
+trait GenIn2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, Out >: Null <: BufLike]
+  extends Out1LogicImpl[Out, FanInShape2[In0, In1, Out]] with FullInOutImpl[FanInShape2[In0, In1, Out]] {
   _: GraphStageLogic with Node =>
 
   // ---- impl ----
 
   protected final var bufIn0 : In0 = _
   protected final var bufIn1 : In1 = _
-  protected final var bufIn2 : In2 = _
   protected final var bufOut0: Out = _
 
-  protected final def in0: Inlet[In0] = shape.in0
-  protected final def in1: Inlet[In1] = shape.in1
-  protected final def in2: Inlet[In2] = shape.in2
+  protected final def in0 : Inlet [In0] = shape.in0
+  protected final def in1 : Inlet [In1] = shape.in1
+  protected final def out0: Outlet[Out] = shape.out
 
   private[this] final var _canRead = false
   private[this] final var _inValid = false
-
-  protected final def out0: Outlet[Out] = shape.out
 
   final def canRead: Boolean = _canRead
   final def inValid: Boolean = _inValid
@@ -58,13 +54,10 @@ trait GenIn3Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: 
       bufIn0 = grab(sh.in0)
       tryPull(sh.in0)
     }
+
     if (isAvailable(sh.in1)) {
       bufIn1 = grab(sh.in1)
       tryPull(sh.in1)
-    }
-    if (isAvailable(sh.in2)) {
-      bufIn2 = grab(sh.in2)
-      tryPull(sh.in2)
     }
 
     _inValid = true
@@ -81,10 +74,6 @@ trait GenIn3Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: 
       bufIn1.release()
       bufIn1 = null
     }
-    if (bufIn2 != null) {
-      bufIn2.release()
-      bufIn2 = null
-    }
   }
 
   protected final def freeOutputBuffers(): Unit =
@@ -100,19 +89,24 @@ trait GenIn3Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: 
     // be checked in `onUpstreamFinish` which should probably
     // close the stage if not a single buffer had been read!
     _canRead = ((isClosed(sh.in0) && _inValid) || isAvailable(sh.in0)) &&
-               ((isClosed(sh.in1) && _inValid) || isAvailable(sh.in1)) &&
-               ((isClosed(sh.in2) && _inValid) || isAvailable(sh.in2))
+               ((isClosed(sh.in1) && _inValid) || isAvailable(sh.in1))
   }
 
   new AuxInHandlerImpl     (shape.in0, this)
   new AuxInHandlerImpl     (shape.in1, this)
-  new AuxInHandlerImpl     (shape.in2, this)
   new ProcessOutHandlerImpl(shape.out, this)
 }
 
 @deprecated("Should move to using Handlers", since = "2.35.1")
-trait GenIn3DImpl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: BufLike]
-  extends GenIn3Impl[In0, In1, In2, BufD]
-    with Out1DoubleImpl[FanInShape3[In0, In1, In2, BufD]] {
+trait GenIn2DImpl[In0 >: Null <: BufLike, In1 >: Null <: BufLike]
+  extends GenIn2Impl[In0, In1, BufD]
+    with Out1DoubleImpl[FanInShape2[In0, In1, BufD]] {
+  _: GraphStageLogic with Node =>
+}
+
+@deprecated("Should move to using Handlers", since = "2.35.1")
+trait GenIn2IImpl[In0 >: Null <: BufLike, In1 >: Null <: BufLike]
+  extends GenIn2Impl[In0, In1, BufI]
+    with Out1IntImpl[FanInShape2[In0, In1, BufI]] {
   _: GraphStageLogic with Node =>
 }

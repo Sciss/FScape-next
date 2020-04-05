@@ -15,7 +15,8 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape3}
-import de.sciss.fscape.stream.impl.{DemandChunkImpl, DemandFilterIn3D, DemandFilterLogic, NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.deprecated.{DemandChunkImpl, DemandFilterIn3D, DemandFilterLogic}
+import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 
 import scala.collection.mutable
 

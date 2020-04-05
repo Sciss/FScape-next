@@ -1,5 +1,5 @@
 /*
- *  FilterIn4Impl.scala
+ *  FilterIn3Impl.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2020 Hanns Holger Rutz. All rights reserved.
@@ -11,19 +11,16 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape
-package stream
-package impl
+package de.sciss.fscape.stream.impl.deprecated
 
 import akka.stream.stage.GraphStageLogic
-import akka.stream.{FanInShape4, Inlet, Outlet}
+import akka.stream.{FanInShape3, Inlet, Outlet}
+import de.sciss.fscape.stream.{BufD, BufLike, Node}
 
-/** Building block for `FanInShape4` type graph stage logic. */
+/** Building block for `FanInShape3` type graph stage logic. */
 @deprecated("Does not allow individual aux inputs to advance at different block sizes", since = "2.35.1")
-trait FilterIn4Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: BufLike,
-                    In3 >: Null <: BufLike, Out >: Null <: BufLike]
-  extends Out1LogicImpl[Out, FanInShape4[In0, In1, In2, In3, Out]]
-    with FullInOutImpl[FanInShape4[In0, In1, In2, In3, Out]] {
+trait FilterIn3Impl[In0 <: BufLike, In1 <: BufLike, In2 <: BufLike, Out <: BufLike]
+  extends Out1LogicImpl[Out, FanInShape3[In0, In1, In2, Out]] with FullInOutImpl[FanInShape3[In0, In1, In2, Out]] {
   _: GraphStageLogic with Node =>
 
   // ---- impl ----
@@ -31,13 +28,11 @@ trait FilterIn4Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null 
   protected final var bufIn0 : In0 = _
   protected final var bufIn1 : In1 = _
   protected final var bufIn2 : In2 = _
-  protected final var bufIn3 : In3 = _
   protected final var bufOut0: Out = _
 
   protected final def in0: Inlet[In0] = shape.in0
   protected final def in1: Inlet[In1] = shape.in1
   protected final def in2: Inlet[In2] = shape.in2
-  protected final def in3: Inlet[In3] = shape.in3
 
   private[this] final var _canRead = false
   private[this] final var _inValid = false
@@ -69,11 +64,6 @@ trait FilterIn4Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null 
       tryPull(sh.in2)
     }
 
-    if (isAvailable(sh.in3)) {
-      bufIn3 = grab(sh.in3)
-      tryPull(sh.in3)
-    }
-
     _inValid = true
     _canRead = false
     bufIn0.size
@@ -82,47 +72,40 @@ trait FilterIn4Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null 
   protected final def freeInputBuffers(): Unit = {
     if (bufIn0 != null) {
       bufIn0.release()
-      bufIn0 = null
+      bufIn0 = null.asInstanceOf[In0]
     }
     if (bufIn1 != null) {
       bufIn1.release()
-      bufIn1 = null
+      bufIn1 = null.asInstanceOf[In1]
     }
     if (bufIn2 != null) {
       bufIn2.release()
-      bufIn2 = null
-    }
-    if (bufIn3 != null) {
-      bufIn3.release()
-      bufIn3 = null
+      bufIn2 = null.asInstanceOf[In2]
     }
   }
 
   protected final def freeOutputBuffers(): Unit =
     if (bufOut0 != null) {
       bufOut0.release()
-      bufOut0 = null
+      bufOut0 = null.asInstanceOf[Out]
     }
 
   final def updateCanRead(): Unit = {
     val sh = shape
     _canRead = isAvailable(sh.in0) &&
       ((isClosed(sh.in1) && _inValid) || isAvailable(sh.in1)) &&
-      ((isClosed(sh.in2) && _inValid) || isAvailable(sh.in2)) &&
-      ((isClosed(sh.in3) && _inValid) || isAvailable(sh.in3))
+      ((isClosed(sh.in2) && _inValid) || isAvailable(sh.in2))
   }
 
   new ProcessInHandlerImpl (shape.in0, this)
   new AuxInHandlerImpl     (shape.in1, this)
   new AuxInHandlerImpl     (shape.in2, this)
-  new AuxInHandlerImpl     (shape.in3, this)
   new ProcessOutHandlerImpl(shape.out, this)
 }
 
 @deprecated("Does not allow individual aux inputs to advance at different block sizes", since = "2.35.1")
-trait FilterIn4DImpl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: BufLike,
-In3 >: Null <: BufLike]
-  extends FilterIn4Impl[In0, In1, In2, In3, BufD]
-    with Out1DoubleImpl[FanInShape4[In0, In1, In2, In3, BufD]] {
+trait FilterIn3DImpl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: BufLike]
+  extends FilterIn3Impl[In0, In1, In2, BufD] with Out1DoubleImpl[FanInShape3[In0, In1, In2, BufD]] {
+
   _: GraphStageLogic with Node =>
 }

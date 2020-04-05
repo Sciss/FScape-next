@@ -17,7 +17,8 @@ package stream
 import java.util
 
 import akka.stream.{Attributes, FanInShape3, Inlet, Outlet}
-import de.sciss.fscape.stream.impl.{DemandAuxInHandler, DemandFilterLogic, DemandInOutImpl, DemandProcessInHandler, DemandWindowedLogicOLD, NodeImpl, Out1LogicImpl, ProcessOutHandlerImpl, StageImpl}
+import de.sciss.fscape.stream.impl.deprecated.{DemandAuxInHandler, DemandFilterLogic, DemandInOutImpl, DemandProcessInHandler, DemandWindowedLogicOLD, Out1LogicImpl, ProcessOutHandlerImpl}
+import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 
 object SortWindow {
   def apply[A, K <: BufElem[A], B, V <: BufElem[B]](keys: Outlet[K], values: Outlet[V], size: OutI)

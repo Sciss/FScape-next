@@ -15,7 +15,8 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape2, Inlet, Outlet}
-import de.sciss.fscape.stream.impl.{FilterChunkImpl, FilterIn2Impl, NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.deprecated.{FilterChunkImpl, FilterIn2Impl}
+import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 
 object Latch {
   def apply[A, E <: BufElem[A]](in: Outlet[E], gate: OutI)

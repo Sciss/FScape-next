@@ -15,7 +15,8 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape4}
-import de.sciss.fscape.stream.impl.{FilterIn4DImpl, FilterLogicImpl, NodeImpl, StageImpl, WindowedLogicImpl}
+import de.sciss.fscape.stream.impl.deprecated.{FilterIn4DImpl, FilterLogicImpl, WindowedLogicImpl}
+import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 
 object DCT_II {
   def apply(in: OutD, size: OutI, numCoeffs: OutI, zero: OutI)(implicit b: Builder): OutD = {

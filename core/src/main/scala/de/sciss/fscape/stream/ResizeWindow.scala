@@ -15,7 +15,8 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape4, Inlet, Outlet}
-import de.sciss.fscape.stream.impl.{DemandFilterWindowedLogic, NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.deprecated.DemandFilterWindowedLogic
+import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 
 object ResizeWindow {
   /** Resizes the windowed input signal by trimming each

@@ -15,6 +15,7 @@ package de.sciss.fscape.stream.impl
 
 import akka.stream.stage.GraphStageLogic
 import de.sciss.fscape.logStream
+import de.sciss.fscape.stream.impl.deprecated.Sink2Impl
 import de.sciss.fscape.stream.{BufI, BufLike, Node}
 
 /** Common building block for `Poll` and `Progress`. */

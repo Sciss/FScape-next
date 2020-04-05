@@ -11,16 +11,16 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape
-package stream
-package impl
+package de.sciss.fscape.stream.impl.deprecated
 
 import akka.stream.Inlet
 import akka.stream.stage.GraphStageLogic
 import de.sciss.fscape.stream.impl.shapes.In6Out3Shape
+import de.sciss.fscape.stream.{BufLike, Node}
 
 // XXX TODO --- we could easily split now between input and output trait
 // and would reduce the number of implementation traits necessary
+@deprecated("Should move to using Handlers", since = "2.35.1")
 trait In6Out3Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: BufLike,
 In3 >: Null <: BufLike, In4 >: Null <: BufLike, In5 >: Null <: BufLike, Out0 >: Null <: BufLike, 
 Out1 >: Null <: BufLike, Out2 >: Null <: BufLike]

@@ -16,7 +16,8 @@ package stream
 
 import akka.stream.{Attributes, FanInShape4}
 import de.sciss.fscape.graph.RotateFlipMatrix._
-import de.sciss.fscape.stream.impl.{FilterIn4DImpl, FilterLogicImpl, NodeImpl, StageImpl, WindowedLogicImpl}
+import de.sciss.fscape.stream.impl.deprecated.{FilterIn4DImpl, FilterLogicImpl, WindowedLogicImpl}
+import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 
 import scala.annotation.switch
 

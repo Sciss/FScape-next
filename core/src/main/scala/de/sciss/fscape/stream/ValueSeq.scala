@@ -15,7 +15,8 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, Outlet, SourceShape}
-import de.sciss.fscape.stream.impl.{ChunkImpl, GenIn0Impl, NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.deprecated.{ChunkImpl, GenIn0Impl}
+import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 
 object ValueSeq {
   def int(elems: Array[Int])(implicit b: Builder): OutI = {

@@ -17,6 +17,7 @@ package impl
 
 import akka.stream.Shape
 import akka.stream.stage.GraphStageLogic
+import de.sciss.fscape.stream.impl.deprecated.{FilterLogicImpl, WindowedLogicImpl}
 
 @deprecated("Should move to using Handlers", since = "2.35.1")
 trait RunningWindowValueImpl[S <: Shape]

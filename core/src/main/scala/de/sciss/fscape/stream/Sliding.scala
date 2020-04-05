@@ -20,7 +20,8 @@ import java.nio.channels.FileChannel
 
 import akka.stream.{Attributes, FanInShape3}
 import de.sciss.file.File
-import de.sciss.fscape.stream.impl.{ChunkImpl, FilterIn3DImpl, FilterLogicImpl, NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.deprecated.{ChunkImpl, FilterIn3DImpl, FilterLogicImpl}
+import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 
 import scala.collection.mutable
 

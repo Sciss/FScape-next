@@ -11,7 +11,7 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape.stream.impl
+package de.sciss.fscape.stream.impl.deprecated
 
 import akka.stream.stage.{GraphStageLogic, InHandler}
 import akka.stream.{Inlet, Shape}
@@ -324,6 +324,7 @@ trait DemandFilterWindowedLogic[A, E <: BufElem[A], S <: Shape]
     System.arraycopy(win, writeOff.toInt, out, outOff, chunk)
 }
 
+@deprecated("Should move to using Handlers", since = "2.35.1")
 trait NoParamsDemandWindowLogic {
   protected def winParamsValid: Boolean = true
   protected def needsWinParams: Boolean = false

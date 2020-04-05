@@ -16,7 +16,8 @@ package stream
 
 import akka.stream.{Attributes, FanInShape5}
 import de.sciss.file.File
-import de.sciss.fscape.stream.impl.{BlockingGraphStage, FilterIn5DImpl, FilterLogicImpl, NodeImpl, WindowedLogicImpl}
+import de.sciss.fscape.stream.impl.deprecated.{FilterIn5DImpl, FilterLogicImpl, WindowedLogicImpl}
+import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeImpl}
 import de.sciss.numbers
 import de.sciss.numbers.{IntFunctions => ri, LongFunctions => rl}
 

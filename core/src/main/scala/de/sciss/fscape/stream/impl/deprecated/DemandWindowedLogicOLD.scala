@@ -1,5 +1,5 @@
 /*
- *  WindowedLogicImpl.scala
+ *  DemandWindowedLogic.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2020 Hanns Holger Rutz. All rights reserved.
@@ -11,15 +11,16 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape
-package stream
-package impl
+package de.sciss.fscape.stream.impl.deprecated
 
 import akka.stream.Shape
 import akka.stream.stage.GraphStageLogic
 
-@deprecated("Does not poll window parameters per window, use NewDemandWindowedLogic instead", since = "2.32.0")
-trait WindowedLogicImpl[S <: Shape] extends ChunkImpl[S] {
+/** A logic component for windowed processing, where window parameters
+  * are obtained "on demand", i.e. at the speed of one per window.
+  */
+@deprecated("Assumes that block-sizes for aux-ins always match", since = "2.32.0")
+trait DemandWindowedLogicOLD[S <: Shape] extends DemandChunkImpl[S] {
 
   _: GraphStageLogic =>
 
@@ -27,22 +28,20 @@ trait WindowedLogicImpl[S <: Shape] extends ChunkImpl[S] {
 
   /** Notifies about the start of the next window.
     *
-    * @param inOff  current offset into input buffer
     * @return the number of frames to write to the internal window buffer
     *         (becomes `writeToWinRemain`)
     */
-  protected def startNextWindow(inOff: Int): Long
+  protected def startNextWindow(): Long
 
   /** If crucial inputs have been closed. */
   protected def inputsEnded: Boolean
 
   /** Issues a copy from input buffer to internal window buffer.
     *
-    * @param inOff          current offset into input buffer
     * @param writeToWinOff  current offset into internal window buffer
     * @param chunk          number of frames to copy
     */
-  protected def copyInputToWindow(inOff: Int, writeToWinOff: Long, chunk: Int): Unit
+  protected def copyInputToWindow(writeToWinOff: Long, chunk: Int): Unit
 
   /** Called when the internal window buffer is full, in order to
     * proceed to the next phase of copying from window to output.
@@ -54,9 +53,11 @@ trait WindowedLogicImpl[S <: Shape] extends ChunkImpl[S] {
     * @return the number of frames available for sending through `copyWindowToOutput`
     *         (this becomes `readFromWinRemain`).
     */
-  protected def processWindow(writeToWinOff: Long): Long
+  protected def processWindow(writeToWinOff: Long /* , flush: Boolean */): Long
 
   protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit
+
+  protected def canStartNextWindow: Boolean
 
   // ---- impl ----
 
@@ -74,21 +75,21 @@ trait WindowedLogicImpl[S <: Shape] extends ChunkImpl[S] {
 
     if (canWriteToWindow) {
       val flushIn0 = inputsEnded // inRemain == 0 && shouldComplete()
-      if (isNextWindow && !flushIn0) {
-        writeToWinRemain  = startNextWindow(inOff = inOff)
+      if (isNextWindow && canStartNextWindow && !flushIn0) {
+        writeToWinRemain  = startNextWindow()
         isNextWindow      = false
         stateChange       = true
         // logStream(s"startNextWindow(); writeToWinRemain = $writeToWinRemain")
       }
 
-      val chunk     = math.min(writeToWinRemain, inRemain).toInt
+      val chunk     = math.min(writeToWinRemain, mainInRemain).toInt
       val flushIn   = flushIn0 && writeToWinOff > 0
       if (chunk > 0 || flushIn) {
         // logStream(s"writeToWindow(); inOff = $inOff, writeToWinOff = $writeToWinOff, chunk = $chunk")
         if (chunk > 0) {
-          copyInputToWindow(inOff = inOff, writeToWinOff = writeToWinOff, chunk = chunk)
-          inOff            += chunk
-          inRemain         -= chunk
+          copyInputToWindow(writeToWinOff = writeToWinOff, chunk = chunk)
+          mainInOff        += chunk
+          mainInRemain     -= chunk
           writeToWinOff    += chunk
           writeToWinRemain -= chunk
           stateChange       = true
@@ -100,6 +101,8 @@ trait WindowedLogicImpl[S <: Shape] extends ChunkImpl[S] {
           readFromWinOff    = 0
           isNextWindow      = true
           stateChange       = true
+          auxInOff         += 1
+          auxInRemain      -= 1
           // logStream(s"processWindow(); readFromWinRemain = $readFromWinRemain")
         }
       }
@@ -121,5 +124,5 @@ trait WindowedLogicImpl[S <: Shape] extends ChunkImpl[S] {
     stateChange
   }
 
-  protected final def shouldComplete(): Boolean = inputsEnded && writeToWinOff /* writeToWinRemain */ == 0 && readFromWinRemain == 0
+  protected final def shouldComplete(): Boolean = inputsEnded && writeToWinOff == 0 && readFromWinRemain == 0
 }

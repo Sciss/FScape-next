@@ -16,7 +16,8 @@ package stream
 
 import akka.stream.{Attributes, FanInShape3, Inlet, Outlet}
 import de.sciss.fscape.graph.NormalizeWindow.{FitBipolar, FitUnipolar, Normalize, ZeroMean}
-import de.sciss.fscape.stream.impl.{DemandFilterWindowedLogic, NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.deprecated.DemandFilterWindowedLogic
+import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 
 import scala.annotation.switch
 

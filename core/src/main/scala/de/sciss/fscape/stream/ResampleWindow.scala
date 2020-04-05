@@ -21,7 +21,8 @@ import java.nio.channels.FileChannel
 import akka.stream.stage.InHandler
 import akka.stream.{Attributes, FanInShape7, Inlet}
 import de.sciss.file._
-import de.sciss.fscape.stream.impl.{NodeImpl, Out1DoubleImpl, Out1LogicImpl, ResampleImpl, StageImpl}
+import de.sciss.fscape.stream.impl.deprecated.{Out1DoubleImpl, Out1LogicImpl}
+import de.sciss.fscape.stream.impl.{NodeImpl, ResampleImpl, StageImpl}
 
 object ResampleWindow {
   def apply(in: OutD, size: OutI, factor: OutD, minFactor: OutD, rollOff: OutD, kaiserBeta: OutD, zeroCrossings: OutI)

@@ -15,7 +15,8 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape2}
-import de.sciss.fscape.stream.impl.{DemandGenIn2, DemandWindowedLogicOLD, NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.deprecated.{DemandGenIn2, DemandWindowedLogicOLD}
+import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 
 object Metro {
   def apply(period: OutL, phase: OutL)(implicit b: Builder): OutI = {

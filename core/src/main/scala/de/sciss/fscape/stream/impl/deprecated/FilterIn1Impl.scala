@@ -11,12 +11,11 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape
-package stream
-package impl
+package de.sciss.fscape.stream.impl.deprecated
 
-import akka.stream.{FlowShape, Inlet, Outlet}
 import akka.stream.stage.GraphStageLogic
+import akka.stream.{FlowShape, Inlet, Outlet}
+import de.sciss.fscape.stream.{BufD, BufI, BufL, BufLike, Node}
 
 /** Building block for `FanInShape2` type graph stage logic. */
 @deprecated("Should move to using Handlers", since = "2.35.1")

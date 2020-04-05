@@ -15,7 +15,8 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape10, Outlet}
-import de.sciss.fscape.stream.impl.{DemandAuxInHandler, DemandInOutImpl, DemandProcessInHandler, DemandWindowedLogicOLD, NodeImpl, Out1DoubleImpl, Out1LogicImpl, ProcessOutHandlerImpl, StageImpl}
+import de.sciss.fscape.stream.impl.deprecated.{DemandAuxInHandler, DemandInOutImpl, DemandProcessInHandler, DemandWindowedLogicOLD, Out1DoubleImpl, Out1LogicImpl, ProcessOutHandlerImpl}
+import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 
 object PitchesToViterbi {
   def apply(lags: OutD, strengths: OutD, numIn: OutI, peaks: OutD, maxLag: OutI, voicingThresh: OutD, silenceThresh: OutD,

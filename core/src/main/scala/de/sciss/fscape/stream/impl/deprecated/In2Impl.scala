@@ -11,16 +11,16 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape
-package stream
-package impl
+package de.sciss.fscape.stream.impl.deprecated
 
-import akka.stream.{FanInShape2, Inlet, Outlet}
 import akka.stream.stage.GraphStageLogic
+import akka.stream.{FanInShape2, Inlet, Outlet}
+import de.sciss.fscape.stream.{BufLike, Node}
 
 /** Building block for `FanInShape2` type graph stage logic,
   * with no information regarding "hot" inlets.
   */
+@deprecated("Should move to using Handlers", since = "2.35.1")
 trait In2Impl[In0 <: BufLike, In1 <: BufLike, Out <: BufLike]
   extends Out1LogicImpl[Out, FanInShape2[In0, In1, Out]] {
   _: GraphStageLogic with Node =>

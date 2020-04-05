@@ -11,12 +11,11 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape
-package stream
-package impl
+package de.sciss.fscape.stream.impl.deprecated
 
 import akka.stream.stage.{InHandler, OutHandler}
 import akka.stream.{Inlet, Outlet, Shape}
+import de.sciss.fscape.logStream
 
 // XXX TODO --- most likely we don't need the
 // complicated `ProcessInHandlerImpl` can replace it

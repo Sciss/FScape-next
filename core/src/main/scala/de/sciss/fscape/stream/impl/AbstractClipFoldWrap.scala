@@ -16,6 +16,7 @@ package stream
 package impl
 
 import akka.stream.FanInShape3
+import de.sciss.fscape.stream.impl.deprecated.{FilterChunkImpl, FilterIn3Impl}
 
 abstract class AbstractClipFoldWrapI(name: String, layer: Layer, shape: FanInShape3[BufI, BufI, BufI, BufI])(implicit ctrl: Control)
   extends NodeImpl(name, layer, shape)

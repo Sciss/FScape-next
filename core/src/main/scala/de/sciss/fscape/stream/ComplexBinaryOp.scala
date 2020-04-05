@@ -15,7 +15,8 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape2}
-import de.sciss.fscape.stream.impl.{FilterChunkImpl, FilterIn2DImpl, NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.deprecated.{FilterChunkImpl, FilterIn2DImpl}
+import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 
 /** Binary operator assuming stream is complex signal (real and imaginary interleaved).
   * Outputs another complex stream even if the operator yields a purely real-valued result.

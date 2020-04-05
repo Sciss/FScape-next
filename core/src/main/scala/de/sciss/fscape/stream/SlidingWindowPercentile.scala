@@ -15,7 +15,8 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape5}
-import de.sciss.fscape.stream.impl.{FilterIn5DImpl, FilterLogicImpl, NodeImpl, StageImpl, WindowedLogicImpl}
+import de.sciss.fscape.stream.impl.deprecated.{FilterIn5DImpl, FilterLogicImpl, WindowedLogicImpl}
+import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 
 import scala.annotation.tailrec
 import scala.collection.mutable

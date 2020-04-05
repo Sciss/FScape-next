@@ -15,7 +15,8 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape2, Inlet, Outlet}
-import de.sciss.fscape.stream.impl.{DemandFilterWindowedLogic, NoParamsDemandWindowLogic, NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.deprecated.{DemandFilterWindowedLogic, NoParamsDemandWindowLogic}
+import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 
 object WindowIndexWhere {
   def apply(p: OutI, size: OutI)(implicit b: Builder): OutI = {

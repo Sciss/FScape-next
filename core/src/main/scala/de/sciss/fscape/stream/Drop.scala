@@ -16,7 +16,8 @@ package stream
 
 import akka.stream.{Attributes, FanInShape2, Inlet, Outlet}
 import de.sciss.fscape.graph.ConstantL
-import de.sciss.fscape.stream.impl.{ChunkImpl, FilterIn2Impl, NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.deprecated.{ChunkImpl, FilterIn2Impl}
+import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 
 object Drop {
   def tail[A, E <: BufElem[A]](in: Outlet[E])(implicit b: Builder, tpe: StreamType[A, E]): Outlet[E] = {

@@ -15,7 +15,8 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape3}
-import de.sciss.fscape.stream.impl.{FilterIn3DImpl, NodeImpl, RunningWindowValueImpl, StageImpl}
+import de.sciss.fscape.stream.impl.deprecated.FilterIn3DImpl
+import de.sciss.fscape.stream.impl.{NodeImpl, RunningWindowValueImpl, StageImpl}
 
 object RunningWindowSum {
   def apply(in: OutD, size: OutI, trig: OutI)(implicit b: Builder): OutD = {

@@ -16,7 +16,8 @@ package stream
 
 import akka.stream.stage.InHandler
 import akka.stream.{Attributes, FanInShape10}
-import de.sciss.fscape.stream.impl.{NodeImpl, Out1DoubleImpl, Out1LogicImpl, ProcessOutHandlerImpl, ScanImageImpl, StageImpl}
+import de.sciss.fscape.stream.impl.deprecated.{Out1DoubleImpl, Out1LogicImpl, ProcessOutHandlerImpl}
+import de.sciss.fscape.stream.impl.{NodeImpl, ScanImageImpl, StageImpl}
 
 import scala.annotation.tailrec
 import scala.math.{max, min}

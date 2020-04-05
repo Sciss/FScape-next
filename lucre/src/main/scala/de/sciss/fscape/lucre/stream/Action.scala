@@ -16,7 +16,8 @@ package lucre.stream
 
 import akka.stream.{Attributes, SinkShape}
 import de.sciss.fscape.lucre.UGenGraphBuilder.Input
-import de.sciss.fscape.stream.impl.{NodeImpl, Sink1Impl, StageImpl}
+import de.sciss.fscape.stream.impl.deprecated.Sink1Impl
+import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 import de.sciss.fscape.stream.{BufI, Builder, Control, _}
 
 object Action {

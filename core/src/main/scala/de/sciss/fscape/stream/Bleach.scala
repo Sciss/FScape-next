@@ -15,7 +15,8 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape4}
-import de.sciss.fscape.stream.impl.{FilterChunkImpl, FilterIn4DImpl, NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.deprecated.{FilterChunkImpl, FilterIn4DImpl}
+import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 
 object Bleach {
   def apply(in: OutD, filterLen: OutI, feedback: OutD, filterClip: OutD)(implicit b: Builder): OutD = {

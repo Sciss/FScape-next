@@ -11,12 +11,11 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape
-package stream
-package impl
+package de.sciss.fscape.stream.impl.deprecated
 
 import akka.stream.stage.GraphStageLogic
 import akka.stream.{Outlet, Shape}
+import de.sciss.fscape.stream.BufLike
 
 @deprecated("Should move to using Handlers", since = "2.35.1")
 trait Out1LogicImpl[Out <: BufLike, S <: Shape] extends InOutImpl[S] {

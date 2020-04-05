@@ -18,8 +18,9 @@ import java.util
 
 import akka.stream.stage.OutHandler
 import akka.stream.{Attributes, Outlet}
+import de.sciss.fscape.stream.impl.deprecated.{AuxInHandlerImpl, FilterLogicImpl, FullInOutImpl, ProcessInHandlerImpl}
 import de.sciss.fscape.stream.impl.shapes.In5Out4Shape
-import de.sciss.fscape.stream.impl.{AuxInHandlerImpl, FilterLogicImpl, FullInOutImpl, NodeImpl, ProcessInHandlerImpl, StageImpl}
+import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 
 import scala.annotation.{switch, tailrec}
 

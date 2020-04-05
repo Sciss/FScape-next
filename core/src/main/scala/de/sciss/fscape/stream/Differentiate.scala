@@ -15,7 +15,8 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FlowShape}
-import de.sciss.fscape.stream.impl.{FilterChunkImpl, FilterIn1DImpl, NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.deprecated.{FilterChunkImpl, FilterIn1DImpl}
+import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 
 object Differentiate {
   def apply(in: OutD)(implicit b: Builder): OutD = {

@@ -15,7 +15,8 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, SinkShape}
-import de.sciss.fscape.stream.impl.{NodeImpl, Sink1Impl, StageImpl}
+import de.sciss.fscape.stream.impl.deprecated.Sink1Impl
+import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.Promise

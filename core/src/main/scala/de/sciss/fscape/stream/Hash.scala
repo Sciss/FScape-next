@@ -15,7 +15,8 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FlowShape}
-import de.sciss.fscape.stream.impl.{FilterChunkImpl, FilterIn1IImpl, FilterIn1LImpl, NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.deprecated.{FilterChunkImpl, FilterIn1IImpl, FilterIn1LImpl}
+import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 
 object Hash {
   def fromInt(in: OutI)(implicit b: Builder): OutI = {

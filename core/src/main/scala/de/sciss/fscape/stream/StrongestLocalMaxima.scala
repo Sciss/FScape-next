@@ -16,8 +16,9 @@ package stream
 
 import akka.stream.stage.OutHandler
 import akka.stream.{Attributes, Outlet}
+import de.sciss.fscape.stream.impl.deprecated.{AuxInHandlerImpl, FilterLogicImpl, FullInOutImpl, ProcessInHandlerImpl, WindowedLogicImpl}
 import de.sciss.fscape.stream.impl.shapes.In7Out2Shape
-import de.sciss.fscape.stream.impl.{AuxInHandlerImpl, FilterLogicImpl, FullInOutImpl, NodeImpl, ProcessInHandlerImpl, StageImpl, WindowedLogicImpl}
+import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 
 object StrongestLocalMaxima {
   def apply(in: OutD, size: OutI, minLag: OutI, maxLag: OutI, thresh: OutD, octaveCost: OutD, num: OutI)

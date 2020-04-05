@@ -15,7 +15,8 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape2}
-import de.sciss.fscape.stream.impl.{FilterIn2DImpl, NodeImpl, RunningValueImpl, StageImpl}
+import de.sciss.fscape.stream.impl.deprecated.FilterIn2DImpl
+import de.sciss.fscape.stream.impl.{NodeImpl, RunningValueImpl, StageImpl}
 
 object RunningMin {
   def apply(in: OutD, trig: OutI)(implicit b: Builder): OutD = {

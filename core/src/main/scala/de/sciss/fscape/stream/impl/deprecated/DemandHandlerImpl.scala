@@ -11,13 +11,13 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape
-package stream
-package impl
+package de.sciss.fscape.stream.impl.deprecated
 
-import akka.stream.{Inlet, Shape}
 import akka.stream.stage.InHandler
+import akka.stream.{Inlet, Shape}
+import de.sciss.fscape.logStream
 
+@deprecated("Should move to using Handlers", since = "2.35.1")
 final class DemandProcessInHandler[A, S <: Shape](in: Inlet[A], logic: DemandInOutImpl[S])
   extends InHandler {
   def onPush(): Unit = {
@@ -43,6 +43,7 @@ final class DemandProcessInHandler[A, S <: Shape](in: Inlet[A], logic: DemandInO
   logic.setInHandler(in, this)
 }
 
+@deprecated("Should move to using Handlers", since = "2.35.1")
 final class DemandAuxInHandler[A, S <: Shape](in: Inlet[A], logic: DemandInOutImpl[S])
   extends InHandler {
 

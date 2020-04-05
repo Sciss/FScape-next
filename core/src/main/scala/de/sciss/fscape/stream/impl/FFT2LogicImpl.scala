@@ -17,6 +17,7 @@ package impl
 import akka.stream.stage.GraphStageLogic
 import akka.stream.{Attributes, FanInShape3, FanInShape4}
 import de.sciss.fscape.Util
+import de.sciss.fscape.stream.impl.deprecated.{FilterIn3DImpl, FilterIn4DImpl, FilterLogicImpl, WindowedLogicImpl}
 import edu.emory.mathcs.jtransforms.fft.DoubleFFT_2D
 
 import scala.annotation.switch

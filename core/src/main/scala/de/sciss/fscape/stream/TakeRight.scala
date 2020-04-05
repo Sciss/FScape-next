@@ -16,7 +16,8 @@ package stream
 
 import akka.stream.{Attributes, FanInShape2, Inlet, Outlet}
 import de.sciss.fscape.graph.ConstantI
-import de.sciss.fscape.stream.impl.{FilterIn2Impl, NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.deprecated.FilterIn2Impl
+import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 
 object TakeRight {
   def last[A, E <: BufElem[A]](in: Outlet[E])

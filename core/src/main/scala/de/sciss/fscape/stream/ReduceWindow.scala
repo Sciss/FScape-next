@@ -15,7 +15,8 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape2, Inlet, Outlet}
-import de.sciss.fscape.stream.impl.{DemandWindowedLogic, NoParamsDemandWindowLogic, NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.deprecated.{DemandWindowedLogic, NoParamsDemandWindowLogic}
+import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 
 object ReduceWindow {
   import graph.BinaryOp.Op

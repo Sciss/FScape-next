@@ -15,8 +15,9 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.Attributes
+import de.sciss.fscape.stream.impl.deprecated.{FilterLogicImpl, In6Out3Impl, WindowedLogicImpl}
 import de.sciss.fscape.stream.impl.shapes.In6Out3Shape
-import de.sciss.fscape.stream.impl.{FilterLogicImpl, In6Out3Impl, NodeImpl, StageImpl, WindowedLogicImpl}
+import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 import de.sciss.numbers
 
 object PeakCentroid2D {

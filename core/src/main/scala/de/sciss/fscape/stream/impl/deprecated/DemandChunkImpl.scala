@@ -1,5 +1,5 @@
 /*
- *  DualAuxChunkImpl.scala
+ *  DemandChunkImpl.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2020 Hanns Holger Rutz. All rights reserved.
@@ -11,36 +11,33 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape
-package stream
-package impl
+package de.sciss.fscape.stream.impl.deprecated
 
 import akka.stream.Shape
 import akka.stream.stage.GraphStageLogic
+import de.sciss.fscape.logStream
 
 import scala.annotation.tailrec
 
 /** An I/O process that processes chunks, distinguishing
-  * between main or full-rate inputs and two types of auxiliary or
+  * between main or full-rate inputs and auxiliary or
   * demand-rate inputs (for example, polling one value per window).
   */
-@deprecated("Should move to using Handlers", since = "2.35.1")
-trait DualAuxChunkImpl[S <: Shape] extends InOutImpl[S] {
+@deprecated("Assumes that block-sizes for aux-ins always match", since = "2.32.0")
+trait DemandChunkImpl[S <: Shape] extends InOutImpl[S] {
   _: GraphStageLogic =>
 
   // ---- abstract ----
 
   protected def mainCanRead: Boolean
-  protected def aux1CanRead: Boolean
-  protected def aux2CanRead: Boolean
+  protected def auxCanRead : Boolean
 
   protected def shouldComplete(): Boolean
 
   protected def allocOutputBuffers(): Int
 
   protected def readMainIns(): Int
-  protected def readAux1Ins(): Int
-  protected def readAux2Ins(): Int
+  protected def readAuxIns (): Int
 
   /** Should read and possibly update `inRemain`, `outRemain`, `inOff`, `outOff`.
     *
@@ -52,10 +49,8 @@ trait DualAuxChunkImpl[S <: Shape] extends InOutImpl[S] {
 
   protected final var mainInOff       = 0  // regarding `bufIn`
   protected final var mainInRemain    = 0
-  protected final var aux1InOff       = 0
-  protected final var aux1InRemain    = 0
-  protected final var aux2InOff       = 0
-  protected final var aux2InRemain    = 0
+  protected final var auxInOff        = 0  // regarding `bufIn`
+  protected final var auxInRemain     = 0
   protected final var outOff          = 0  // regarding `bufOut`
   protected final var outRemain       = 0
 
@@ -65,10 +60,13 @@ trait DualAuxChunkImpl[S <: Shape] extends InOutImpl[S] {
   private[this] def mainShouldRead = mainInRemain == 0 && mainCanRead
 
   @inline
-  private[this] def aux1ShouldRead  = aux1InRemain  == 0 && aux1CanRead
+  private[this] def auxShouldRead  = auxInRemain  == 0 && auxCanRead
 
-  @inline
-  private[this] def aux2ShouldRead  = aux2InRemain  == 0 && aux2CanRead
+//  private[this] final var mainInValid = false
+//  private[this] final var auxInValid  = false
+//  private[this] final var _inValid    = false
+//
+//  protected final def inValid: Boolean = _inValid
 
   @tailrec
   final def process(): Unit = {
@@ -79,18 +77,20 @@ trait DualAuxChunkImpl[S <: Shape] extends InOutImpl[S] {
       mainInRemain  = readMainIns()
       mainInOff     = 0
       stateChange   = true
+//      if (!mainInValid) {
+//        mainInValid = true
+//        _inValid     = auxInValid
+//      }
     }
 
-    if (aux1ShouldRead) {
-      aux1InRemain  = readAux1Ins()
-      aux1InOff     = 0
+    if (auxShouldRead) {
+      auxInRemain   = readAuxIns()
+      auxInOff      = 0
       stateChange   = true
-    }
-
-    if (aux2ShouldRead) {
-      aux2InRemain  = readAux2Ins()
-      aux2InOff     = 0
-      stateChange   = true
+//      if (!auxInValid) {
+//        auxInValid  = true
+//        _inValid     = mainInValid
+//      }
     }
 
     if (outSent) {

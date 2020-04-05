@@ -1,5 +1,5 @@
 /*
- *  FilterIn5Impl.scala
+ *  FilterIn6Impl.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2020 Hanns Holger Rutz. All rights reserved.
@@ -11,19 +11,18 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape
-package stream
-package impl
+package de.sciss.fscape.stream.impl.deprecated
 
 import akka.stream.stage.GraphStageLogic
-import akka.stream.{FanInShape5, Inlet, Outlet}
+import akka.stream.{FanInShape6, Inlet, Outlet}
+import de.sciss.fscape.stream.{BufD, BufLike, Node}
 
-/** Building block for `FanInShape5` type graph stage logic. */
+/** Building block for `FanInShape6` type graph stage logic. */
 @deprecated("Does not allow individual aux inputs to advance at different block sizes", since = "2.35.1")
-trait FilterIn5Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: BufLike,
-In3 >: Null <: BufLike, In4 >: Null <: BufLike, Out >: Null <: BufLike]
-  extends Out1LogicImpl[Out, FanInShape5[In0, In1, In2, In3, In4, Out]]
-    with FullInOutImpl[FanInShape5[In0, In1, In2, In3, In4, Out]] {
+trait FilterIn6Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: BufLike,
+In3 >: Null <: BufLike, In4 >: Null <: BufLike, In5 >: Null <: BufLike, Out >: Null <: BufLike]
+  extends Out1LogicImpl[Out, FanInShape6[In0, In1, In2, In3, In4, In5, Out]]
+    with FullInOutImpl[FanInShape6[In0, In1, In2, In3, In4, In5, Out]] {
   _: GraphStageLogic with Node =>
 
   // ---- impl ----
@@ -33,6 +32,7 @@ In3 >: Null <: BufLike, In4 >: Null <: BufLike, Out >: Null <: BufLike]
   protected final var bufIn2 : In2 = _
   protected final var bufIn3 : In3 = _
   protected final var bufIn4 : In4 = _
+  protected final var bufIn5 : In5 = _
   protected final var bufOut0: Out = _
 
   protected final def in0: Inlet[In0] = shape.in0
@@ -40,6 +40,7 @@ In3 >: Null <: BufLike, In4 >: Null <: BufLike, Out >: Null <: BufLike]
   protected final def in2: Inlet[In2] = shape.in2
   protected final def in3: Inlet[In3] = shape.in3
   protected final def in4: Inlet[In4] = shape.in4
+  protected final def in5: Inlet[In5] = shape.in5
 
   protected final def out0: Outlet[Out] = shape.out
 
@@ -81,6 +82,11 @@ In3 >: Null <: BufLike, In4 >: Null <: BufLike, Out >: Null <: BufLike]
       tryPull(sh.in4)
     }
 
+    if (isAvailable(sh.in5)) {
+      bufIn5 = grab(sh.in5)
+      tryPull(sh.in5)
+    }
+
     _inValid = true
     _canRead = false
     bufIn0.size
@@ -107,6 +113,10 @@ In3 >: Null <: BufLike, In4 >: Null <: BufLike, Out >: Null <: BufLike]
       bufIn4.release()
       bufIn4 = null
     }
+    if (bufIn5 != null) {
+      bufIn5.release()
+      bufIn5 = null
+    }
   }
 
   protected final def freeOutputBuffers(): Unit =
@@ -121,7 +131,8 @@ In3 >: Null <: BufLike, In4 >: Null <: BufLike, Out >: Null <: BufLike]
       ((isClosed(sh.in1) && _inValid) || isAvailable(sh.in1)) &&
       ((isClosed(sh.in2) && _inValid) || isAvailable(sh.in2)) &&
       ((isClosed(sh.in3) && _inValid) || isAvailable(sh.in3)) &&
-      ((isClosed(sh.in4) && _inValid) || isAvailable(sh.in4))
+      ((isClosed(sh.in4) && _inValid) || isAvailable(sh.in4)) &&
+      ((isClosed(sh.in5) && _inValid) || isAvailable(sh.in5))
   }
 
   new ProcessInHandlerImpl (shape.in0, this)
@@ -129,13 +140,14 @@ In3 >: Null <: BufLike, In4 >: Null <: BufLike, Out >: Null <: BufLike]
   new AuxInHandlerImpl     (shape.in2, this)
   new AuxInHandlerImpl     (shape.in3, this)
   new AuxInHandlerImpl     (shape.in4, this)
+  new AuxInHandlerImpl     (shape.in5, this)
   new ProcessOutHandlerImpl(shape.out, this)
 }
 
 @deprecated("Does not allow individual aux inputs to advance at different block sizes", since = "2.35.1")
-trait FilterIn5DImpl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: BufLike,
-In3 >: Null <: BufLike, In4 >: Null <: BufLike]
-  extends FilterIn5Impl[In0, In1, In2, In3, In4, BufD]
-    with Out1DoubleImpl[FanInShape5[In0, In1, In2, In3, In4, BufD]] {
+trait FilterIn6DImpl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: BufLike,
+In3 >: Null <: BufLike, In4 >: Null <: BufLike, In5 >: Null <: BufLike]
+  extends FilterIn6Impl[In0, In1, In2, In3, In4, In5, BufD]
+    with Out1DoubleImpl[FanInShape6[In0, In1, In2, In3, In4, In5, BufD]] {
   _: GraphStageLogic with Node =>
 }

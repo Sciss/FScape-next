@@ -11,12 +11,12 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape
-package stream
-package impl
+package de.sciss.fscape.stream.impl.deprecated
 
 import akka.stream.stage.GraphStageLogic
 import akka.stream.{Inlet, Shape}
+import de.sciss.fscape.logStream
+import de.sciss.fscape.stream.BufLike
 
 import scala.annotation.tailrec
 

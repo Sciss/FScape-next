@@ -16,7 +16,8 @@ package stream
 
 import akka.stream.stage.InHandler
 import akka.stream.{Attributes, FanInShape2, Inlet, Outlet}
-import de.sciss.fscape.stream.impl.{FullInOutImpl, NodeImpl, Out1LogicImpl, ProcessOutHandlerImpl, SameChunkImpl, StageImpl}
+import de.sciss.fscape.stream.impl.deprecated.{FullInOutImpl, Out1LogicImpl, ProcessOutHandlerImpl, SameChunkImpl}
+import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 
 object Concat {
   def apply[A, E <: BufElem[A]](a: Outlet[E], b: Outlet[E])

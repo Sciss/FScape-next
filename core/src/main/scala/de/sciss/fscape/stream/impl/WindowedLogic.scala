@@ -23,7 +23,7 @@ import scala.annotation.tailrec
   * This is for window processing UGens where window parameters include
   * `winSize` and possibly others, and will be polled per window.
   */
-trait WindowedLogic[/*@specialized(Int, Long, Double)*/ A, E >: Null <: BufElem[A], S <: Shape] extends Node {
+trait WindowedLogic[/*@specialized(Args)*/ A, E >: Null <: BufElem[A], S <: Shape] extends Node {
   _: Handlers[S] =>
 
   // ---- abstract ----

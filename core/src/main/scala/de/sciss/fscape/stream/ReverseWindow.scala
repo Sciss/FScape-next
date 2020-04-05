@@ -15,7 +15,8 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape3, Inlet, Outlet}
-import de.sciss.fscape.stream.impl.{DemandFilterWindowedLogic, NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.deprecated.DemandFilterWindowedLogic
+import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 
 /** Reverses contents of windowed input. */
 object ReverseWindow {

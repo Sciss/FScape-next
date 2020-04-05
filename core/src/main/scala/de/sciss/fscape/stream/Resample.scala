@@ -16,7 +16,8 @@ package stream
 
 import akka.stream.stage.InHandler
 import akka.stream.{Attributes, FanInShape6}
-import de.sciss.fscape.stream.impl.{NodeImpl, Out1DoubleImpl, Out1LogicImpl, ResampleImpl, StageImpl}
+import de.sciss.fscape.stream.impl.deprecated.{Out1DoubleImpl, Out1LogicImpl}
+import de.sciss.fscape.stream.impl.{NodeImpl, ResampleImpl, StageImpl}
 
 object Resample {
   def apply(in: OutD, factor: OutD, minFactor: OutD, rollOff: OutD, kaiserBeta: OutD, zeroCrossings: OutI)

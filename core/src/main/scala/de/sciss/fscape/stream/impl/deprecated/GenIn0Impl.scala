@@ -11,12 +11,11 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape
-package stream
-package impl
+package de.sciss.fscape.stream.impl.deprecated
 
 import akka.stream.stage.GraphStageLogic
 import akka.stream.{Outlet, SourceShape}
+import de.sciss.fscape.stream.{BufD, BufLike, Node}
 
 /** Building block for generators with `SourceShape` type graph stage logic.
   * A generator keeps producing output until down-stream is closed.

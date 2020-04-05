@@ -15,7 +15,8 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape2}
-import de.sciss.fscape.stream.impl.{FilterChunkImpl, FilterIn2IImpl, NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.deprecated.{FilterChunkImpl, FilterIn2IImpl}
+import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 
 object SetResetFF {
   def apply(trig: OutI, reset: OutI)(implicit b: Builder): OutI = {

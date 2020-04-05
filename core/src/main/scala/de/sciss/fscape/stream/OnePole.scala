@@ -15,7 +15,8 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape2}
-import de.sciss.fscape.stream.impl.{FilterChunkImpl, FilterIn2DImpl, NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.deprecated.{FilterChunkImpl, FilterIn2DImpl}
+import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 
 object OnePole {
   def apply(in: OutD, coef: OutD)(implicit b: Builder): OutD = {

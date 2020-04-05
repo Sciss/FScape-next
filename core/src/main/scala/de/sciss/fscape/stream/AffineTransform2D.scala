@@ -16,7 +16,8 @@ package stream
 
 import akka.stream.stage.InHandler
 import akka.stream.{Attributes, FanInShape15}
-import de.sciss.fscape.stream.impl.{DemandFilterLogic, NodeImpl, Out1DoubleImpl, Out1LogicImpl, ProcessOutHandlerImpl, StageImpl}
+import de.sciss.fscape.stream.impl.deprecated.{DemandFilterLogic, Out1DoubleImpl, Out1LogicImpl, ProcessOutHandlerImpl}
+import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 import de.sciss.numbers.IntFunctions
 
 import scala.annotation.tailrec

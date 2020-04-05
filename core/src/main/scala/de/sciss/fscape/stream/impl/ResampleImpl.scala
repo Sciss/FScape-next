@@ -17,6 +17,7 @@ package impl
 
 import akka.stream.{Inlet, Shape}
 import akka.stream.stage.{GraphStageLogic, InHandler, OutHandler}
+import de.sciss.fscape.stream.impl.deprecated.FullInOutImpl
 
 import scala.annotation.tailrec
 import scala.math._

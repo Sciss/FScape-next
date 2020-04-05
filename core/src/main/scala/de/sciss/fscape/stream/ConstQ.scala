@@ -16,7 +16,8 @@ package stream
 
 import akka.stream.{Attributes, FanInShape5}
 import de.sciss.fscape.graph.GenWindow.Hamming
-import de.sciss.fscape.stream.impl.{FilterIn5DImpl, FilterLogicImpl, NodeImpl, StageImpl, WindowedLogicImpl}
+import de.sciss.fscape.stream.impl.deprecated.{FilterIn5DImpl, FilterLogicImpl, WindowedLogicImpl}
+import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 import de.sciss.numbers
 import de.sciss.numbers.IntFunctions
 import edu.emory.mathcs.jtransforms.fft.DoubleFFT_1D

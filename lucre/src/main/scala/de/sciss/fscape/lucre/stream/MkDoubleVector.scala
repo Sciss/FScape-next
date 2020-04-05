@@ -17,7 +17,8 @@ package lucre.stream
 import akka.stream.{Attributes, SinkShape}
 import de.sciss.fscape.lucre.FScape.Output
 import de.sciss.fscape.lucre.UGenGraphBuilder.OutputRef
-import de.sciss.fscape.stream.impl.{NodeImpl, Sink1Impl, StageImpl}
+import de.sciss.fscape.stream.impl.deprecated.Sink1Impl
+import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 import de.sciss.fscape.stream.{Builder, Control, _}
 import de.sciss.lucre.expr.DoubleVector
 import de.sciss.serial.DataOutput
