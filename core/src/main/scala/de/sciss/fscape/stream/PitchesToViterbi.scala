@@ -37,10 +37,10 @@ object PitchesToViterbi {
 
   private final val name = "PitchesToViterbi"
 
-  private type Shape = FanInShape10[BufD, BufD, BufI, BufD, BufI, BufD, BufD, BufD, BufD, BufD, BufD]
+  private type Shp = FanInShape10[BufD, BufD, BufI, BufD, BufI, BufD, BufD, BufD, BufD, BufD, BufD]
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
-    val shape = new FanInShape10(
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shp](name) {
+    val shape: Shape = new FanInShape10(
       in0 = InD (s"$name.lags"              ),
       in1 = InD (s"$name.strengths"         ),
       in2 = InI (s"$name.numIn"             ),
@@ -54,15 +54,15 @@ object PitchesToViterbi {
       out = OutD(s"$name.out"               )
     )
 
-    def createLogic(attr: Attributes): NodeImpl[PitchesToViterbi.Shape] = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
   }
 
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
-      with DemandWindowedLogicOLD[Shape]
-      with Out1DoubleImpl     [Shape]
-      with Out1LogicImpl[BufD, Shape]
-      with DemandInOutImpl    [Shape] {
+      with DemandWindowedLogicOLD[Shp]
+      with Out1DoubleImpl     [Shp]
+      with Out1LogicImpl[BufD, Shp]
+      with DemandInOutImpl    [Shp] {
 
     private[this] var bufIn0 : BufD = _
     private[this] var bufIn1 : BufD = _

@@ -28,18 +28,18 @@ object Length {
 
   private final val name = "Length"
 
-  private type Shape = FlowShape[BufLike, BufL]
+  private type Shp = FlowShape[BufLike, BufL]
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
-    val shape = new FlowShape(
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shp](name) {
+    val shape: Shape = new FlowShape(
       in  = InA (s"$name.in" ),
       out = OutL(s"$name.out")
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
   }
 
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape) with InHandler with OutHandler {
 
     setHandler(shape.in , this)

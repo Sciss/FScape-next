@@ -28,19 +28,19 @@ object Done {
 
   private final val name = "Done"
 
-  private type Shape = FlowShape[BufLike, BufI]
+  private type Shp = FlowShape[BufLike, BufI]
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shp](name) {
 
-    val shape = new FlowShape(
+    val shape: Shape = new FlowShape(
       in  = Inlet[BufLike](s"$name.in" ),
       out = OutI          (s"$name.out")
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
   }
 
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape) with InHandler with OutHandler {
 
     setHandler(shape.in , this)

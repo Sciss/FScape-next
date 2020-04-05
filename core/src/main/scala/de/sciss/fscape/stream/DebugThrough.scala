@@ -19,7 +19,7 @@ import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
 import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 
 object DebugThrough {
-  def apply[A, Buf >: Null <: BufElem[A]](in: Outlet[Buf], label: String)(implicit b: Builder): Outlet[Buf] = {
+  def apply[A, Buf <: BufElem[A]](in: Outlet[Buf], label: String)(implicit b: Builder): Outlet[Buf] = {
     // println(s"DebugThrough($in, $trig, $label)")
     val stage0  = new Stage[A, Buf](layer = b.layer, label = label)
     val stage   = b.add(stage0)
@@ -29,21 +29,21 @@ object DebugThrough {
 
   private final val name = "DebugThrough"
 
-  private type Shape[A, Buf >: Null <: BufElem[A]] = FlowShape[Buf, Buf]
+  private type Shp[E] = FlowShape[E, E]
 
-  private final class Stage[A, Buf >: Null <: BufElem[A]](layer: Layer, label: String)(implicit ctrl: Control)
-    extends StageImpl[Shape[A, Buf]](name) {
+  private final class Stage[A, E <: BufElem[A]](layer: Layer, label: String)(implicit ctrl: Control)
+    extends StageImpl[Shp[E]](name) {
 
-    val shape = FlowShape(
-      in  = Inlet [Buf](s"$name.in"),
-      out = Outlet[Buf](s"$name.out")
+    val shape: Shape = FlowShape(
+      in  = Inlet [E](s"$name.in"),
+      out = Outlet[E](s"$name.out")
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape = shape, layer = layer, label = label)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic[A, E](shape = shape, layer = layer, label = label)
   }
 
-  private final class Logic[A, Buf >: Null <: BufElem[A]](shape: Shape[A, Buf], layer: Layer, label: String)
-                                                         (implicit ctrl: Control)
+  private final class Logic[A, E <: BufElem[A]](shape: Shp[E], layer: Layer, label: String)
+                                                       (implicit ctrl: Control)
     extends NodeImpl(name, layer, shape) with InHandler with OutHandler { logic =>
 
     override def toString = s"$name-L($label)"

@@ -46,22 +46,21 @@ object WPE_ReverbFrame {
 
   private final val name = "WPE_ReverbFrame"
 
-  private final case class Shape(ins0: Vec[InD], in1: InD, in2: InI, in3: InI, in4: InI, in5: InD,
-                                 outlets: Vec[OutD])
+  private final case class Shp(ins0: Vec[InD], in1: InD, in2: InI, in3: InI, in4: InI, in5: InD, outlets: Vec[OutD])
     extends akka.stream.Shape {
 
     val inlets: Vec[Inlet[_]] = ins0 :+ in1 :+ in2 :+ in3 :+ in4 :+ in5
 
     def deepCopy(): akka.stream.Shape =
-      Shape(ins0 = ins0.map(_.carbonCopy()), in1 = in1.carbonCopy(), in2 = in2.carbonCopy(),
+      Shp(ins0 = ins0.map(_.carbonCopy()), in1 = in1.carbonCopy(), in2 = in2.carbonCopy(),
         in3 = in3.carbonCopy(), in4 = in4.carbonCopy(), in5 = in5.carbonCopy(),
         outlets = outlets.map(_.carbonCopy()))
   }
 
   private final class Stage(layer: Layer, numChannels: Int)(implicit ctrl: Control)
-    extends StageImpl[Shape](name) {
+    extends StageImpl[Shp](name) {
 
-    val shape = Shape(
+    val shape: Shape = Shp(
       ins0    = Vector.tabulate(numChannels)(ch => InD(s"$name.in$ch")),
       in1     = InD (s"$name.psd"),
       in2     = InI (s"$name.bins"),
@@ -77,8 +76,8 @@ object WPE_ReverbFrame {
 
   /* Similar to `DemandWindowedLogic` but for our multi-channel purposes.
    */
-  private final class Logic(shape: Shape, layer: Layer, numChannels: Int)(implicit ctrl: Control)
-    extends NodeImpl[Shape](name, layer = layer, shape = shape) {
+  private final class Logic(shape: Shp, layer: Layer, numChannels: Int)(implicit ctrl: Control)
+    extends NodeImpl[Shp](name, layer = layer, shape = shape) {
 
     _: GraphStageLogic =>
 

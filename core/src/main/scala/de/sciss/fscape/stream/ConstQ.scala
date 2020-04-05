@@ -35,10 +35,10 @@ object ConstQ {
 
   private final val name = "ConstQ"
 
-  private type Shape = FanInShape5[BufD, BufI, BufD, BufD, BufI, BufD]
+  private type Shp = FanInShape5[BufD, BufI, BufD, BufD, BufI, BufD]
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
-    val shape = new FanInShape5(
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shp](name) {
+    val shape: Shape = new FanInShape5(
       in0 = InD (s"$name.in"       ),
       in1 = InI (s"$name.fftSize"  ),
       in2 = InD (s"$name.minFreqN" ),
@@ -46,7 +46,7 @@ object ConstQ {
       in4 = InI (s"$name.zero"     ),
       out = OutD(s"$name.out"      )
     )
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
   }
 
   // N.B.: `offset` is "flat complex", so always even
@@ -54,10 +54,10 @@ object ConstQ {
 
   // XXX TODO --- we could store pre-calculated cosine tables for
   // sufficiently small table sizes
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
-      with FilterLogicImpl[BufD, Shape]
-      with WindowedLogicImpl[Shape]
+      with FilterLogicImpl[BufD, Shp]
+      with WindowedLogicImpl[Shp]
       with FilterIn5DImpl[BufD, BufI, BufD, BufD, BufI] {
 
     private[this] var size      = 0

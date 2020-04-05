@@ -29,14 +29,15 @@ import scala.annotation.tailrec
   * Implementations should call `installMainAndWindowHandlers()` in their
   * constructor, and add handlers for all other inlets.
   */
-trait DemandWindowedLogic[A, In >: Null <: BufElem[A], B, Out >: Null <: BufElem[B], S <: Shape]
+@deprecated("Should move to using Handlers", since = "2.35.1")
+trait DemandWindowedLogic[A, In <: BufElem[A], B, Out <: BufElem[B], S <: Shape]
   extends Out1LogicImpl[Out, S] {
 
     _: GraphStageLogic =>
 
   // ---- abstract ----
 
-  protected def tpeSignal: stream.StreamType[A, In]
+  protected def tpe: stream.StreamType[A, In]
 
   protected def winParamsValid: Boolean
 
@@ -74,7 +75,7 @@ trait DemandWindowedLogic[A, In >: Null <: BufElem[A], B, Out >: Null <: BufElem
 
   /** The default implementation zeroes the window buffer. */
   protected def clearInputTail(win: Array[A], readOff: Int, chunk: Int): Unit =
-    tpeSignal.clear(win, readOff, chunk)
+    tpe.clear(win, readOff, chunk)
 
   /** The default implementation copies the input to the window. */
   protected def processInput(in: Array[A], inOff: Int, win: Array[A], readOff: Int, chunk: Int): Unit =
@@ -157,7 +158,7 @@ trait DemandWindowedLogic[A, In >: Null <: BufElem[A], B, Out >: Null <: BufElem
   private def freeBufInSignal(): Unit =
     if (bufInSignal != null) {
       bufInSignal.release()
-      bufInSignal = null
+      bufInSignal = null.asInstanceOf[In]
     }
 
   private def freeBufInWinSize(): Unit =
@@ -175,7 +176,7 @@ trait DemandWindowedLogic[A, In >: Null <: BufElem[A], B, Out >: Null <: BufElem
   protected def freeOutputBuffers(): Unit =
     if (bufOut0 != null) {
       bufOut0.release()
-      bufOut0 = null
+      bufOut0 = null.asInstanceOf[Out]
     }
 
   @tailrec
@@ -212,7 +213,7 @@ trait DemandWindowedLogic[A, In >: Null <: BufElem[A], B, Out >: Null <: BufElem
         val winBufSz = allWinParamsReady(winInSize)
         // println(s"winBufSz = $winBufSz")
         if (winBuf == null || winBuf.length != winBufSz) {
-          winBuf = tpeSignal.newArray(winBufSz)
+          winBuf = tpe.newArray(winBufSz)
         }
         stateChange = true
       }
@@ -307,12 +308,13 @@ trait DemandWindowedLogic[A, In >: Null <: BufElem[A], B, Out >: Null <: BufElem
 }
 
 /** Variant of `DemandWindowedLogic` where input and output type are the same.  */
-trait DemandFilterWindowedLogic[A, E >: Null <: BufElem[A], S <: Shape]
+@deprecated("Should move to using Handlers", since = "2.35.1")
+trait DemandFilterWindowedLogic[A, E <: BufElem[A], S <: Shape]
   extends DemandWindowedLogic[A, E, A, E, S] {
 
   _: GraphStageLogic =>
 
-  protected final def allocOutBuf0(): E = tpeSignal.allocBuf()
+  protected final def allocOutBuf0(): E = tpe.allocBuf()
 
   /**
     * The default implementation copies the window to the output.

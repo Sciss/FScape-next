@@ -19,8 +19,8 @@ import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
 import Handlers._
 
 object DropRight {
-  def apply[A, E >: Null <: BufElem[A]](in: Outlet[E], length: OutI)
-                                       (implicit b: Builder, tpe: StreamType[A, E]): Outlet[E] = {
+  def apply[A, E <: BufElem[A]](in: Outlet[E], length: OutI)
+                               (implicit b: Builder, tpe: StreamType[A, E]): Outlet[E] = {
     val stage0  = new Stage[A, E](b.layer)
     val stage   = b.add(stage0)
     b.connect(in    , stage.in0)
@@ -32,34 +32,21 @@ object DropRight {
 
   private type Shp[E] = FanInShape2[E, BufI, E]
 
-  private final class Stage[A, E >: Null <: BufElem[A]](layer: Layer)
-                                                       (implicit ctrl: Control, tpe: StreamType[A, E])
+  private final class Stage[A, E <: BufElem[A]](layer: Layer)(implicit ctrl: Control, tpe: StreamType[A, E])
     extends StageImpl[Shp[E]](name) {
 
-    val shape = new FanInShape2(
+    val shape: Shape = new FanInShape2(
       in0 = Inlet [E](s"$name.in"     ),
       in1 = InI      (s"$name.length" ),
       out = Outlet[E](s"$name.out"    )
     )
 
-    def createLogic(attr: Attributes): NodeImpl[Shape] = {
+    def createLogic(attr: Attributes): NodeImpl[Shape] =
       new Logic[A, E](shape, layer)
-//      val res: Logic[_, _] = if (tpe.isInt) {
-//        new Logic[Int   , BufI](shape.asInstanceOf[Shp[BufI]], layer)
-//      } else if (tpe.isLong) {
-//        new Logic[Long  , BufL](shape.asInstanceOf[Shp[BufL]], layer)
-//      } else if (tpe.isDouble) {
-//        new Logic[Double, BufD](shape.asInstanceOf[Shp[BufD]], layer)
-//      } else {
-//        new Logic[A, E](shape, layer)
-//      }
-//
-//      res.asInstanceOf[Logic[A, E]]
-    }
   }
 
-  private final class Logic[/*@specialized(Int, Long, Double)*/ A, E >: Null <: BufElem[A]](shape: Shp[E], layer: Layer)
-                                                       (implicit ctrl: Control, aTpe: StreamType[A, E])
+  private final class Logic[A, E <: BufElem[A]](shape: Shp[E], layer: Layer)
+                                               (implicit ctrl: Control, tpe: StreamType[A, E])
     extends Handlers(name, layer, shape) {
 
     private[this] val hIn     : InMain  [A, E]  = InMain [A, E](this, shape.in0)
@@ -99,7 +86,7 @@ object DropRight {
         // because we always process in before out,
         // it is crucial that the buffer be _larger_ than the `dropLen`
         bufLen    = ctrl.blockSize + dropLen
-        buf       = aTpe.newArray(bufLen)
+        buf       = tpe.newArray(bufLen)
         needsLen  = false
 //        println(s"-- dropLen $dropLen, bufLen $bufLen")
       }

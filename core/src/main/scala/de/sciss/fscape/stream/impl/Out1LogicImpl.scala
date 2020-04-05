@@ -19,7 +19,7 @@ import akka.stream.stage.GraphStageLogic
 import akka.stream.{Outlet, Shape}
 
 @deprecated("Should move to using Handlers", since = "2.35.1")
-trait Out1LogicImpl[Out >: Null <: BufLike, S <: Shape] extends InOutImpl[S] {
+trait Out1LogicImpl[Out <: BufLike, S <: Shape] extends InOutImpl[S] {
 
   _: GraphStageLogic =>
 
@@ -43,7 +43,7 @@ trait Out1LogicImpl[Out >: Null <: BufLike, S <: Shape] extends InOutImpl[S] {
     } else {
       bufOut0.release()
     }
-    bufOut0   = null
+    bufOut0   = null.asInstanceOf[Out]
     _canWrite = false
   }
 

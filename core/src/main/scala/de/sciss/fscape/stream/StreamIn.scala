@@ -402,7 +402,7 @@ object StreamType {
   implicit def double: StreamType[Double, BufD] = StreamIn.DoubleType
   implicit def long  : StreamType[Long  , BufL] = StreamIn.LongType
 }
-trait StreamType[@specialized(Int, Long, Double) A, Buf <: BufElem[A]] {
+trait StreamType[@specialized(Args) A, Buf <: BufElem[A]] {
   implicit val ordering: Ordering[A]
 
   def mkStreamOut(out: Outlet[Buf]): StreamOut

@@ -37,28 +37,28 @@ object AudioFileOut {
 
   private final val name = "AudioFileOut"
 
-  private type Shape = UniformFanInShape[BufD, BufL]
+  private type Shp = UniformFanInShape[BufD, BufL]
 
   private final class Stage(layer: Layer, f: File, spec: io.AudioFileSpec)(implicit protected val ctrl: Control)
-    extends BlockingGraphStage[Shape](s"$name(${f.name})") {
+    extends BlockingGraphStage[Shp](s"$name(${f.name})") {
 
     val shape: Shape = UniformFanInShape[BufD, BufL](
       OutL(s"$name.out"),
       Vector.tabulate(spec.numChannels)(ch => InD(s"$name.in$ch")): _*
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer = layer, file = f, spec = spec)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer = layer, file = f, spec = spec)
   }
 
-  private final class Logic(shape: Shape, layer: Layer, protected val file: File, protected val spec: io.AudioFileSpec)
+  private final class Logic(shape: Shp, layer: Layer, protected val file: File, protected val spec: io.AudioFileSpec)
                            (implicit ctrl: Control)
     extends AbstractLogic(s"$name(${file.name})", layer, shape)
 
-  abstract class AbstractLogic(name: String, layer: Layer, shape: Shape)(implicit control: Control)
-    extends NodeImpl[Shape](name, layer, shape)
+  abstract class AbstractLogic(name: String, layer: Layer, shape: Shp)(implicit control: Control)
+    extends NodeImpl[Shp](name, layer, shape)
     with NodeHasInitImpl with OutHandler {
 
-    logic: NodeImpl[Shape] =>
+    logic: NodeImpl[Shp] =>
 
     // ---- abstract ----
 

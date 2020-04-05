@@ -20,11 +20,9 @@ import de.sciss.fscape.stream.impl.{FilterIn3Impl, NodeImpl, StageImpl}
 import scala.collection.mutable
 
 object PriorityQueue {
-  def apply[A, K >: Null <: BufElem[A],
-            B, V >: Null <: BufElem[B]](keys: Outlet[K],
-                                        values: Outlet[V], size: OutI)
-                                       (implicit b: Builder, keyTpe: StreamType[A, K],
-                                        valueTpe: StreamType[B, V]): Outlet[V] = {
+  def apply[A, K  <: BufElem[A], B, V  <: BufElem[B]](keys: Outlet[K], values: Outlet[V], size: OutI)
+                                                     (implicit b: Builder, keyTpe: StreamType[A, K],
+                                                      valueTpe: StreamType[B, V]): Outlet[V] = {
     val stage0  = new Stage[A, K, B, V](b.layer)
     val stage   = b.add(stage0)
     b.connect(keys  , stage.in0)
@@ -35,27 +33,24 @@ object PriorityQueue {
 
   private final val name = "PriorityQueue"
 
-  private type Shape[A, K >: Null <: BufElem[A], B, V >: Null <: BufElem[B]] =
-    FanInShape3[K, V, BufI, V]
+  private type Shp[K, V] = FanInShape3[K, V, BufI, V]
 
-  private final class Stage[A, K >: Null <: BufElem[A],
-                            B, V >: Null <: BufElem[B]](layer: Layer)
-                                                       (implicit ctrl: Control,
-                                                        keyTpe: StreamType[A, K], valueTpe: StreamType[B, V])
-    extends StageImpl[Shape[A, K, B, V]](name) {
+  private final class Stage[A, K <: BufElem[A], B, V <: BufElem[B]](layer: Layer)(implicit ctrl: Control,
+                                                                                  keyTpe: StreamType[A, K],
+                                                                                  valueTpe: StreamType[B, V])
+    extends StageImpl[Shp[K, V]](name) {
 
-    val shape = new FanInShape3(
+    val shape: Shape = new FanInShape3(
       in0 = Inlet[K] (s"$name.keys"  ),
       in1 = Inlet[V] (s"$name.values"),
       in2 = InI      (s"$name.size"  ),
       out = Outlet[V](s"$name.out"   )
     )
 
-    def createLogic(attr: Attributes) = new Logic[A, K, B, V](shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic[A, K, B, V](shape, layer)
   }
 
-  private final class Logic[A, K >: Null <: BufElem[A],
-                            B, V >: Null <: BufElem[B]](shape: Shape[A, K, B, V], layer: Layer)
+  private final class Logic[A, K <: BufElem[A], B, V <: BufElem[B]](shape: Shp[K, V], layer: Layer)
                                                        (implicit ctrl: Control, keyTpe: StreamType[A, K],
                                                         valueTpe: StreamType[B, V])
     extends NodeImpl(name, layer, shape)
@@ -197,7 +192,7 @@ object PriorityQueue {
         } else {
           bufOut0.release()
         }
-        bufOut0     = null
+        bufOut0     = null.asInstanceOf[V]
         outSent     = true
       }
 

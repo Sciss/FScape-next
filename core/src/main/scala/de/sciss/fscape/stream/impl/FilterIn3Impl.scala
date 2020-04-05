@@ -20,7 +20,7 @@ import akka.stream.{FanInShape3, Inlet, Outlet}
 
 /** Building block for `FanInShape3` type graph stage logic. */
 @deprecated("Does not allow individual aux inputs to advance at different block sizes", since = "2.35.1")
-trait FilterIn3Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: BufLike, Out >: Null <: BufLike]
+trait FilterIn3Impl[In0 <: BufLike, In1 <: BufLike, In2 <: BufLike, Out <: BufLike]
   extends Out1LogicImpl[Out, FanInShape3[In0, In1, In2, Out]] with FullInOutImpl[FanInShape3[In0, In1, In2, Out]] {
   _: GraphStageLogic with Node =>
 
@@ -73,22 +73,22 @@ trait FilterIn3Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null 
   protected final def freeInputBuffers(): Unit = {
     if (bufIn0 != null) {
       bufIn0.release()
-      bufIn0 = null
+      bufIn0 = null.asInstanceOf[In0]
     }
     if (bufIn1 != null) {
       bufIn1.release()
-      bufIn1 = null
+      bufIn1 = null.asInstanceOf[In1]
     }
     if (bufIn2 != null) {
       bufIn2.release()
-      bufIn2 = null
+      bufIn2 = null.asInstanceOf[In2]
     }
   }
 
   protected final def freeOutputBuffers(): Unit =
     if (bufOut0 != null) {
       bufOut0.release()
-      bufOut0 = null
+      bufOut0 = null.asInstanceOf[Out]
     }
 
   final def updateCanRead(): Unit = {

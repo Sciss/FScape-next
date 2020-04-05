@@ -15,10 +15,10 @@ package de.sciss.fscape.stream.impl
 
 import akka.stream.{Attributes, FanInShape3, FanInShape4, Shape}
 import de.sciss.fscape.Util
+import de.sciss.fscape.stream.impl.Handlers._
 import de.sciss.fscape.stream.{BufD, BufI, Builder, Control, InD, InI, Layer, OutD, OutI}
 import de.sciss.numbers
 import edu.emory.mathcs.jtransforms.fft.DoubleFFT_1D
-import Handlers._
 
 import scala.annotation.switch
 

@@ -38,13 +38,13 @@ object SlidingPercentile {
 
   private final val name = "SlidingPercentile"
 
-  private type Shape = FanInShape4[BufD, BufI, BufD, BufI, BufD]
+  private type Shp = FanInShape4[BufD, BufI, BufD, BufI, BufD]
 
 //  private final val lessThanOne = java.lang.Double.longBitsToDouble(0x3fefffffffffffffL)
   private final val lessThanOne = java.lang.Math.nextDown(1.0)
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
-    val shape = new FanInShape4(
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shp](name) {
+    val shape: Shape = new FanInShape4(
       in0 = InD (s"$name.in"    ),
       in1 = InI (s"$name.len"   ),
       in2 = InD (s"$name.frac"  ),
@@ -52,13 +52,13 @@ object SlidingPercentile {
       out = OutD(s"$name.out"   )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
   }
 
   // XXX TODO -- abstract over data type (BufD vs BufI)?
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
-      with SameChunkImpl[Shape]
+      with SameChunkImpl[Shp]
       with FilterIn4DImpl[BufD, BufI, BufD, BufI] {
     
     private[this] var medianLen   : Int     = 0

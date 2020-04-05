@@ -32,10 +32,10 @@ object Pearson {
 
   private final val name = "Pearson"
 
-  private type Shape = FanInShape3[BufD, BufD, BufI, BufD]
+  private type Shp = FanInShape3[BufD, BufD, BufI, BufD]
 
   private final class Stage(layer: Layer)(implicit ctrl: Control)
-    extends StageImpl[Shape](name) {
+    extends StageImpl[Shp](name) {
 
     val shape: Shape = new FanInShape3(
       in0 = InD (s"$name.x"   ),
@@ -48,7 +48,7 @@ object Pearson {
       new Logic(shape, layer = layer)
   }
 
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
     extends Handlers(name, layer, shape) {
 
     private[this] val hX   : InDMain  = InDMain  (this, shape.in0)

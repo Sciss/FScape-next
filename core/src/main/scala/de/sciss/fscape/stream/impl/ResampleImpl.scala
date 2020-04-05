@@ -21,6 +21,7 @@ import akka.stream.stage.{GraphStageLogic, InHandler, OutHandler}
 import scala.annotation.tailrec
 import scala.math._
 
+@deprecated("Should move to using Handlers", since = "2.35.1")
 trait ResampleImpl[S <: Shape] extends FullInOutImpl[S] {
   _: GraphStageLogic with Node =>
 

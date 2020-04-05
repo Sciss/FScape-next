@@ -19,12 +19,8 @@ import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
 import Handlers._
 
 object DelayN {
-  // XXX TODO remove overloaded method in next major version
-  def apply(in: OutD, maxLength: OutI, length: OutI)(implicit b: Builder): OutD =
-    apply[Double, BufD](in, maxLength, length)
-
-  def apply[A, E >: Null <: BufElem[A]](in: Outlet[E], maxLength: OutI, length: OutI)
-                                       (implicit b: Builder, tpe: StreamType[A, E]): Outlet[E] = {
+  def apply[A, E <: BufElem[A]](in: Outlet[E], maxLength: OutI, length: OutI)
+                               (implicit b: Builder, tpe: StreamType[A, E]): Outlet[E] = {
     val stage0  = new Stage[A, E](b.layer)
     val stage   = b.add(stage0)
     b.connect(in        , stage.in0)
@@ -37,7 +33,7 @@ object DelayN {
 
   private type Shp[E] = FanInShape3[E, BufI, BufI, E]
 
-  private final class Stage[A, E >: Null <: BufElem[A]](layer: Layer)(implicit ctrl: Control, tpe: StreamType[A, E])
+  private final class Stage[A, E <: BufElem[A]](layer: Layer)(implicit ctrl: Control, tpe: StreamType[A, E])
     extends StageImpl[Shp[E]](name) {
 
     val shape: Shape = new FanInShape3(
@@ -47,24 +43,12 @@ object DelayN {
       out = Outlet[E] (s"$name.out"       )
     )
 
-    def createLogic(attr: Attributes): NodeImpl[Shape] = {
+    def createLogic(attr: Attributes): NodeImpl[Shape] =
       new Logic[A, E](shape, layer)
-//      val res: Logic[_, _] = if (tpe.isInt) {
-//        new Logic[Int   , BufI](shape.asInstanceOf[Shp[BufI]], layer)
-//      } else if (tpe.isLong) {
-//        new Logic[Long  , BufL](shape.asInstanceOf[Shp[BufL]], layer)
-//      } else if (tpe.isDouble) {
-//        new Logic[Double, BufD](shape.asInstanceOf[Shp[BufD]], layer)
-//      } else {
-//        new Logic[A, E](shape, layer)
-//      }
-//
-//      res.asInstanceOf[Logic[A, E]]
-    }
   }
 
-  private final class Logic[/*@specialized(Int, Long, Double)*/ A, E >: Null <: BufElem[A]](shape: Shp[E], layer: Layer)
-                                                       (implicit ctrl: Control, aTpe: StreamType[A, E])
+  private final class Logic[/*@specialized(Int, Long, Double)*/ A, E <: BufElem[A]](shape: Shp[E], layer: Layer)
+                                                       (implicit ctrl: Control, tpe: StreamType[A, E])
     extends Handlers[Shp[E]](name, layer, shape) {
 
     private[this] val hIn       : InMain[A, E]  = InMain [A, E](this, shape.in0)
@@ -105,7 +89,7 @@ object DelayN {
         // because we always process in before out,
         // it is crucial that the buffer be _larger_ than the `maxDlyLen`
         bufLen    = ctrl.blockSize + maxDlyLen
-        buf       = aTpe.newArray(bufLen)
+        buf       = tpe.newArray(bufLen)
         advance   = maxDlyLen
         bufPosIn  = maxDlyLen
         needsLen  = false
@@ -163,10 +147,10 @@ object DelayN {
           // to avoid dirty buffer when the input terminates
           {
             val chunk = math.min(numOut, bufLen - bufPosOut)
-            aTpe.clear(buf, bufPosOut, chunk)
+            tpe.clear(buf, bufPosOut, chunk)
             val chunk2 = numOut - chunk
             if (chunk2 > 0) {
-              aTpe.clear(buf, 0, chunk2)
+              tpe.clear(buf, 0, chunk2)
             }
           }
 

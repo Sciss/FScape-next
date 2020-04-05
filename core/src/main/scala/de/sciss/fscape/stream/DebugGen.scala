@@ -15,7 +15,7 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, SourceShape}
-import de.sciss.fscape.stream.impl.{GenChunkImpl, GenIn0DImpl, StageImpl, NodeImpl}
+import de.sciss.fscape.stream.impl.{GenChunkImpl, GenIn0DImpl, NodeImpl, StageImpl}
 
 import scala.util.Random
 
@@ -28,20 +28,20 @@ object DebugGen {
 
   private final val name = "DebugGen"
 
-  private type Shape = SourceShape[BufD]
+  private type Shp = SourceShape[BufD]
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shp](name) {
 
-    val shape = new SourceShape(
+    val shape: Shape = new SourceShape(
       out = OutD(s"$name.out")
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
   }
 
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
-      with GenChunkImpl[Shape]
+      with GenChunkImpl[Shp]
       with GenIn0DImpl {
 
     private[this] val rnd: Random = ctrl.mkRandom()

@@ -31,11 +31,11 @@ object AudioFileIn {
 
   private final val name = "AudioFileIn"
 
-  private type Shape = UniformSourceShape[BufD]
+  private type Shp = UniformSourceShape[BufD]
 
   // similar to internal `UnfoldResourceSource`
   private final class Stage(layer: Layer, f: File, numChannels: Int)(implicit ctrl: Control)
-    extends BlockingGraphStage[Shape](s"$name(${f.name})") {
+    extends BlockingGraphStage[Shp](s"$name(${f.name})") {
 
     val shape: Shape = UniformSourceShape(Vector.tabulate(numChannels)(ch => OutD(s"$name.out$ch")))
 
@@ -43,7 +43,7 @@ object AudioFileIn {
       new Logic(shape, layer = layer, f = f, numChannels = numChannels)
   }
 
-  private final class Logic(shape: Shape, layer: Layer, f: File, numChannels: Int)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer, f: File, numChannels: Int)(implicit ctrl: Control)
     extends NodeImpl(s"$name(${f.name})", layer, shape) with NodeHasInitImpl with OutHandler {
 
     private[this] var af        : io.AudioFile  = _

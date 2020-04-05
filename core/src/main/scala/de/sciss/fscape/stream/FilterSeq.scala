@@ -18,8 +18,8 @@ import akka.stream.{Attributes, FanInShape2, Inlet, Outlet}
 import de.sciss.fscape.stream.impl.{ChunkImpl, FilterIn2Impl, NodeImpl, StageImpl}
 
 object FilterSeq {
-  def apply[A, E >: Null <: BufElem[A]](in: Outlet[E], gate: OutI)
-                                       (implicit b: Builder, tpe: StreamType[A, E]): Outlet[E] = {
+  def apply[A, E <: BufElem[A]](in: Outlet[E], gate: OutI)
+                               (implicit b: Builder, tpe: StreamType[A, E]): Outlet[E] = {
     val stage0  = new Stage[A, E](b.layer)
     val stage   = b.add(stage0)
     b.connect(in  , stage.in0)
@@ -29,25 +29,25 @@ object FilterSeq {
 
   private final val name = "FilterSeq"
 
-  private type Shape[B <: BufLike] = FanInShape2[B, BufI, B]
+  private type Shp[E] = FanInShape2[E, BufI, E]
 
-  private final class Stage[A, E >: Null <: BufElem[A]](layer: Layer)(implicit ctrl: Control, tpe: StreamType[A, E])
-    extends StageImpl[Shape[E]](name) {
+  private final class Stage[A, E <: BufElem[A]](layer: Layer)(implicit ctrl: Control, tpe: StreamType[A, E])
+    extends StageImpl[Shp[E]](name) {
 
-    val shape = new FanInShape2(
+    val shape: Shape = new FanInShape2(
       in0 = Inlet [E](s"$name.in"  ),
       in1 = InI      (s"$name.gate"),
       out = Outlet[E](s"$name.out" )
     )
 
-    def createLogic(attr: Attributes) = new Logic[A, E](shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic[A, E](shape, layer)
   }
 
-  private final class Logic[A, E >: Null <: BufElem[A]](shape: Shape[E], layer: Layer)
-                                                       (implicit ctrl: Control, tpe: StreamType[A, E])
+  private final class Logic[A, E <: BufElem[A]](shape: Shp[E], layer: Layer)
+                                               (implicit ctrl: Control, tpe: StreamType[A, E])
     extends NodeImpl(name, layer, shape)
       with FilterIn2Impl[E, BufI, E]
-      with ChunkImpl[Shape[E]] {
+      with ChunkImpl[Shp[E]] {
 
     private[this] var high = false
 

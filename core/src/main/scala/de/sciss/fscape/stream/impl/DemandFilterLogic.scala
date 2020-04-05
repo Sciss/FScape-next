@@ -19,7 +19,7 @@ import akka.stream.stage.GraphStageLogic
 import akka.stream.{Inlet, Shape}
 
 @deprecated("Should move to using Handlers", since = "2.35.1")
-trait DemandFilterLogic[In0 >: Null <: BufLike, S <: Shape]
+trait DemandFilterLogic[In0 <: BufLike, S <: Shape]
   extends InOutImpl[S] {
 
   _: GraphStageLogic =>

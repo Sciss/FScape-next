@@ -11,15 +11,13 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape.stream.impl
+package de.sciss.fscape.stream
+package impl
 
 import akka.stream.stage.{InHandler, OutHandler}
 import akka.stream.{Inlet, Outlet, Shape}
 import de.sciss.fscape.stream.impl.Handlers.Resource
-import de.sciss.fscape.stream.{BufD, BufElem, BufI, BufL, Control, InD, InI, InL, Layer, OutD, OutI, OutL, StreamType}
 import de.sciss.fscape.{logStream => log}
-
-import scala.Specializable.Args
 
 /** In the mess of all the different implementation classes, this is a new
   * approach for collecting standard type of handlers which correctly handle the
@@ -35,34 +33,27 @@ object Handlers {
   private val idL: Long   => Long   = x => x
 //  private val idA: Any    => Any    = x => x
 
-  type InDMain = InMain[Double, BufD]
-  type InIMain = InMain[Int, BufI]
-
-  def InIMain(n: Handlers[_], inlet: InI): InIMain = new InMain[Int   , BufI](n, inlet)
-  def InDMain(n: Handlers[_], inlet: InD): InDMain = new InMain[Double, BufD](n, inlet)
+  def InIMain(n: Handlers[_], inlet: InI): InIMain = new InIMainImpl(n, inlet)
+  def InLMain(n: Handlers[_], inlet: InL): InLMain = new InLMainImpl(n, inlet)
+  def InDMain(n: Handlers[_], inlet: InD): InDMain = new InDMainImpl(n, inlet)
 
   def InMain[A, E <: BufElem[A]](n: Handlers[_], inlet: Inlet[E])
                                 (implicit tpe: StreamType[A, E]): InMain[A, E] = {
     val res: InMain[_, _] = if (tpe.isDouble) {
-      new InMain[Double , BufD](n, inlet.asInstanceOf[InD])
+      new InDMainImpl(n, inlet.asInstanceOf[InD])
     } else if (tpe.isInt) {
-      new InMain[Int    , BufI](n, inlet.asInstanceOf[InI])
+      new InIMainImpl(n, inlet.asInstanceOf[InI])
     } else if (tpe.isLong) {
-      new InMain[Long   , BufL](n, inlet.asInstanceOf[InL])
+      new InLMainImpl(n, inlet.asInstanceOf[InL])
     } else {
-      new InMain[A, E](n, inlet)
+      new InAMainImpl[A, E](n, inlet)
     }
     res.asInstanceOf[InMain[A, E]]
   }
 
-  def InDAux(n: Handlers[_], inlet: InD)(cond: Double => Double = idD): InDAux =
-    new InDAuxImpl(n, inlet)(cond)
-
-  def InIAux(n: Handlers[_], inlet: InI)(cond: Int => Int = idI): InIAux =
-    new InIAuxImpl(n, inlet)(cond)
-
-  def InLAux(n: Handlers[_], inlet: InL)(cond: Long => Long = idL): InLAux =
-    new InLAuxImpl(n, inlet)(cond)
+  def InIAux(n: Handlers[_], inlet: InI)(cond: Int    => Int    = idI): InIAux = new InIAuxImpl(n, inlet)(cond)
+  def InLAux(n: Handlers[_], inlet: InL)(cond: Long   => Long   = idL): InLAux = new InLAuxImpl(n, inlet)(cond)
+  def InDAux(n: Handlers[_], inlet: InD)(cond: Double => Double = idD): InDAux = new InDAuxImpl(n, inlet)(cond)
 
   def InAux[A, E <: BufElem[A]](n: Handlers[_], inlet: Inlet[E])(cond: A => A = identity[A] _)
                                (implicit tpe: StreamType[A, E]): InAux[A, E] = {
@@ -82,27 +73,218 @@ object Handlers {
     def free(): Unit
   }
 
-  trait InAux[A, E <: BufElem[A]] extends InHandler with Resource {
-    def inlet: Inlet[E]
-
+  sealed trait InOut extends Resource {
+    /** Whether further input or output is available. */
     def hasNext: Boolean
 
-    def peek  : A
-    def value : A
-    def next(): A
-
-    def isConstant: Boolean
-
+    /** The number of further input or output frames available. */
     def available: Int
   }
 
-  trait InIAux extends InAux[Int    , BufI]
-  trait InLAux extends InAux[Long   , BufL]
-  trait InDAux extends InAux[Double , BufD]
+  sealed trait Main[A, E <: BufElem[A]] extends InOut {
+    def isDone  : Boolean
 
-  final class InMain[/*@specialized(Args)*/ A, E <: BufElem[A]] private[Handlers] (n: Handlers[_],
-                                                                               val inlet: Inlet[E])
-    extends InHandler with Resource {
+    /** Be sure you know what you are doing.
+      * This should be called if efficient array
+      * access is needed, only after making sure
+      * that data is available. Valid array data
+      * starts at `offset` for `available` number
+      * of frames. To indicate that a number of
+      * frames has been used, finally call `advance`.
+      */
+    def array: Array[A]
+
+    /** Be sure you know what you are doing. */
+    def offset: Int
+
+    /** Be sure you know what you are doing. */
+    def advance(len: Int): Unit
+  }
+
+  sealed trait In[A, E <: BufElem[A]] extends InOut with InHandler {
+    def inlet: Inlet[E]
+
+    /** Returns the next input value without advancing the
+      * internal offset.
+      */
+    def peek: A
+
+    /** Returns the next input value and advances the
+      * internal offset. This may result in the old buffer
+      * being freed and a new buffer being grabbed, so one
+      * should always go back to check `hasNext` or `available`
+      * in the same loop, until the input is exhausted.
+      */
+    def next(): A
+  }
+
+  sealed trait InAux[A, E <: BufElem[A]] extends In[A, E] {
+    def value: A
+
+    /** Returns `true` if the auxiliary input is completed (and closed)
+      * and from now on the same constant value will be returned.
+      * Similar to `isDone` on `Main` handlers, although an auxiliary
+      * handler will never call back directly if the input is closed.
+      */
+    def isConstant: Boolean
+  }
+
+  /** Version specialized for `Int` */
+  sealed trait InIAux extends InAux[Int, BufI] {
+    final type E = BufI
+    final type A = Int
+
+    override def inlet: Inlet[E]
+
+    override def peek  : A
+    override def value : A
+    override def next(): A
+
+  }
+  /** Version specialized for `Long` */
+  sealed trait InLAux extends InAux[Long, BufL] {
+    final type E = BufL
+    final type A = Long
+
+    override def inlet: Inlet[E]
+
+    override def peek  : A
+    override def value : A
+    override def next(): A
+  }
+  /** Version specialized for `Double` */
+  sealed trait InDAux extends InAux[Double, BufD] {
+    final type E = BufD
+    final type A = Double
+
+    override def inlet: Inlet[E]
+
+    override def peek  : A
+    override def value : A
+    override def next(): A
+  }
+
+  sealed trait InMain[A, E <: BufElem[A]] extends In[A, E] with Main[A, E] {
+    /** Reads the next `len` frames into the given array. */
+    def nextN(a: Array[A], off: Int, len: Int): Unit
+
+    /** Skips over the next `len` frames without using them. */
+    def skip(len: Int): Unit
+
+    /** Directly copies `len` elements from this input to a given output. */
+    def copyTo(to: OutMain[A, E], len: Int): Unit
+  }
+
+  /** Version specialized for `Int` */
+  sealed trait InIMain extends InMain[Int, BufI] {
+    final type E = BufI
+    final type A = Int
+
+    override def inlet: Inlet[E]
+
+    override def peek  : A
+    override def next(): A
+
+    override def nextN(a: Array[A], off: Int, len: Int): Unit
+  }
+  /** Version specialized for `Long` */
+  sealed trait InLMain extends InMain[Long, BufL] {
+    final type E = BufL
+    final type A = Long
+
+    override def inlet: Inlet[E]
+
+    override def peek  : A
+    override def next(): A
+
+    override def nextN(a: Array[A], off: Int, len: Int): Unit
+  }
+  /** Version specialized for `Double` */
+  sealed trait InDMain extends InMain[Double, BufD] {
+    final type E = BufD
+    final type A = Double
+
+    override def inlet: Inlet[E]
+
+    override def peek  : A
+    override def next(): A
+
+    override def nextN(a: Array[A], off: Int, len: Int): Unit
+  }
+  
+  // ---- output ----
+  
+  def OutIMain(n: Handlers[_], outlet: OutI): OutIMain = new OutIMainImpl(n, outlet)
+  def OutLMain(n: Handlers[_], outlet: OutL): OutLMain = new OutLMainImpl(n, outlet)
+  def OutDMain(n: Handlers[_], outlet: OutD): OutDMain = new OutDMainImpl(n, outlet)
+
+  def OutMain[A, E <: BufElem[A]](n: Handlers[_], outlet: Outlet[E])
+                                 (implicit tpe: StreamType[A, E]): OutMain[A, E] = {
+    val res: OutMain[_, _] = if (tpe.isDouble) {
+      new OutDMainImpl(n, outlet.asInstanceOf[OutD])
+    } else if (tpe.isInt) {
+      new OutIMainImpl(n, outlet.asInstanceOf[OutI])
+    } else if (tpe.isLong) {
+      new OutLMainImpl(n, outlet.asInstanceOf[OutL])
+    } else {
+      new OutAMainImpl[A, E](n, outlet)
+    }
+    res.asInstanceOf[OutMain[A, E]]
+  }
+
+  trait OutMain[A, E <: BufElem[A]] extends Main[A, E] with OutHandler {
+
+    def outlet: Outlet[E]
+
+    def flush(): Boolean
+
+    def next(v: A): Unit
+
+    def nextN(a: Array[A], off: Int, len: Int): Unit
+  }
+
+  /** Version specialized for `Int` */
+  trait OutIMain extends OutMain[Int, BufI] {
+    final type E = BufI
+    final type A = Int
+
+    override def outlet : Outlet[E]
+    override def array  : Array[A]
+
+    override def next(v: A): Unit
+
+    override def nextN(a: Array[A], off: Int, len: Int): Unit
+  }
+  /** Version specialized for `Long` */
+  sealed trait OutLMain extends OutMain[Long, BufL] {
+    final type E = BufL
+    final type A = Long
+
+    override def outlet : Outlet[E]
+    override def array  : Array[A]
+
+    override def next(v: A): Unit
+
+    override def nextN(a: Array[A], off: Int, len: Int): Unit
+  }
+  /** Version specialized for `Double` */
+  sealed trait OutDMain extends OutMain[Double, BufD] {
+    final type E = BufD
+    final type A = Double
+
+    override def outlet : Outlet[E]
+    override def array  : Array[A]
+
+    override def next(v: A): Unit
+
+    override def nextN(a: Array[A], off: Int, len: Int): Unit
+  }
+
+  // ---- impl ----
+
+  private abstract class InMainImpl[@specialized(Args) A, E <: BufElem[A]] private[Handlers] (n: Handlers[_],
+                                                                           val inlet: Inlet[E])
+    extends InMain[A, E] {
 
     import n._
 
@@ -113,29 +295,29 @@ object Handlers {
     private[this] var _hasNext        = false
     private[this] var _isDone         = false
 
-    def hasNext : Boolean = _hasNext
-    def isDone  : Boolean = _isDone
+    final def hasNext : Boolean = _hasNext
+    final def isDone  : Boolean = _isDone
 
-    def peek: A = {
+    final def peek: A = {
       require (_hasNext)
       buf.buf(off)
     }
 
-    def available: Int =
+    final def available: Int =
       if (_hasNext) {
         buf.size - off
       } else 0
 
     /** Be sure you know what you are doing */
-    def array: Array[A] = {
+    final def array: Array[A] = {
       require (_hasNext)
       buf.buf
     }
 
     /** Be sure you know what you are doing */
-    def offset: Int = off
+    final def offset: Int = off
 
-    def next(): A = {
+    final def next(): A = {
       require (_hasNext)
       val v = buf.buf(off)
       advance(1)
@@ -161,45 +343,39 @@ object Handlers {
       require (len <= avail)
     }
 
-    def advance(len: Int): Unit = {
+    final def advance(len: Int): Unit = {
       off += len
       if (off == buf.size) {
         bufExhausted()
       }
     }
 
-    def nextN(a: Array[A], off: Int, len: Int): Unit = {
+    final def nextN(a: Array[A], off: Int, len: Int): Unit = {
       preNextN(len)
       System.arraycopy(buf.buf, this.off, a, off, len)
       advance (len)
     }
 
-    def skip(len: Int): Unit = {
+    final def skip(len: Int): Unit = {
       preNextN  (len)
       advance (len)
     }
 
-    def copyTo(to: OutMain[A, E], len: Int): Unit = {
+    final def copyTo(to: OutMain[A, E], len: Int): Unit = {
       preNextN  (len)
       to.nextN(buf.buf, off, len)
       advance (len)
     }
 
-//    final def mapTo[B, F <: BufElem[B]](to: AbstractOutMain[B, F], len: Int)(f: A => B): Unit = {
-//      preNextN  (len)
-//      to.mapNextN(buf.buf, off, len)
-//      postNextN (len)
-//    }
-
     private def doGrab(): Unit = {
       val _buf = grab(inlet)
       buf = _buf
       off = 0
-//      condN(_buf.buf, 0, _buf.size)
+      //      condN(_buf.buf, 0, _buf.size)
       tryPull(inlet)
     }
 
-    def onPush(): Unit = {
+    final def onPush(): Unit = {
       val ok = buf == null
       log(s"$this onPush() - $ok")
       if (ok) {
@@ -210,7 +386,7 @@ object Handlers {
       }
     }
 
-    override def onUpstreamFinish(): Unit = {
+    override final def onUpstreamFinish(): Unit = {
       val ok = buf == null && !isAvailable(inlet)
       log(s"$this onUpstreamFinish() - $ok")
       if (ok) {
@@ -219,7 +395,7 @@ object Handlers {
       }
     }
 
-    def free(): Unit =
+    final def free(): Unit =
       if (buf != null) {
         buf.release()
         buf = null.asInstanceOf[E]
@@ -229,59 +405,22 @@ object Handlers {
     addResource(this)
   }
 
-  // ---- output ----
+  private final class InAMainImpl[A, E <: BufElem[A]](n: Handlers[_], inlet: Inlet[E])
+    extends InMainImpl[A, E](n, inlet)
 
-  trait OutIMain extends OutMain[Int   , BufI]
-  trait OutLMain extends OutMain[Long  , BufL]
-  trait OutDMain extends OutMain[Double, BufD]
+  private final class InIMainImpl(n: Handlers[_], inlet: InI)
+    extends InMainImpl[Int, BufI](n, inlet) with InIMain
 
-  def OutIMain(n: Handlers[_], outlet: OutI): OutIMain = new OutIMainImpl(n, outlet)
-  def OutLMain(n: Handlers[_], outlet: OutL): OutLMain = new OutLMainImpl(n, outlet)
-  def OutDMain(n: Handlers[_], outlet: OutD): OutDMain = new OutDMainImpl(n, outlet)
+  private final class InLMainImpl(n: Handlers[_], inlet: InL)
+    extends InMainImpl[Long, BufL](n, inlet) with InLMain
 
-  def OutMain[A, E <: BufElem[A]](n: Handlers[_], outlet: Outlet[E])
-                                 (implicit tpe: StreamType[A, E]): OutMain[A, E] = {
-    val res: OutMain[_, _] = if (tpe.isDouble) {
-      new OutDMainImpl(n, outlet.asInstanceOf[OutD])
-    } else if (tpe.isInt) {
-      new OutIMainImpl(n, outlet.asInstanceOf[OutI])
-    } else if (tpe.isLong) {
-      new OutLMainImpl(n, outlet.asInstanceOf[OutL])
-    } else {
-      new OutAMainImpl[A, E](n, outlet)
-    }
-    res.asInstanceOf[OutMain[A, E]]
-  }
-
-  trait OutMain[A, E <: BufElem[A]]
-    extends OutHandler with Resource {
-
-    def outlet: Outlet[E]
-
-    def hasNext : Boolean
-    def isDone  : Boolean
-
-    def flush(): Boolean
-
-    def array: Array[A]
-
-    def offset: Int
-
-    def available: Int
-
-    def advance(len: Int): Unit
-
-    def next(v: A): Unit
-
-    def nextN(a: Array[A], off: Int, len: Int): Unit
-  }
-
-  // ---- impl ----
-
-  private abstract class OutMainImpl[A, E <: BufElem[A]] private[Handlers] (n: Handlers[_],
+  private final class InDMainImpl(n: Handlers[_], inlet: InD)
+    extends InMainImpl[Double, BufD](n, inlet) with InDMain
+  
+  private abstract class OutMainImpl[@specialized(Args) A, E <: BufElem[A]] private[Handlers] (n: Handlers[_],
                                                                             val outlet: Outlet[E])
                                                                            (implicit tpe: StreamType[A, E])
-    extends OutMain[A, E] with OutHandler with Resource {
+    extends OutMain[A, E] {
 
     import n._
 

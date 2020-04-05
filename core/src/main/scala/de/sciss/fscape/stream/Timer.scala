@@ -27,21 +27,21 @@ object Timer {
 
   private final val name = "Timer"
 
-  private type Shape = FlowShape[BufI, BufL]
+  private type Shp = FlowShape[BufI, BufL]
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
-    val shape = new FlowShape(
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shp](name) {
+    val shape: Shape = new FlowShape(
       in  = InI (s"$name.trig"),
       out = OutL(s"$name.out" )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
   }
 
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
       with FilterIn1LImpl[BufI]
-      with FilterChunkImpl[BufI, BufL, Shape] {
+      with FilterChunkImpl[BufI, BufL, Shp] {
 
     private[this] var high      = false
     private[this] var count     = 0L

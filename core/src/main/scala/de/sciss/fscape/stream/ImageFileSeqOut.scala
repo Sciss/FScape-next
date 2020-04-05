@@ -34,22 +34,23 @@ object ImageFileSeqOut {
 
   private final val name = "ImageFileSeqOut"
 
-  private type Shape = In1UniformSinkShape[BufI, BufD]
+  private type Shp = In1UniformSinkShape[BufI, BufD]
 
   private final class Stage(layer: Layer, template: File, spec: Spec)(implicit protected val ctrl: Control)
-    extends BlockingGraphStage[Shape](s"$name(${template.name})") {
+    extends BlockingGraphStage[Shp](s"$name(${template.name})") {
 
     val shape: Shape = In1UniformSinkShape[BufI, BufD](
       InI(s"$name.indices"),
       Vector.tabulate(spec.numChannels)(ch => InD(s"$name.in$ch"))
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer = layer, template = template, spec = spec)
+    def createLogic(attr: Attributes): NodeImpl[Shape] =
+      new Logic(shape, layer = layer, template = template, spec = spec)
   }
 
-  private final class Logic(shape: Shape, layer: Layer, protected val template: File, val spec: Spec)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer, protected val template: File, val spec: Spec)(implicit ctrl: Control)
     extends NodeImpl(s"$name(${template.name})", layer, shape)
-    with NodeHasInitImpl with ImageFileSeqOutImpl[Shape] { logic =>
+    with NodeHasInitImpl with ImageFileSeqOutImpl[Shp] { logic =>
 
     protected def numChannels: Int = spec.numChannels
 

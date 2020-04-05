@@ -20,7 +20,7 @@ import de.sciss.fscape.stream.impl.{DemandFilterLogic, NodeImpl, Out1DoubleImpl,
 import de.sciss.numbers.IntFunctions
 
 import scala.annotation.tailrec
-import math.{max, min, abs, sqrt}
+import scala.math.{abs, max, min, sqrt}
 
 // XXX TODO --- should use ScanImageImpl
 object AffineTransform2D {

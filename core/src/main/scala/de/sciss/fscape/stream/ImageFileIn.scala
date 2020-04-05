@@ -33,19 +33,19 @@ object ImageFileIn {
 
   private final val name = "ImageFileIn"
 
-  private type Shape = UniformSourceShape[BufD]
+  private type Shp = UniformSourceShape[BufD]
 
   // similar to internal `UnfoldResourceSource`
   private final class Stage(layer: Int, f: File, numChannels: Int)(implicit ctrl: Control)
-    extends BlockingGraphStage[Shape](s"$name(${f.name})") {
+    extends BlockingGraphStage[Shp](s"$name(${f.name})") {
 
-    val shape = UniformSourceShape(Vector.tabulate(numChannels)(ch => OutD(s"$name.out$ch")))
+    val shape: Shape = UniformSourceShape(Vector.tabulate(numChannels)(ch => OutD(s"$name.out$ch")))
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer, f, numChannels = numChannels)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer, f, numChannels = numChannels)
   }
 
-  private final class Logic(shape: Shape, layer: Layer, f: File, protected val numChannels: Int)(implicit ctrl: Control)
-    extends NodeImpl(s"$name(${f.name})", layer, shape) with NodeHasInitImpl with ImageFileInImpl[Shape] {
+  private final class Logic(shape: Shp, layer: Layer, f: File, protected val numChannels: Int)(implicit ctrl: Control)
+    extends NodeImpl(s"$name(${f.name})", layer, shape) with NodeHasInitImpl with ImageFileInImpl[Shp] {
 
     protected val outlets: Vec[OutD] = shape.outlets.toIndexedSeq
 

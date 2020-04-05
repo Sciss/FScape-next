@@ -21,7 +21,8 @@ import akka.stream.{Outlet, SourceShape}
 /** Building block for generators with `SourceShape` type graph stage logic.
   * A generator keeps producing output until down-stream is closed.
   */
-trait GenIn0Impl[Out >: Null <: BufLike]
+@deprecated("Should move to using Handlers", since = "2.35.1")
+trait GenIn0Impl[Out <: BufLike]
   extends Out1LogicImpl[Out, SourceShape[Out]] with FullInOutImpl[SourceShape[Out]] {
   _: GraphStageLogic with Node =>
 
@@ -46,7 +47,7 @@ trait GenIn0Impl[Out >: Null <: BufLike]
   protected final def freeOutputBuffers(): Unit =
     if (bufOut0 != null) {
       bufOut0.release()
-      bufOut0 = null
+      bufOut0 = null.asInstanceOf[Out]
     }
 
   final def updateCanRead(): Unit = ()
@@ -54,6 +55,7 @@ trait GenIn0Impl[Out >: Null <: BufLike]
   new ProcessOutHandlerImpl(shape.out, this)
 }
 
+@deprecated("Should move to using Handlers", since = "2.35.1")
 trait GenIn0DImpl extends GenIn0Impl[BufD] with Out1DoubleImpl[SourceShape[BufD]] {
   _: GraphStageLogic with Node =>
 }

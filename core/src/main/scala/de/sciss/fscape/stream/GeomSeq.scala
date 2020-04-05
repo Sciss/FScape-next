@@ -18,9 +18,8 @@ import akka.stream.{Attributes, FanInShape3, Inlet, Outlet}
 import de.sciss.fscape.stream.impl.{NodeImpl, SeqGenLogicD, SeqGenLogicI, SeqGenLogicL, StageImpl}
 
 object GeomSeq {
-  def apply[A, E >: Null <: BufElem[A]](start: Outlet[E], grow: Outlet[E], length: OutL)
-                                       (implicit b: Builder, tpe: StreamType[A, E],
-                                        num: Numeric[A]): Outlet[E] = {
+  def apply[A, E <: BufElem[A]](start: Outlet[E], grow: Outlet[E], length: OutL)
+                               (implicit b: Builder, tpe: StreamType[A, E]): Outlet[E] = {
     val stage0  = new Stage[A, E](b.layer)
     val stage   = b.add(stage0)
     b.connect(start , stage.in0)
@@ -33,9 +32,8 @@ object GeomSeq {
 
   private type Shp[E] = FanInShape3[E, E, BufL, E]
 
-  private final class Stage[A, E >: Null <: BufElem[A]](layer: Layer)
-                                                       (implicit ctrl: Control, tpe: StreamType[A, E],
-                                                        num: Numeric[A])
+  private final class Stage[A, E <: BufElem[A]](layer: Layer)
+                                               (implicit ctrl: Control, tpe: StreamType[A, E])
     extends StageImpl[Shp[E]](name) {
 
     val shape: Shape = new FanInShape3(

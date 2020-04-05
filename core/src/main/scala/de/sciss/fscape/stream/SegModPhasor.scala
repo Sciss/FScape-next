@@ -31,21 +31,21 @@ object SegModPhasor {
 
   private final val name = "SegModPhasor"
 
-  private type Shape = FanInShape2[BufD, BufD, BufD]
+  private type Shp = FanInShape2[BufD, BufD, BufD]
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
-    val shape = new FanInShape2(
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shp](name) {
+    val shape: Shape = new FanInShape2(
       in0 = InD (s"$name.freqN"),
       in1 = InD (s"$name.phase"),
       out = OutD(s"$name.out"  )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
   }
 
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
-      with InOutImpl[Shape] with Out1LogicImpl[BufD, Shape] {
+      with InOutImpl[Shp] with Out1LogicImpl[BufD, Shp] {
 
     private[this] var incr    : Double = _  // single sample delay
     private[this] var phaseOff: Double = 0.0

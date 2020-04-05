@@ -15,7 +15,7 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape2}
-import de.sciss.fscape.stream.impl.{FilterIn2DImpl, StageImpl, NodeImpl}
+import de.sciss.fscape.stream.impl.{FilterIn2DImpl, NodeImpl, StageImpl}
 
 import scala.annotation.tailrec
 
@@ -30,19 +30,19 @@ object Elastic {
 
   private final val name = "Elastic"
 
-  private type Shape = FanInShape2[BufD, BufI, BufD]
+  private type Shp = FanInShape2[BufD, BufI, BufD]
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
-    val shape = new FanInShape2(
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shp](name) {
+    val shape: Shape = new FanInShape2(
       in0 = InD (s"$name.in" ),
       in1 = InI (s"$name.num"),
       out = OutD(s"$name.out")
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
   }
 
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
       with FilterIn2DImpl[BufD, BufI] {
 

@@ -28,25 +28,25 @@ object WindowIndexWhere {
 
   private final val name = "WindowIndexWhere"
 
-  private type Shape = FanInShape2[BufI, BufI, BufI]
+  private type Shp = FanInShape2[BufI, BufI, BufI]
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
-    val shape = new FanInShape2(
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shp](name) {
+    val shape: Shape = new FanInShape2(
       in0 = InI (s"$name.p"   ),
       in1 = InI (s"$name.size"),
       out = OutI(s"$name.out" )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
   }
 
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
-      with DemandFilterWindowedLogic[Int, BufI, Shape] with NoParamsDemandWindowLogic {
+      with DemandFilterWindowedLogic[Int, BufI, Shp] with NoParamsDemandWindowLogic {
 
     private[this] var index : Int = _
 
-    protected def tpeSignal: StreamType[Layer, BufI] = StreamType.int
+    protected def tpe: StreamType[Layer, BufI] = StreamType.int
 
     protected def inletSignal : Inlet [BufI]  = shape.in0
     protected def inletWinSize: InI           = shape.in1

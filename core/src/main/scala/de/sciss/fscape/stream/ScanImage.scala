@@ -41,10 +41,10 @@ object ScanImage {
 
   private final val name = "ScanImage"
 
-  private type Shape = FanInShape10[BufD, BufI, BufI, BufD, BufD, BufI, BufI, BufD, BufD, BufI, BufD]
+  private type Shp = FanInShape10[BufD, BufI, BufI, BufD, BufD, BufI, BufI, BufD, BufD, BufI, BufD]
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
-    val shape = new FanInShape10(
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shp](name) {
+    val shape: Shape = new FanInShape10(
       in0 = InD (s"$name.in"),
       in1 = InI (s"$name.width"),
       in2 = InI (s"$name.height"),
@@ -58,13 +58,13 @@ object ScanImage {
       out = OutD(s"$name.out")
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
   }
 
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
-      with Out1LogicImpl[BufD, Shape]
-      with Out1DoubleImpl[Shape]
+      with Out1LogicImpl[BufD, Shp]
+      with Out1DoubleImpl[Shp]
       with ScanImageImpl {
 
     /*

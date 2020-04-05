@@ -113,7 +113,7 @@ trait SameChunkImpl[S <: Shape] extends ChunkImpl[S] {
 }
 
 @deprecated("Should move to using Handlers", since = "2.35.1")
-trait FilterChunkImpl[In0 >: Null <: BufLike, Out >: Null <: BufLike, S <: Shape] extends SameChunkImpl[S] {
+trait FilterChunkImpl[In0 <: BufLike, Out <: BufLike, S <: Shape] extends SameChunkImpl[S] {
   _: GraphStageLogic =>
 
   protected def in0: Inlet[In0]

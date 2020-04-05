@@ -31,23 +31,23 @@ object GenWindow {
 
   private final val name = "GenWindow"
 
-  private type Shape = FanInShape3[BufL, BufI, BufD, BufD]
+  private type Shp = FanInShape3[BufL, BufI, BufD, BufD]
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shp](name) {
 
-    val shape = new FanInShape3(
+    val shape: Shape = new FanInShape3(
       in0 = InL (s"$name.size" ),
       in1 = InI (s"$name.shape"),
       in2 = InD (s"$name.param"),
       out = OutD(s"$name.out"  )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
   }
 
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
-      with DemandWindowedLogicOLD[Shape]
+      with DemandWindowedLogicOLD[Shp]
       with DemandGenIn3D[BufL, BufI, BufD] {
 
     // private[this] var winBuf : Array[Double] = _

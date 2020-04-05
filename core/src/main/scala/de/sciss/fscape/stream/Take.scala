@@ -20,14 +20,12 @@ import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 import de.sciss.fscape.{logStream => log}
 
 object Take {
-  def head[A, E >: Null <: BufElem[A]](in: Outlet[E])
-                                      (implicit b: Builder): Outlet[E] = {
-    val length = ConstantL(1).toLong
+  def head[A, E <: BufElem[A]](in: Outlet[E])(implicit b: Builder): Outlet[E] = {
+    val length = ConstantL(1L).toLong
     apply[A, E](in = in, length = length)
   }
 
-  def apply[A, E >: Null <: BufElem[A]](in: Outlet[E], length: OutL)
-                                       (implicit b: Builder): Outlet[E] = {
+  def apply[A, E <: BufElem[A]](in: Outlet[E], length: OutL)(implicit b: Builder): Outlet[E] = {
     val stage0  = new Stage[A, E](b.layer)
     val stage   = b.add(stage0)
     b.connect(in    , stage.in0)
@@ -37,26 +35,25 @@ object Take {
 
   private final val name = "Take"
 
-  private type Shape[E] = FanInShape2[E, BufL, E]
+  private type Shp[E] = FanInShape2[E, BufL, E]
 
-  private final class Stage[A, E >: Null <: BufElem[A]](layer: Layer)(implicit ctrl: Control)
-    extends StageImpl[Shape[E]](name) {
+  private final class Stage[A, E <: BufElem[A]](layer: Layer)(implicit ctrl: Control)
+    extends StageImpl[Shp[E]](name) {
 
-    val shape = new FanInShape2(
+    val shape: Shape = new FanInShape2(
       in0 = Inlet [E](s"$name.in"    ),
       in1 = InL      (s"$name.length"),
       out = Outlet[E](s"$name.out"   )
     )
 
-    def createLogic(attr: Attributes) = new Logic[A, E](shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic[A, E](shape, layer)
   }
 
-  private final class Logic[A, E >: Null <: BufElem[A]](shape: Shape[E], layer: Layer)
-                                                       (implicit ctrl: Control)
+  private final class Logic[A, E <: BufElem[A]](shape: Shp[E], layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape) with OutHandler { logic =>
 
-    private[this] var takeRemain    = Long.MaxValue
-    private[this] var hasLen       = false
+    private[this] var takeRemain  = Long.MaxValue
+    private[this] var hasLen      = false
 
     def onPull(): Unit = {
       val ok = hasLen && isAvailable(shape.in0)

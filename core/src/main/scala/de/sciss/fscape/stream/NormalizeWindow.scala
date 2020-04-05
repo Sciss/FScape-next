@@ -33,22 +33,22 @@ object NormalizeWindow {
 
   private final val name = "NormalizeWindow"
 
-  private type Shape = FanInShape3[BufD, BufI, BufI, BufD]
+  private type Shp = FanInShape3[BufD, BufI, BufI, BufD]
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
-    val shape = new FanInShape3(
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shp](name) {
+    val shape: Shape = new FanInShape3(
       in0 = InD (s"$name.in"    ),
       in1 = InI (s"$name.size"  ),
       in2 = InI (s"$name.mode"  ),
       out = OutD(s"$name.out"   )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
   }
 
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
-      with DemandFilterWindowedLogic[Double, BufD, Shape] {
+      with DemandFilterWindowedLogic[Double, BufD, Shp] {
 
     private[this] var mode      : Int     = -1
     private[this] var bufModeOff: Int     = 0
@@ -63,7 +63,7 @@ object NormalizeWindow {
 
     private def modeValid = mode >= 0
 
-    protected def tpeSignal: StreamType[Double, BufD] = StreamType.double
+    protected def tpe: StreamType[Double, BufD] = StreamType.double
 
     protected def inletSignal : Inlet[BufD]   = shape.in0
     protected def inletWinSize: InI           = shape.in1

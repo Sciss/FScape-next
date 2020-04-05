@@ -41,10 +41,10 @@ object Convolution {
 
   private final val name = "Convolution"
 
-  private type Shape = FanInShape4[BufD, BufD, BufI, BufI, BufD]
+  private type Shp = FanInShape4[BufD, BufD, BufI, BufI, BufD]
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
-    val shape = new FanInShape4(
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shp](name) {
+    val shape: Shape = new FanInShape4(
       in0 = InD (s"$name.in"          ),
       in1 = InD (s"$name.kernel"      ),
       in2 = InI (s"$name.kernelLen"   ),
@@ -52,10 +52,10 @@ object Convolution {
       out = OutD(s"$name.out"         )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
   }
 
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape) with OutHandler { logic =>
 
     private[this] var stage           = 0 // 0 -- needs kernel len, 1 -- needs in and/or kernel, 2 -- overlap-add and write

@@ -110,6 +110,7 @@ trait GenIn3Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: 
   new ProcessOutHandlerImpl(shape.out, this)
 }
 
+@deprecated("Should move to using Handlers", since = "2.35.1")
 trait GenIn3DImpl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: BufLike]
   extends GenIn3Impl[In0, In1, In2, BufD]
     with Out1DoubleImpl[FanInShape3[In0, In1, In2, BufD]] {

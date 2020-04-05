@@ -19,6 +19,7 @@ import akka.stream.stage.GraphStageLogic
 import akka.stream.{FanInShape8, Inlet, Outlet}
 
 /** Building block for `FanInShape8` type graph stage logic. */
+@deprecated("Should move to using Handlers", since = "2.35.1")
 trait DemandFilterIn8[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: BufLike,
     In3 >: Null <: BufLike, In4 >: Null <: BufLike, In5 >: Null <: BufLike,
     In6 >: Null <: BufLike, In7 >: Null <: BufLike, Out >: Null <: BufLike]
@@ -206,6 +207,7 @@ trait DemandFilterIn8[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Nul
   new ProcessOutHandlerImpl (shape.out, this)
 }
 
+@deprecated("Should move to using Handlers", since = "2.35.1")
 trait DemandFilterIn8D[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: BufLike,
 In3 >: Null <: BufLike, In4 >: Null <: BufLike, In5 >: Null <: BufLike, In6 >: Null <: BufLike, In7 >: Null <: BufLike]
   extends DemandFilterIn8[In0, In1, In2, In3, In4, In5, In6, In7, BufD]

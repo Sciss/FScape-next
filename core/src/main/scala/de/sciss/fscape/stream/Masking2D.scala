@@ -36,10 +36,10 @@ object Masking2D {
 
   private final val name = "Masking2D"
 
-  private type Shape = FanInShape8[BufD, BufD, BufI, BufI, BufD, BufD, BufI, BufI, BufD]
+  private type Shp = FanInShape8[BufD, BufD, BufI, BufI, BufD, BufD, BufI, BufI, BufD]
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
-    val shape = new FanInShape8(
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shp](name) {
+    val shape: Shape = new FanInShape8(
       in0 = InD (s"$name.fg"          ),
       in1 = InD (s"$name.bg"          ),
       in2 = InI (s"$name.rows"        ),
@@ -51,15 +51,15 @@ object Masking2D {
       out = OutD(s"$name.out"         )
     )
 
-    def createLogic(attr: Attributes): NodeImpl[Masking2D.Shape] = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
   }
 
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
-      with DemandWindowedLogicOLD[Shape]
-      with Out1DoubleImpl     [Shape]
-      with Out1LogicImpl[BufD, Shape]
-      with DemandInOutImpl    [Shape] {
+      with DemandWindowedLogicOLD[Shp]
+      with Out1DoubleImpl     [Shp]
+      with Out1LogicImpl[BufD, Shp]
+      with DemandInOutImpl    [Shp] {
 
     private[this] var bufIn0 : BufD = _
     private[this] var bufIn1 : BufD = _

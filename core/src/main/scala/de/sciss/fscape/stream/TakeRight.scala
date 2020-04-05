@@ -19,15 +19,15 @@ import de.sciss.fscape.graph.ConstantI
 import de.sciss.fscape.stream.impl.{FilterIn2Impl, NodeImpl, StageImpl}
 
 object TakeRight {
-  def last[A, Buf >: Null <: BufElem[A]](in: Outlet[Buf])
-                                        (implicit b: Builder, aTpe: StreamType[A, Buf]): Outlet[Buf] = {
+  def last[A, E <: BufElem[A]](in: Outlet[E])
+                              (implicit b: Builder, tpe: StreamType[A, E]): Outlet[E] = {
     val length = ConstantI(1).toInt
-    apply[A, Buf](in = in, length = length)
+    apply[A, E](in = in, length = length)
   }
 
-  def apply[A, Buf >: Null <: BufElem[A]](in: Outlet[Buf], length: OutI)
-                                         (implicit b: Builder, aTpe: StreamType[A, Buf]): Outlet[Buf] = {
-    val stage0  = new Stage[A, Buf](b.layer)
+  def apply[A, E <: BufElem[A]](in: Outlet[E], length: OutI)
+                               (implicit b: Builder, tpe: StreamType[A, E]): Outlet[E] = {
+    val stage0  = new Stage[A, E](b.layer)
     val stage   = b.add(stage0)
     b.connect(in    , stage.in0)
     b.connect(length, stage.in1)
@@ -36,25 +36,25 @@ object TakeRight {
 
   private final val name = "TakeRight"
 
-  private type Shape[A, Buf >: Null <: BufElem[A]] = FanInShape2[Buf, BufI, Buf]
+  private type Shp[E] = FanInShape2[E, BufI, E]
 
-  private final class Stage[A, Buf >: Null <: BufElem[A]](layer: Layer)
-                                                         (implicit ctrl: Control, aTpe: StreamType[A, Buf])
-    extends StageImpl[Shape[A, Buf]](name) {
+  private final class Stage[A, E <: BufElem[A]](layer: Layer)
+                                               (implicit ctrl: Control, tpe: StreamType[A, E])
+    extends StageImpl[Shp[E]](name) {
 
-    val shape = new FanInShape2(
-      in0 = Inlet [Buf](s"$name.in"    ),
+    val shape: Shape = new FanInShape2(
+      in0 = Inlet [E](s"$name.in"    ),
       in1 = InI        (s"$name.length"),
-      out = Outlet[Buf](s"$name.out"   )
+      out = Outlet[E](s"$name.out"   )
     )
 
-    def createLogic(attr: Attributes): NodeImpl[TakeRight.Shape[A, Buf]] = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic[A, E](shape, layer)
   }
 
-  private final class Logic[A, Buf >: Null <: BufElem[A]](shape: Shape[A, Buf], layer: Layer)
-                                                         (implicit ctrl: Control, aTpe: StreamType[A, Buf])
+  private final class Logic[A, E <: BufElem[A]](shape: Shp[E], layer: Layer)
+                                               (implicit ctrl: Control, tpe: StreamType[A, E])
     extends NodeImpl(name, layer, shape)
-      with FilterIn2Impl[Buf, BufI, Buf] {
+      with FilterIn2Impl[E, BufI, E] {
 
     private[this] var len     : Int       = _
     private[this] var bufWin  : Array[A]  = _     // circular
@@ -69,7 +69,7 @@ object TakeRight {
 
     private[this] var writeMode = false
 
-    protected def allocOutBuf0(): Buf = aTpe.allocBuf()
+    protected def allocOutBuf0(): E = tpe.allocBuf()
 
     def process(): Unit = {
       logStream(s"process() $this ${if (writeMode) "W" else "R"}")
@@ -80,7 +80,7 @@ object TakeRight {
           readIns()
           if (bufWin == null) {
             len    = math.max(1, bufIn1.buf(0))
-            bufWin = aTpe.newArray(len) // new Array[A](len)
+            bufWin = tpe.newArray(len) // new Array[A](len)
           }
           copyInputToBuffer()
         }
@@ -152,7 +152,7 @@ object TakeRight {
         } else {
           bufOut0.release()
         }
-        bufOut0      = null
+        bufOut0     = null.asInstanceOf[E]
         outSent     = true
       }
 

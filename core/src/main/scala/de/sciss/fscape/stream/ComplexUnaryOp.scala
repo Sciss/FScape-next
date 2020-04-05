@@ -35,20 +35,20 @@ object ComplexUnaryOp {
 
   private final val name = "ComplexUnaryOp"
 
-  private type Shape = FlowShape[BufD, BufD]
+  private type Shp = FlowShape[BufD, BufD]
 
-  private final class Stage(layer: Layer, op: Op)(implicit ctrl: Control) extends StageImpl[Shape](s"$name(${op.name})") {
-    val shape = new FlowShape(
+  private final class Stage(layer: Layer, op: Op)(implicit ctrl: Control) extends StageImpl[Shp](s"$name(${op.name})") {
+    val shape: Shape = new FlowShape(
       in  = InD (s"$name.in" ),
       out = OutD(s"$name.out")
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer, op)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer, op)
   }
 
-  private final class Logic(shape: Shape, layer: Layer, op: Op)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer, op: Op)(implicit ctrl: Control)
     extends NodeImpl(s"$name(${op.name})", layer, shape)
-      with FilterChunkImpl[BufD, BufD, Shape]
+      with FilterChunkImpl[BufD, BufD, Shp]
       with FilterIn1DImpl[BufD] {
 
 //   override def process(): Unit = {

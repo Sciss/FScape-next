@@ -19,34 +19,33 @@ import akka.stream.{Attributes, FanInShape2, Inlet, Outlet}
 import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 
 object MatchLen {
-  def apply[A, Buf >: Null <: BufElem[A]](in: Outlet[Buf], ref: OutA)
-                                         (implicit b: Builder, aTpe: StreamType[A, Buf]): Outlet[Buf] = {
-    val stage0  = new Stage[A, Buf](b.layer)
+  def apply[A, E <: BufElem[A]](in: Outlet[E], ref: OutA)
+                               (implicit b: Builder, tpe: StreamType[A, E]): Outlet[E] = {
+    val stage0  = new Stage[A, E](b.layer)
     val stage   = b.add(stage0)
-    b.connect(in    , stage.in0)
+    b.connect(in , stage.in0)
     b.connect(ref, stage.in1)
     stage.out
   }
 
   private final val name = "MatchLen"
 
-  private type Shape[A, Buf >: Null <: BufElem[A]] = FanInShape2[Buf, BufLike, Buf]
+  private type Shp[E] = FanInShape2[E, BufLike, E]
 
-  private final class Stage[A, Buf >: Null <: BufElem[A]](layer: Layer)
-                                                         (implicit ctrl: Control, aTpe: StreamType[A, Buf])
-    extends StageImpl[Shape[A, Buf]](name) {
+  private final class Stage[A, E <: BufElem[A]](layer: Layer)(implicit ctrl: Control, tpe: StreamType[A, E])
+    extends StageImpl[Shp[E]](name) {
 
-    val shape = new FanInShape2(
-      in0 = Inlet [Buf] (s"$name.in"  ),
-      in1 = InA         (s"$name.ref" ),
-      out = Outlet[Buf] (s"$name.out" )
+    val shape: Shape = new FanInShape2(
+      in0 = Inlet [E] (s"$name.in"  ),
+      in1 = InA       (s"$name.ref" ),
+      out = Outlet[E] (s"$name.out" )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic[A, E](shape, layer)
   }
 
-  private final class Logic[A, Buf >: Null <: BufElem[A]](shape: Shape[A, Buf], layer: Layer)
-                                                         (implicit ctrl: Control, aTpe: StreamType[A, Buf])
+  private final class Logic[A, E <: BufElem[A]](shape: Shp[E], layer: Layer)
+                                               (implicit ctrl: Control, tpe: StreamType[A, E])
     extends NodeImpl(name, layer, shape) with OutHandler with InHandler { logic =>
 
     private[this] var refDone = false
@@ -71,7 +70,7 @@ object MatchLen {
       }
     }
 
-    private[this] var inBuf: Buf = _
+    private[this] var inBuf: E = _
 
     private def writeInBuf(): Unit = {
       if (inBuf.size > 0) {
@@ -80,7 +79,7 @@ object MatchLen {
       } else {
         inBuf.release()
       }
-      inBuf = null
+      inBuf = null.asInstanceOf[E]
     }
 
     private def process(): Unit = {
@@ -100,8 +99,8 @@ object MatchLen {
         }
       } else if (isZero) {
         if (isAvailable(shape.out) && (inLen < refLen)) {
-          val zeroBuf = aTpe.allocBuf()
-          aTpe.clear(zeroBuf.buf, 0, zeroBuf.size)
+          val zeroBuf = tpe.allocBuf()
+          tpe.clear(zeroBuf.buf, 0, zeroBuf.size)
           zeroBuf.size = math.min(zeroBuf.size, (refLen - inLen).toInt)
           push(shape.out, zeroBuf)
           inLen += zeroBuf.size

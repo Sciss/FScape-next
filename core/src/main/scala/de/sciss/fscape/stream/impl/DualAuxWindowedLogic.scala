@@ -24,6 +24,7 @@ import akka.stream.stage.GraphStageLogic
   * "aux 2" serves as additional buffer to the main window processing,
   * and thus needs to be exhausted before main processing function is called.
   */
+@deprecated("Should move to using Handlers", since = "2.35.1")
 trait DualAuxWindowedLogic[S <: Shape] extends DualAuxChunkImpl[S] {
 
   _: GraphStageLogic =>

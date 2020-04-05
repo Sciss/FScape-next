@@ -32,10 +32,10 @@ object Biquad {
 
   private final val name = "Biquad"
 
-  private type Shape = FanInShape6[BufD, BufD, BufD, BufD, BufD, BufD, BufD]
+  private type Shp = FanInShape6[BufD, BufD, BufD, BufD, BufD, BufD, BufD]
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
-    val shape = new FanInShape6(
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shp](name) {
+    val shape: Shape = new FanInShape6(
       in0 = InD (s"$name.in"  ),
       in1 = InD (s"$name.b0"  ),
       in2 = InD (s"$name.b1"  ),
@@ -45,13 +45,13 @@ object Biquad {
       out = OutD(s"$name.out" )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
   }
 
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
       with FilterIn6DImpl [BufD, BufD, BufD, BufD, BufD, BufD]
-      with FilterChunkImpl[BufD, BufD, Shape] {
+      with FilterChunkImpl[BufD, BufD, Shp] {
 
     private[this] var b0  = 0.0
     private[this] var b1  = 0.0

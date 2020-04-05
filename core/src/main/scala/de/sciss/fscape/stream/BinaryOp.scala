@@ -33,19 +33,19 @@ object BinaryOp {
 
   private final val name = "BinaryOp"
 
-  private type Shape = FanInShape2[BufD, BufD, BufD]
+  private type Shp = FanInShape2[BufD, BufD, BufD]
 
-  private final class Stage(layer: Layer, op: Op)(implicit ctrl: Control) extends StageImpl[Shape](s"$name(${op.name})") {
-    val shape = new FanInShape2(
+  private final class Stage(layer: Layer, op: Op)(implicit ctrl: Control) extends StageImpl[Shp](s"$name(${op.name})") {
+    val shape: Shape = new FanInShape2(
       in0 = InD (s"$name.in1"),
       in1 = InD (s"$name.in2"),
       out = OutD(s"$name.out")
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer = layer, op = op)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer = layer, op = op)
   }
 
-  private final class Logic(shape: Shape, layer: Layer, op: Op)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer, op: Op)(implicit ctrl: Control)
     extends NodeImpl(s"$name(${op.name})", layer, shape) with OutHandler { logic =>
 
     private[this] val hA = new _InHandlerImpl(shape.in0)

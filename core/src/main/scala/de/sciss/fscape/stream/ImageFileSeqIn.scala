@@ -37,23 +37,24 @@ object ImageFileSeqIn {
 
   private final val name = "ImageFileSeqIn"
 
-  private type Shape = UniformFanOutShape[BufI, BufD]
+  private type Shp = UniformFanOutShape[BufI, BufD]
 
   // similar to internal `UnfoldResourceSource`
   private final class Stage(layer: Layer, template: File, numChannels: Int)(implicit ctrl: Control)
-    extends BlockingGraphStage[Shape](s"$name(${template.name})") {
+    extends BlockingGraphStage[Shp](s"$name(${template.name})") {
 
     val shape: Shape = UniformFanOutShape(
       inlet   = InI(s"$name.indices"),
       outlets = Vector.tabulate(numChannels)(ch => OutD(s"$name.out$ch")): _*
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer = layer, template = template, numChannels = numChannels)
+    def createLogic(attr: Attributes): NodeImpl[Shape] =
+      new Logic(shape, layer = layer, template = template, numChannels = numChannels)
   }
 
-  private final class Logic(shape: Shape, layer: Layer, template: File, protected val numChannels: Int)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer, template: File, protected val numChannels: Int)(implicit ctrl: Control)
     extends NodeImpl(s"$name(${template.name})", layer, shape)
-    with ImageFileInImpl[Shape]
+    with ImageFileInImpl[Shp]
     with InHandler {
 
     protected val outlets: Vec[OutD] = shape.outlets.toIndexedSeq

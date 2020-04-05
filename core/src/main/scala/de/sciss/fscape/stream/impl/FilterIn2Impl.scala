@@ -22,7 +22,7 @@ import akka.stream.stage.GraphStageLogic
   * where left inlet is "hot" and terminates process.
   */
 @deprecated("Does not allow individual aux inputs to advance at different block sizes", since = "2.35.1")
-trait FilterIn2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, Out >: Null <: BufLike]
+trait FilterIn2Impl[In0 <: BufLike, In1 <: BufLike, Out <: BufLike]
   extends In2Impl[In0, In1, Out] with FullInOutImpl[FanInShape2[In0, In1, Out]] {
   _: GraphStageLogic with Node =>
 

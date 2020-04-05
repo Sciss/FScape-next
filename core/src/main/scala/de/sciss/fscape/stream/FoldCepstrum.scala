@@ -16,7 +16,7 @@ package stream
 
 import akka.stream.{Attributes, FanInShape10}
 import de.sciss.fscape.stream.impl.Handlers.{InDAux, InDMain, InIAux, OutDMain}
-import de.sciss.fscape.stream.impl.{Handlers, StageImpl, WindowedLogicD}
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl, WindowedLogicD}
 
 object FoldCepstrum {
   def apply(in: OutD, size: OutI,
@@ -39,10 +39,10 @@ object FoldCepstrum {
 
   private final val name = "FoldCepstrum"
 
-  private type Shape = FanInShape10[BufD, BufI, BufD, BufD, BufD, BufD, BufD, BufD, BufD, BufD, BufD]
+  private type Shp = FanInShape10[BufD, BufI, BufD, BufD, BufD, BufD, BufD, BufD, BufD, BufD, BufD]
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
-    val shape = new FanInShape10(
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shp](name) {
+    val shape: Shape = new FanInShape10(
       in0  = InD (s"$name.in"  ),
       in1  = InI (s"$name.size"),
       in2  = InD (s"$name.crr" ),
@@ -56,13 +56,12 @@ object FoldCepstrum {
       out  = OutD(s"$name.out" )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
   }
 
-  // XXX TODO -- abstract over data type (BufD vs BufI)?
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
     extends Handlers(name, layer, shape)
-      with WindowedLogicD[Shape] {
+      with WindowedLogicD[Shp] {
 
     private[this] var size: Int = _
 

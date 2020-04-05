@@ -28,7 +28,7 @@ trait WindowedLogic[/*@specialized(Int, Long, Double)*/ A, E >: Null <: BufElem[
 
   // ---- abstract ----
 
-  protected def aTpe  : StreamType[A, E]
+  protected def tpe   : StreamType[A, E]
 
   protected def hIn   : Handlers.InMain [A, E]
   protected def hOut  : Handlers.OutMain[A, E]
@@ -114,7 +114,7 @@ trait WindowedLogic[/*@specialized(Int, Long, Double)*/ A, E >: Null <: BufElem[
     val _buf = winBuf
     if (_buf != null && _buf.length > readOff) {
       val offI = readOff.toInt
-      aTpe.clear(winBuf, offI, _buf.length - offI)
+      tpe.clear(winBuf, offI, _buf.length - offI)
     }
     readOff += readRem
     readRem  = 0L
@@ -141,7 +141,7 @@ trait WindowedLogic[/*@specialized(Int, Long, Double)*/ A, E >: Null <: BufElem[
 
       val _winBufSz = winBufSize
       if (winBuf == null || winBuf.length != _winBufSz) {
-        winBuf = if (_winBufSz == 0) null else aTpe.newArray(_winBufSz)
+        winBuf = if (_winBufSz == 0) null else tpe.newArray(_winBufSz)
       }
 
       readOff  = 0L
@@ -194,5 +194,5 @@ trait WindowedLogic[/*@specialized(Int, Long, Double)*/ A, E >: Null <: BufElem[
 trait WindowedLogicD[S <: Shape] extends WindowedLogic[Double, BufD, S] {
   _: Handlers[S] =>
 
-  protected final val aTpe: StreamType[Double, BufD] = StreamType.double
+  protected final val tpe: StreamType[Double, BufD] = StreamType.double
 }

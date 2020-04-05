@@ -36,10 +36,10 @@ object StrongestLocalMaxima {
 
   private final val name = "StrongestLocalMaxima"
 
-  private type Shape = In7Out2Shape[BufD, BufI, BufI, BufI, BufD, BufD, BufI,   BufD, BufD]
+  private type Shp = In7Out2Shape[BufD, BufI, BufI, BufI, BufD, BufD, BufI,   BufD, BufD]
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
-    val shape = In7Out2Shape(
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shp](name) {
+    val shape: Shape = In7Out2Shape(
       in0   = InD (s"$name.in"        ),
       in1   = InI (s"$name.size"      ),
       in2   = InI (s"$name.minLag"    ),
@@ -51,15 +51,15 @@ object StrongestLocalMaxima {
       out1  = OutD(s"$name.strengths" )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
   }
 
   // XXX TODO -- abstract over data type (BufD vs BufI)?
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
-      with WindowedLogicImpl[Shape]
-      with FullInOutImpl[Shape]
-      with FilterLogicImpl[BufD, Shape] {
+      with WindowedLogicImpl[Shp]
+      with FullInOutImpl[Shp]
+      with FilterLogicImpl[BufD, Shp] {
 
     private[this] var acBuf       : Array[Double] = _
     private[this] var lagBuf      : Array[Double] = _

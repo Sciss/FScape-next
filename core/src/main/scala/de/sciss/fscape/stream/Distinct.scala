@@ -14,14 +14,14 @@
 package de.sciss.fscape.stream
 
 import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
-import de.sciss.fscape.stream.impl.{Handlers, StageImpl}
-import Handlers._
+import de.sciss.fscape.stream.impl.Handlers._
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
 import de.sciss.fscape.{logStream => log}
 
 import scala.collection.mutable
 
 object Distinct {
-  def apply[A, E >: Null <: BufElem[A]](in: Outlet[E])(implicit b: Builder, tpe: StreamType[A, E]): Outlet[E] = {
+  def apply[A, E <: BufElem[A]](in: Outlet[E])(implicit b: Builder, tpe: StreamType[A, E]): Outlet[E] = {
     val stage0  = new Stage[A, E](b.layer)
     val stage   = b.add(stage0)
     b.connect(in, stage.in)
@@ -30,21 +30,21 @@ object Distinct {
 
   private final val name = "Distinct"
 
-  private type Shape[A, E >: Null <: BufElem[A]] = FlowShape[E, E]
+  private type Shp[E] = FlowShape[E, E]
 
-  private final class Stage[A, E >: Null <: BufElem[A]](layer: Layer)(implicit ctrl: Control, tpe: StreamType[A, E])
-    extends StageImpl[Shape[A, E]](name) {
+  private final class Stage[A, E <: BufElem[A]](layer: Layer)(implicit ctrl: Control, tpe: StreamType[A, E])
+    extends StageImpl[Shp[E]](name) {
 
-    val shape = new FlowShape(
+    val shape: Shape = new FlowShape(
       in  = Inlet [E](s"$name.in"),
       out = Outlet[E](s"$name.out"),
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic[A, E](shape, layer)
   }
 
-  private final class Logic[A, E >: Null <: BufElem[A]](shape: Shape[A, E], layer: Layer)
-                                                       (implicit control: Control, tpe: StreamType[A, E])
+  private final class Logic[A, E <: BufElem[A]](shape: Shp[E], layer: Layer)
+                                               (implicit control: Control, tpe: StreamType[A, E])
     extends Handlers(name, layer, shape) {
 
     private[this] val seen    = mutable.Set.empty[A]

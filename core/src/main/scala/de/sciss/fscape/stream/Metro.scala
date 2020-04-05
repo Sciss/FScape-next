@@ -28,22 +28,22 @@ object Metro {
 
   private final val name = "Metro"
 
-  private type Shape = FanInShape2[BufL, BufL, BufI]
+  private type Shp = FanInShape2[BufL, BufL, BufI]
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
-    val shape = new FanInShape2(
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shp](name) {
+    val shape: Shape = new FanInShape2(
       in0 = InL (s"$name.period"),
       in1 = InL (s"$name.phase"),
       out = OutI(s"$name.out"  )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
   }
 
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
       with DemandGenIn2[BufL, BufL, BufI]
-      with DemandWindowedLogicOLD[Shape] {
+      with DemandWindowedLogicOLD[Shp] {
 
     private[this] var period  : Long  = _
     private[this] var phaseOff: Long  = _
@@ -106,46 +106,5 @@ object Metro {
     protected def processWindow(writeToWinOff: Long): Long = writeToWinOff
 
     protected def allocOutBuf0(): BufI = ctrl.borrowBufI()
-
-//    private def processChunk(inOff: Int, outOff: Int, chunk: Int): Unit = {
-//      // println(s"Metro.processChunk($bufIn0, $chunk)")
-//
-//      var inOffI    = inOff
-//      var outOffI   = outOff
-//      val stop      = inOffI + chunk
-//      val b0        = if (bufIn0 == null) null else bufIn0.buf
-//      val out       = bufOut0.buf
-//      val stop0     = if (b0 == null) 0 else bufIn0.size
-//
-//      var periodV   = period
-//      var phaseV    = phase
-//
-//      if (init) {
-//        val b1        = bufIn1.buf
-//        periodV       = b0(inOffI)
-//        if (periodV == 0) periodV = Long.MaxValue
-//        val phaseOffV = b1(inOffI)
-//        phaseV        = (phaseOffV + periodV - 1) % periodV + 1
-//        init          = false
-//      }
-//
-//      while (inOffI < stop) {
-//        if (inOffI < stop0) {
-//          periodV = b0(inOffI)
-//          if (periodV == 0) periodV = Long.MaxValue
-//        }
-//        if (phaseV >= periodV) {
-//          phaseV %= periodV
-//          out(outOffI)  = 1
-//        } else {
-//          out(outOffI)  = 0
-//        }
-//        phaseV       += 1
-//        inOffI       += 1
-//        outOffI      += 1
-//      }
-//      period    = periodV
-//      phase     = phaseV
-//    }
   }
 }

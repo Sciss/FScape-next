@@ -28,21 +28,21 @@ object RunningMax {
 
   private final val name = "RunningMax"
 
-  private type Shape = FanInShape2[BufD, BufI, BufD]
+  private type Shp = FanInShape2[BufD, BufI, BufD]
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
-    val shape = new FanInShape2(
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shp](name) {
+    val shape: Shape = new FanInShape2(
       in0 = InD (s"$name.in"  ),
       in1 = InI (s"$name.trig"),
       out = OutD(s"$name.out" )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
   }
 
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
-      with RunningValueImpl[Shape]
+      with RunningValueImpl[Shp]
       with FilterIn2DImpl[BufD, BufI] {
 
     protected def neutralValue: Double = Double.NegativeInfinity

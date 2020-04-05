@@ -19,7 +19,7 @@ import akka.stream.{Attributes, FanInShape2, Inlet, Outlet}
 import de.sciss.fscape.stream.impl.{FullInOutImpl, NodeImpl, Out1LogicImpl, ProcessOutHandlerImpl, SameChunkImpl, StageImpl}
 
 object Concat {
-  def apply[A, E >: Null <: BufElem[A]](a: Outlet[E], b: Outlet[E])
+  def apply[A, E <: BufElem[A]](a: Outlet[E], b: Outlet[E])
                                        (implicit builder: Builder, tpe: StreamType[A, E]): Outlet[E] = {
     val stage0  = new Stage[A, E](builder.layer)
     val stage   = builder.add(stage0)
@@ -30,26 +30,26 @@ object Concat {
 
   private final val name = "Concat"
 
-  private type Shape[E] = FanInShape2[E, E, E]
+  private type Shp[E] = FanInShape2[E, E, E]
 
-  private final class Stage[A, E >: Null <: BufElem[A]](layer: Layer)(implicit ctrl: Control, tpe: StreamType[A, E])
-    extends StageImpl[Shape[E]](name) {
+  private final class Stage[A, E <: BufElem[A]](layer: Layer)(implicit ctrl: Control, tpe: StreamType[A, E])
+    extends StageImpl[Shp[E]](name) {
 
-    val shape = new FanInShape2(
+    val shape: Shape = new FanInShape2(
       in0 = Inlet [E](s"$name.a"  ),
       in1 = Inlet [E](s"$name.b"  ),
       out = Outlet[E](s"$name.out")
     )
 
-    def createLogic(attr: Attributes) = new Logic[A, E](shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic[A, E](shape, layer)
   }
 
-  private final class Logic[A, E >: Null <: BufElem[A]](shape: Shape[E], layer: Layer)
+  private final class Logic[A, E <: BufElem[A]](shape: Shp[E], layer: Layer)
                                                        (implicit ctrl: Control, tpe: StreamType[A, E])
     extends NodeImpl(name, layer, shape)
-      with FullInOutImpl[Shape[E]]
-      with SameChunkImpl[Shape[E]]
-      with Out1LogicImpl[E, Shape[E]] {
+      with FullInOutImpl[Shp[E]]
+      with SameChunkImpl[Shp[E]]
+      with Out1LogicImpl[E, Shp[E]] {
 
     // ---- impl ----
 
@@ -93,13 +93,13 @@ object Concat {
     protected def freeInputBuffers(): Unit =
       if (bufIn0 != null) {
         bufIn0.release()
-        bufIn0 = null
+        bufIn0 = null.asInstanceOf[E]
       }
 
     protected def freeOutputBuffers(): Unit =
       if (bufOut0 != null) {
         bufOut0.release()
-        bufOut0 = null
+        bufOut0 = null.asInstanceOf[E]
       }
 
     def updateCanRead(): Unit =

@@ -48,28 +48,28 @@ object ZipWindowN {
     stage.out
   }
 
-  private final case class Shape(inputs: ISeq[InD], size: InI, out: OutD) extends akka.stream.Shape {
+  private final case class Shp(inputs: ISeq[InD], size: InI, out: OutD) extends akka.stream.Shape {
     val inlets : ISeq[Inlet [_]] = inputs :+ size
     val outlets: ISeq[Outlet[_]] = Vector(out)
 
-    override def deepCopy(): Shape =
-      Shape(inputs.map(_.carbonCopy()), size.carbonCopy(), out.carbonCopy())
+    override def deepCopy(): Shp =
+      Shp(inputs.map(_.carbonCopy()), size.carbonCopy(), out.carbonCopy())
   }
 
   private final class Stage(layer: Layer, numInputs: Int)(implicit ctrl: Control)
-    extends StageImpl[Shape]("ZipWindow") {
+    extends StageImpl[Shp]("ZipWindow") {
 
-    val shape: Shape = Shape(
+    val shape: Shape = Shp(
       inputs  = Vector.tabulate(numInputs)(idx => InD(s"ZipWindow.in$idx")),
       size    = InI ("ZipWindow.size"),
       out     = OutD("ZipWindow.out" )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
   }
 
   // XXX TODO -- abstract over data type (BufD vs BufI)?
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl("ZipWindow", layer, shape) {
 
     private[this] var bufOut: BufD = _

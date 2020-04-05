@@ -29,22 +29,22 @@ object RunningWindowSum {
 
   private final val name = "RunningWindowSum"
 
-  private type Shape = FanInShape3[BufD, BufI, BufI, BufD]
+  private type Shp = FanInShape3[BufD, BufI, BufI, BufD]
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
-    val shape = new FanInShape3(
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shp](name) {
+    val shape: Shape = new FanInShape3(
       in0 = InD (s"$name.in"  ),
       in1 = InI (s"$name.size"),
       in2 = InI (s"$name.trig"),
       out = OutD(s"$name.out" )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
   }
 
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
-      with RunningWindowValueImpl[Shape]
+      with RunningWindowValueImpl[Shp]
       with FilterIn3DImpl[BufD, BufI, BufI] {
 
     protected def combine(a: Double, b: Double): Double = a + b

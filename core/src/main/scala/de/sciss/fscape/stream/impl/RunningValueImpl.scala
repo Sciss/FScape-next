@@ -18,6 +18,7 @@ package impl
 import akka.stream.Shape
 import akka.stream.stage.GraphStageLogic
 
+@deprecated("Should move to using Handlers", since = "2.35.1")
 trait RunningValueImpl[S <: Shape] extends FilterChunkImpl[BufD, BufD, S] {
   _: GraphStageLogic =>
 

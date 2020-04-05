@@ -19,16 +19,16 @@ import de.sciss.fscape.stream
 
 /** Similar to `GraphStages.SingleSource` but with proper `toString` */
 object Constant {
-  def apply[A, E >: Null <: BufElem[A]](elem: E)(implicit b: stream.Builder): Outlet[E] = {
+  def apply[A, E <: BufElem[A]](elem: E)(implicit b: stream.Builder): Outlet[E] = {
     require (elem.size == 1)
     val stage0  = new Stage[A, E](elem)
     val stage   = b.add(stage0)
     stage.out
   }
 
-  private type Shape[A, E >: Null <: BufElem[A]] = SourceShape[E]
+  private type Shp[E] = SourceShape[E]
 
-  private final class Stage[A, E >: Null <: BufElem[A]](elem: E) extends GraphStage[Shape[A, E]] {
+  private final class Stage[A, E <: BufElem[A]](elem: E) extends GraphStage[Shp[E]] {
     private val name: String = elem.buf(0).toString
 
     override def toString: String = name
@@ -42,7 +42,7 @@ object Constant {
     def createLogic(attr: Attributes): GraphStageLogic = new Logic[A, E](shape, name, elem)
   }
 
-  private final class Logic[A, E >: Null <: BufElem[A]](shape: Shape[A, E], name: String, elem: E)
+  private final class Logic[A, E <: BufElem[A]](shape: Shp[E], name: String, elem: E)
     extends GraphStageLogic(shape) with OutHandler {
 
     override def toString: String = name

@@ -30,10 +30,10 @@ object Bleach {
 
   private final val name = "Bleach"
 
-  private type Shape = FanInShape4[BufD, BufI, BufD, BufD, BufD]
+  private type Shp = FanInShape4[BufD, BufI, BufD, BufD, BufD]
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
-    val shape = new FanInShape4(
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shp](name) {
+    val shape: Shape = new FanInShape4(
       in0 = InD (s"$name.in"        ),
       in1 = InI (s"$name.filterLen" ),
       in2 = InD (s"$name.feedback"  ),
@@ -41,13 +41,13 @@ object Bleach {
       out = OutD(s"$name.out"       )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
   }
 
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
       with FilterIn4DImpl [BufD, BufI, BufD, BufD]
-      with FilterChunkImpl[BufD, BufD, Shape] {
+      with FilterChunkImpl[BufD, BufD, Shp] {
 
     private[this] var feedback    = 0.0
     private[this] var filterClip  = 0.0

@@ -33,19 +33,19 @@ object ImageFileOut {
 
   private final val name = "ImageFileOut"
 
-  private type Shape = UniformSinkShape[BufD]
+  private type Shp = UniformSinkShape[BufD]
 
   private final class Stage(layer: Layer, f: File, spec: Spec)(implicit protected val ctrl: Control)
-    extends BlockingGraphStage[Shape](s"$name(${f.name})") {
+    extends BlockingGraphStage[Shp](s"$name(${f.name})") {
 
     val shape: Shape = UniformSinkShape[BufD](Vector.tabulate(spec.numChannels)(ch => InD(s"$name.in$ch")))
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer = layer, f = f, spec = spec)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer = layer, f = f, spec = spec)
   }
 
-  private final class Logic(shape: Shape, layer: Layer, f: File, protected val spec: Spec)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer, f: File, protected val spec: Spec)(implicit ctrl: Control)
     extends NodeImpl(s"$name(${f.name})", layer, shape)
-    with NodeHasInitImpl with ImageFileSingleOutImpl[Shape] {
+    with NodeHasInitImpl with ImageFileSingleOutImpl[Shp] {
 
     protected val inletsImg: Vec[InD] = shape.inlets.toIndexedSeq
 

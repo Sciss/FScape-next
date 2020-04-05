@@ -15,15 +15,15 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
+import de.sciss.fscape.stream.impl.Handlers._
 import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
-import Handlers._
 
 import scala.annotation.tailrec
 
 object UnaryOp {
-  def apply[A, E >: Null <: BufElem[A], B, F >: Null <: BufElem[B]](opName: String, op: A => B, in: Outlet[E])
-                                                                   (implicit b: Builder, aTpe: StreamType[A, E],
-                                                                    bTpe: StreamType[B, F]): Outlet[F] = {
+  def apply[A, E <: BufElem[A], B, F <: BufElem[B]](opName: String, op: A => B, in: Outlet[E])
+                                                   (implicit b: Builder, aTpe: StreamType[A, E],
+                                                    bTpe: StreamType[B, F]): Outlet[F] = {
     val stage0  = new Stage[A, E, B, F](b.layer, opName, op)
     val stage   = b.add(stage0)
     b.connect(in, stage.in)
@@ -34,10 +34,10 @@ object UnaryOp {
 
   private type Shp[E, F] = FlowShape[E, F]
 
-  private final class Stage[A, E >: Null <: BufElem[A], B, F >: Null <: BufElem[B]](layer: Layer, opName: String,
-                                                                                    op: A => B)
-                                                       (implicit ctrl: Control, aTpe: StreamType[A, E],
-                                                        bTpe: StreamType[B, F])
+  private final class Stage[A, E <: BufElem[A], B, F <: BufElem[B]](layer: Layer, opName: String,
+                                                                    op: A => B)
+                                                                   (implicit ctrl: Control, aTpe: StreamType[A, E],
+                                                                    bTpe: StreamType[B, F])
     extends StageImpl[Shp[E, F]](s"$name($opName)") {
 
     val shape: Shape = new FlowShape(
@@ -49,11 +49,9 @@ object UnaryOp {
       new Logic[A, E, B, F](shape, layer, opName, op)
   }
 
-  private final class Logic[@specialized(Int, Long, Double) A, E >: Null <: BufElem[A],
-    @specialized(Int, Long, Double) B, F >: Null <: BufElem[B]](shape: Shp[E, F], layer: Layer,
-                                                                opName: String, op: A => B)
-                                                               (implicit ctrl: Control, aTpe: StreamType[A, E],
-                                                                bTpe: StreamType[B, F])
+  private final class Logic[@specialized(Args) A, E <: BufElem[A],
+    @specialized(Args) B, F <: BufElem[B]](shape: Shp[E, F], layer: Layer, opName: String, op: A => B)
+                                          (implicit ctrl: Control, aTpe: StreamType[A, E], bTpe: StreamType[B, F])
     extends Handlers(s"$name($opName)", layer, shape) {
 
     private[this] val hIn : InMain  [A, E] = InMain [A, E](this, shape.in )

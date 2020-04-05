@@ -33,10 +33,10 @@ object RotateFlipMatrix {
 
   private final val name = "RotateFlipMatrix"
 
-  private type Shape = FanInShape4[BufD, BufI, BufI, BufI, BufD]
+  private type Shp = FanInShape4[BufD, BufI, BufI, BufI, BufD]
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
-    val shape = new FanInShape4(
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shp](name) {
+    val shape: Shape = new FanInShape4(
       in0 = InD (s"$name.in"     ),
       in1 = InI (s"$name.rows"   ),
       in2 = InI (s"$name.columns"),
@@ -44,16 +44,16 @@ object RotateFlipMatrix {
       out = OutD(s"$name.out"    )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
   }
 
   private final val Transpose = 16
 
   // XXX TODO -- abstract over data type (BufD vs BufI)?
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
-      with WindowedLogicImpl[Shape]
-      with FilterLogicImpl[BufD, Shape]
+      with WindowedLogicImpl[Shp]
+      with FilterLogicImpl[BufD, Shp]
       with FilterIn4DImpl[BufD, BufI, BufI, BufI] {
 
     private[this] var inBuf  : Array[Double] = _

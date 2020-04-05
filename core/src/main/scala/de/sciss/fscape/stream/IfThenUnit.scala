@@ -35,19 +35,20 @@ object IfThenUnit {
 
   private final val name = "IfThenUnit"
 
-  private type Shape = UniformSinkShape[BufI]
+  private type Shp = UniformSinkShape[BufI]
 
   private final class Stage(thisLayer: Layer, branchLayers: ISeq[Layer])(implicit ctrl: Control)
-    extends StageImpl[Shape](name) {
+    extends StageImpl[Shp](name) {
 
     val shape: Shape = UniformSinkShape(
       Vector.tabulate(branchLayers.size)(i => InI(s"$name.cond${i+1}"))
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer = thisLayer, branchLayers = branchLayers)
+    def createLogic(attr: Attributes): NodeImpl[Shape] =
+      new Logic(shape, layer = thisLayer, branchLayers = branchLayers)
   }
 
-  private final class Logic(shape: Shape, layer: Layer, branchLayers: ISeq[Layer])(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer, branchLayers: ISeq[Layer])(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape) { node =>
 
     override def completeAsync(): Future[Unit] = {

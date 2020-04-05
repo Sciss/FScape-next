@@ -31,6 +31,8 @@ package object stream {
   type InL                     = Inlet[BufL]
   type InA                     = Inlet[BufLike]
 
+  final val Args: Specializable.Group[(Int, Long, Double)] = null // not available in Scala 2.12
+
   @inline
   def  InI(name: String): InI = Inlet[BufI](name)
   @inline

@@ -35,11 +35,11 @@ object Broadcast {
 
   private final val name = "Broadcast"
 
-  private type Shape[B <: BufLike] = UniformFanOutShape[B, B]
+  private type Shp[B <: BufLike] = UniformFanOutShape[B, B]
 
   /** Variant of Akka's built-in `Broadcast` that properly allocates buffers. */
   private final class Stage[B <: BufLike](layer: Layer, numOutputs: Int, eagerCancel: Boolean)(implicit ctrl: Control)
-    extends StageImpl[Shape[B]](name) {
+    extends StageImpl[Shp[B]](name) {
 
     val shape: Shape = UniformFanOutShape(
       Inlet [B](s"$name.in"),
@@ -53,7 +53,7 @@ object Broadcast {
   // not available in Scala 2.11
   private val futureUnit: Future[Unit] = Future.successful(())
 
-  private final class Logic[B <: BufLike](shape: Shape[B], layer: Layer, eagerCancel: Boolean)(implicit ctrl: Control)
+  private final class Logic[B <: BufLike](shape: Shp[B], layer: Layer, eagerCancel: Boolean)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape) with InHandler { self =>
 
     private[this] val numOutputs    = shape.outlets.size

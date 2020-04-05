@@ -27,17 +27,17 @@ object SinkIgnore {
 
   private final val name = "SinkIgnore"
 
-  private type Shape[E <: BufLike] = SinkShape[E]
+  private type Shp[E <: BufLike] = SinkShape[E]
 
-  private final class Stage[E <: BufLike](layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape[E]](name) {
+  private final class Stage[E <: BufLike](layer: Layer)(implicit ctrl: Control) extends StageImpl[Shp[E]](name) {
     val shape: Shape = SinkShape[E](
       in = Inlet[E](s"$name.in")
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape = shape, layer = layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape = shape, layer = layer)
   }
 
-  private final class Logic[E <: BufLike](shape: Shape[E], layer: Layer)(implicit ctrl: Control)
+  private final class Logic[E <: BufLike](shape: Shp[E], layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape) with InHandler {
 
     setHandler(shape.in, this)

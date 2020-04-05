@@ -15,7 +15,7 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape4}
-import de.sciss.fscape.stream.impl.{FilterIn4DImpl, FilterLogicImpl, StageImpl, NodeImpl, WindowedLogicImpl}
+import de.sciss.fscape.stream.impl.{FilterIn4DImpl, FilterLogicImpl, NodeImpl, StageImpl, WindowedLogicImpl}
 
 object GramSchmidtMatrix {
   def apply(in: OutD, rows: OutI, columns: OutI, normalize: OutI)(implicit b: Builder): OutD = {
@@ -30,10 +30,10 @@ object GramSchmidtMatrix {
 
   private final val name = "GramSchmidtMatrix"
 
-  private type Shape = FanInShape4[BufD, BufI, BufI, BufI, BufD]
+  private type Shp = FanInShape4[BufD, BufI, BufI, BufI, BufD]
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
-    val shape = new FanInShape4(
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shp](name) {
+    val shape: Shape = new FanInShape4(
       in0 = InD (s"$name.in"       ),
       in1 = InI (s"$name.rows"     ),
       in2 = InI (s"$name.columns"  ),
@@ -41,13 +41,13 @@ object GramSchmidtMatrix {
       out = OutD(s"$name.out"      )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
   }
 
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
-      with WindowedLogicImpl[Shape]
-      with FilterLogicImpl[BufD, Shape]
+      with WindowedLogicImpl[Shp]
+      with FilterLogicImpl[BufD, Shp]
       with FilterIn4DImpl[BufD, BufI, BufI, BufI] {
 
     private[this] var winBuf    : Array[Double] = _

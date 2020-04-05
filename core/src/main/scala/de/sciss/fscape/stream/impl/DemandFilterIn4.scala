@@ -19,10 +19,10 @@ import akka.stream.stage.GraphStageLogic
 import akka.stream.{FanInShape4, Inlet, Outlet}
 
 /** Building block for `FanInShape4` type graph stage logic. */
-trait DemandFilterIn4[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: BufLike, 
-    In3 >: Null <: BufLike, Out >: Null <: BufLike]
+@deprecated("Should move to using Handlers", since = "2.35.1")
+trait DemandFilterIn4[In0 <: BufLike, In1 <: BufLike, In2 <: BufLike, In3 <: BufLike, Out <: BufLike]
   extends Out1LogicImpl[Out, FanInShape4[In0, In1, In2, In3, Out]]
-    with DemandInOutImpl[FanInShape4[In0, In1, In2, In3, Out]] {
+    with DemandInOutImpl    [FanInShape4[In0, In1, In2, In3, Out]] {
   _: GraphStageLogic with Node =>
 
   // ---- impl ----
@@ -111,28 +111,28 @@ trait DemandFilterIn4[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Nul
   private final def freeMainInBuffers(): Unit =
     if (bufIn0 != null) {
       bufIn0.release()
-      bufIn0 = null
+      bufIn0 = null.asInstanceOf[In0]
     }
 
   private final def freeAuxInBuffers(): Unit = {
     if (bufIn1 != null) {
       bufIn1.release()
-      bufIn1 = null
+      bufIn1 = null.asInstanceOf[In1]
     }
     if (bufIn2 != null) {
       bufIn2.release()
-      bufIn2 = null
+      bufIn2 = null.asInstanceOf[In2]
     }
     if (bufIn3 != null) {
       bufIn3.release()
-      bufIn3 = null
+      bufIn3 = null.asInstanceOf[In3]
     }
   }
 
   protected final def freeOutputBuffers(): Unit =
     if (bufOut0 != null) {
       bufOut0.release()
-      bufOut0 = null
+      bufOut0 = null.asInstanceOf[Out]
     }
 
   final def updateMainCanRead(): Unit =
@@ -153,7 +153,8 @@ trait DemandFilterIn4[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Nul
   new ProcessOutHandlerImpl (shape.out, this)
 }
 
-trait DemandFilterIn4D[In0 >: Null <: BufLike, In1 >: Null <: BufLike, In2 >: Null <: BufLike, In3 >: Null <: BufLike]
+@deprecated("Should move to using Handlers", since = "2.35.1")
+trait DemandFilterIn4D[In0 <: BufLike, In1 <: BufLike, In2 <: BufLike, In3 <: BufLike]
   extends DemandFilterIn4[In0, In1, In2, In3, BufD] with Out1DoubleImpl[FanInShape4[In0, In1, In2, In3, BufD]] {
 
   _: GraphStageLogic with Node =>

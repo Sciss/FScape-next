@@ -34,10 +34,10 @@ object Viterbi {
 
   private final val name = "Viterbi"
 
-  private type Shape = FanInShape4[BufD, BufD, BufI, BufI, BufI]
+  private type Shp = FanInShape4[BufD, BufD, BufI, BufI, BufI]
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
-    val shape = new FanInShape4(
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shp](name) {
+    val shape: Shape = new FanInShape4(
       in0 = InD (s"$name.mul"       ),
       in1 = InD (s"$name.add"       ),
       in2 = InI (s"$name.numStates" ),
@@ -45,12 +45,12 @@ object Viterbi {
       out = OutI(s"$name.out"       )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
   }
 
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
-      with NodeHasInitImpl with Out1IntImpl[Shape] with Out1LogicImpl[BufI, Shape] {
+      with NodeHasInitImpl with Out1IntImpl[Shp] with Out1LogicImpl[BufI, Shp] {
 
     private[this] var bufIn0 : BufD = _
     private[this] var bufIn1 : BufD = _

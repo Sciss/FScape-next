@@ -21,8 +21,8 @@ import de.sciss.numbers.IntFunctions
 import scala.annotation.switch
 
 object WindowApply {
-  def apply[A, E >: Null <: BufElem[A]](in: Outlet[E], size: OutI, index: OutI, mode: OutI)
-                                          (implicit b: Builder, tpe: StreamType[A, E]): Outlet[E] = {
+  def apply[A, E <: BufElem[A]](in: Outlet[E], size: OutI, index: OutI, mode: OutI)
+                               (implicit b: Builder, tpe: StreamType[A, E]): Outlet[E] = {
     val stage0  = new Stage[A, E](b.layer)
     val stage   = b.add(stage0)
     b.connect(in    , stage.in0)
@@ -35,13 +35,12 @@ object WindowApply {
 
   private final val name = "WindowApply"
 
-  private type Shape[E] = FanInShape4[E, BufI, BufI, BufI, E]
+  private type Shp[E] = FanInShape4[E, BufI, BufI, BufI, E]
 
-  private final class Stage[A, E >: Null <: BufElem[A]](layer: Layer)
-                                                          (implicit ctrl: Control, tpe: StreamType[A, E])
-    extends StageImpl[Shape[E]](name) {
+  private final class Stage[A, E <: BufElem[A]](layer: Layer)(implicit ctrl: Control, tpe: StreamType[A, E])
+    extends StageImpl[Shp[E]](name) {
 
-    val shape = new FanInShape4(
+    val shape: Shape = new FanInShape4(
       in0 = Inlet [E] (s"$name.in"   ),
       in1 = InI       (s"$name.size" ),
       in2 = InI       (s"$name.index"),
@@ -49,13 +48,13 @@ object WindowApply {
       out = Outlet[E] (s"$name.out"  )
     )
 
-    def createLogic(attr: Attributes) = new Logic[A, E](shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic[A, E](shape, layer)
   }
 
-  private final class Logic[A, E >: Null <: BufElem[A]](shape: Shape[E], layer: Layer)
-                                                       (implicit ctrl: Control, tpe: StreamType[A, E])
+  private final class Logic[A, E <: BufElem[A]](shape: Shp[E], layer: Layer)
+                                               (implicit ctrl: Control, tpe: StreamType[A, E])
     extends NodeImpl(name, layer, shape)
-      with DemandWindowedLogicOLD[Shape[E]]
+      with DemandWindowedLogicOLD[Shp[E]]
       with DemandFilterIn4[E, BufI, BufI, BufI, E] {
 
     private[this] var elem        : A       = _

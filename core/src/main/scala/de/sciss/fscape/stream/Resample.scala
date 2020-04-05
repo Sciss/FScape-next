@@ -34,10 +34,10 @@ object Resample {
 
   private final val name = "Resample"
 
-  private type Shape = FanInShape6[BufD, BufD, BufD, BufD, BufD, BufI, BufD]
+  private type Shp = FanInShape6[BufD, BufD, BufD, BufD, BufD, BufI, BufD]
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
-    val shape = new FanInShape6(
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shp](name) {
+    val shape: Shape = new FanInShape6(
       in0 = InD (s"$name.in"           ),
       in1 = InD (s"$name.factor"       ),
       in2 = InD (s"$name.minFactor"    ),
@@ -47,14 +47,14 @@ object Resample {
       out = OutD(s"$name.out"          )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
   }
 
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
-    with ResampleImpl[Shape]
-    with Out1LogicImpl[BufD, Shape]
-    with Out1DoubleImpl[Shape] {
+    with ResampleImpl[Shp]
+    with Out1LogicImpl[BufD, Shp]
+    with Out1DoubleImpl[Shp] {
 
     // rather arbitrary, but > 1 increases speed; for matrix resample, we'd want very small to save memory
     // N.B.: there is a bug (#37) that has to do with this value. Still investigating; 8 seems safe

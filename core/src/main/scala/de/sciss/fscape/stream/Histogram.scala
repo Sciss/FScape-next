@@ -14,8 +14,8 @@
 package de.sciss.fscape.stream
 
 import akka.stream.{Attributes, FanInShape6, Inlet}
-import de.sciss.fscape.stream.impl.{Handlers, StageImpl}
-import Handlers._
+import de.sciss.fscape.stream.impl.Handlers._
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
 import de.sciss.fscape.{Util, logStream => log}
 import de.sciss.numbers.Implicits._
 
@@ -36,10 +36,10 @@ object Histogram {
 
   private final val name = "Histogram"
 
-  private type Shape = FanInShape6[BufD, BufI, BufD, BufD, BufI, BufI, BufI]
+  private type Shp = FanInShape6[BufD, BufI, BufD, BufD, BufI, BufI, BufI]
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
-    val shape = new FanInShape6(
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shp](name) {
+    val shape: Shape = new FanInShape6(
       in0 = InD (s"$name.in"    ),
       in1 = InI (s"$name.bins"  ),
       in2 = InD (s"$name.lo"    ),
@@ -49,10 +49,10 @@ object Histogram {
       out = OutI(s"$name.out"   )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
   }
 
-  private final class Logic(shape: Shape, layer: Layer)(implicit control: Control)
+  private final class Logic(shape: Shp, layer: Layer)(implicit control: Control)
     extends Handlers(name, layer, shape) {
 
     private[this] var histogram: Array[Int] = _

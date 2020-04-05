@@ -49,23 +49,23 @@ object OverlapAdd {
 
   private final val name = "OverlapAdd"
 
-  private type Shape = FanInShape3[BufD, BufI, BufI, BufD]
+  private type Shp = FanInShape3[BufD, BufI, BufI, BufD]
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
-    val shape = new FanInShape3(
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shp](name) {
+    val shape: Shape = new FanInShape3(
       in0 = InD (s"$name.in"  ),
       in1 = InI (s"$name.size"),
       in2 = InI (s"$name.step"),
       out = OutD(s"$name.out" )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
   }
 
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
-      with DemandChunkImpl[Shape] /* DemandWindowedLogic[Shape] */
-      with DemandFilterLogic[BufD, Shape]
+      with DemandChunkImpl[Shp] /* DemandWindowedLogic[Shape] */
+      with DemandFilterLogic[BufD, Shp]
       with DemandFilterIn3D[BufD, BufI, BufI] {
 
     private[this] var writeToWinOff     = 0L

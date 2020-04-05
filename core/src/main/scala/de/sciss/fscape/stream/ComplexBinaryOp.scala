@@ -33,21 +33,21 @@ object ComplexBinaryOp {
 
   private final val name = "ComplexBinaryOp"
 
-  private type Shape = FanInShape2[BufD, BufD, BufD]
+  private type Shp = FanInShape2[BufD, BufD, BufD]
 
-  private final class Stage(layer: Layer, op: Op)(implicit ctrl: Control) extends StageImpl[Shape](s"$name(${op.name})") {
-    val shape = new FanInShape2(
+  private final class Stage(layer: Layer, op: Op)(implicit ctrl: Control) extends StageImpl[Shp](s"$name(${op.name})") {
+    val shape: Shape = new FanInShape2(
       in0 = InD (s"$name.a" ),
       in1 = InD (s"$name.b" ),
       out = OutD(s"$name.out")
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer, op)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer, op)
   }
 
-  private final class Logic(shape: Shape, layer: Layer, op: Op)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer, op: Op)(implicit ctrl: Control)
     extends NodeImpl(s"$name(${op.name})", layer, shape)
-      with FilterChunkImpl /* SameChunkImpl[Shape] */ [BufD, BufD, Shape]
+      with FilterChunkImpl /* SameChunkImpl[Shape] */ [BufD, BufD, Shp]
       with FilterIn2DImpl /* BinaryInDImpl */[BufD, BufD] {
 
     private[this] var aRe: Double = _

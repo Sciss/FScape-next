@@ -20,12 +20,10 @@ import akka.stream.{Attributes, FanInShape3, Inlet, Outlet}
 import de.sciss.fscape.stream.impl.{DemandAuxInHandler, DemandFilterLogic, DemandInOutImpl, DemandProcessInHandler, DemandWindowedLogicOLD, NodeImpl, Out1LogicImpl, ProcessOutHandlerImpl, StageImpl}
 
 object SortWindow {
-  def apply[A, K >: Null <: BufElem[A],
-  B, V >: Null <: BufElem[B]](keys  : Outlet[K],
-                              values: Outlet[V], size: OutI)
-                             (implicit b: Builder,
-                              keyTpe  : StreamType[A, K],
-                              valueTpe: StreamType[B, V]): Outlet[V] = {
+  def apply[A, K <: BufElem[A], B, V <: BufElem[B]](keys: Outlet[K], values: Outlet[V], size: OutI)
+                                                   (implicit b: Builder,
+                                                    keyTpe  : StreamType[A, K],
+                                                    valueTpe: StreamType[B, V]): Outlet[V] = {
     val stage0  = new Stage[A, K, B, V](b.layer)
     val stage   = b.add(stage0)
     b.connect(keys  , stage.in0)
@@ -36,34 +34,30 @@ object SortWindow {
 
   private final val name = "SortWindow"
 
-  private type Shape[A, K >: Null <: BufElem[A], B, V >: Null <: BufElem[B]] =
-    FanInShape3[K, V, BufI, V]
+  private type Shp[K, V] = FanInShape3[K, V, BufI, V]
 
-  private final class Stage[A, K >: Null <: BufElem[A],
-  B, V >: Null <: BufElem[B]](layer: Layer)
-                             (implicit ctrl: Control,
-                              keyTpe: StreamType[A, K], valueTpe: StreamType[B, V])
-    extends StageImpl[Shape[A, K, B, V]](name) {
+  private final class Stage[A, K <: BufElem[A], B, V <: BufElem[B]](layer: Layer)
+                             (implicit ctrl: Control, keyTpe: StreamType[A, K], valueTpe: StreamType[B, V])
+    extends StageImpl[Shp[K, V]](name) {
 
-    val shape = new FanInShape3(
+    val shape: Shape = new FanInShape3(
       in0 = Inlet[K] (s"$name.keys"  ),
       in1 = Inlet[V] (s"$name.values"),
       in2 = InI      (s"$name.size"  ),
       out = Outlet[V](s"$name.out"   )
     )
 
-    def createLogic(attr: Attributes) = new Logic[A, K, B, V](shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic[A, K, B, V](shape, layer)
   }
 
-  private final class Logic[A, K >: Null <: BufElem[A],
-  B, V >: Null <: BufElem[B]](shape: Shape[A, K, B, V], layer: Layer)
+  private final class Logic[A, K <: BufElem[A], B, V <: BufElem[B]](shape: Shp[K, V], layer: Layer)
                              (implicit ctrl: Control, keyTpe: StreamType[A, K],
                               valueTpe: StreamType[B, V])
     extends NodeImpl(name, layer, shape)
-      with DemandFilterLogic[K, Shape[A, K, B, V]]
-      with DemandWindowedLogicOLD[ Shape[A, K, B, V]]
-      with Out1LogicImpl    [V, Shape[A, K, B, V]]
-      with DemandInOutImpl[     Shape[A, K, B, V]] {
+      with DemandFilterLogic      [K, Shp[K, V]]
+      with DemandWindowedLogicOLD [   Shp[K, V]]
+      with Out1LogicImpl          [V, Shp[K, V]]
+      with DemandInOutImpl        [   Shp[K, V]] {
 
     import keyTpe.{ordering => keyOrd}
 
@@ -147,11 +141,11 @@ object SortWindow {
     private def freeMainInBuffers(): Unit = {
       if (bufIn0 != null) {
         bufIn0.release()
-        bufIn0 = null
+        bufIn0 = null.asInstanceOf[K]
       }
       if (bufIn1 != null) {
         bufIn1.release()
-        bufIn1 = null
+        bufIn1 = null.asInstanceOf[V]
       }
     }
 
@@ -165,7 +159,7 @@ object SortWindow {
     protected def freeOutputBuffers(): Unit =
       if (bufOut0 != null) {
         bufOut0.release()
-        bufOut0 = null
+        bufOut0 = null.asInstanceOf[V]
       }
 
     def updateMainCanRead(): Unit = {

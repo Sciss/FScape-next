@@ -19,9 +19,9 @@ import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
 import Handlers._
 
 object TakeWhile {
-  def apply[A, Buf >: Null <: BufElem[A]](in: Outlet[Buf], p: OutI)
-                                         (implicit b: Builder, aTpe: StreamType[A, Buf]): Outlet[Buf] = {
-    val stage0  = new Stage[A, Buf](b.layer)
+  def apply[A, E <: BufElem[A]](in: Outlet[E], p: OutI)
+                               (implicit b: Builder, tpe: StreamType[A, E]): Outlet[E] = {
+    val stage0  = new Stage[A, E](b.layer)
     val stage   = b.add(stage0)
     b.connect(in, stage.in0)
     b.connect(p , stage.in1)
@@ -30,23 +30,23 @@ object TakeWhile {
 
   private final val name = "TakeWhile"
 
-  private type Shape[A, Buf >: Null <: BufElem[A]] = FanInShape2[Buf, BufI, Buf]
+  private type Shp[E] = FanInShape2[E, BufI, E]
 
-  private final class Stage[A, Buf >: Null <: BufElem[A]](layer: Layer)
-                                                         (implicit ctrl: Control, aTpe: StreamType[A, Buf])
-    extends StageImpl[Shape[A, Buf]](name) {
+  private final class Stage[A, E <: BufElem[A]](layer: Layer)
+                                               (implicit ctrl: Control, tpe: StreamType[A, E])
+    extends StageImpl[Shp[E]](name) {
 
-    val shape = new FanInShape2(
-      in0 = Inlet [Buf](s"$name.in" ),
-      in1 = InI        (s"$name.p"  ),
-      out = Outlet[Buf](s"$name.out")
+    val shape: Shape = new FanInShape2(
+      in0 = Inlet [E](s"$name.in" ),
+      in1 = InI      (s"$name.p"  ),
+      out = Outlet[E](s"$name.out")
     )
 
-    def createLogic(attr: Attributes): NodeImpl[TakeWhile.Shape[A, Buf]] = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic[A, E](shape, layer)
   }
 
-  private final class Logic[A, E >: Null <: BufElem[A]](shape: Shape[A, E], layer: Layer)
-                                                       (implicit ctrl: Control, tpe: StreamType[A, E])
+  private final class Logic[A, E <: BufElem[A]](shape: Shp[E], layer: Layer)
+                                               (implicit ctrl: Control, tpe: StreamType[A, E])
     extends Handlers(name, layer, shape) {
 
     private[this] val hIn   : InMain [A, E] = InMain [A, E](this, shape.in0)

@@ -27,15 +27,15 @@ object Empty {
 
   private final val name = "Empty"
 
-  private type Shape = SourceShape[BufD]
+  private type Shp = SourceShape[BufD]
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
-    val shape = new SourceShape(OutD(s"$name.out"))
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shp](name) {
+    val shape: Shape = new SourceShape(OutD(s"$name.out"))
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
   }
 
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape) with OutHandler {
 
     override protected def launch(): Unit = completeStage()

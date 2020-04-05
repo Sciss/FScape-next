@@ -30,8 +30,8 @@ object ResizeWindow {
     * @param start  the delta window size at the output window's beginning
     * @param stop   the delta window size at the output window's ending
     */
-  def apply[A, E >: Null <: BufElem[A]](in: Outlet[E], size: OutI, start: OutI, stop: OutI)
-                                       (implicit b: Builder, tpe: StreamType[A, E]): Outlet[E] = {
+  def apply[A, E <: BufElem[A]](in: Outlet[E], size: OutI, start: OutI, stop: OutI)
+                               (implicit b: Builder, tpe: StreamType[A, E]): Outlet[E] = {
     val stage0  = new Stage[A, E](b.layer)
     val stage   = b.add(stage0)
     b.connect(in    , stage.in0)
@@ -44,12 +44,12 @@ object ResizeWindow {
 
   private final val name = "ResizeWindow"
 
-  private type Shape[E] = FanInShape4[E, BufI, BufI, BufI, E]
+  private type Shp[E] = FanInShape4[E, BufI, BufI, BufI, E]
 
-  private final class Stage[A, E >: Null <: BufElem[A]](layer: Layer)(implicit ctrl: Control, tpe: StreamType[A, E])
-    extends StageImpl[Shape[E]](name) {
+  private final class Stage[A, E <: BufElem[A]](layer: Layer)(implicit ctrl: Control, tpe: StreamType[A, E])
+    extends StageImpl[Shp[E]](name) {
 
-    val shape = new FanInShape4(
+    val shape: Shape = new FanInShape4(
       in0 = Inlet[E]  (s"$name.in"   ),
       in1 = InI       (s"$name.size" ),
       in2 = InI       (s"$name.start"),
@@ -57,14 +57,14 @@ object ResizeWindow {
       out = Outlet[E] (s"$name.out"  )
     )
 
-    def createLogic(attr: Attributes) = new Logic[A, E](shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic[A, E](shape, layer)
   }
 
-  private final class Logic[A, E >: Null <: BufElem[A]](shape: Shape[E], layer: Layer)
-                                                       (implicit ctrl: Control,
-                                                        protected val tpeSignal: StreamType[A, E])
+  private final class Logic[A, E <: BufElem[A]](shape: Shp[E], layer: Layer)
+                                               (implicit ctrl: Control,
+                                                protected val tpe: StreamType[A, E])
     extends NodeImpl(name, layer, shape)
-      with DemandFilterWindowedLogic[A, E, Shape[E]] {
+      with DemandFilterWindowedLogic[A, E, Shp[E]] {
 
     private[this] var startPos    : Int = -1
     private[this] var startNeg    : Int = _
@@ -179,7 +179,7 @@ object ResizeWindow {
       val chunk1    = /*if (win == null) 0 else*/ math.min(chunk - skipStart, win.length - winOff1)
       if (chunk1 <= 0) return
 
-      tpeSignal.clear(win, winOff1, chunk1)
+      tpe.clear(win, winOff1, chunk1)
     }
 
     override protected def processInput(in: Array[A], inOff: Int, win: Array[A], readOff: Int, chunk: Int): Unit = {
@@ -204,7 +204,7 @@ object ResizeWindow {
       val arr       = bufOut0.buf
       val zeroStart = math.min(chunk, math.max(0, -startNeg - readOffI))
       if (zeroStart > 0) {
-        tpeSignal.clear(arr, outOff, zeroStart)
+        tpe.clear(arr, outOff, zeroStart)
       }
       val winOff1   = readOffI + zeroStart + startNeg
       val outOff1   = outOff + zeroStart
@@ -217,7 +217,7 @@ object ResizeWindow {
       val zeroStop  = chunk - (chunk2 + zeroStart) // - chunk1
       if (zeroStop > 0) {
         val outOff2 = outOff1 + chunk2
-        tpeSignal.clear(arr, outOff2, zeroStop)
+        tpe.clear(arr, outOff2, zeroStop)
       }
     }
   }

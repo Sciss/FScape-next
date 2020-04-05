@@ -19,8 +19,8 @@ import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 import de.sciss.fscape.{logStream => log}
 
 object DC {
-  def apply[A, Buf >: Null <: BufElem[A]](in: Outlet[Buf])
-                                         (implicit b: Builder, aTpe: StreamType[A, Buf]): Outlet[Buf] = {
+  def apply[A, Buf <: BufElem[A]](in: Outlet[Buf])
+                                         (implicit b: Builder, tpe: StreamType[A, Buf]): Outlet[Buf] = {
     val stage0  = new Stage[A, Buf](b.layer)
     val stage   = b.add(stage0)
     b.connect(in, stage.in)
@@ -29,22 +29,22 @@ object DC {
 
   private final val name = "DC"
 
-  private type Shape[A, Buf >: Null <: BufElem[A]] = FlowShape[Buf, Buf]
+  private type Shp[E] = FlowShape[E, E]
 
-  private final class Stage[A, Buf >: Null <: BufElem[A]](layer: Layer)
-                                                         (implicit ctrl: Control, aTpe: StreamType[A, Buf])
-    extends StageImpl[Shape[A, Buf]](name) {
+  private final class Stage[A, E <: BufElem[A]](layer: Layer)
+                                               (implicit ctrl: Control, tpe: StreamType[A, E])
+    extends StageImpl[Shp[E]](name) {
 
-    val shape = new FlowShape(
-      in  = Inlet [Buf](s"$name.in" ),
-      out = Outlet[Buf](s"$name.out")
+    val shape: Shape = new FlowShape(
+      in  = Inlet [E](s"$name.in" ),
+      out = Outlet[E](s"$name.out")
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic[A, E](shape, layer)
   }
 
-  private final class Logic[A, Buf >: Null <: BufElem[A]](shape: Shape[A, Buf], layer: Layer)
-                                                         (implicit ctrl: Control, aTpe: StreamType[A, Buf])
+  private final class Logic[A, E <: BufElem[A]](shape: Shp[E], layer: Layer)
+                                               (implicit ctrl: Control, tpe: StreamType[A, E])
     extends NodeImpl(name, layer, shape) with OutHandler { logic =>
 
     private[this] var hasValue = false
@@ -82,8 +82,8 @@ object DC {
     setHandler(shape.in, InH)
 
     private def process(): Unit = {
-      val buf = aTpe.allocBuf()
-      aTpe.fill(buf.buf, 0, buf.size, value)
+      val buf = tpe.allocBuf()
+      tpe.fill(buf.buf, 0, buf.size, value)
       push(shape.out, buf)
     }
   }

@@ -41,10 +41,10 @@ object OffsetOverlapAdd {
 
   private final val name = "OffsetOverlapAdd"
 
-  private type Shape = FanInShape5[BufD, BufI, BufI, BufI, BufI, BufD]
+  private type Shp = FanInShape5[BufD, BufI, BufI, BufI, BufI, BufD]
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
-    val shape = new FanInShape5(
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shp](name) {
+    val shape: Shape = new FanInShape5(
       in0 = InD (s"$name.in"       ),
       in1 = InI (s"$name.size"     ),
       in2 = InI (s"$name.step"     ),
@@ -53,13 +53,13 @@ object OffsetOverlapAdd {
       out = OutD(s"$name.out"      )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
   }
 
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
-      with ChunkImpl[Shape]
-      with FilterLogicImpl[BufD, Shape]
+      with ChunkImpl[Shp]
+      with FilterLogicImpl[BufD, Shp]
       with FilterIn5DImpl[BufD, BufI, BufI, BufI, BufI] {
 
     private[this] var size     : Int  = _

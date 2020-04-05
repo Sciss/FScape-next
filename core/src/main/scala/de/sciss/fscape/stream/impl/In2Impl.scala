@@ -21,7 +21,7 @@ import akka.stream.stage.GraphStageLogic
 /** Building block for `FanInShape2` type graph stage logic,
   * with no information regarding "hot" inlets.
   */
-trait In2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, Out >: Null <: BufLike]
+trait In2Impl[In0 <: BufLike, In1 <: BufLike, Out <: BufLike]
   extends Out1LogicImpl[Out, FanInShape2[In0, In1, Out]] {
   _: GraphStageLogic with Node =>
 
@@ -43,17 +43,17 @@ trait In2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, Out >: Null <: Buf
   protected final def freeInputBuffers(): Unit = {
     if (bufIn0 != null) {
       bufIn0.release()
-      bufIn0 = null
+      bufIn0 = null.asInstanceOf[In0]
     }
     if (bufIn1 != null) {
       bufIn1.release()
-      bufIn1 = null
+      bufIn1 = null.asInstanceOf[In1]
     }
   }
 
   protected final def freeOutputBuffers(): Unit =
     if (bufOut0 != null) {
       bufOut0.release()
-      bufOut0 = null
+      bufOut0 = null.asInstanceOf[Out]
     }
 }

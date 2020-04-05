@@ -22,6 +22,7 @@ import akka.stream.stage.GraphStageLogic
   * A generator keeps producing output until down-stream is closed, and does
   * not care about upstream inlets being closed.
   */
+@deprecated("Should move to using Handlers", since = "2.35.1")
 trait GenIn2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, Out >: Null <: BufLike]
   extends Out1LogicImpl[Out, FanInShape2[In0, In1, Out]] with FullInOutImpl[FanInShape2[In0, In1, Out]] {
   _: GraphStageLogic with Node =>
@@ -97,12 +98,14 @@ trait GenIn2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, Out >: Null <: 
   new ProcessOutHandlerImpl(shape.out, this)
 }
 
+@deprecated("Should move to using Handlers", since = "2.35.1")
 trait GenIn2DImpl[In0 >: Null <: BufLike, In1 >: Null <: BufLike]
   extends GenIn2Impl[In0, In1, BufD]
     with Out1DoubleImpl[FanInShape2[In0, In1, BufD]] {
   _: GraphStageLogic with Node =>
 }
 
+@deprecated("Should move to using Handlers", since = "2.35.1")
 trait GenIn2IImpl[In0 >: Null <: BufLike, In1 >: Null <: BufLike]
   extends GenIn2Impl[In0, In1, BufI]
     with Out1IntImpl[FanInShape2[In0, In1, BufI]] {

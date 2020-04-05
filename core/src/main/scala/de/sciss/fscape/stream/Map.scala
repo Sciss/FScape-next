@@ -25,9 +25,9 @@ object Map {
     stage.out
   }
 
-  private type Shape[A, B] = FlowShape[A, B]
+  private type Shp[A, B] = FlowShape[A, B]
 
-  private final class Stage[A, B](name: String, fun: A => B) extends GraphStage[Shape[A, B]] {
+  private final class Stage[A, B](name: String, fun: A => B) extends GraphStage[Shp[A, B]] {
     override def toString = s"$name@${hashCode().toHexString}"
 
     val shape: Shape = FlowShape[A, B](
@@ -40,7 +40,7 @@ object Map {
     def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new Logic[A, B](name, shape, fun)
   }
 
-  private final class Logic[A, B](name: String, shape: Shape[A, B], fun: A => B)
+  private final class Logic[A, B](name: String, shape: Shp[A, B], fun: A => B)
     extends GraphStageLogic(shape) with InHandler with OutHandler { self =>
 
     override def toString = s"$name@${hashCode().toHexString}"

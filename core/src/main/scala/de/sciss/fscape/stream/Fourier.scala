@@ -18,6 +18,7 @@ import akka.stream.{Attributes, FanInShape5}
 import de.sciss.file.File
 import de.sciss.fscape.stream.impl.{BlockingGraphStage, FilterIn5DImpl, FilterLogicImpl, NodeImpl, WindowedLogicImpl}
 import de.sciss.numbers
+import de.sciss.numbers.{IntFunctions => ri, LongFunctions => rl}
 
 object Fourier {
   def apply(in: OutD, size: OutL, padding: OutL, dir: OutD, mem: OutI)(implicit b: Builder): OutD = {
@@ -33,14 +34,14 @@ object Fourier {
 
   private final val name = "Fourier"
 
-  private type Shape = FanInShape5[BufD, BufL, BufL, BufD, BufI, BufD]
+  private type Shp = FanInShape5[BufD, BufL, BufL, BufD, BufI, BufD]
 
   private final class Stage(layer: Layer)(implicit protected val ctrl: Control)
-    extends BlockingGraphStage[Shape](name) {
+    extends BlockingGraphStage[Shp](name) {
 
     override def toString = s"$name@${hashCode.toHexString}"
 
-    val shape = new FanInShape5(
+    val shape: Shape = new FanInShape5(
       in0 = InD (s"$name.in"     ),
       in1 = InL (s"$name.size"   ),
       in2 = InL (s"$name.padding"),
@@ -49,26 +50,13 @@ object Fourier {
       out = OutD(s"$name.out"    )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
   }
 
-
-  // not part of 'Numbers'
-  private implicit final class LongOps(val a: Long) extends AnyVal {
-    def isPowerOfTwo: Boolean = (a & (a-1)) == 0
-
-    def nextPowerOfTwo: Long = {
-      if (a > 0x4000000000000000L) throw new IllegalArgumentException(s"Integer overflow: nextPowerOfTwo($a)")
-      var j = 1L
-      while (j < a) j <<= 1   // in theory would be faster to do zig-zag search
-      j
-    }
-  }
-
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
-      with WindowedLogicImpl[Shape]
-      with FilterLogicImpl[BufD, Shape]
+      with WindowedLogicImpl[Shp]
+      with FilterLogicImpl[BufD, Shp]
       with FilterIn5DImpl[BufD, BufL, BufL, BufD, BufI] {
 
     private[this] val fileBuffers   = new Array[FileBuffer](4)
@@ -115,7 +103,7 @@ object Fourier {
       }
       if (bufIn2 != null && inOff < bufIn2.size) {
         padding = math.max(0, bufIn2.buf(inOff)) * inF
-        padding = (size + padding).nextPowerOfTwo - size
+        padding = rl.nextPowerOfTwo(size + padding) - size
       }
 
       val n = (size + padding) / inF
@@ -216,9 +204,8 @@ object Fourier {
     */
   private def storageFFT(audioFiles: Array[FileBuffer], tempFiles: Array[File], len: Long, dir: Double,
                          memAmount: Int): Unit = {
-    import numbers.Implicits._
-    require(memAmount >= 2 && memAmount.isPowerOfTwo)
-    require(len       >= 2 && len      .isPowerOfTwo)
+    require(memAmount >= 2 && ri.isPowerOfTwo(memAmount))
+    require(len       >= 2 && rl.isPowerOfTwo(len))
 
     val indexMap	= Array(1, 0, 3, 2)
     val indices   = new Array[Int](4)

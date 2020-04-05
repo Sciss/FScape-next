@@ -32,10 +32,10 @@ object Limiter {
 
   private final val name = "Limiter"
 
-  private type Shape = FanInShape4[BufD, BufI, BufI, BufD, BufD]
+  private type Shp = FanInShape4[BufD, BufI, BufI, BufD, BufD]
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
-    val shape = new FanInShape4(
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shp](name) {
+    val shape: Shape = new FanInShape4(
       in0 = InD (s"$name.in"      ),
       in1 = InI (s"$name.attack"  ),
       in2 = InI (s"$name.release" ),
@@ -43,10 +43,10 @@ object Limiter {
       out = OutD(s"$name.out"     )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
   }
 
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
       with DemandFilterIn4D[BufD, BufI, BufI, BufD]
   {

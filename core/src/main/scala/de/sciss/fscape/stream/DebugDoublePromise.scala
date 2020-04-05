@@ -29,17 +29,17 @@ object DebugDoublePromise {
 
   private final val name = "DebugDoublePromise"
 
-  private type Shape = SinkShape[BufD]
+  private type Shp = SinkShape[BufD]
 
-  private final class Stage(layer: Layer, p: Promise[Vec[Double]])(implicit ctrl: Control) extends StageImpl[Shape](name) {
-    val shape = SinkShape(
+  private final class Stage(layer: Layer, p: Promise[Vec[Double]])(implicit ctrl: Control) extends StageImpl[Shp](name) {
+    val shape: Shape = SinkShape(
       in = InD(s"$name.in")
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer, p)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer, p)
   }
 
-  private final class Logic(shape: Shape, layer: Layer, p: Promise[Vec[Double]])(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer, p: Promise[Vec[Double]])(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
       with Sink1Impl[BufD] {
 

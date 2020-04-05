@@ -15,8 +15,8 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape3}
-import de.sciss.fscape.stream.impl.{AbstractClipFoldWrapD, AbstractClipFoldWrapI, AbstractClipFoldWrapL, StageImpl}
-import de.sciss.numbers.{DoubleFunctions, IntFunctions}
+import de.sciss.fscape.stream.impl.{AbstractClipFoldWrapD, AbstractClipFoldWrapI, AbstractClipFoldWrapL, NodeImpl, StageImpl}
+import de.sciss.numbers.{DoubleFunctions, IntFunctions, LongFunctions}
 
 object Clip {
   def int(in: OutI, lo: OutI, hi: OutI)(implicit b: Builder): OutI = {
@@ -53,14 +53,14 @@ object Clip {
   private type ShapeDouble  = FanInShape3[BufD, BufD, BufD, BufD]
 
   private final class StageInt(layer: Layer)(implicit ctrl: Control) extends StageImpl[ShapeInt](name) {
-    val shape = new FanInShape3(
+    val shape: Shape = new FanInShape3(
       in0 = InI (s"$name.in"),
       in1 = InI (s"$name.lo"),
       in2 = InI (s"$name.hi"),
       out = OutI(s"$name.out")
     )
 
-    def createLogic(attr: Attributes) = new LogicInt(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new LogicInt(shape, layer)
   }
 
   private final class StageLong(layer: Layer)(implicit ctrl: Control) extends StageImpl[ShapeLong](name) {
@@ -96,7 +96,7 @@ object Clip {
     extends AbstractClipFoldWrapL(name, layer, shape) {
 
     protected def op(inVal: Long, loVal: Long, hiVal: Long): Long =
-      math.max(loVal, math.min(hiVal, inVal)) // cf. Numbers issue #6
+      LongFunctions.clip(inVal, loVal, hiVal)
   }
 
   private final class LogicDouble(shape: ShapeDouble, layer: Layer)(implicit ctrl: Control)

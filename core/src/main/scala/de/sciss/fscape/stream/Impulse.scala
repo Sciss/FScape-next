@@ -29,23 +29,23 @@ object Impulse {
 
   private final val name = "Impulse"
 
-  private type Shape = FanInShape2[BufD, BufD, BufI]
+  private type Shp = FanInShape2[BufD, BufD, BufI]
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
-    val shape = new FanInShape2(
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shp](name) {
+    val shape: Shape = new FanInShape2(
       in0 = InD (s"$name.freqN"),
       in1 = InD (s"$name.phase"),
       out = OutI(s"$name.out"  )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
   }
 
   // XXX TODO -- detect constant freq input and use multiplication instead of frame-by-frame addition for phase
   // (cf. Resample)
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
-      with GenChunkImpl[Shape]
+      with GenChunkImpl[Shp]
       with GenIn2IImpl[BufD, BufD] {
 
     private[this] var incr    : Double = _

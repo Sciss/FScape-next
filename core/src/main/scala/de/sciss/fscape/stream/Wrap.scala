@@ -15,7 +15,7 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape3}
-import de.sciss.fscape.stream.impl.{AbstractClipFoldWrapD, AbstractClipFoldWrapI, AbstractClipFoldWrapL, StageImpl}
+import de.sciss.fscape.stream.impl.{AbstractClipFoldWrapD, AbstractClipFoldWrapI, AbstractClipFoldWrapL, NodeImpl, StageImpl}
 import de.sciss.numbers.{DoubleFunctions, IntFunctions}
 
 object Wrap {
@@ -53,36 +53,36 @@ object Wrap {
   private type ShapeDouble  = FanInShape3[BufD, BufD, BufD, BufD]
 
   private final class StageInt(layer: Layer)(implicit ctrl: Control) extends StageImpl[ShapeInt](name) {
-    val shape = new FanInShape3(
+    val shape: Shape = new FanInShape3(
       in0 = InI (s"$name.in"),
       in1 = InI (s"$name.lo"),
       in2 = InI (s"$name.hi"),
       out = OutI(s"$name.out")
     )
 
-    def createLogic(attr: Attributes) = new LogicInt(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new LogicInt(shape, layer)
   }
 
   private final class StageLong(layer: Layer)(implicit ctrl: Control) extends StageImpl[ShapeLong](name) {
-    val shape = new FanInShape3(
+    val shape: Shape = new FanInShape3(
       in0 = InL (s"$name.in"),
       in1 = InL (s"$name.lo"),
       in2 = InL (s"$name.hi"),
       out = OutL(s"$name.out")
     )
 
-    def createLogic(attr: Attributes) = new LogicLong(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new LogicLong(shape, layer)
   }
 
   private final class StageDouble(layer: Layer)(implicit ctrl: Control) extends StageImpl[ShapeDouble](name) {
-    val shape = new FanInShape3(
+    val shape: Shape = new FanInShape3(
       in0 = InD (s"$name.in"),
       in1 = InD (s"$name.lo"),
       in2 = InD (s"$name.hi"),
       out = OutD(s"$name.out")
     )
 
-    def createLogic(attr: Attributes) = new LogicDouble(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new LogicDouble(shape, layer)
   }
 
   private final class LogicInt(shape: ShapeInt, layer: Layer)(implicit ctrl: Control)

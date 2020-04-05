@@ -30,9 +30,9 @@ object DCT_II {
 
   private final val name = "DCT_II"
 
-  private type Shape = FanInShape4[BufD, BufI, BufI, BufI, BufD]
+  private type Shp = FanInShape4[BufD, BufI, BufI, BufI, BufD]
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shp](name) {
     val shape = new FanInShape4(
       in0 = InD (s"$name.in"       ),
       in1 = InI (s"$name.size"     ),
@@ -45,10 +45,10 @@ object DCT_II {
 
   // XXX TODO --- we could store pre-calculated cosine tables for
   // sufficiently small table sizes
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
-      with FilterLogicImpl[BufD, Shape]
-      with WindowedLogicImpl[Shape]
+      with FilterLogicImpl[BufD, Shp]
+      with WindowedLogicImpl[Shp]
       with FilterIn4DImpl[BufD, BufI, BufI, BufI] {
 
     private[this] var size      = 0

@@ -29,22 +29,22 @@ object Frames {
 
   private final val nameFr = "Frames"
 
-  private type Shape = FlowShape[BufLike, BufL]
+  private type Shp = FlowShape[BufLike, BufL]
 
   private final class Stage(layer: Layer, init: Int, name: String)(implicit ctrl: Control)
-    extends StageImpl[Shape](name) {
+    extends StageImpl[Shp](name) {
 
-    val shape = new FlowShape(
+    val shape: Shape = new FlowShape(
       in  = InA (s"$name.in" ),
       out = OutL(s"$name.out")
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer, init = init, name = name)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer, init = init, name = name)
   }
 
-  private final class Logic(shape: Shape, layer: Layer, init: Int, name: String)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer, init: Int, name: String)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
-      with FilterChunkImpl[BufLike, BufL, Shape]
+      with FilterChunkImpl[BufLike, BufL, Shp]
       with FilterIn1LImpl[BufLike] {
 
     private[this] var framesRead = init.toLong

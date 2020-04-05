@@ -31,22 +31,22 @@ object Line {
 
   private final val name = "Line"
 
-  private type Shape = FanInShape3[BufD, BufD, BufL, BufD]
+  private type Shp = FanInShape3[BufD, BufD, BufL, BufD]
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
-    val shape = new FanInShape3(
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shp](name) {
+    val shape: Shape = new FanInShape3(
       in0 = InD (s"$name.start" ),
       in1 = InD (s"$name.end"   ),
       in2 = InL (s"$name.length"),
       out = OutD(s"$name.out"   )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
   }
 
   // XXX TODO --- we could allow `start` and `end` to change over time,
   // although probably that will not be needed ever
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
       with GenIn3DImpl[BufD, BufD, BufL] {
 

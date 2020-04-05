@@ -27,17 +27,17 @@ object DebugOut {
 
   private final val name = "DebugOut"
 
-    private type Shape = SinkShape[BufD]
+  private type Shp = SinkShape[BufD]
 
   private final class Stage(layer: Layer)(implicit protected val ctrl: Control)
-    extends StageImpl[Shape](s"$name") {
+    extends StageImpl[Shp](s"$name") {
 
     val shape: Shape = SinkShape[BufD](InD(s"$name.in"))
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
   }
 
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(s"$name", layer, shape) with InHandler { logic =>
 
     setHandler(shape.in, this)

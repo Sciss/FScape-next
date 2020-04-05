@@ -30,21 +30,21 @@ object ReduceWindow {
 
   private final val name = "ReduceWindow"
 
-  private type Shape = FanInShape2[BufD, BufI, BufD]
+  private type Shp = FanInShape2[BufD, BufI, BufD]
 
-  private final class Stage(layer: Layer, op: Op)(implicit ctrl: Control) extends StageImpl[Shape](name) {
-    val shape = new FanInShape2(
+  private final class Stage(layer: Layer, op: Op)(implicit ctrl: Control) extends StageImpl[Shp](name) {
+    val shape: Shape = new FanInShape2(
       in0 = InD (s"$name.in"  ),
       in1 = InI (s"$name.size"),
       out = OutD(s"$name.out" )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer, op)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer, op)
   }
 
-  private final class Logic(shape: Shape, layer: Layer, op: Op)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer, op: Op)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
-      with DemandWindowedLogic[Double, BufD, Double, BufD, Shape] with NoParamsDemandWindowLogic {
+      with DemandWindowedLogic[Double, BufD, Double, BufD, Shp] with NoParamsDemandWindowLogic {
 
     private[this] var value: Double  = _
 
@@ -57,7 +57,7 @@ object ReduceWindow {
       installMainAndWindowHandlers()
     }
 
-    protected def tpeSignal: StreamType[Double, BufD] = StreamType.double
+    protected def tpe: StreamType[Double, BufD] = StreamType.double
 
     protected def allocOutBuf0(): BufD = ctrl.borrowBufD()
 

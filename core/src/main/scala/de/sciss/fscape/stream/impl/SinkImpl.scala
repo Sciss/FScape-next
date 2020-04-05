@@ -18,6 +18,7 @@ package impl
 import akka.stream.{Inlet, Shape, SinkShape}
 import akka.stream.stage.GraphStageLogic
 
+@deprecated("Should move to using Handlers", since = "2.35.1")
 trait SinkImpl[S <: Shape]
   extends FullInOutImpl[S] {
   _: GraphStageLogic =>
@@ -38,6 +39,7 @@ trait SinkImpl[S <: Shape]
 /** Building block for sinks with `SinkShape` type graph stage logic.
   * A sink keeps consuming input until left inlet is closed.
   */
+@deprecated("Should move to using Handlers", since = "2.35.1")
 trait Sink1Impl[In0 >: Null <: BufLike]
   extends SinkImpl[SinkShape[In0]] {
   _: GraphStageLogic with Node =>
@@ -86,6 +88,7 @@ trait Sink1Impl[In0 >: Null <: BufLike]
 /** Building block for sinks with `Sink2Shape` type graph stage logic.
   * A sink keeps consuming input until left inlet is closed.
   */
+@deprecated("Should move to using Handlers", since = "2.35.1")
 trait Sink2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike]
   extends SinkImpl[SinkShape2[In0, In1]] {
   _: GraphStageLogic with Node =>

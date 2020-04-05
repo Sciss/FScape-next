@@ -38,29 +38,28 @@ object ValueSeq {
 
   private final val name = "ValueSeq"
 
-  private type Shape[A, BufA <: BufLike { type Elem = A }] = SourceShape[BufA]
+  private type Shp[E] = SourceShape[E]
 
-  private final class Stage[A, BufA >: Null <: BufLike { type Elem = A }](layer: Layer, elems: Array[A])
-                                                                  (implicit ctrl: Control, aTpe: StreamType[A, BufA])
-    extends StageImpl[Shape[A, BufA]](name) {
+  private final class Stage[A, E <: BufElem[A]](layer: Layer, elems: Array[A])
+                                               (implicit ctrl: Control, tpe: StreamType[A, E])
+    extends StageImpl[Shp[E]](name) {
 
-    val shape = new SourceShape(
-      out = Outlet[BufA](s"$name.out")
+    val shape: Shape = new SourceShape(
+      out = Outlet[E](s"$name.out")
     )
 
-    def createLogic(attr: Attributes) = new Logic[A, BufA](shape, layer, elems)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic[A, E](shape, layer, elems)
   }
 
-  private final class Logic[A, BufA >: Null <: BufLike { type Elem = A }](shape: Shape[A, BufA], layer: Layer,
-                                                                          elems: Array[A])
-                                                                 (implicit ctrl: Control, aTpe: StreamType[A, BufA])
+  private final class Logic[A, E <: BufElem[A]](shape: Shp[E], layer: Layer, elems: Array[A])
+                                               (implicit ctrl: Control, tpe: StreamType[A, E])
     extends NodeImpl(name, layer, shape)
-      with ChunkImpl[Shape[A, BufA]]
-      with GenIn0Impl[BufA] {
+      with ChunkImpl[Shp[E]]
+      with GenIn0Impl[E] {
 
     private[this] var index = 0
 
-    protected def allocOutBuf0(): BufA = aTpe.allocBuf()
+    protected def allocOutBuf0(): E = tpe.allocBuf()
 
     protected def shouldComplete(): Boolean = index == elems.length
 

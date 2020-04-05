@@ -24,6 +24,7 @@ import scala.annotation.tailrec
   * between main or full-rate inputs and two types of auxiliary or
   * demand-rate inputs (for example, polling one value per window).
   */
+@deprecated("Should move to using Handlers", since = "2.35.1")
 trait DualAuxChunkImpl[S <: Shape] extends InOutImpl[S] {
   _: GraphStageLogic =>
 

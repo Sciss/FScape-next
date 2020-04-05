@@ -34,10 +34,10 @@ object PeakCentroid2D {
 
   private final val name = "PeakCentroid2D"
 
-  private type Shape = In6Out3Shape[BufD, BufI, BufI, BufD, BufD, BufI, BufD, BufD, BufD]
+  private type Shp = In6Out3Shape[BufD, BufI, BufI, BufD, BufD, BufI, BufD, BufD, BufD]
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
-    val shape = In6Out3Shape(
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shp](name) {
+    val shape: Shape = In6Out3Shape(
       in0  = InD (s"$name.in"        ),
       in1  = InI (s"$name.width"     ),
       in2  = InI (s"$name.height"    ),
@@ -49,14 +49,14 @@ object PeakCentroid2D {
       out2 = OutD(s"$name.peak"      )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
   }
 
   // XXX TODO -- abstract over data type (BufD vs BufI)?
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
-      with WindowedLogicImpl[Shape]
-      with FilterLogicImpl[BufD, Shape]
+      with WindowedLogicImpl[Shp]
+      with FilterLogicImpl[BufD, Shp]
       with In6Out3Impl[BufD, BufI, BufI, BufD, BufD, BufI, BufD, BufD, BufD] {
 
     override def toString = s"$name-L@${hashCode.toHexString}"

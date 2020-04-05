@@ -32,9 +32,9 @@ object ARCWindow {
 
   private final val name = "ARCWindow"
 
-  private type Shape = FanInShape5[BufD, BufI, BufD, BufD, BufD, BufD]
+  private type Shp = FanInShape5[BufD, BufI, BufD, BufD, BufD, BufD]
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shp](name) {
     val shape: Shape = new FanInShape5(
       in0 = InD (s"$name.in"  ),
       in1 = InI (s"$name.size"),
@@ -47,8 +47,8 @@ object ARCWindow {
     def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
   }
 
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
-    extends Handlers(name, layer, shape) with WindowedLogicD[Shape] {
+  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
+    extends Handlers(name, layer, shape) with WindowedLogicD[Shp] {
 
     protected     val hIn   : InDMain   = InDMain  (this, shape.in0)
     protected     val hOut  : OutDMain  = OutDMain (this, shape.out)

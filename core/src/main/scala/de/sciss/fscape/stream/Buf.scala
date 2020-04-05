@@ -15,7 +15,7 @@ package de.sciss.fscape.stream
 
 import java.util.concurrent.atomic.AtomicInteger
 
-trait BufLike extends AnyRef {
+abstract class BufLike {
   type Elem
 
   def release()(implicit ctrl: Control): Unit

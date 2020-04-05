@@ -34,15 +34,15 @@ object Sheet1D {
 
   private final val name = "Sheet1D"
 
-  private type Shape = SinkShape2[BufD, BufI]
+  private type Shp = SinkShape2[BufD, BufI]
 
-  private final class Stage(layer: Layer, label: String)(implicit ctrl: Control) extends StageImpl[Shape](name) {
+  private final class Stage(layer: Layer, label: String)(implicit ctrl: Control) extends StageImpl[Shp](name) {
     val shape: Shape = SinkShape2(
       in0 = InD (s"$name.in"  ),
       in1 = InI (s"$name.trig")
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape = shape, layer = layer, label = label)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape = shape, layer = layer, label = label)
   }
 
   private final class PlotData(
@@ -52,9 +52,9 @@ object Sheet1D {
                                 val is1D: Boolean
                               )
 
-  private final class Logic(shape: Shape, layer: Layer, label: String)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer, label: String)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
-      with FilterLogicImpl[BufD, Shape]
+      with FilterLogicImpl[BufD, Shp]
       with Sink2Impl[BufD, BufI] {
 
     override def toString = s"$name-L($label)"

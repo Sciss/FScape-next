@@ -27,8 +27,8 @@ object IfThenGE {
     * @param cases  tuples of (cond, layer, result/branch-sink)
     *               the branch-sinks must all have the same size, equal to `numOutputs`
     */
-  def apply[A, E >: Null <: BufElem[A]](numOutputs: Int, cases: ISeq[(OutI, Layer, Vec[Outlet[E]])])
-                                       (implicit b: Builder): Vec[Outlet[E]] = {
+  def apply[A, E <: BufElem[A]](numOutputs: Int, cases: ISeq[(OutI, Layer, Vec[Outlet[E]])])
+                               (implicit b: Builder): Vec[Outlet[E]] = {
     // we insert dummy pipe elements here and replace thus the cases' outlets.
     // that way we ensure that we have elements placed in the correct layer, even
     // if the branch just references outer layers. also, the branch-logic then
@@ -52,14 +52,13 @@ object IfThenGE {
 
   private final val name = "IfThenGE"
 
-  private type Shape[A, E >: Null <: BufElem[A]] = BiformShape[BufI, E, E]
+  private type Shp[E] = BiformShape[BufI, E, E]
 
-  private type BranchShape[A] = FlowShape[A, A]
+  private type BranchShape[E] = FlowShape[E, E]
 
-  private final class Stage[A, E >: Null <: BufElem[A]](numOutputs: Int,
-                                                        thisLayer: Layer, branchLayers: ISeq[Layer])
-                                                       (implicit ctrl: Control)
-    extends StageImpl[Shape[A, E]](name) {
+  private final class Stage[A, E <: BufElem[A]](numOutputs: Int, thisLayer: Layer, branchLayers: ISeq[Layer])
+                                               (implicit ctrl: Control)
+    extends StageImpl[Shp[E]](name) {
 
     val shape: Shape = BiformShape(
       ins1 = Vector.tabulate(branchLayers.size)(i => InI(s"$name.cond${i+1}")),
@@ -76,19 +75,19 @@ object IfThenGE {
       new Logic[A, E](numOutputs = numOutputs, shape = shape, layer = thisLayer, branchLayers = branchLayers)
   }
 
-  private final class BranchStage[A](name: String, layer: Layer)(implicit control: Control)
-    extends StageImpl[BranchShape[A]](name) {
+  private final class BranchStage[E](name: String, layer: Layer)(implicit control: Control)
+    extends StageImpl[BranchShape[E]](name) {
 
-    val shape: Shape = FlowShape[A, A](
-      in  = Inlet [A](s"$name.in"),
-      out = Outlet[A](s"$name.out")
+    val shape: Shape = FlowShape[E, E](
+      in  = Inlet [E](s"$name.in"),
+      out = Outlet[E](s"$name.out")
     )
 
-    def createLogic(inheritedAttributes: Attributes): NodeImpl[Shape] = new BranchLogic[A](name, layer, shape)
+    def createLogic(inheritedAttributes: Attributes): NodeImpl[Shape] = new BranchLogic[E](name, layer, shape)
   }
 
   // A simple no-op pipe, so we have a handle we can shut down
-  private final class BranchLogic[A](name: String, layer: Layer, shape: BranchShape[A])(implicit control: Control)
+  private final class BranchLogic[E](name: String, layer: Layer, shape: BranchShape[E])(implicit control: Control)
     extends NodeImpl(name, layer, shape) with InHandler with OutHandler { self =>
 
     override def toString = s"$name@${hashCode().toHexString}"
@@ -132,8 +131,8 @@ object IfThenGE {
     setHandlers(shape.in, shape.out, this)
   }
 
-  private final class Logic[A, E >: Null <: BufElem[A]](numOutputs: Int, shape: Shape[A, E], layer: Layer,
-                                                        branchLayers: ISeq[Layer])(implicit ctrl: Control)
+  private final class Logic[A, E <: BufElem[A]](numOutputs: Int, shape: Shp[E], layer: Layer,
+                                                branchLayers: ISeq[Layer])(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape) { self =>
 
     private[this] val numBranches   = branchLayers.size

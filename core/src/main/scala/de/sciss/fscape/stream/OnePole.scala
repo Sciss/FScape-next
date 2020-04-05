@@ -28,22 +28,22 @@ object OnePole {
 
   private final val name = "OnePole"
 
-  private type Shape = FanInShape2[BufD, BufD, BufD]
+  private type Shp = FanInShape2[BufD, BufD, BufD]
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
-    val shape = new FanInShape2(
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shp](name) {
+    val shape: Shape = new FanInShape2(
       in0 = InD (s"$name.in"  ),
       in1 = InD (s"$name.coef"),
       out = OutD(s"$name.out" )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
   }
 
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
       with FilterIn2DImpl [BufD, BufD]
-      with FilterChunkImpl[BufD, BufD, Shape] {
+      with FilterChunkImpl[BufD, BufD, Shp] {
 
     private[this] var coefY   = 0.0
     private[this] var coefX   = 0.0

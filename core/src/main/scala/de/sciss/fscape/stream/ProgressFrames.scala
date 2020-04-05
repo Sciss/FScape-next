@@ -27,18 +27,18 @@ object ProgressFrames {
 
   private final val name = "ProgressFrames"
 
-  private type Shape = SinkShape2[BufLike, BufL]
+  private type Shp = SinkShape2[BufLike, BufL]
 
-  private final class Stage(layer: Layer, label: String)(implicit ctrl: Control) extends StageImpl[Shape](name) {
-    val shape = SinkShape2(
+  private final class Stage(layer: Layer, label: String)(implicit ctrl: Control) extends StageImpl[Shp](name) {
+    val shape: Shape = SinkShape2(
       in0 = InA(s"$name.in"),
       in1 = InL(s"$name.numFrames")
     )
 
-    def createLogic(attr: Attributes) = new Logic(layer = layer, shape = shape, label = label)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(layer = layer, shape = shape, label = label)
   }
 
-  private final class Logic(shape: Shape, layer: Layer, label: String)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer, label: String)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape) with InHandler { node =>
 
     private[this] val key       = ctrl.mkProgress(label)

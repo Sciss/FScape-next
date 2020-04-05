@@ -37,10 +37,10 @@ object Blobs2D {
 
   private final val name = "Blobs2D"
 
-  private type Shape = In5Out4Shape[BufD, BufI, BufI, BufD, BufI,   BufI, BufD, BufI, BufD]
+  private type Shp = In5Out4Shape[BufD, BufI, BufI, BufD, BufI,   BufI, BufD, BufI, BufD]
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
-    val shape = In5Out4Shape(
+  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shp](name) {
+    val shape: Shape = In5Out4Shape(
       in0  = InD (s"$name.in"         ),
       in1  = InI (s"$name.width"      ),
       in2  = InI (s"$name.height"     ),
@@ -52,7 +52,7 @@ object Blobs2D {
       out3 = OutD(s"$name.vertices"   )
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
   }
 
   private final class Blob {
@@ -74,10 +74,10 @@ object Blobs2D {
 //    }
   }
 
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
-    with FullInOutImpl[Shape]
-    with FilterLogicImpl[BufD, Shape] {
+    with FullInOutImpl[Shp]
+    with FilterLogicImpl[BufD, Shp] {
 
     private[this] var winBuf    : Array[Double] = _
     private[this] var widthIn   : Int           = _
