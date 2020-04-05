@@ -1,5 +1,5 @@
 /*
- *  DebugPromise.scala
+ *  DebugAnyPromise.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2020 Hanns Holger Rutz. All rights reserved.
@@ -14,7 +14,7 @@
 package de.sciss.fscape.graph
 
 import de.sciss.fscape.UGenSource.unwrap
-import de.sciss.fscape.stream.{BufI, StreamIn}
+import de.sciss.fscape.stream.StreamIn
 import de.sciss.fscape.{GE, UGen, UGenGraph, UGenIn, UGenSource, stream}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -24,7 +24,7 @@ import scala.concurrent.Promise
   *
   * @param in   the signal to monitor
   */
-case class DebugIntPromise(in: GE, p: Promise[Vec[Int]]) extends UGenSource.ZeroOut {
+case class DebugAnyPromise(in: GE, p: Promise[Vec[Any]]) extends UGenSource.ZeroOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): Unit =
     unwrap(this, Vector(in.expand))
 
@@ -33,6 +33,7 @@ case class DebugIntPromise(in: GE, p: Promise[Vec[Int]]) extends UGenSource.Zero
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit = {
     val Vec(in) = args
-    stream.DebugPromise[Int, BufI, Int](in.toInt, p)
+    import in.tpe
+    stream.DebugPromise[in.A, in.Buf, Any](in.toElem, p)
   }
 }

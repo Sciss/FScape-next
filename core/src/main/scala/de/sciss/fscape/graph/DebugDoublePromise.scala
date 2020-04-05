@@ -14,7 +14,7 @@
 package de.sciss.fscape.graph
 
 import de.sciss.fscape.UGenSource.unwrap
-import de.sciss.fscape.stream.StreamIn
+import de.sciss.fscape.stream.{BufD, StreamIn}
 import de.sciss.fscape.{GE, UGen, UGenGraph, UGenIn, UGenSource, stream}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -33,6 +33,6 @@ case class DebugDoublePromise(in: GE, p: Promise[Vec[Double]]) extends UGenSourc
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit = {
     val Vec(in) = args
-    stream.DebugDoublePromise(in.toDouble, p)
+    stream.DebugPromise[Double, BufD, Double](in.toDouble, p)
   }
 }

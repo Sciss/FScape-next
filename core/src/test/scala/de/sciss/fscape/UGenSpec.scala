@@ -13,6 +13,7 @@ class UGenSpec extends AnyFlatSpec with Matchers {
   final val Pi  : Double = math.Pi
   final val Pi2 : Double = 2 * Pi
   final val PiH : Double = 0.5 * Pi
+  final val NaN : Double = java.lang.Double.NaN
 
   val eps: Double = 1.0e-5
 
