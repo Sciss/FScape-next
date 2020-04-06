@@ -68,6 +68,13 @@ object ComplexUnaryOp {
       //      case Scurve     .id => Scurve
       case Conj       .id => Conj
       case AbsSquared .id => AbsSquared
+      case CarToPol   .id => CarToPol
+      case PolToCar   .id => PolToCar
+      case Real       .id => Real
+      case Imag       .id => Imag
+      case Mag        .id => Mag
+      case Phase      .id => Phase
+      case MagSquared .id => MagSquared
     }
   }
 
@@ -75,6 +82,12 @@ object ComplexUnaryOp {
     op =>
 
     def id: Int
+
+    /** If the operator outputs real values or complex values.
+      * In the former case, `apply` advances `out` by `len`
+      * frames, in the latter case, it advances by `len * 2` frames.
+      */
+    def realOutput: Boolean
 
     final def make(a: GE): GE = new ComplexUnaryOp(op.id, a)
 
@@ -104,6 +117,14 @@ object ComplexUnaryOp {
     }
   }
 
+  sealed trait ComplexOutput extends Op {
+    final val realOutput = false
+  }
+
+  sealed trait RealOutput extends Op {
+    final val realOutput = true
+  }
+
   //  case object Neg extends Op {
   //    final val id = 0
   //    def apply(a: Double): Double = -a
@@ -117,7 +138,7 @@ object ComplexUnaryOp {
   // case object IsNil       extends Op(  2 )
   // case object NotNil      extends Op(  3 )
   // case object BitNot      extends Op(  4 )
-  case object Abs extends Op {
+  case object Abs extends ComplexOutput {
     final val id = 5
 
     def apply(in: Array[Double], inOff: Int, out: Array[Double], outOff: Int, len: Int): Unit = {
@@ -135,7 +156,7 @@ object ComplexUnaryOp {
     }
   }
 
-  case object Squared extends Op {
+  case object Squared extends ComplexOutput {
     final val id = 12
 
     def apply(in: Array[Double], inOff: Int, out: Array[Double], outOff: Int, len: Int): Unit = {
@@ -153,7 +174,7 @@ object ComplexUnaryOp {
     }
   }
 
-  case object Cubed extends Op {
+  case object Cubed extends ComplexOutput {
     final val id = 13
 
     def apply(in: Array[Double], inOff: Int, out: Array[Double], outOff: Int, len: Int): Unit = {
@@ -173,7 +194,7 @@ object ComplexUnaryOp {
     }
   }
 
-  case object Exp extends Op {
+  case object Exp extends ComplexOutput {
     final val id = 15
 
     def apply(in: Array[Double], inOff: Int, out: Array[Double], outOff: Int, len: Int): Unit = {
@@ -195,7 +216,7 @@ object ComplexUnaryOp {
     }
   }
 
-  case object Reciprocal extends Op {
+  case object Reciprocal extends ComplexOutput {
     final val id = 16
 
     def apply(in: Array[Double], inOff: Int, out: Array[Double], outOff: Int, len: Int): Unit = {
@@ -216,7 +237,7 @@ object ComplexUnaryOp {
     }
   }
 
-  case object Log extends Op {
+  case object Log extends ComplexOutput {
     final val id = 25
 
     def apply(in: Array[Double], inOff: Int, out: Array[Double], outOff: Int, len: Int): Unit =
@@ -242,7 +263,7 @@ object ComplexUnaryOp {
     }
   }
 
-  case object Log2 extends Op {
+  case object Log2 extends ComplexOutput {
     final val id = 26
 
     private[this] final val Ln2R = 1.0 / math.log(2)
@@ -251,7 +272,7 @@ object ComplexUnaryOp {
       Log.base(in = in, inOff = inOff, out = out, outOff = outOff, len = len, mul = Ln2R)
   }
 
-  case object Log10 extends Op {
+  case object Log10 extends ComplexOutput {
     final val id = 27
 
     private[this] final val Ln10R = 1.0 / math.log(10)
@@ -260,7 +281,7 @@ object ComplexUnaryOp {
       Log.base(in = in, inOff = inOff, out = out, outOff = outOff, len = len, mul = Ln10R)
   }
 
-  case object Conj extends Op {
+  case object Conj extends ComplexOutput {
     final val id = 100
 
     def apply(in: Array[Double], inOff: Int, out: Array[Double], outOff: Int, len: Int): Unit = {
@@ -278,7 +299,7 @@ object ComplexUnaryOp {
     }
   }
 
-  case object AbsSquared extends Op {
+  case object AbsSquared extends ComplexOutput {
     final val id = 101
 
     def apply(in: Array[Double], inOff: Int, out: Array[Double], outOff: Int, len: Int): Unit = {
@@ -292,6 +313,120 @@ object ComplexUnaryOp {
         val outIm = 0.0
         out(j) = outRe; j += 1
         out(j) = outIm; j += 1
+      }
+    }
+  }
+
+  case object CarToPol extends ComplexOutput {
+    final val id = 102
+
+    def apply(in: Array[Double], inOff: Int, out: Array[Double], outOff: Int, len: Int): Unit = {
+      val inStop = inOff + (len << 1)
+      var i = inOff
+      var j = outOff
+      while (i < inStop) {
+        val inRe    = in(i); i += 1
+        val inIm    = in(i); i += 1
+        val mag     = math.sqrt(inRe * inRe + inIm * inIm)
+        val phase   = math.atan2(inIm, inRe)
+        out(j) = mag  ; j += 1
+        out(j) = phase; j += 1
+      }
+    }
+  }
+
+  case object PolToCar extends ComplexOutput {
+    final val id = 103
+
+    def apply(in: Array[Double], inOff: Int, out: Array[Double], outOff: Int, len: Int): Unit = {
+      val inStop = inOff + (len << 1)
+      var i = inOff
+      var j = outOff
+      while (i < inStop) {
+        val inMag   = in(i); i += 1
+        val inPhase = in(i); i += 1
+        val outRe   = math.cos(inPhase) * inMag
+        val outIm   = math.sin(inPhase) * inMag
+        out(j) = outRe; j += 1
+        out(j) = outIm; j += 1
+      }
+    }
+  }
+
+  case object Real extends RealOutput {
+    final val id = 104
+
+    def apply(in: Array[Double], inOff: Int, out: Array[Double], outOff: Int, len: Int): Unit = {
+      val outStop = outOff + len
+      var i = inOff
+      var j = outOff
+      while (j < outStop) {
+        out(j) = in(i)
+        i += 2
+        j += 1
+      }
+    }
+  }
+
+  case object Imag extends RealOutput {
+    final val id = 105
+
+    def apply(in: Array[Double], inOff: Int, out: Array[Double], outOff: Int, len: Int): Unit = {
+      val outStop = outOff + len
+      var i = inOff + 1
+      var j = outOff
+      while (j < outStop) {
+        out(j) = in(i)
+        i += 2
+        j += 1
+      }
+    }
+  }
+
+  case object Mag extends RealOutput {
+    final val id = 106
+
+    def apply(in: Array[Double], inOff: Int, out: Array[Double], outOff: Int, len: Int): Unit = {
+      val outStop = outOff + len
+      var i = inOff
+      var j = outOff
+      while (j < outStop) {
+        val inRe    = in(i); i += 1
+        val inIm    = in(i); i += 1
+        val mag     = math.sqrt(inRe * inRe + inIm * inIm)
+        out(j) = mag; j += 1
+      }
+    }
+  }
+
+  case object Phase extends RealOutput {
+    final val id = 107
+
+    def apply(in: Array[Double], inOff: Int, out: Array[Double], outOff: Int, len: Int): Unit = {
+      val outStop = outOff + len
+      var i = inOff
+      var j = outOff
+      while (j < outStop) {
+        val inRe    = in(i); i += 1
+        val inIm    = in(i); i += 1
+        val phase   = math.atan2(inIm, inRe)
+        out(j) = phase; j += 1
+      }
+    }
+  }
+
+  case object MagSquared extends RealOutput {
+    final val id = 108
+
+    def apply(in: Array[Double], inOff: Int, out: Array[Double], outOff: Int, len: Int): Unit = {
+      val outStop = outOff + len
+      var i = inOff
+      var j = outOff
+      while (j < outStop) {
+        val inRe    = in(i); i += 1
+        val inIm    = in(i); i += 1
+        val magSq   = inRe * inRe + inIm * inIm
+        out(j) = magSq; j += 1
       }
     }
   }

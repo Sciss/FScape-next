@@ -44,7 +44,7 @@ object ComplexBinaryOp {
     }
   }
 
-  final class Complex(var re: Double, var im: Double)
+//  final class Complex(var re: Double, var im: Double)
 
   sealed trait Op {
     op =>
@@ -71,7 +71,7 @@ object ComplexBinaryOp {
 //      */
 //    def apply(a: Array[Double], aOff: Int, b: Array[Double], bOff: Int, out: Array[Double], outOff: Int, len: Int): Unit
 
-    def apply(aRe: Double, aIm: Double, bRe:Double, bIm: Double, out: Array[Double], outOff: Int): Unit
+    def apply(a: Array[Double], aOff: Int, b: Array[Double], bOff: Int, out: Array[Double], outOff: Int, len: Int): Unit
 
     def name: String = plainName.capitalize
 
@@ -87,86 +87,92 @@ object ComplexBinaryOp {
     final val id = 0
     override val name = "+"
 
-//    def apply(a: Array[Double], aOff: Int, b: Array[Double], bOff: Int, out: Array[Double],
-//              outOff: Int, len: Int): Unit = {
-//      val aStop = aOff + (len << 1)
-//      var i     = aOff
-//      var j     = bOff
-//      var k     = outOff
-//      while (i < aStop) {
-//        val aRe   = a(i); i += 1
-//        val aIm   = a(i); i += 1
-//        val bRe   = b(j); j += 1
-//        val bIm   = b(j); j += 1
-//        val outRe = aRe + bRe
-//        val outIm = aIm + bIm
-//        out(k) = outRe; k += 1
-//        out(k) = outIm; k += 1
-//      }
-//    }
-
-    def apply(aRe: Double, aIm: Double, bRe:Double, bIm: Double, out: Array[Double], outOff: Int): Unit = {
-      out(outOff)     = aRe + bRe
-      out(outOff + 1) = aIm + bIm
+    def apply(a: Array[Double], aOff: Int, b: Array[Double], bOff: Int,
+              out: Array[Double], outOff: Int, len: Int): Unit = {
+      val aStop = aOff + (len << 1)
+      var ai    = aOff
+      var bi    = bOff
+      var k     = outOff
+      while (ai < aStop) {
+        val aRe   = a(ai); ai += 1
+        val aIm   = a(ai); ai += 1
+        val bRe   = b(bi); bi += 1
+        val bIm   = b(bi); bi += 1
+        val outRe = aRe + bRe
+        val outIm = aIm + bIm
+        out(k) = outRe; k += 1
+        out(k) = outIm; k += 1
+      }
     }
+
+//    def apply(aRe: Double, aIm: Double, bRe:Double, bIm: Double, out: Array[Double], outOff: Int): Unit = {
+//      out(outOff)     = aRe + bRe
+//      out(outOff + 1) = aIm + bIm
+//    }
   }
 
   case object Minus extends Op {
     final val id = 1
     override val name = "-"
 
-//    def apply(a: Array[Double], aOff: Int, b: Array[Double], bOff: Int, out: Array[Double],
-//              outOff: Int, len: Int): Unit = {
-//      val aStop = aOff + (len << 1)
-//      var i     = aOff
-//      var j     = bOff
-//      var k     = outOff
-//      while (i < aStop) {
-//        val aRe   = a(i); i += 1
-//        val aIm   = a(i); i += 1
-//        val bRe   = b(j); j += 1
-//        val bIm   = b(j); j += 1
-//        val outRe = aRe - bRe
-//        val outIm = aIm - bIm
-//        out(k) = outRe; k += 1
-//        out(k) = outIm; k += 1
-//      }
-//    }
-
-    def apply(aRe: Double, aIm: Double, bRe:Double, bIm: Double, out: Array[Double], outOff: Int): Unit = {
-      out(outOff)     = aRe - bRe
-      out(outOff + 1) = aIm - bIm
+    def apply(a: Array[Double], aOff: Int, b: Array[Double], bOff: Int, out: Array[Double],
+              outOff: Int, len: Int): Unit = {
+      val aStop = aOff + (len << 1)
+      var ai    = aOff
+      var bi    = bOff
+      var k     = outOff
+      while (ai < aStop) {
+        val aRe   = a(ai); ai += 1
+        val aIm   = a(ai); ai += 1
+        val bRe   = b(bi); bi += 1
+        val bIm   = b(bi); bi += 1
+        val outRe = aRe - bRe
+        val outIm = aIm - bIm
+        out(k) = outRe; k += 1
+        out(k) = outIm; k += 1
+      }
     }
+
+//    def apply(aRe: Double, aIm: Double, bRe:Double, bIm: Double, out: Array[Double], outOff: Int): Unit = {
+//      out(outOff)     = aRe - bRe
+//      out(outOff + 1) = aIm - bIm
+//    }
   }
 
   case object Times extends Op {
     final val id = 2
     override val name = "*"
 
-//    def apply(a: Array[Double], aOff: Int, b: Array[Double], bOff: Int, out: Array[Double],
-//              outOff: Int, len: Int): Unit = {
-//      val aStop = aOff + (len << 1)
-//      var i     = aOff
-//      var j     = bOff
-//      var k     = outOff
-//      while (i < aStop) {
-//        val aRe   = a(i); i += 1
-//        val aIm   = a(i); i += 1
-//        val bRe   = b(j); j += 1
-//        val bIm   = b(j); j += 1
-//        val outRe = aRe * bRe - aIm * bIm
-//        val outIm = aRe * bIm + aIm * bRe
-//        out(k) = outRe; k += 1
-//        out(k) = outIm; k += 1
-//      }
-//    }
-
-    def apply(aRe: Double, aIm: Double, bRe:Double, bIm: Double, out: Array[Double], outOff: Int): Unit = {
-      out(outOff)     = aRe * bRe - aIm * bIm
-      out(outOff + 1) = aRe * bIm + aIm * bRe
+    def apply(a: Array[Double], aOff: Int, b: Array[Double], bOff: Int, out: Array[Double],
+              outOff: Int, len: Int): Unit = {
+      val aStop = aOff + (len << 1)
+      var ai    = aOff
+      var bi    = bOff
+      var k     = outOff
+      while (ai < aStop) {
+        val aRe   = a(ai); ai += 1
+        val aIm   = a(ai); ai += 1
+        val bRe   = b(bi); bi += 1
+        val bIm   = b(bi); bi += 1
+        val outRe = aRe * bRe - aIm * bIm
+        val outIm = aRe * bIm + aIm * bRe
+        out(k) = outRe; k += 1
+        out(k) = outIm; k += 1
+      }
     }
+
+//    def apply(aRe: Double, aIm: Double, bRe:Double, bIm: Double, out: Array[Double], outOff: Int): Unit = {
+//      out(outOff)     = aRe * bRe - aIm * bIm
+//      out(outOff + 1) = aRe * bIm + aIm * bRe
+//    }
   }
 }
+/** Binary operation UGen between two complex signals.
+  * Complex signals are represented by interleaved real and imaginary components.
+  *
+  * '''Note:''' Unlike the "normal" real-valued `BinaryOp`, this UGen terminates as soon
+  * as one of the two inputs `a` or `b` terminates.
+  */
 final case class ComplexBinaryOp(op: Int, a: GE, b: GE) extends UGenSource.SingleOut {
 
   protected def makeUGens(implicit builder: UGenGraph.Builder): UGenInLike =

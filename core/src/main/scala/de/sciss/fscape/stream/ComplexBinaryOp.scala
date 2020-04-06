@@ -14,9 +14,10 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.{Attributes, FanInShape2}
-import de.sciss.fscape.stream.impl.deprecated.{FilterChunkImpl, FilterIn2DImpl}
-import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import akka.stream.{Attributes, FanInShape2, Inlet}
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
+
+import scala.annotation.tailrec
 
 /** Binary operator assuming stream is complex signal (real and imaginary interleaved).
   * Outputs another complex stream even if the operator yields a purely real-valued result.
@@ -47,49 +48,94 @@ object ComplexBinaryOp {
   }
 
   private final class Logic(shape: Shp, layer: Layer, op: Op)(implicit ctrl: Control)
-    extends NodeImpl(s"$name(${op.name})", layer, shape)
-      with FilterChunkImpl /* SameChunkImpl[Shape] */ [BufD, BufD, Shp]
-      with FilterIn2DImpl /* BinaryInDImpl */[BufD, BufD] {
+    extends Handlers(s"$name(${op.name})", layer, shape) {
 
-    private[this] var aRe: Double = _
-    private[this] var aIm: Double = _
-    private[this] var bRe: Double = _
-    private[this] var bIm: Double = _
+    private[this] val hInA      = Handlers.InDMain  (this, shape.in0)
+    private[this] val hInB      = Handlers.InDMain  (this, shape.in1)
+    private[this] val hOut      = Handlers.OutDMain (this, shape.out)
+    private[this] var carryA    = false
+    private[this] var carryB    = false
+    private[this] val carryBufA = new Array[Double](2)
+    private[this] val carryBufB = new Array[Double](2)
 
-//    protected def shouldComplete(): Boolean = inRemain == 0 && isClosed(in0) && isClosed(in1)
+    protected def onDone(inlet: Inlet[_]): Unit =
+      if (hOut.flush()) completeStage()
 
-    protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Unit = {
-      require((chunk & 1) == 0) // must be even
+    @tailrec
+    protected def process(): Unit = {
+      val remInA  = hInA.available
+      if (remInA == 0) return
+      val remInB  = hInB.available
+      if (remInB == 0) return
+      val remOut  = hOut.available
+      if (remOut == 0) return
 
-//      op(a = bufIn0.buf, aOff = inOff, b = bufIn1.buf, bOff = inOff,
-//        out = bufOut0.buf, outOff = outOff, len = chunk >> 1)
-
-      var inOffI  = inOff
-      var outOffI = outOff
-      val inStop  = inOffI + chunk
-      val a       = /* if (bufIn0 == null) null else */ bufIn0.buf
-      val b       = if (bufIn1 == null) null else bufIn1.buf
-      val aStop   = /* if (a      == null) 0    else */ bufIn0.size
-      val bStop   = if (b      == null) 0    else bufIn1.size
-      val out     = bufOut0.buf
-      var _aRe    = aRe
-      var _aIm    = aIm
-      var _bRe    = bRe
-      var _bIm    = bIm
-      while (inOffI < inStop) {
-        if (inOffI < aStop) _aRe = a(inOffI)
-        if (inOffI < bStop) _bRe = b(inOffI)
-        inOffI += 1
-        if (inOffI < aStop) _aIm = a(inOffI)
-        if (inOffI < bStop) _bIm = b(inOffI)
-        inOffI += 1
-        op(aRe = _aRe, aIm = _aIm, bRe = _bRe, bIm = _bIm, out = out, outOff = outOffI)
-        outOffI += 2
+      val numInA = if (carryA) (remInA + 1) >> 1 else remInA >> 1
+      if (numInA == 0) { // implies that remInA == 1 && !carryA
+        carryBufA(0) = hInA.next()
+        carryA = true
       }
-      aRe = _aRe
-      aIm = _aIm
-      bRe = _bRe
-      bIm = _bIm
+
+      val numInB = if (carryB) (remInB + 1) >> 1 else remInB >> 1
+      if (numInB == 0) { // implies that remInB == 1 && !carryB
+        carryBufB(0) = hInB.next()
+        carryB = true
+      }
+
+      val numIn   = math.min(numInA, numInB)
+      if (numIn == 0) return
+
+      val numOut  = /*if (realOut) remOut else*/ remOut >> 1
+      val num     = math.min(numIn, numOut)
+      val numC    = num << 1
+
+      val inA     = hInA.array
+      val inOffA  = hInA.offset
+      val inB     = hInB.array
+      val inOffB  = hInB.offset
+      val out     = hOut.array
+      val outOff  = hOut.offset
+
+      if (num > 0) {
+        if (carryA) {
+          if (carryB) {
+            carryBufA(1) = inA(inOffA)
+            carryBufB(1) = inB(inOffB)
+            op(carryBufA, 0         , carryBufB , 0         , out, outOff     , 1  )
+            op(inA      , inOffA + 1, inB       , inOffB + 1, out, outOff + 2 , num)
+            carryB = false
+            hInA.advance(numC - 1)
+            hInB.advance(numC - 1)
+          } else {
+            carryBufA(1) = inA(inOffA)
+            op(carryBufA, 0         , inB       , inOffB    , out, outOff     , 1  )
+            op(inA      , inOffA + 1, inB       , inOffB + 2, out, outOff + 2 , num)
+            hInA.advance(numC - 1)
+            hInB.advance(numC)
+          }
+          carryA = false
+        } else if (carryB) {
+          carryBufB(1) = inB(inOffB)
+          op(inA        , inOffA    , carryBufA , 0         , out, outOff     , 1  )
+          op(inA        , inOffA + 2, inB       , inOffB + 1, out, outOff + 2 , num)
+          carryB = false
+          hInA.advance(numC)
+          hInB.advance(numC - 1)
+        } else {
+          op(inA, inOffA, inB, inOffB, out, outOff, num)
+          hInA.advance(numC)
+          hInB.advance(numC)
+        }
+      }
+
+      hOut.advance(/*if (realOut) num0 else*/ numC)
+
+      if (hInA.isDone || hInB.isDone) {
+        if (hOut.flush()) completeStage()
+        return
+      }
+
+      process()
     }
   }
 }

@@ -14,11 +14,12 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.{Attributes, FanInShape3}
-import de.sciss.fscape.stream.impl.deprecated.GenIn3DImpl
-import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import akka.stream.{Attributes, FanInShape3, Inlet}
+import de.sciss.fscape.stream.impl.Handlers.{InDAux, InLAux, OutDMain}
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
 
 import scala.annotation.tailrec
+import scala.math.{max, min}
 
 object Line {
   def apply(start: OutD, end: OutD, length: OutL)(implicit b: Builder): OutD = {
@@ -45,64 +46,65 @@ object Line {
     def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
   }
 
-  // XXX TODO --- we could allow `start` and `end` to change over time,
-  // although probably that will not be needed ever
   private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape)
-      with GenIn3DImpl[BufD, BufD, BufL] {
+    extends Handlers(name, layer, shape) {
 
-    private[this] var _init = true
+    private[this] val hStart: InDAux    = InDAux  (this, shape.in0)()
+    private[this] val hEnd  : InDAux    = InDAux  (this, shape.in1)()
+    private[this] val hLen  : InLAux    = InLAux  (this, shape.in2)(max(0L, _))
+    private[this] val hOut  : OutDMain  = OutDMain(this, shape.out)
 
-    private[this] var start : Double  = _
-    private[this] var end   : Double  = _
+    private[this] var init = true
+
     private[this] var slope : Double  = _
-    private[this] var len   : Long    = -1L
-    private[this] var frames: Long    = 0L
+    private[this] var frames: Long    = _
+
+    protected def onDone(inlet: Inlet[_]): Unit = assert(false)
 
     @tailrec
-    def process(): Unit = {
-//      println("process()")
-      if (canRead) {
-//        println("readIns()")
-        readIns()
-        if (_init) {
-//          println("init")
-          start   = bufIn0.buf(0)
-          end     = bufIn1.buf(0)
-          len     = math.max(0L, bufIn2.buf(0))
-          slope   = if (len > 1) (end - start) / (len - 1) else 0.0
-          _init   = false
+    protected def process(): Unit = {
+      if (init) {
+        if (hLen.isConstant) {
+          if (hOut.flush()) completeStage()
+          return
         }
+        if (!(hLen.hasNext && hStart.hasNext && hEnd.hasNext)) return
+        val start = hStart.next()
+        val end   = hEnd  .next()
+        val len   = hLen  .next()
+        slope   = if (len > 1) (end - start) / (len - 1) else 0.0
+        frames  = 0L
+        init    = false
       }
 
-      if (canWrite && inValid) {
-//        println("canWrite")
-        val sz0     = allocOutputBuffers()
-        val out     = bufOut0.buf
-        val _len    = len
+      {
         val _frames = frames
-        val _slope  = slope
-        val _start  = start
-        val chunk   = math.min(sz0, _len - _frames).toInt
-        var i = 0
-        while (i < chunk) {
-          out(i) = (_frames + i) * _slope + _start
-          i += 1
-        }
-        val stop     = _frames + chunk
-        frames       = stop
-//        println(s"chunk = $chunk, stop = $stop, len = ${_len}")
+        val len     = hLen.value
+        val rem     = min(hOut.available, len - _frames).toInt
+        val stop    = _frames + rem
+        val isLast  = stop == len
 
-        if (stop == _len) {
-          // replace last frame to match exactly the end value
-          // to avoid problems with floating point noise
-          if (chunk > 0 && _len > 1) {
-            out(chunk - 1) = end
+        if (rem > 0) {
+          val _slope    = slope
+          val _start    = hStart.value
+          val cleanEnd  = isLast && len > 1
+          val rem1      = if (cleanEnd) rem - 1 else rem
+          var i = 0
+          while (i < rem1) {
+            val v = (_frames + i) * _slope + _start
+            hOut.next(v)
+            i += 1
           }
-          writeOuts(chunk)
-          completeStage()
-        } else {
-          writeOuts(chunk)
+          frames = stop
+          if (cleanEnd) {
+            // replace last frame to match exactly the end value
+            // to avoid problems with floating point noise
+            hOut.next(hEnd.value)
+          }
+        }
+
+        if (isLast) {
+          init = true
           process()
         }
       }

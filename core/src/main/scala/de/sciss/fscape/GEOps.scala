@@ -15,7 +15,7 @@ package de.sciss.fscape
 
 import de.sciss.fscape.graph.BinaryOp._
 import de.sciss.fscape.graph.UnaryOp._
-import de.sciss.fscape.graph.{BinaryOp, ChannelProxy, Clip, ComplexBinaryOp, ComplexUnaryOp, Concat, Constant, Distinct, Drop, DropRight, DropWhile, Elastic, FilterSeq, Fold, Indices, Length, MatchLen, Metro, Poll, ResizeWindow, RunningMax, RunningMin, RunningProduct, RunningSum, Take, TakeRight, TakeWhile, UnaryOp, UnzipWindow, Wrap, Zip}
+import de.sciss.fscape.graph.{BinaryOp, ChannelProxy, Clip, ComplexBinaryOp, ComplexUnaryOp, Concat, Constant, Distinct, Drop, DropRight, DropWhile, Elastic, FilterSeq, Fold, Indices, Length, MatchLen, Metro, Poll, RunningMax, RunningMin, RunningProduct, RunningSum, Take, TakeRight, TakeWhile, UnaryOp, UnzipWindow, Wrap, Zip}
 import de.sciss.optional.Optional
 
 /** `GEOps1` are operations for graph elements (`GE`). Instead of having these operations directly defined
@@ -407,7 +407,7 @@ final class GEComplexOps(val `this`: GE) extends AnyVal { me =>
 
   import ComplexUnaryOp._
 
-  // unary ops
+  // unary ops, complex output
   def abs       : GE  = cUnOp(Abs        )
   def squared   : GE  = cUnOp(Squared    )
   def cubed     : GE  = cUnOp(Cubed      )
@@ -418,6 +418,15 @@ final class GEComplexOps(val `this`: GE) extends AnyVal { me =>
   def log10     : GE  = cUnOp(Log10      )
   def conj      : GE  = cUnOp(Conj       )
   def absSquared: GE  = cUnOp(AbsSquared )
+  def carToPol  : GE  = cUnOp(CarToPol  )
+  def polToCar  : GE  = cUnOp(PolToCar  )
+
+  // unary ops, real output
+  def real      : GE  = cUnOp(Real      )
+  def imag      : GE  = cUnOp(Imag      )
+  def mag       : GE  = cUnOp(Mag       )
+  def phase     : GE  = cUnOp(Phase     )
+  def magSquared: GE  = cUnOp(MagSquared)
 
   @inline private def cBinOp(op: ComplexBinaryOp.Op, b: GE): GE = op.make(g, b)
 
@@ -427,27 +436,4 @@ final class GEComplexOps(val `this`: GE) extends AnyVal { me =>
   def + (b: GE): GE  = cBinOp(Plus , b)
   def - (b: GE): GE  = cBinOp(Minus, b)
   def * (b: GE): GE  = cBinOp(Times, b)
-
-  // unary to real
-  def mag: GE = {
-    // ChannelProxy(UnzipWindow(abs), 0) // BROKEN
-    ResizeWindow(abs, size = 2, start = 0, stop = -1)
-  }
-
-  def phase: GE  = {
-    // val unzip = UnzipWindow(g) // BROKEN
-    val re    = real // ChannelProxy(unzip, 0) // BROKEN
-    val im    = imag // ChannelProxy(unzip, 1) // BROKEN
-    im atan2 re
-  }
-
-  def real: GE = {
-    // ChannelProxy(UnzipWindow(g  ), 0)  // BROKEN
-    ResizeWindow(g, size = 2, start = 0, stop = -1)
-  }
-
-  def imag: GE = {
-    // ChannelProxy(UnzipWindow(g  ), 1)  // BROKEN
-    ResizeWindow(g, size = 2, start = 1, stop = 0)
-  }
 }
