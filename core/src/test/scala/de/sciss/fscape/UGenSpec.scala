@@ -17,6 +17,14 @@ class UGenSpec extends AnyFlatSpec with Matchers {
 
   val eps: Double = 1.0e-5
 
+  def isD(xs: Vec[Any]): Boolean = xs.forall(_.isInstanceOf[Double ])
+  def isI(xs: Vec[Any]): Boolean = xs.forall(_.isInstanceOf[Int    ])
+  def isL(xs: Vec[Any]): Boolean = xs.forall(_.isInstanceOf[Long   ])
+
+  def asD(xs: Vec[Any]): Vec[Double ] = xs.asInstanceOf[Vec[Double ]]
+  def asI(xs: Vec[Any]): Vec[Int    ] = xs.asInstanceOf[Vec[Int    ]]
+  def asL(xs: Vec[Any]): Vec[Long   ] = xs.asInstanceOf[Vec[Long   ]]
+
   def asGE[A](in: Seq[A])(implicit view: A => Constant): GE =
     if (in.size == 1) in.head: GE else in.map(view(_): GE).reduce(_ ++ _)
 

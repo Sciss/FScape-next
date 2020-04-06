@@ -7,14 +7,6 @@ import de.sciss.kollflitz.Vec
 import scala.concurrent.Promise
 
 class UnaryOpSpec extends UGenSpec {
-  def isD(xs: Vec[Any]): Boolean = xs.forall(_.isInstanceOf[Double ])
-  def isI(xs: Vec[Any]): Boolean = xs.forall(_.isInstanceOf[Int    ])
-  def isL(xs: Vec[Any]): Boolean = xs.forall(_.isInstanceOf[Long   ])
-
-  def asD(xs: Vec[Any]): Vec[Double ] = xs.asInstanceOf[Vec[Double ]]
-  def asI(xs: Vec[Any]): Vec[Int    ] = xs.asInstanceOf[Vec[Int    ]]
-  def asL(xs: Vec[Any]): Vec[Long   ] = xs.asInstanceOf[Vec[Long   ]]
-
   "The UnaryOp UGen" should "work as intended" in {
     val dataSq = Seq[(Op, Vec[Any], Vec[Any])](
       (UnaryOp.Abs        , Vec(-3.0, -0.3, -0.0, 0.0, 1.3), Vec(3.0, 0.3, 0.0, 0.0, 1.3)),   // DD

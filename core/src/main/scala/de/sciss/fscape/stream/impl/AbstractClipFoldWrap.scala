@@ -15,130 +15,105 @@ package de.sciss.fscape
 package stream
 package impl
 
-import akka.stream.FanInShape3
-import de.sciss.fscape.stream.impl.deprecated.{FilterChunkImpl, FilterIn3Impl}
+import akka.stream.{FanInShape3, Inlet}
+import Handlers._
+
+import scala.annotation.tailrec
+import scala.math.min
+
+trait AbstractClipFoldWrap[A1, E <: BufElem[A1]] {
+  _: Handlers[FanInShape3[E, E, E, E]] =>
+
+  type A = A1
+
+  protected def hIn : InMain  [A, E]
+  protected def hLo : InAux   [A, E]
+  protected def hHi : InAux   [A, E]
+  protected def hOut: OutMain [A, E]
+
+  final protected def onDone(inlet: Inlet[_]): Unit = {
+    assert (inlet == hIn.inlet)
+    if (hOut.flush()) completeStage()
+  }
+
+  protected def run(rem: Int): Unit
+
+  @tailrec
+  final protected def process(): Unit = {
+    val remIO = min(hIn.available, hOut.available)
+    if (remIO == 0) return
+    val remLo = hLo.available
+    if (remLo == 0) return
+    val remHi = hHi.available
+    if (remHi == 0) return
+
+    val rem = min(remIO, min(remLo, remHi))
+    run(rem)
+
+    if (hIn.isDone) {
+      if (hOut.flush()) completeStage()
+      return
+    }
+
+    process()
+  }
+}
 
 abstract class AbstractClipFoldWrapI(name: String, layer: Layer, shape: FanInShape3[BufI, BufI, BufI, BufI])(implicit ctrl: Control)
-  extends NodeImpl(name, layer, shape)
-    with FilterChunkImpl[BufI, BufI, FanInShape3[BufI, BufI, BufI, BufI]]
-    with FilterIn3Impl[BufI, BufI, BufI, BufI] {
+  extends Handlers(name, layer, shape) with AbstractClipFoldWrap[Int, BufI] {
 
-  private[this] var inVal: Int = _
-  private[this] var loVal: Int = _
-  private[this] var hiVal: Int = _
-  
-  protected final def allocOutBuf0(): BufI = ctrl.borrowBufI()
+  final protected override val hIn : InIMain  = InIMain  (this, shape.in0)
+  final protected override val hLo : InIAux   = InIAux   (this, shape.in1)()
+  final protected override val hHi : InIAux   = InIAux   (this, shape.in2)()
+  final protected override val hOut: OutIMain = OutIMain (this, shape.out)
 
-  protected def op(inVal: Int, loVal: Int, hiVal: Int): Int
+  protected def op(inVal: A, loVal: A, hiVal: A): A
 
-  protected final def processChunk(inOff: Int, outOff: Int, chunk: Int): Unit = {
-    var inOffI  = inOff
-    var outOffI = outOff
-    val pStop   = inOffI + chunk
-    val inArr   = /* if (bufIn0 == null) null else */ bufIn0.buf
-    val loArr   = if (bufIn1 == null) null else bufIn1.buf
-    val hiArr   = if (bufIn2 == null) null else bufIn2.buf
-    val inStop  = /* if (a == null) 0 else */ bufIn0.size
-    val loStop  = if (loArr == null) 0 else   bufIn1.size
-    val hiStop  = if (hiArr == null) 0 else   bufIn2.size
-    val out     = bufOut0.buf
-    var _inVal  = inVal
-    var _loVal  = loVal
-    var _hiVal  = hiVal
-    while (inOffI < pStop) {
-      if (inOffI < inStop) _inVal = inArr(inOffI)
-      if (inOffI < loStop) _loVal = loArr(inOffI)
-      if (inOffI < hiStop) _hiVal = hiArr(inOffI)
-      out(outOffI) = op(_inVal, _loVal, _hiVal)
-      inOffI  += 1
-      outOffI += 1
+  final protected def run(rem: Int): Unit = {
+    var i = 0
+    while (i < rem) {
+      hOut.next(op(hIn.next(), hLo.next(), hHi.next()))
+      i += 1
     }
-    inVal = _inVal
-    loVal = _loVal
-    hiVal = _hiVal
   }
 }
 
 abstract class AbstractClipFoldWrapL(name: String, layer: Layer, shape: FanInShape3[BufL, BufL, BufL, BufL])
                                     (implicit ctrl: Control)
-  extends NodeImpl(name, layer, shape)
-    with FilterChunkImpl[BufL, BufL, FanInShape3[BufL, BufL, BufL, BufL]]
-    with FilterIn3Impl[BufL, BufL, BufL, BufL] {
+  extends Handlers(name, layer, shape) with AbstractClipFoldWrap[Long, BufL] {
 
-  private[this] var inVal: Long = _
-  private[this] var loVal: Long = _
-  private[this] var hiVal: Long = _
-  
-  protected final def allocOutBuf0(): BufL = ctrl.borrowBufL()
+  final protected override val hIn : InLMain  = InLMain  (this, shape.in0)
+  final protected override val hLo : InLAux   = InLAux   (this, shape.in1)()
+  final protected override val hHi : InLAux   = InLAux   (this, shape.in2)()
+  final protected override val hOut: OutLMain = OutLMain (this, shape.out)
 
-  protected def op(inVal: Long, loVal: Long, hiVal: Long): Long
+  protected def op(inVal: A, loVal: A, hiVal: A): A
 
-  protected final def processChunk(inOff: Int, outOff: Int, chunk: Int): Unit = {
-    var inOffI  = inOff
-    var outOffI = outOff
-    val pStop   = inOffI + chunk
-    val inArr   = /* if (bufIn0 == null) null else */ bufIn0.buf
-    val loArr   = if (bufIn1 == null) null else bufIn1.buf
-    val hiArr   = if (bufIn2 == null) null else bufIn2.buf
-    val inStop  = /* if (a == null) 0 else */ bufIn0.size
-    val loStop  = if (loArr == null) 0 else   bufIn1.size
-    val hiStop  = if (hiArr == null) 0 else   bufIn2.size
-    val out     = bufOut0.buf
-    var _inVal  = inVal
-    var _loVal  = loVal
-    var _hiVal  = hiVal
-    while (inOffI < pStop) {
-      if (inOffI < inStop) _inVal = inArr(inOffI)
-      if (inOffI < loStop) _loVal = loArr(inOffI)
-      if (inOffI < hiStop) _hiVal = hiArr(inOffI)
-      out(outOffI) = op(_inVal, _loVal, _hiVal)
-      inOffI  += 1
-      outOffI += 1
+  final protected def run(rem: Int): Unit = {
+    var i = 0
+    while (i < rem) {
+      hOut.next(op(hIn.next(), hLo.next(), hHi.next()))
+      i += 1
     }
-    inVal = _inVal
-    loVal = _loVal
-    hiVal = _hiVal
   }
 }
 
 abstract class AbstractClipFoldWrapD(name: String, layer: Layer, shape: FanInShape3[BufD, BufD, BufD, BufD])
                                     (implicit ctrl: Control)
-  extends NodeImpl(name, layer, shape)
-    with FilterChunkImpl[BufD, BufD, FanInShape3[BufD, BufD, BufD, BufD]]
-    with FilterIn3Impl[BufD, BufD, BufD, BufD] {
+  extends Handlers(name, layer, shape) with AbstractClipFoldWrap[Double, BufD] {
 
-  private[this] var inVal: Double = _
-  private[this] var loVal: Double = _
-  private[this] var hiVal: Double = _
+  final protected override val hIn : InDMain  = InDMain  (this, shape.in0)
+  final protected override val hLo : InDAux   = InDAux   (this, shape.in1)()
+  final protected override val hHi : InDAux   = InDAux   (this, shape.in2)()
+  final protected override val hOut: OutDMain = OutDMain (this, shape.out)
 
-  protected final def allocOutBuf0(): BufD = ctrl.borrowBufD()
+  protected def op(inVal: A, loVal: A, hiVal: A): A
 
-  protected def op(inVal: Double, loVal: Double, hiVal: Double): Double
-
-  protected final def processChunk(inOff: Int, outOff: Int, chunk: Int): Unit = {
-    var inOffI  = inOff
-    var outOffI = outOff
-    val pStop   = inOffI + chunk
-    val inArr   = /* if (bufIn0 == null) null else */ bufIn0.buf
-    val loArr   = if (bufIn1 == null) null else bufIn1.buf
-    val hiArr   = if (bufIn2 == null) null else bufIn2.buf
-    val inStop  = /* if (a == null) 0 else */ bufIn0.size
-    val loStop  = if (loArr == null) 0 else   bufIn1.size
-    val hiStop  = if (hiArr == null) 0 else   bufIn2.size
-    val out     = bufOut0.buf
-    var _inVal  = inVal
-    var _loVal  = loVal
-    var _hiVal  = hiVal
-    while (inOffI < pStop) {
-      if (inOffI < inStop) _inVal = inArr(inOffI)
-      if (inOffI < loStop) _loVal = loArr(inOffI)
-      if (inOffI < hiStop) _hiVal = hiArr(inOffI)
-      out(outOffI) = op(_inVal, _loVal, _hiVal)
-      inOffI  += 1
-      outOffI += 1
+  final protected def run(rem: Int): Unit = {
+    var i = 0
+    while (i < rem) {
+      hOut.next(op(hIn.next(), hLo.next(), hHi.next()))
+      i += 1
     }
-    inVal = _inVal
-    loVal = _loVal
-    hiVal = _hiVal
   }
 }
