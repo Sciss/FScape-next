@@ -16,8 +16,9 @@ package stream
 
 import akka.stream.{Attributes, FanInShape2, Inlet, Outlet}
 import de.sciss.fscape.graph.ConstantL
-import de.sciss.fscape.stream.impl.deprecated.{ChunkImpl, FilterIn2Impl}
-import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
+
+import scala.annotation.tailrec
 
 object Drop {
   def tail[A, E <: BufElem[A]](in: Outlet[E])(implicit b: Builder, tpe: StreamType[A, E]): Outlet[E] = {
@@ -52,37 +53,53 @@ object Drop {
 
   private final class Logic[A, E <: BufElem[A]](shape: Shp[E], layer: Layer)
                                                (implicit ctrl: Control, tpe: StreamType[A, E])
-    extends NodeImpl(name, layer, shape)
-      with ChunkImpl[Shp[E]]
-      with FilterIn2Impl[E, BufL, E] {
+    extends Handlers(name, layer, shape) {
+
+    private[this] val hIn     = Handlers.InMain [A, E](this, shape.in0)
+    private[this] val hLen    = Handlers.InLAux       (this, shape.in1)(math.max(0L, _))
+    private[this] val hOut    = Handlers.OutMain[A, E](this, shape.out)
 
     private[this] var dropRemain    = -1L
     private[this] var init          = true
 
     protected def allocOutBuf0(): E = tpe.allocBuf()
 
-    protected def processChunk(): Boolean = {
-      val len = math.min(inRemain, outRemain)
-      val res = len > 0
-      if (res) {
-        if (init) {
-          dropRemain = math.max(0, bufIn1.buf(0))
-          init = false
-        }
-        val skip  = math.min(len, dropRemain).toInt
-        val chunk = len - skip
-        if (chunk > 0) {
-          System.arraycopy(bufIn0.buf, inOff + skip, bufOut0.buf, outOff, chunk)
-          outOff    += chunk
-          outRemain -= chunk
-        }
-        dropRemain -= skip
-        inOff      += len
-        inRemain   -= len
-      }
-      res
+    protected def onDone(inlet: Inlet[_]): Unit = {
+      assert (inlet == hIn.inlet)
+      if (hOut.flush()) completeStage()
     }
 
-    protected def shouldComplete(): Boolean = inRemain == 0 && isClosed(in0) && !isAvailable(in0)
+    @tailrec
+    protected def process(): Unit = {
+      if (init) {
+        if (!hLen.hasNext) return
+        dropRemain  = hLen.next()
+        init        = false
+      }
+
+      val remIn = hIn.available
+      if (remIn == 0) return
+
+      val numSkip = math.min(remIn, dropRemain).toInt
+      val hasSkip = numSkip > 0
+      if (hasSkip) {
+        hIn.skip(numSkip)
+        dropRemain -= numSkip
+      }
+
+      val remOut  = hOut.available
+      val numCopy = math.min(remOut, remIn - numSkip)
+      val hasCopy = numCopy > 0
+      if (hasCopy) {
+        hIn.copyTo(hOut, numCopy)
+      }
+
+      if (hIn.isDone) {
+        if (hOut.flush()) completeStage()
+        return
+      }
+
+      if (hasSkip || hasCopy) process()
+    }
   }
 }

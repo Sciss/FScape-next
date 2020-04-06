@@ -14,11 +14,10 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.{Attributes, FanInShape4}
-import de.sciss.fscape.stream.impl.deprecated.{ChunkImpl, FilterIn4DImpl}
-import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import akka.stream.{Attributes, FanInShape4, Inlet}
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
 
-import scala.annotation.switch
+import scala.annotation.{switch, tailrec}
 
 object DEnvGen {
   def apply(levels: OutD, lengths: OutL, shapes: OutI, curvatures: OutD)(implicit b: Builder): OutD = {
@@ -48,10 +47,13 @@ object DEnvGen {
   }
 
   private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape)
-      with ChunkImpl[Shp]
-      with FilterIn4DImpl[BufD, BufL, BufI, BufD]
-    {
+    extends Handlers(name, layer, shape) {
+
+    private[this] val hLevel  = Handlers.InDMain  (this, shape.in0)
+    private[this] val hLen    = Handlers.InLAux   (this, shape.in1)(math.max(0L, _))
+    private[this] val hShape  = Handlers.InIAux   (this, shape.in2)()
+    private[this] val hCurve  = Handlers.InDAux   (this, shape.in3)()
+    private[this] val hOut    = Handlers.OutDMain (this, shape.out)
 
     private[this] var startLevel  : Double  = _
     private[this] var endLevel    : Double  = _
@@ -67,54 +69,53 @@ object DEnvGen {
     private[this] var nextSegment   = true
     private[this] var offSeg        = 0L    // time counter within each segment (until period)
 
-    protected def shouldComplete(): Boolean =
-      nextSegment && inRemain == 0 && isClosed(in0) && !isAvailable(in0)
+    private def shouldComplete(): Boolean =
+      nextSegment && hLevel.isDone
 
-    private def pullShapeParams(): Unit = {
-      if (bufIn1 != null && inOff < bufIn1.size) {
-        period1 = math.max(0L, bufIn1.buf(inOff))
-      }
-      if (bufIn2 != null && inOff < bufIn2.size) {
-        shapeId1 = bufIn2.buf(inOff)
-      }
-      if (bufIn3 != null && inOff < bufIn3.size) {
-        curvature1 = bufIn3.buf(inOff)
-      }
+    @tailrec
+    protected def process(): Unit = {
+      val active = processChunk()
+      if (shouldComplete()) {
+        if (hOut.flush()) completeStage()
+      } else if (active) process()
     }
 
-    /** Should read and possibly update `inRemain`, `outRemain`, `inOff`, `outOff`.
-      *
-      * @return `true` if this method did any actual processing.
-      */
-    protected def processChunk(): Boolean = {
+    protected def onDone(inlet: Inlet[_]): Unit =
+      process()
+
+    private def pullShapeParams(): Unit = {
+      period1     = hLen  .next()
+      shapeId1    = hShape.next()
+      curvature1  = hCurve.next()
+    }
+
+    private def canPullParams: Boolean =
+      hLevel.hasNext && hLen.hasNext && hShape.hasNext && hCurve.hasNext
+
+    /* Should read and possibly update `inRemain`, `outRemain`, `inOff`, `outOff`.
+     *
+     * @return `true` if this method did any actual processing.
+     */
+    private def processChunk(): Boolean = {
       var stateChange = false
 
       if (init) {
-        if (inRemain > 0 /* && bufIn0 != null && inOff < bufIn0.size */) {
-          endLevel    = bufIn0.buf(inOff)
-          pullShapeParams()
-          inOff      += 1
-          inRemain   -= 1
-          init        = false
-          stateChange = true
+        if (!canPullParams) return stateChange
 
-        } else {
-          return stateChange
-        }
+        endLevel    = hLevel.next()
+        pullShapeParams()
+        init        = false
+        stateChange = true
       }
 
-      if (nextSegment && inRemain > 0) {
-        startLevel = endLevel
-        if (bufIn0 != null && inOff < bufIn0.size) {
-          endLevel = bufIn0.buf(inOff)
-        }
+      if (nextSegment && canPullParams) {
+        startLevel  = endLevel
+        endLevel    = hLevel.next()
         // "delay1"
         period      = period1
         shapeId     = shapeId1
         curvature   = curvature1
         pullShapeParams()
-        inOff      += 1
-        inRemain   -= 1
         stateChange = true
         nextSegment = period == 0L
       }
@@ -122,13 +123,13 @@ object DEnvGen {
       if (!nextSegment) {
         var offSegI = offSeg
         val periodI = period
-        val chunk   = math.min(outRemain, periodI - offSegI).toInt
+        val chunk   = math.min(hOut.available, periodI - offSegI).toInt
         if (chunk > 0) {
-          var outOffI = outOff
+          var outOffI = hOut.offset
           val stop    = outOffI + chunk
           val y1      = startLevel
           val y2      = endLevel
-          val out     = bufOut0.buf
+          val out     = hOut.array
 
           (shapeId: @switch) match {
             case 0 /* step */ =>
@@ -227,8 +228,8 @@ object DEnvGen {
                 offSegI += 1
               }
           }
-          outOff      = outOffI
-          outRemain  -= chunk
+          hOut.advance(chunk)
+
           if (offSegI == periodI) {
             nextSegment = true
             offSeg      = 0

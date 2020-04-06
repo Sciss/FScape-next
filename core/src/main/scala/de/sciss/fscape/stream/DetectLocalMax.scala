@@ -15,8 +15,9 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape2, Inlet, Outlet}
-import de.sciss.fscape.stream.impl.deprecated.{ChunkImpl, FilterIn2Impl}
-import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
+
+import scala.annotation.tailrec
 
 object DetectLocalMax {
   def apply[A, E <: BufElem[A]](in: Outlet[E], size: OutI)
@@ -140,9 +141,11 @@ object DetectLocalMax {
 
   private final class Logic[A, E <: BufElem[A]](shape: Shp[E], layer: Layer)
                                                (implicit ctrl: Control, tpe: StreamType[A, E])
-    extends NodeImpl(name, layer, shape)
-      with FilterIn2Impl[E, BufI, BufI]
-      with ChunkImpl[Shp[E]] {
+    extends Handlers(name, layer, shape) {
+
+    private[this] val hIn     = Handlers.InMain[A, E] (this, shape.in0)
+    private[this] val hSize   = Handlers.InIAux       (this, shape.in1)(math.max(1, _)) // XXX TODO -- allow zero?
+    private[this] val hOut    = Handlers.OutIMain     (this, shape.out)
 
     private[this] var size          = 0
 
@@ -161,16 +164,26 @@ object DetectLocalMax {
 
     import tpe.ordering
 
-    protected def allocOutBuf0(): BufI = ctrl.borrowBufI()
+    private def shouldComplete(): Boolean = _complete && framesWritten == framesRead
 
-    protected def shouldComplete(): Boolean = _complete && framesWritten == framesRead
+    protected def onDone(inlet: Inlet[_]): Unit =
+      process()
 
-    protected def processChunk(): Boolean =
-      if (readMode) processRead() else processWrite()
+    @tailrec
+    protected def process(): Unit = {
+      val active = if (readMode) processRead() else processWrite()
+      if (shouldComplete()) {
+        if (hOut.flush()) completeStage()
+      } else if (active) process()
+    }
 
-    private def processRead(): Boolean =
+//    protected def processChunk(): Boolean =
+//      if (readMode) processRead() else processWrite()
+
+    private def processRead(): Boolean = {
+      var inRemain = math.min(hIn.available, hSize.available)
       if (inRemain == 0 /*&& !_complete*/) {
-        val terminate = isClosed(shape.in0) && !isAvailable(shape.in0)
+        val terminate = hIn.isDone // isClosed(shape.in0) && !isAvailable(shape.in0)
         if (terminate) {
           if (state != 1) {
             foundFrame = framesRead // place a virtual found frame at the end
@@ -203,14 +216,16 @@ object DetectLocalMax {
         debug(s"read $framesRead - state $state skip $skip stop-frame $stopFrame")
 
         if (skip > 0) stateChanged = true
-        val _sizeStop = if (bufIn1 == null) 0 else bufIn1.size
-        val _in       = bufIn0.buf
+        // val _sizeStop = if (bufIn1 == null) 0 else bufIn1.size
+//        val _in       = hIn.array // bufIn0.buf
+//        val inOff     = hIn.offset
         var _x0       = x0
         var _s0       = s0
         while (skip > 0) {
-          val x1      = _in(inOff)
+          val x1      = hIn.next() // _in(inOff)
           val s1      = ordering.compare(x1, _x0)
-          if (inOff < _sizeStop) size = math.max(1, bufIn1.buf(inOff))
+//          if (inOff < _sizeStop) size = math.max(1, bufIn1.buf(inOff))
+          size = hSize.next()
 
           if (state != 2) {
             val isMax = _s0 > 0 && s1 < 0
@@ -242,7 +257,7 @@ object DetectLocalMax {
           }
 
           inRemain   -= 1
-          inOff      += 1
+//          inOff      += 1
           framesRead += 1
           _x0         = x1
           _s0         = s1
@@ -274,6 +289,7 @@ object DetectLocalMax {
 
         stateChanged
       }
+    }
 
     private[this] val DEBUG = false
 
@@ -282,14 +298,17 @@ object DetectLocalMax {
     private def processWrite(): Boolean = {
       var stateChanged = false
 
-      val chunk0  = if (state == 0) outRemain else math.min(outRemain, foundFrame - framesWritten).toInt
-      val chunk   = if (_complete) math.min(chunk0, framesRead - framesWritten).toInt else chunk0
+      var outRemain = hOut.available
+      val chunk0    = if (state == 0) outRemain else math.min(outRemain, foundFrame - framesWritten).toInt
+      val chunk     = if (_complete) math.min(chunk0, framesRead - framesWritten).toInt else chunk0
 
       debug(s"write $framesWritten - state $state chunk $chunk")
 
       if (chunk > 0) {
-        Util.clear(bufOut0.buf, outOff, chunk)
-        outOff        += chunk
+        val out     = hOut.array
+        val outOff  = hOut.offset
+        Util.clear(out, outOff, chunk)
+        hOut.advance(chunk)
         outRemain     -= chunk
         framesWritten += chunk
         stateChanged   = true
@@ -301,8 +320,9 @@ object DetectLocalMax {
           debug(s"... and consume trigger ------------------- $foundFrame")
 //          println(s" T: $foundValue")
           if (!_complete || framesWritten < framesRead) {
-            bufOut0.buf(outOff) = 1
-            outOff             += 1
+            hOut.next(1)
+//            bufOut0.buf(outOff) = 1
+//            outOff             += 1
             outRemain          -= 1
             framesWritten      += 1
             stopFrame           = foundFrame + size + 1
