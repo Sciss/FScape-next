@@ -15,8 +15,10 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape2, Inlet, Outlet}
-import de.sciss.fscape.stream.impl.deprecated.{ChunkImpl, FilterIn2Impl}
-import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.Handlers.{InDMain, InIAux, InIMain, InLMain, InMain, OutDMain, OutIMain, OutLMain, OutMain}
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
+
+import scala.annotation.tailrec
 
 object FilterSeq {
   def apply[A, E <: BufElem[A]](in: Outlet[E], gate: OutI)
@@ -41,55 +43,117 @@ object FilterSeq {
       out = Outlet[E](s"$name.out" )
     )
 
-    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic[A, E](shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = {
+      val res: Logic[_, _] = if (tpe.isDouble) {
+        new LogicD(shape.asInstanceOf[Shp[BufD]], layer)
+      } else if (tpe.isInt) {
+        new LogicI(shape.asInstanceOf[Shp[BufI]], layer)
+      } else {
+        assert (tpe.isLong)
+        new LogicL(shape.asInstanceOf[Shp[BufL]], layer)
+      }
+      res.asInstanceOf[Logic[A, E]]
+    }
   }
 
-  private final class Logic[A, E <: BufElem[A]](shape: Shp[E], layer: Layer)
-                                               (implicit ctrl: Control, tpe: StreamType[A, E])
-    extends NodeImpl(name, layer, shape)
-      with FilterIn2Impl[E, BufI, E]
-      with ChunkImpl[Shp[E]] {
+  private final class LogicD(shape: Shp[BufD], layer: Layer)(implicit ctrl: Control)
+    extends Logic[Double, BufD](shape, layer) {
 
-    private[this] var high = false
+    protected override val hIn : InDMain  = InDMain (this, shape.in0)
+    protected override val hOut: OutDMain = OutDMain(this, shape.out)
 
-    protected def shouldComplete(): Boolean =
-      inRemain == 0 && isClosed(in0) && !isAvailable(in0)
-
-    /** Should read and possibly update `inRemain`, `outRemain`, `inOff`, `outOff`.
-      *
-      * @return `true` if this method did any actual processing.
-      */
-    protected def processChunk(): Boolean = {
-      val inRemain0   = inRemain
-      var inRemainI   = inRemain0
-      var outRemainI  = outRemain
-      val b0          = bufIn0.buf
-      val b1          = if (bufIn1 == null) null else bufIn1.buf
-      val stop1       = if (b1     == null) 0    else bufIn1.size
-      val out         = bufOut0.buf
-      var h0          = high
-      var inOffI      = inOff
-      var outOffI     = outOff
-      while (inRemainI > 0 && outRemainI > 0) {
-        if (inOffI < stop1) h0 = b1(inOffI) > 0
-        if (h0) {
-          val v0 = b0(inOffI)
-          out(outOffI) = v0
-          outOffI     += 1
-          outRemainI  -= 1
+    protected def run(remIn: Int, remOut: Int): Unit = {
+      var i = 0; var j = 0
+      val _hIn    = hIn
+      val _hGate  = hGate
+      val _hOut   = hOut
+      while (i < remIn && j < remOut) {
+        val in    = _hIn   .next()
+        val gate  = _hGate .next() > 0
+        i += 1
+        if (gate) {
+          _hOut.next(in)
+          j += 1
         }
-        inOffI    += 1
-        inRemainI -= 1
       }
-      high = h0
-
-      inOff     = inOffI
-      outOff    = outOffI
-      inRemain  = inRemainI
-      outRemain = outRemainI
-      inRemainI != inRemain0
     }
+  }
 
-    protected def allocOutBuf0(): E = tpe.allocBuf()
+  private final class LogicI(shape: Shp[BufI], layer: Layer)(implicit ctrl: Control)
+    extends Logic[Int, BufI](shape, layer) {
+
+    protected override val hIn : InIMain  = InIMain (this, shape.in0)
+    protected override val hOut: OutIMain = OutIMain(this, shape.out)
+
+    protected def run(remIn: Int, remOut: Int): Unit = {
+      var i = 0; var j = 0
+      val _hIn    = hIn
+      val _hGate  = hGate
+      val _hOut   = hOut
+      while (i < remIn && j < remOut) {
+        val in    = _hIn   .next()
+        val gate  = _hGate .next() > 0
+        i += 1
+        if (gate) {
+          _hOut.next(in)
+          j += 1
+        }
+      }
+    }
+  }
+
+  private final class LogicL(shape: Shp[BufL], layer: Layer)(implicit ctrl: Control)
+    extends Logic[Long, BufL](shape, layer) {
+
+    protected override val hIn : InLMain  = InLMain (this, shape.in0)
+    protected override val hOut: OutLMain = OutLMain(this, shape.out)
+
+    protected def run(remIn: Int, remOut: Int): Unit = {
+      var i = 0; var j = 0
+      val _hIn    = hIn
+      val _hGate  = hGate
+      val _hOut   = hOut
+      while (i < remIn && j < remOut) {
+        val in    = _hIn   .next()
+        val gate  = _hGate .next() > 0
+        i += 1
+        if (gate) {
+          _hOut.next(in)
+          j += 1
+        }
+      }
+    }
+  }
+
+  private abstract class Logic[A, E <: BufElem[A]](shape: Shp[E], layer: Layer)
+                                               (implicit ctrl: Control)
+    extends Handlers(name, layer, shape) {
+
+    protected def hIn : InMain  [A, E]
+    protected def hOut: OutMain [A, E]
+
+    protected final val hGate: InIAux = InIAux(this, shape.in1)()
+
+    final protected def onDone(inlet: Inlet[_]): Unit =
+      if (hOut.flush()) completeStage()
+
+    protected def run(remIn: Int, remOut: Int): Unit
+
+    @tailrec
+    final protected def process(): Unit = {
+      val remIn = math.min(hIn.available, hGate.available)
+      if (remIn == 0) return
+      val remOut = hOut.available
+      if (remOut == 0) return
+
+      run(remIn, remOut)
+
+      if (hIn.isDone) {
+        if (hOut.flush()) completeStage()
+        return
+      }
+
+      process()
+    }
   }
 }

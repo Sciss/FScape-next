@@ -357,12 +357,12 @@ object Handlers {
     }
 
     final def skip(len: Int): Unit = {
-      preNextN  (len)
+      preNextN(len)
       advance (len)
     }
 
     final def copyTo(to: OutMain[A, E], len: Int): Unit = {
-      preNextN  (len)
+      preNextN(len)
       to.nextN(buf.buf, off, len)
       advance (len)
     }

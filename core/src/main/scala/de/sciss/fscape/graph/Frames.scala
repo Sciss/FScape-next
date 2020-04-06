@@ -32,7 +32,8 @@ final case class Frames(in: GE) extends UGenSource.SingleOut {
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
     val Vec(in) = args
-    stream.Frames(in = in.toAny)
+    import in.tpe
+    stream.Frames[in.A, in.Buf](in = in.toElem)
   }
 }
 
@@ -49,6 +50,7 @@ final case class Indices(in: GE) extends UGenSource.SingleOut {
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
     val Vec(in) = args
-    stream.Frames(in = in.toAny, init = 0, name = name)
+    import in.tpe
+    stream.Frames[in.A, in.Buf](in = in.toElem, init = 0, name = name)
   }
 }

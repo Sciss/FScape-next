@@ -14,14 +14,14 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.{Attributes, FlowShape}
-import de.sciss.fscape.stream.impl.deprecated.{FilterChunkImpl, FilterIn1LImpl}
-import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
+
+import scala.annotation.tailrec
 
 object Frames {
-  def apply(in: OutA)(implicit b: Builder): OutL = apply(in, init = 1, name = nameFr)
-
-  def apply(in: OutA, init: Int, name: String)(implicit b: Builder): OutL = {
+  def apply[A, E <: BufElem[A]](in: Outlet[E], init: Int = 1, name: String = nameFr)
+                               (implicit b: Builder, tpe: StreamType[A, E]): OutL = {
     val stage0  = new Stage(b.layer, init = init, name = name)
     val stage   = b.add(stage0)
     b.connect(in, stage.in)
@@ -30,38 +30,56 @@ object Frames {
 
   private final val nameFr = "Frames"
 
-  private type Shp = FlowShape[BufLike, BufL]
+  private type Shp[E] = FlowShape[E, BufL]
 
-  private final class Stage(layer: Layer, init: Int, name: String)(implicit ctrl: Control)
-    extends StageImpl[Shp](name) {
+  private final class Stage[A, E <: BufElem[A]](layer: Layer, init: Int, name: String)
+                                               (implicit ctrl: Control, tpe: StreamType[A, E])
+    extends StageImpl[Shp[E]](name) {
 
     val shape: Shape = new FlowShape(
-      in  = InA (s"$name.in" ),
-      out = OutL(s"$name.out")
+      in  = Inlet[E](s"$name.in" ),
+      out = OutL    (s"$name.out")
     )
 
-    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer, init = init, name = name)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic[A, E](shape, layer, init = init, name = name)
   }
 
-  private final class Logic(shape: Shp, layer: Layer, init: Int, name: String)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape)
-      with FilterChunkImpl[BufLike, BufL, Shp]
-      with FilterIn1LImpl[BufLike] {
+  private final class Logic[A, E <: BufElem[A]](shape: Shp[E], layer: Layer, init: Int, name: String)
+                                               (implicit ctrl: Control, tpe: StreamType[A, E])
+    extends Handlers(name, layer, shape) {
+
+    private[this] val hIn   = Handlers.InMain[A, E](this, shape.in)
+    private[this] val hOut  = Handlers.OutLMain    (this, shape.out)
 
     private[this] var framesRead = init.toLong
 
-    protected def processChunk(inOff: Int, outOff: Int, len: Int): Unit = {
-      val bufOut  = bufOut0
-      val arr     = bufOut.buf
-      var i       = outOff
-      val stop    = i + len
-      var j       = framesRead
+    protected def onDone(inlet: Inlet[_]): Unit =
+      if (hOut.flush()) completeStage()
+
+    @tailrec
+    protected def process(): Unit = {
+      val num = math.min(hIn.available, hOut.available)
+      if (num == 0) return
+
+      val arr = hOut.array
+      var i   = hOut.offset
+      var j   = framesRead
+      val stop = i + num
       while (i < stop) {
         arr(i) = j
         j += 1
         i += 1
       }
-      framesRead  = j
+      hIn .skip   (num)
+      hOut.advance(num)
+      framesRead = j
+
+      if (hIn.isDone) {
+        if (hOut.flush()) completeStage()
+        return
+      }
+
+      process()
     }
   }
 }
