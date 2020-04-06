@@ -14,10 +14,8 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.stage.InHandler
 import akka.stream.{Attributes, FanInShape2, Inlet, Outlet}
-import de.sciss.fscape.stream.impl.deprecated.{FullInOutImpl, Out1LogicImpl, ProcessOutHandlerImpl, SameChunkImpl}
-import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
 
 object Concat {
   def apply[A, E <: BufElem[A]](a: Outlet[E], b: Outlet[E])
@@ -47,85 +45,51 @@ object Concat {
 
   private final class Logic[A, E <: BufElem[A]](shape: Shp[E], layer: Layer)
                                                        (implicit ctrl: Control, tpe: StreamType[A, E])
-    extends NodeImpl(name, layer, shape)
-      with FullInOutImpl[Shp[E]]
-      with SameChunkImpl[Shp[E]]
-      with Out1LogicImpl[E, Shp[E]] {
+    extends Handlers(name, layer, shape) {
 
-    // ---- impl ----
+    private[this] val hInA  = Handlers.InMain [A, E](this, shape.in0)
+    private[this] val hInB  = Handlers.InMain [A, E](this, shape.in1)
+    private[this] val hOut  = Handlers.OutMain[A, E](this, shape.out)
 
-    protected var bufIn0 : E = _
-    protected var bufOut0: E = _
+    private[this] var first = true
 
-    protected val in0 : Inlet [E] = shape.in0
-    protected val in1 : Inlet [E] = shape.in1
-    protected val out0: Outlet[E] = shape.out
-
-    private[this] var _canRead = false
-
-    def canRead: Boolean = _canRead
-    def inValid: Boolean = true
-
-    protected def allocOutBuf0(): E = tpe.allocBuf()
-
-    override protected def stopped(): Unit = {
-      super.stopped()
-      freeInputBuffers()
-      freeOutputBuffers()
-    }
-
-    protected def readIns(): Int = {
-      freeInputBuffers()
-
-      if (isAvailable(in0)) {
-        bufIn0 = grab(in0)
-        bufIn0.assertAllocated()
-        tryPull(in0)
+    protected def onDone(inlet: Inlet[_]): Unit =
+      if (first) {
+        if (inlet == hInA.inlet) {
+          first = false
+          if (checkDoneB()) return
+          process()
+        }
       } else {
-        assert(isClosed(in0) && isAvailable(in1))
-        bufIn0 = grab(in1)
-        tryPull(in1)
+        assert (inlet == hInB.inlet)
+        checkDoneB()
       }
 
-      updateCanRead()
-      bufIn0.size
+    private def checkDoneB(): Boolean = {
+      val res = hInB.isDone
+      if (res) {
+        if (hOut.flush()) completeStage()
+      }
+      res
     }
 
-    protected def freeInputBuffers(): Unit =
-      if (bufIn0 != null) {
-        bufIn0.release()
-        bufIn0 = null.asInstanceOf[E]
+    protected def process(): Unit = {
+      while (first) {
+        val rem = math.min(hInA.available, hOut.available)
+        if (rem == 0) return
+        hInA.copyTo(hOut, rem)
+        if (hInA.isDone) {
+          first = false
+          if (checkDoneB()) return
+        }
       }
 
-    protected def freeOutputBuffers(): Unit =
-      if (bufOut0 != null) {
-        bufOut0.release()
-        bufOut0 = null.asInstanceOf[E]
-      }
-
-    def updateCanRead(): Unit =
-      _canRead = isAvailable(in0) || (isClosed(in0) && isAvailable(in1))
-
-    protected def shouldComplete(): Boolean =
-      inRemain == 0 && isClosed(in0) && !isAvailable(in0) && isClosed(in1) && !isAvailable(in1)
-
-    protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Unit =
-      System.arraycopy(bufIn0.buf, inOff, bufOut0.buf, outOff, chunk)
-
-    private object _InHandlerImpl extends InHandler {
-      def onPush(): Unit = {
-        updateCanRead()
-        if (canRead) process()
-      }
-
-      override def onUpstreamFinish(): Unit = {
-        updateCanRead()
-        process()
+      while (true) {
+        val rem = math.min(hInB.available, hOut.available)
+        if (rem == 0) return
+        hInB.copyTo(hOut, rem)
+        if (checkDoneB()) return
       }
     }
-
-    setHandler(in0, _InHandlerImpl)
-    setHandler(in1, _InHandlerImpl)
-    new ProcessOutHandlerImpl(out0, this)
   }
 }
