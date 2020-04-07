@@ -15,11 +15,12 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape4, Inlet, Outlet}
-import de.sciss.fscape.stream.impl.deprecated.{DemandFilterIn4, DemandWindowedLogicOLD}
-import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
-import de.sciss.numbers.IntFunctions
+import de.sciss.fscape.stream.impl.Handlers.{InIAux, InMain, OutMain}
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl, WindowedLogic}
+import de.sciss.numbers.{IntFunctions => ri}
 
 import scala.annotation.switch
+import scala.math.max
 
 object WindowApply {
   def apply[A, E <: BufElem[A]](in: Outlet[E], size: OutI, index: OutI, mode: OutI)
@@ -53,67 +54,70 @@ object WindowApply {
   }
 
   private final class Logic[A, E <: BufElem[A]](shape: Shp[E], layer: Layer)
-                                               (implicit ctrl: Control, tpe: StreamType[A, E])
-    extends NodeImpl(name, layer, shape)
-      with DemandWindowedLogicOLD[Shp[E]]
-      with DemandFilterIn4[E, BufI, BufI, BufI, E] {
+                                               (implicit ctrl: Control, protected val tpe: StreamType[A, E])
+    extends Handlers(name, layer, shape) with WindowedLogic[A, E] {
 
-    private[this] var elem        : A       = _
-    private[this] var winSize     : Int     = _
-    private[this] var index0      : Int     = _
-    private[this] var index       : Int     = _
-    private[this] var mode        : Int     = _
-    private[this] val zero        : A       = tpe.newArray(1)(0)
+    protected     val hIn   : InMain  [A, E]  = InMain  (this, shape.in0)
+    protected     val hOut  : OutMain [A, E]  = OutMain (this, shape.out)
+    private[this] val hSize : InIAux          = InIAux  (this, shape.in1)(max(1, _))
+    private[this] val hIdx  : InIAux          = InIAux  (this, shape.in2)()
+    private[this] val hMode : InIAux          = InIAux  (this, shape.in3)(ri.clip(_, 0, 3))
 
-    protected def allocOutBuf0(): E = tpe.allocBuf()
+    private[this] var elem    : A   = _
+    private[this] var winSize : Int = _
+    private[this] var index   : Int = _
+    private[this] var found   : Boolean = _
 
-    protected def inputsEnded: Boolean =
-      mainInRemain == 0 && isClosed(in0) && !isAvailable(in0)
+    protected def winBufSize: Int = 0
 
-    protected def startNextWindow(): Long = {
-      val inOff = auxInOff
-      if (bufIn1 != null && inOff < bufIn1.size) {
-        winSize = math.max(1, bufIn1.buf(inOff))
+    override protected def readWinSize  : Long = winSize
+    override protected def writeWinSize : Long = 1
+
+    protected def tryObtainWinParams(): Boolean = {
+      val ok = hSize.hasNext && hIdx.hasNext && hMode.hasNext
+      if (ok) {
+        winSize     = hSize .next()
+        val index0  = hIdx  .next()
+        val mode    = hMode .next()
+
+        index =
+          if (index0 >= 0 && index0 < winSize) index0
+          else (mode: @switch) match {
+            case 0 => ri.clip(index0, 0, winSize - 1)
+            case 1 => ri.wrap(index0, 0, winSize - 1)
+            case 2 => ri.fold(index0, 0, winSize - 1)
+            case 3 =>
+              elem = tpe.zero
+              -1
+          }
+
+        found = false
       }
-      if (bufIn2 != null && inOff < bufIn2.size) {
-        index0 = bufIn2.buf(inOff)
-      }
-      if (bufIn3 != null && inOff < bufIn3.size) {
-        mode = math.max(0, math.min(3, bufIn3.buf(inOff)))
-      }
-
-      index =
-        if (index0 >= 0 && index0 < winSize) index0
-        else (mode: @switch) match {
-          case 0 => IntFunctions.clip(index0, 0, winSize - 1)
-          case 1 => IntFunctions.wrap(index0, 0, winSize - 1)
-          case 2 => IntFunctions.fold(index0, 0, winSize - 1)
-          case 3 =>
-            elem = zero
-            -1
-        }
-
-      winSize
+      ok
     }
 
-    protected def canStartNextWindow: Boolean = auxInRemain > 0 || (auxInValid && {
-      isClosed(in1) && isClosed(in2) && isClosed(in3)
-    })
-
-    protected def copyInputToWindow(writeToWinOff: Long, chunk: Int): Unit = {
-      val writeOffI = writeToWinOff.toInt
-      val stop      = writeOffI + chunk
+    override protected def readIntoWindow(n: Int): Unit = {
+      val writeOffI = readOff.toInt
+      val stop      = writeOffI + n
       val _index    = index
       if (_index >= writeOffI && _index < stop) {
-        elem = bufIn0.buf(_index - writeOffI + mainInOff)
+        assert (!found)
+        val in        = hIn.array
+        val mainInOff = hIn.offset
+        elem  = in(_index - writeOffI + mainInOff)
+        found = true
+        hIn.advance(n)
+      } else {
+        hIn.skip(n)
       }
     }
 
-    protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit = {
-      assert(readFromWinOff == 0 && chunk == 1)
-      bufOut0.buf(outOff) = elem
+    override protected def writeFromWindow(n: Int): Unit = {
+      assert (n == 1)
+      val v = if (found) elem else tpe.zero
+      hOut.next(v)
     }
 
-    protected def processWindow(writeToWinOff: Long): Long = 1
+    protected def processWindow(): Unit = ()
   }
 }

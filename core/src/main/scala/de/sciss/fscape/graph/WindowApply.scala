@@ -25,6 +25,9 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * For example, the first element per window can be extracted with `index = 0`,
   * and the last element per window can be extracted with `index = -1, mode = 1` (wrap).
   *
+  * If the input `in` terminates before a window of `size` is full, it will be padded
+  * with zeroes.
+  *
   * @param in     the window'ed signal to index
   * @param size   the window size.
   * @param index  the zero-based index into each window. One value per window is polled.
