@@ -64,10 +64,3 @@ trait FilterIn2DImpl[In0 >: Null <: BufLike, In1 >: Null <: BufLike]
 
   _: GraphStageLogic with Node =>
 }
-
-@deprecated("Does not allow individual aux inputs to advance at different block sizes", since = "2.35.1")
-trait FilterIn2IImpl[In0 >: Null <: BufLike, In1 >: Null <: BufLike]
-  extends FilterIn2Impl[In0, In1, BufI] with Out1IntImpl[FanInShape2[In0, In1, BufI]] {
-
-  _: GraphStageLogic with Node =>
-}

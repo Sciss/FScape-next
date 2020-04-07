@@ -15,7 +15,7 @@ package de.sciss.fscape.stream.impl.deprecated
 
 import akka.stream.stage.GraphStageLogic
 import akka.stream.{FlowShape, Inlet, Outlet}
-import de.sciss.fscape.stream.{BufD, BufI, BufL, BufLike, Node}
+import de.sciss.fscape.stream.{BufD, BufL, BufLike, Node}
 
 /** Building block for `FanInShape2` type graph stage logic. */
 @deprecated("Should move to using Handlers", since = "2.35.1")
@@ -69,12 +69,6 @@ trait FilterIn1Impl[In >: Null <: BufLike, Out >: Null <: BufLike]
 
   new ProcessInHandlerImpl (in0 , this)
   new ProcessOutHandlerImpl(out0, this)
-}
-
-@deprecated("Should move to using Handlers", since = "2.35.1")
-trait FilterIn1IImpl[In >: Null <: BufLike] extends FilterIn1Impl[In, BufI] with Out1IntImpl[FlowShape[In, BufI]] {
-
-  _: GraphStageLogic with Node =>
 }
 
 @deprecated("Should move to using Handlers", since = "2.35.1")

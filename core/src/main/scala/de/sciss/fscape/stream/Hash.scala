@@ -14,9 +14,10 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.{Attributes, FlowShape}
-import de.sciss.fscape.stream.impl.deprecated.{FilterChunkImpl, FilterIn1IImpl, FilterIn1LImpl}
-import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import akka.stream.{Attributes, FlowShape, Inlet}
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
+
+import scala.annotation.tailrec
 
 object Hash {
   def fromInt(in: OutI)(implicit b: Builder): OutI = {
@@ -82,8 +83,10 @@ object Hash {
   // by Viliam Holub, Public Domain
 
   private final class IntLogic(shape: Hash.Shp[BufI, BufI], layer: Layer)(implicit ctrl: Control)
-    extends LogicBase[BufI, BufI](shape, layer, "Int")
-    with FilterIn1IImpl[BufI] {
+    extends LogicBase[Int, BufI, Int, BufI](shape, layer, "Int")  {
+
+    type A = Int
+    type B = Int
 
     private[this] final val seed  = 0x9747b28c
     private[this] final val m     = 0x5bd1e995
@@ -91,14 +94,10 @@ object Hash {
 
     private[this] var h = seed    // no prior known length
 
-    // private[this] var length = 0
-
-    protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Unit = {
+    protected def run(in: Array[A], inOff: Int, out: Array[B], outOff: Int, chunk: Int): Unit = {
       var inOffI  = inOff
       var outOffI = outOff
       val inStop  = inOffI + chunk
-      val in      = bufIn0.buf
-      val out     = bufOut0.buf
       while (inOffI < inStop) {
         var k = in(inOffI)
         k *= m
@@ -112,14 +111,14 @@ object Hash {
         inOffI  += 1
         outOffI += 1
       }
-
-      // length += chunk
     }
   }
 
   private final class LongLogic(shape: Hash.Shp[BufL, BufL], layer: Layer)(implicit ctrl: Control)
-    extends LogicBase[BufL, BufL](shape, layer, "Long")
-      with FilterIn1LImpl[BufL] {
+    extends LogicBase[Long, BufL, Long, BufL](shape, layer, "Long") {
+
+    type A = Long
+    type B = Long
 
     private[this] final val seed  = 0xe17a1465
     private[this] final val m     = 0xc6a4a7935bd1e995L
@@ -127,14 +126,10 @@ object Hash {
 
     private[this] var h = seed & 0xFFFFFFFFL    // no prior known length
 
-    // private[this] var length = 0
-
-    protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Unit = {
+    protected def run(in: Array[A], inOff: Int, out: Array[B], outOff: Int, chunk: Int): Unit = {
       var inOffI  = inOff
       var outOffI = outOff
       val inStop  = inOffI + chunk
-      val in      = bufIn0.buf
-      val out     = bufOut0.buf
       while (inOffI < inStop) {
         var k = in(inOffI)
         k *= m
@@ -148,14 +143,14 @@ object Hash {
         inOffI  += 1
         outOffI += 1
       }
-
-      // length += chunk
     }
   }
 
   private final class DoubleLogic(shape: Hash.Shp[BufD, BufL], layer: Layer)(implicit ctrl: Control)
-    extends LogicBase[BufD, BufL](shape, layer, "Double")
-      with FilterIn1LImpl[BufD] {
+    extends LogicBase[Double, BufD, Long, BufL](shape, layer, "Double") {
+
+    type A = Double
+    type B = Long
 
     private[this] final val seed  = 0xe17a1465
     private[this] final val m     = 0xc6a4a7935bd1e995L
@@ -163,14 +158,10 @@ object Hash {
 
     private[this] var h = seed & 0xFFFFFFFFL    // no prior known length
 
-    // private[this] var length = 0
-
-    protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Unit = {
+    protected def run(in: Array[A], inOff: Int, out: Array[B], outOff: Int, chunk: Int): Unit = {
       var inOffI  = inOff
       var outOffI = outOff
       val inStop  = inOffI + chunk
-      val in      = bufIn0.buf
-      val out     = bufOut0.buf
       while (inOffI < inStop) {
         var k = java.lang.Double.doubleToLongBits(in(inOffI))
         k *= m
@@ -184,14 +175,38 @@ object Hash {
         inOffI  += 1
         outOffI += 1
       }
-
-      // length += chunk
     }
   }
 
-  private abstract class LogicBase[E <: BufLike, F <: BufLike](shape: Shp[E, F],
+  private abstract class LogicBase[A, E <: BufElem[A], B, F <: BufElem[B]](shape: Shp[E, F],
                                                                layer: Layer, tpe: String)
-                                                              (implicit ctrl: Control)
-    extends NodeImpl[Shp[E, F]](s"$name.$tpe", layer, shape)
-      with FilterChunkImpl[E, F, Shp[E, F]]
+                                                              (implicit ctrl: Control, aTpe: StreamType[A, E],
+                                                               bTpe: StreamType[B, F])
+    extends Handlers[Shp[E, F]](s"$name.$tpe", layer, shape) {
+
+    private[this] val hIn   = Handlers.InMain [A, E](this, shape.in )
+    private[this] val hOut  = Handlers.OutMain[B, F](this, shape.out)
+
+    protected def run(in: Array[A], inOff: Int, out: Array[B], outOff: Int, chunk: Int): Unit
+
+    final protected def onDone(inlet: Inlet[_]): Unit =
+      if (hOut.flush()) completeStage()
+
+    @tailrec
+    final protected def process(): Unit = {
+      val rem = math.min(hIn.available, hOut.available)
+      if (rem == 0) return
+
+      run(hIn.array, hIn.offset, hOut.array, hOut.offset, rem)
+      hIn .advance(rem)
+      hOut.advance(rem)
+
+      if (hIn.isDone) {
+        if (hOut.flush()) completeStage()
+        return
+      }
+
+      process()
+    }
+  }
 }
