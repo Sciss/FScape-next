@@ -14,9 +14,11 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.{Attributes, FanInShape2, Inlet, Outlet}
-import de.sciss.fscape.stream.impl.deprecated.{DemandFilterWindowedLogic, NoParamsDemandWindowLogic}
-import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import akka.stream.{Attributes, FanInShape2}
+import de.sciss.fscape.stream.impl.Handlers.{InIAux, InIMain, OutIMain}
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl, WindowedLogic}
+
+import scala.math.max
 
 object WindowIndexWhere {
   def apply(p: OutI, size: OutI)(implicit b: Builder): OutI = {
@@ -42,50 +44,55 @@ object WindowIndexWhere {
   }
 
   private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape)
-      with DemandFilterWindowedLogic[Int, BufI, Shp] with NoParamsDemandWindowLogic {
+    extends Handlers(name, layer, shape) with WindowedLogic[Int, BufI] {
 
-    private[this] var index : Int = _
+    override protected  val hIn   : InIMain   = InIMain (this, shape.in0)
+    private[this]       val hSize : InIAux    = InIAux  (this, shape.in1)(max(0, _))
+    override protected  val hOut  : OutIMain  = OutIMain(this, shape.out)
+
+    private[this] var winSize : Int = _
+    private[this] var index   : Int = _
 
     protected def tpe: StreamType[Layer, BufI] = StreamType.int
 
-    protected def inletSignal : Inlet [BufI]  = shape.in0
-    protected def inletWinSize: InI           = shape.in1
-    protected def out0        : Outlet[BufI]  = shape.out
-
-    // constructor
-    {
-      installMainAndWindowHandlers()
+    protected def tryObtainWinParams(): Boolean = {
+      val ok = hSize.hasNext
+      if (ok) {
+        winSize = hSize.next()
+        index   = -1
+      }
+      ok
     }
 
-    override protected def allWinParamsReady(winInSize: Int): Int = {
-      index = -1
-      0
-    }
+    protected def processWindow(): Unit = ()
 
-    override protected def clearInputTail(win: Array[Int], readOff: Int, chunk: Int): Unit = ()
+    protected def winBufSize: Int = 0
 
-    override protected def prepareWindow(win: Array[Int], winInSize: Int, inSignalDone: Boolean): Long =
-      if (inSignalDone && winInSize == 0) 0 else 1
+    override protected def readWinSize  : Long = winSize
+    override protected def writeWinSize : Long = 1 // if (winSize == 0) 0 else 1
 
-    override protected def processInput(in  : Array[Int], inOff   : Int,
-                                        win : Array[Int], readOff : Int, chunk: Int): Unit =
+    override protected def readIntoWindow(n: Int): Unit =
       if (index < 0) {
-        var i = inOff
-        val s = i + chunk
-        while (i < s) {
+        val in    = hIn.array
+        val inOff = hIn.offset
+        var i     = inOff
+        val stop  = i + n
+        while (i < stop) {
           if (in(i) != 0) {
-            index = readOff + (i - inOff)
-            return
+            index = readOff.toInt + (i - inOff)
+            i = stop  // important to reach `advance`!
+          } else {
+            i += 1
           }
-          i += 1
         }
+        hIn.advance(n)
+      } else {
+        hIn.skip(n)
       }
 
-    override protected def processOutput(win: Array[Int], winInSize : Int , writeOff: Long,
-                                         out: Array[Int], winOutSize: Long, outOff  : Int, chunk: Int): Unit = {
-      assert(writeOff == 0 && chunk == 1)
-      out(outOff) = index
+    override protected def writeFromWindow(n: Int): Unit = {
+      assert (n == 1)
+      hOut.next(index)
     }
   }
 }

@@ -21,7 +21,7 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 
 /** A UGen that determines for each input window the first index where a predicate holds.
   * It outputs one integer value per window; if the predicate does not hold across the entire
-  * window, the index will be `-1`.
+  * window or if the window size is zero, the index will be `-1`.
   *
   * @param p      a predicate to detect the index
   * @param size   the window size.

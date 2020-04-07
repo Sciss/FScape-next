@@ -48,8 +48,8 @@ final case class WindowApply(in: GE, size: GE, index: GE = 0, mode: GE = 0) exte
 
   private def mkStream[A, BufA >: Null <: BufElem[A]](in: StreamInElem[A, BufA], size: OutI, index: OutI, mode: OutI)
                                                      (implicit b: Builder): StreamOut = {
-    import in.{tpe => inTpe}  // IntelliJ doesn't get it
+    import in.{tpe => inTpe}
     val out: Outlet[BufA] = stream.WindowApply[A, BufA](in = in.toElem, size = size, index = index, mode = mode)
-    inTpe.mkStreamOut(out) // IntelliJ doesn't get it
+    inTpe.mkStreamOut(out)
   }
 }

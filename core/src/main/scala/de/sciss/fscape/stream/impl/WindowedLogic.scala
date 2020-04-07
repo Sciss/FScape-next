@@ -18,12 +18,13 @@ import de.sciss.fscape.logStream
 import de.sciss.fscape.stream.{BufD, BufElem, Node, StreamType}
 
 import scala.annotation.tailrec
+import scala.math.min
 
 /** Ok, '''another''' (third) attempt to isolate a correct building block.
   * This is for window processing UGens where window parameters include
   * `winSize` and possibly others, and will be polled per window.
   */
-trait WindowedLogic[/*@specialized(Args)*/ A, E <: BufElem[A]] extends Node {
+trait WindowedLogic[A, E <: BufElem[A]] extends Node {
   _: Handlers[_] =>
 
   // ---- abstract ----
@@ -149,39 +150,33 @@ trait WindowedLogic[/*@specialized(Args)*/ A, E <: BufElem[A]] extends Node {
       stage     = 1
     }
 
-    if (stage == 1) {
-      while (stage == 1) {
-        val remIn = hIn.available
-        if (remIn == 0) return
-        val numIn = math.min(remIn, readRem).toInt
-        if (numIn > 0) readIntoWindow(numIn)
-        readOff += numIn
-        readRem -= numIn
-        if (hIn.isDone) {
-          flushStage1Enter2()
-        } else if (readRem == 0) {
-          enterStage2()
-        }
+    while (stage == 1) {
+      val remIn = hIn.available
+      if (remIn == 0) return
+      val numIn = min(remIn, readRem).toInt
+      if (numIn > 0) readIntoWindow(numIn)
+      readOff += numIn
+      readRem -= numIn
+      if (hIn.isDone) {
+        flushStage1Enter2()
+      } else if (readRem == 0) {
+        enterStage2()
       }
     }
 
-    if (stage == 2) {
-      while (stage == 2) {
-        val remOut = hOut.available
-        if (remOut == 0) return
-        val numOut = math.min(remOut, writeRem).toInt
-        if (numOut > 0) writeFromWindow(numOut)
-        writeOff += numOut
-        writeRem -= numOut
-        if (writeRem == 0) {
-          if (hIn.isDone) {
-            if (hOut.flush()) {
-              completeStage()
-              return
-            }
-          } else {
-            stage = 0
-          }
+    while (stage == 2) {
+      val remOut = hOut.available
+      if (remOut == 0) return
+      val numOut = min(remOut, writeRem).toInt
+      if (numOut > 0) writeFromWindow(numOut)
+      writeOff += numOut
+      writeRem -= numOut
+      if (writeRem == 0) {
+        if (hIn.isDone) {
+          if (hOut.flush()) completeStage()
+          return
+        } else {
+          stage = 0
         }
       }
     }
