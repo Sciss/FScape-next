@@ -14,9 +14,11 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.{Attributes, FanInShape3}
-import de.sciss.fscape.stream.impl.deprecated.{DemandGenIn3D, DemandWindowedLogicOLD}
-import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import akka.stream.{Attributes, FanInShape3, Inlet}
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
+import de.sciss.numbers.Implicits._
+
+import scala.annotation.tailrec
 
 object GenWindow {
   import graph.GenWindow.{Hann, Shape => WinShape}
@@ -47,43 +49,54 @@ object GenWindow {
   }
 
   private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape)
-      with DemandWindowedLogicOLD[Shp]
-      with DemandGenIn3D[BufL, BufI, BufD] {
+    extends Handlers(name, layer, shape)  {
 
-    // private[this] var winBuf : Array[Double] = _
+    private[this] val hSize   = Handlers.InLAux   (this, shape.in0)(math.max(0L, _))
+    private[this] val hShape  = Handlers.InIAux   (this, shape.in1)(_.clip(WinShape.MinId, WinShape.MaxId))
+    private[this] val hParam  = Handlers.InDAux   (this, shape.in2)()
+    private[this] val hOut    = Handlers.OutDMain (this, shape.out, alwaysProcess = true)
+
     private[this] var winSize: Long     = _
     private[this] var _shape : WinShape = Hann  // arbitrary default
     private[this] var param  : Double   = _
+    private[this] var winOff : Long     = _
 
     protected def inputsEnded: Boolean = false         // never
 
-    protected def startNextWindow(): Long = {
-      val inOff = auxInOff
-      if (bufIn0 != null && inOff < bufIn0.size) {
-        winSize = math.max(0, bufIn0.buf(inOff))
-      }
-      if (bufIn1 != null && inOff < bufIn1.size) {
-        val shapeId = math.max(WinShape.MinId, math.min(WinShape.MaxId, bufIn1.buf(inOff)))
+    private[this] var nextWindow  = true
+
+    protected def onDone(inlet: Inlet[_]): Unit = assert(false)
+
+    @tailrec
+    protected def process(): Unit = {
+      while (nextWindow) {
+        if (!(hSize.hasNext && hShape.hasNext && hParam.hasNext)) return
+        winSize     = hSize .next()
+        val shapeId = hShape.next()
+        param       = hParam.next()
         if (shapeId != _shape.id) _shape = WinShape(shapeId)
+        winOff      = 0L
+        if (winSize > 0L) {
+          nextWindow = false
+        } else if (hSize.isConstant) {
+          // XXX TODO --- should we signalize such abnormal termination?
+          if (hOut.flush()) completeStage()
+          return
+        }
       }
-      if (bufIn2 != null && inOff < bufIn2.size) {
-        param = bufIn2.buf(inOff)
+
+      {
+        val rem = math.min(hOut.available, winSize - winOff).toInt
+        if (rem == 0) return
+        _shape.fill(winSize = winSize, winOff = winOff, buf = hOut.array, bufOff = hOut.offset,
+          len = rem, param = param)
+        hOut.advance(rem)
+        winOff += rem
+        if (winOff == winSize) {
+          nextWindow = true
+          process()
+        }
       }
-      winSize
     }
-
-    protected def canStartNextWindow: Boolean = auxInRemain > 0 || (auxInValid && {
-      isClosed(in1) && isClosed(in2)
-    })
-
-    protected def copyInputToWindow(writeToWinOff: Long, chunk: Int): Unit = ()
-
-    protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit = {
-      _shape.fill(winSize = winSize, winOff = readFromWinOff, buf = bufOut0.buf, bufOff = outOff,
-        len = chunk, param = param)
-    }
-
-    protected def processWindow(writeToWinOff: Long): Long = writeToWinOff
   }
 }

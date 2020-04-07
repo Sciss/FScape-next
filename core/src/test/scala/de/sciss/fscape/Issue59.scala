@@ -3,7 +3,6 @@ package de.sciss.fscape
 import de.sciss.kollflitz.Vec
 
 import scala.concurrent.Promise
-import scala.util.Success
 
 class Issue59 extends UGenSpec {
   "Multiplication by zero" should "not be replaced by constant" in {
@@ -12,14 +11,15 @@ class Issue59 extends UGenSpec {
     val g = Graph {
       import graph._
       val in = WhiteNoise(0.0).take(n)
+      // Frames(in).poll(44100, "frames")
       DebugDoublePromise(in, p)
     }
 
     runGraph(g)
 
     assert(p.isCompleted)
-    val res     = p.future.value.get
-    val exp     = Vector.fill(n)(0.0)
-    assert (res === Success(exp))
+    val res = getPromiseVec(p)
+    val exp = Vector.fill(n)(0.0)
+    assert (res === exp)
   }
 }

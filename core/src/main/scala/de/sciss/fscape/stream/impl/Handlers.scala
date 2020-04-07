@@ -214,20 +214,25 @@ object Handlers {
   
   // ---- output ----
   
-  def OutIMain(n: Handlers[_], outlet: OutI): OutIMain = new OutIMainImpl(n, outlet)
-  def OutLMain(n: Handlers[_], outlet: OutL): OutLMain = new OutLMainImpl(n, outlet)
-  def OutDMain(n: Handlers[_], outlet: OutD): OutDMain = new OutDMainImpl(n, outlet)
+  def OutIMain(n: Handlers[_], outlet: OutI, alwaysProcess: Boolean = false): OutIMain =
+    new OutIMainImpl(n, outlet, alwaysProcess = alwaysProcess)
 
-  def OutMain[A, E <: BufElem[A]](n: Handlers[_], outlet: Outlet[E])
+  def OutLMain(n: Handlers[_], outlet: OutL, alwaysProcess: Boolean = false): OutLMain =
+    new OutLMainImpl(n, outlet, alwaysProcess = alwaysProcess)
+
+  def OutDMain(n: Handlers[_], outlet: OutD, alwaysProcess: Boolean = false): OutDMain =
+    new OutDMainImpl(n, outlet, alwaysProcess = alwaysProcess)
+
+  def OutMain[A, E <: BufElem[A]](n: Handlers[_], outlet: Outlet[E], alwaysProcess: Boolean = false)
                                  (implicit tpe: StreamType[A, E]): OutMain[A, E] = {
     val res: OutMain[_, _] = if (tpe.isDouble) {
-      new OutDMainImpl(n, outlet.asInstanceOf[OutD])
+      new OutDMainImpl(n, outlet.asInstanceOf[OutD] , alwaysProcess = alwaysProcess)
     } else if (tpe.isInt) {
-      new OutIMainImpl(n, outlet.asInstanceOf[OutI])
+      new OutIMainImpl(n, outlet.asInstanceOf[OutI] , alwaysProcess = alwaysProcess)
     } else if (tpe.isLong) {
-      new OutLMainImpl(n, outlet.asInstanceOf[OutL])
+      new OutLMainImpl(n, outlet.asInstanceOf[OutL] , alwaysProcess = alwaysProcess)
     } else {
-      new OutAMainImpl[A, E](n, outlet)
+      new OutAMainImpl[A, E](n, outlet              , alwaysProcess = alwaysProcess)
     }
     res.asInstanceOf[OutMain[A, E]]
   }
@@ -416,9 +421,10 @@ object Handlers {
 
   private final class InDMainImpl(n: Handlers[_], inlet: InD)
     extends InMainImpl[Double, BufD](n, inlet) with InDMain
-  
-  private abstract class OutMainImpl[@specialized(Args) A, E <: BufElem[A]] private[Handlers] (n: Handlers[_],
-                                                                            val outlet: Outlet[E])
+
+  private abstract class OutMainImpl[@specialized(Args) A, E <: BufElem[A]](n: Handlers[_],
+                                                                            val outlet: Outlet[E],
+                                                                            alwaysProcess: Boolean)
                                                                            (implicit tpe: StreamType[A, E])
     extends OutMain[A, E] {
 
@@ -511,6 +517,8 @@ object Handlers {
           _hasNext  = true
           process()
         }
+      } else if (alwaysProcess) {
+        process()
       }
     }
 
@@ -544,18 +552,18 @@ object Handlers {
     addResource(this)
   }
 
-  private final class OutAMainImpl[A, E <: BufElem[A]](n: Handlers[_], outlet: Outlet[E])
+  private final class OutAMainImpl[A, E <: BufElem[A]](n: Handlers[_], outlet: Outlet[E], alwaysProcess: Boolean)
                                                       (implicit tpe: StreamType[A, E])
-    extends OutMainImpl[A, E](n, outlet)
+    extends OutMainImpl[A, E](n, outlet, alwaysProcess)
 
-  private final class OutIMainImpl(n: Handlers[_], outlet: OutI)
-    extends OutMainImpl[Int, BufI](n, outlet) with OutIMain
+  private final class OutIMainImpl(n: Handlers[_], outlet: OutI, alwaysProcess: Boolean)
+    extends OutMainImpl[Int, BufI](n, outlet, alwaysProcess) with OutIMain
 
-  private final class OutLMainImpl(n: Handlers[_], outlet: OutL)
-    extends OutMainImpl[Long, BufL](n, outlet) with OutLMain
+  private final class OutLMainImpl(n: Handlers[_], outlet: OutL, alwaysProcess: Boolean)
+    extends OutMainImpl[Long, BufL](n, outlet, alwaysProcess) with OutLMain
 
-  private final class OutDMainImpl(n: Handlers[_], outlet: OutD)
-    extends OutMainImpl[Double, BufD](n, outlet) with OutDMain
+  private final class OutDMainImpl(n: Handlers[_], outlet: OutD, alwaysProcess: Boolean)
+    extends OutMainImpl[Double, BufD](n, outlet, alwaysProcess) with OutDMain
 
   private abstract class InAuxImpl[@specialized(Args) A, E <: BufElem[A]](n: Handlers[_], final val inlet: Inlet[E])
                                                                          (cond: A => A)

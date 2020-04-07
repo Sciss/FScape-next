@@ -13,7 +13,7 @@
 
 package de.sciss.fscape.stream.impl
 
-import akka.stream.{Inlet, Shape}
+import akka.stream.Inlet
 import de.sciss.fscape.logStream
 import de.sciss.fscape.stream.{BufD, BufElem, Node, StreamType}
 
@@ -23,8 +23,8 @@ import scala.annotation.tailrec
   * This is for window processing UGens where window parameters include
   * `winSize` and possibly others, and will be polled per window.
   */
-trait WindowedLogic[/*@specialized(Args)*/ A, E >: Null <: BufElem[A], S <: Shape] extends Node {
-  _: Handlers[S] =>
+trait WindowedLogic[/*@specialized(Args)*/ A, E <: BufElem[A]] extends Node {
+  _: Handlers[_] =>
 
   // ---- abstract ----
 
@@ -191,8 +191,8 @@ trait WindowedLogic[/*@specialized(Args)*/ A, E >: Null <: BufElem[A], S <: Shap
 }
 
 /** Windowed logic for double I/O */
-trait WindowedLogicD[S <: Shape] extends WindowedLogic[Double, BufD, S] {
-  _: Handlers[S] =>
+trait WindowedLogicD extends WindowedLogic[Double, BufD] {
+  _: Handlers[_] =>
 
   protected final val tpe: StreamType[Double, BufD] = StreamType.double
 }

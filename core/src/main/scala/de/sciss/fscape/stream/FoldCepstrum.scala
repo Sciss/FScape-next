@@ -61,7 +61,7 @@ object FoldCepstrum {
 
   private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
     extends Handlers(name, layer, shape)
-      with WindowedLogicD[Shp] {
+      with WindowedLogicD {
 
     private[this] var size: Int = _
 

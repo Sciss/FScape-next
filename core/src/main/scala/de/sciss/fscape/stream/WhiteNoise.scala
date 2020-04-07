@@ -14,9 +14,8 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.{Attributes, SourceShape}
-import de.sciss.fscape.stream.impl.deprecated.{GenChunkImpl, GenIn0DImpl}
-import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import akka.stream.{Attributes, Inlet, SourceShape}
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
 
 import scala.util.Random
 
@@ -41,20 +40,24 @@ object WhiteNoise {
   }
 
   private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape)
-      with GenChunkImpl[Shp]
-      with GenIn0DImpl {
+    extends Handlers(name, layer, shape) {
+
+    private[this] val hOut = Handlers.OutDMain(this, shape.out, alwaysProcess = true)
+
+    protected def onDone(inlet: Inlet[_]): Unit = assert(false)
 
     private[this] val rnd: Random = ctrl.mkRandom()
 
-    protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Unit = {
-      val buf   = bufOut0.buf
-      var off   = outOff
-      val stop  = off + chunk
+    protected def process(): Unit = {
+      val rem   = hOut.available
+      val buf   = hOut.array
+      var off   = hOut.offset
+      val stop  = off + rem
       while (off < stop) {
         buf(off) = rnd.nextDouble() * 2 - 1
         off += 1
       }
+      hOut.advance(rem)
     }
   }
 }

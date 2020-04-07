@@ -13,7 +13,7 @@
 
 package de.sciss.fscape.stream.impl
 
-import akka.stream.{Attributes, FanInShape3, FanInShape4, Shape}
+import akka.stream.{Attributes, FanInShape3, FanInShape4}
 import de.sciss.fscape.Util
 import de.sciss.fscape.stream.impl.Handlers._
 import de.sciss.fscape.stream.{BufD, BufI, Builder, Control, InD, InI, Layer, OutD, OutI}
@@ -23,8 +23,8 @@ import edu.emory.mathcs.jtransforms.fft.DoubleFFT_1D
 import scala.annotation.switch
 
 /** Base class for 1-dimensional FFT transforms. */
-trait FFTLogicImpl[S <: Shape] extends WindowedLogicD[S] {
-  _: Handlers[S] =>
+trait FFTLogicImpl extends WindowedLogicD {
+  _: Handlers[_] =>
 
   // ---- abstract ----
 
@@ -138,7 +138,7 @@ final class Complex1IFFTStageImpl(layer: Layer)(implicit ctrl: Control) extends 
 abstract class FFTHalfLogicImpl(name: String, shape: FanInShape4[BufD, BufI, BufI, BufI, BufD], layer: Layer)
                                (implicit ctrl: Control)
   extends Handlers[FanInShape4[BufD, BufI, BufI, BufI, BufD]](name, shape = shape, layer = layer)
-    with FFTLogicImpl[FanInShape4[BufD, BufI, BufI, BufI, BufD]] {
+    with FFTLogicImpl {
 
   import numbers.Implicits._
 
@@ -235,7 +235,7 @@ final class Real1IFFTLogicImpl(name: String, shape: FanInShape4[BufD, BufI, BufI
 abstract class FFTFullLogicImpl(name: String, shape: FanInShape3[BufD, BufI, BufI, BufD], layer: Layer)
                                (implicit ctrl: Control)
   extends Handlers[FanInShape3[BufD, BufI, BufI, BufD]](name, shape = shape, layer = layer)
-    with FFTLogicImpl[FanInShape3[BufD, BufI, BufI, BufD]] {
+    with FFTLogicImpl {
 
   protected final val hIn     : InDMain   = InDMain  (this, shape.in0)
   protected final val hOut    : OutDMain  = OutDMain (this, shape.out)

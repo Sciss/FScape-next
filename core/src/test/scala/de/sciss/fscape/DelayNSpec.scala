@@ -46,13 +46,13 @@ class DelayNSpec extends UGenSpec {
     runGraph(g, 512)
 
     assert(p.isCompleted)
-    val res         = p.future.value.get
+    val res         = getPromiseVec(p)
     val inSq        = (1 to 8) ++ Vector.fill(4)(0)
 //    val dlyLen0     =  (0 until 4) ++ (0 until 4)
 //    val dlyLen      = dlyLen0.padTo(8 + dlyLen0.last, dlyLen0.last)
     val dlyLen      = Vector.tabulate(8 + 4)(i => i % 4)
     val indices     = dlyLen.zipWithIndex.map { case (dl, i) => -dl + i }
     val exp         = indices.map { i => if (i < 0) 0 else inSq(i) }
-    assert (res === Success(exp))
+    assert (res === exp)
   }
 }

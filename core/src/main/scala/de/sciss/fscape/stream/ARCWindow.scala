@@ -48,7 +48,7 @@ object ARCWindow {
   }
 
   private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
-    extends Handlers(name, layer, shape) with WindowedLogicD[Shp] {
+    extends Handlers(name, layer, shape) with WindowedLogicD {
 
     protected     val hIn   : InDMain   = InDMain  (this, shape.in0)
     protected     val hOut  : OutDMain  = OutDMain (this, shape.out)

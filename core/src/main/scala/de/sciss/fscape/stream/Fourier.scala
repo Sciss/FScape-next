@@ -21,6 +21,7 @@ import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeImpl}
 import de.sciss.numbers
 import de.sciss.numbers.{IntFunctions => ri, LongFunctions => rl}
 
+// XXX TODO --- should have a progress indicator output (and way to stop inside storageFFT)
 object Fourier {
   def apply(in: OutD, size: OutL, padding: OutL, dir: OutD, mem: OutI)(implicit b: Builder): OutD = {
     val stage0  = new Stage(b.layer)

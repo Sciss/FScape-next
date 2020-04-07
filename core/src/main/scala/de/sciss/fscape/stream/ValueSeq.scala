@@ -14,9 +14,8 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.{Attributes, Outlet, SourceShape}
-import de.sciss.fscape.stream.impl.deprecated.{ChunkImpl, GenIn0Impl}
-import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import akka.stream.{Attributes, Inlet, Outlet, SourceShape}
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
 
 object ValueSeq {
   def int(elems: Array[Int])(implicit b: Builder): OutI = {
@@ -49,49 +48,42 @@ object ValueSeq {
       out = Outlet[E](s"$name.out")
     )
 
-    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic[A, E](shape, layer, elems)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = {
+      val res: Logic[_, _] = if (tpe.isDouble) {
+        new Logic[Double, BufD](shape.asInstanceOf[Shp[BufD]], layer, elems.asInstanceOf[Array[Double ]])
+      } else if (tpe.isInt) {
+        new Logic[Int   , BufI](shape.asInstanceOf[Shp[BufI]], layer, elems.asInstanceOf[Array[Int    ]])
+      } else {
+        assert (tpe.isLong)
+        new Logic[Long  , BufL](shape.asInstanceOf[Shp[BufL]], layer, elems.asInstanceOf[Array[Long   ]])
+      }
+      res.asInstanceOf[Logic[A, E]]
+    }
   }
 
-  private final class Logic[A, E <: BufElem[A]](shape: Shp[E], layer: Layer, elems: Array[A])
+  private final class Logic[@specialized(Args) A, E <: BufElem[A]](shape: Shp[E], layer: Layer, elems: Array[A])
                                                (implicit ctrl: Control, tpe: StreamType[A, E])
-    extends NodeImpl(name, layer, shape)
-      with ChunkImpl[Shp[E]]
-      with GenIn0Impl[E] {
+    extends Handlers(name, layer, shape) {
 
+    private[this] val hOut  = Handlers.OutMain[A, E](this, shape.out, alwaysProcess = true)
     private[this] var index = 0
 
-    protected def allocOutBuf0(): E = tpe.allocBuf()
+    protected def onDone(inlet: Inlet[_]): Unit = assert(false)
 
-    protected def shouldComplete(): Boolean = index == elems.length
-
-    protected def processChunk(): Boolean = {
-      // XXX TODO --- why do we have to deal with `inRemain`?
-      val chunk = math.min(elems.length - index, math.min(inRemain, outRemain))
-      val res   = chunk > 0
-      if (res) {
-        processChunk(inOff = inOff, outOff = outOff, chunk = chunk)
-        inOff       += chunk
-        inRemain    -= chunk
-        outOff      += chunk
-        outRemain   -= chunk
-//      } else if (shouldComplete()) {
-//        completeStage()
-      }
-      res
-    }
-
-    private def processChunk(inOff: Int, outOff: Int, chunk: Int): Unit = {
-      val buf   = bufOut0.buf
-      var off   = outOff
-      val stop  = off + chunk
+    protected def process(): Unit = {
       var i     = index
+      val rem   = math.min(hOut.available, elems.length - i)
+      val buf   = hOut.array
+      var off   = hOut.offset
+      val stop  = off + rem
       while (off < stop) {
         buf(off) = elems(i)
-        i += 1
-//        if (i == elems.length) i = 0
+        i   += 1
         off += 1
       }
+      hOut.advance(rem)
       index = i
+      if (i == elems.length && hOut.flush()) completeStage()
     }
   }
 }

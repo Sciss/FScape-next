@@ -14,9 +14,11 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.{Attributes, FanInShape2}
-import de.sciss.fscape.stream.impl.deprecated.{DemandGenIn2, DemandWindowedLogicOLD}
-import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import akka.stream.{Attributes, FanInShape2, Inlet}
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
+
+import scala.annotation.tailrec
+import scala.math.min
 
 object Metro {
   def apply(period: OutL, phase: OutL)(implicit b: Builder): OutI = {
@@ -42,70 +44,63 @@ object Metro {
   }
 
   private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape)
-      with DemandGenIn2[BufL, BufL, BufI]
-      with DemandWindowedLogicOLD[Shp] {
+    extends Handlers(name, layer, shape) {
 
-    private[this] var period  : Long  = _
-    private[this] var phaseOff: Long  = _
-    private[this] var phase   : Long  = _    // internal state; does not include `phaseOff`
-//    private[this] var init            = true
-    private[this] var _inputsEnded    = false
+    private[this] val hPeriod = Handlers.InLAux   (this, shape.in0)(n => if (n > 0) n else 0x3fffffffffffffffL)
+    private[this] val hPhase  = Handlers.InLAux   (this, shape.in1)()
+    private[this] val hOut    = Handlers.OutIMain (this, shape.out, alwaysProcess = true)
 
-    protected def inputsEnded: Boolean = _inputsEnded   // never or when period == 0
+    private[this] var phase     : Long  = _
+    private[this] var remPeriod : Long = _
 
-    protected def startNextWindow(): Long = {
-      val inOff = auxInOff
-      if (bufIn0 != null && inOff < bufIn0.size) {
-        period = math.max(0, bufIn0.buf(inOff))
-//        println(s"PERIOD[$inOff] = $period")
+    private[this] var nextPeriod  = true
+
+    protected def onDone(inlet: Inlet[_]): Unit = assert(false)
+
+    @tailrec
+    protected def process(): Unit = {
+      if (nextPeriod) {
+        if (!(hPeriod.hasNext && hPhase.hasNext)) return
+        var period   = hPeriod .next()
+        val phaseOff = hPhase  .next()
         if (period == 0L) {
-          _inputsEnded  = true  // XXX TODO --- ugly trick to work with infinite window size
-          period        = 0x3fffffffffffffffL // Long.MaxValue
+          period = 0x3fffffffffffffffL // Long.MaxValue
+        }
+        phase       = (phaseOff + period - 1) % period + 1
+        remPeriod   = period
+        nextPeriod  = false
+      }
+
+      {
+        val rem     = min(hOut.available, remPeriod).toInt
+        if (rem == 0) return
+        val out     = hOut.array
+        var outOffI = hOut.offset
+        val stop    = outOffI + rem
+
+        val periodV = hPeriod.value
+        var phaseV  = phase
+
+        while (outOffI < stop ) {
+          val v = if (phaseV >= periodV) {
+            phaseV %= periodV
+            1
+          } else {
+            0
+          }
+          out(outOffI) = v
+          phaseV      += 1
+          outOffI     += 1
+        }
+        hOut.advance(rem)
+        phase      = phaseV
+        remPeriod -= rem
+
+        if (remPeriod == 0L) {
+          nextPeriod = true
+          process()
         }
       }
-      if (/*init &&*/ bufIn1 != null && inOff < bufIn1.size) {
-        phaseOff = bufIn1.buf(inOff)
-        // init = false
-      }
-
-      val _period   = period
-      phase         = (phaseOff + _period - 1) % _period + 1
-      period
     }
-
-    protected def canStartNextWindow: Boolean = auxInRemain > 0 || (auxInValid && {
-      isClosed(in0) && isClosed(in1)
-    })
-
-    protected def copyInputToWindow(writeToWinOff: Long, chunk: Int): Unit = ()
-
-    protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit = {
-//      _shape.fill(winSize = winSize, winOff = readFromWinOff, buf = bufOut0.buf, bufOff = outOff,
-//        len = chunk, param = param)
-      val out       = bufOut0.buf
-      var outOffI   = outOff
-      val stop      = outOffI + chunk
-
-      val periodV   = period
-      var phaseV    = phase
-
-      while (outOffI < stop /*inOffI < stop*/) {
-        if (phaseV >= periodV) {
-          phaseV %= periodV
-          out(outOffI)  = 1
-        } else {
-          out(outOffI)  = 0
-        }
-        phaseV       += 1
-        outOffI      += 1
-      }
-//      period    = periodV
-      phase     = phaseV
-    }
-
-    protected def processWindow(writeToWinOff: Long): Long = writeToWinOff
-
-    protected def allocOutBuf0(): BufI = ctrl.borrowBufI()
   }
 }

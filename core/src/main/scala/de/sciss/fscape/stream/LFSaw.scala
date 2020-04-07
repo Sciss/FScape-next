@@ -14,9 +14,11 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.{Attributes, FanInShape2}
-import de.sciss.fscape.stream.impl.deprecated.{GenChunkImpl, GenIn2DImpl}
-import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import akka.stream.{Attributes, FanInShape2, Inlet}
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
+
+import scala.annotation.tailrec
+import scala.math.min
 
 object LFSaw {
   def apply(freqN: OutD, phase: OutD)(implicit b: Builder): OutD = {
@@ -44,53 +46,39 @@ object LFSaw {
   // XXX TODO -- detect constant freq input and use multiplication instead of frame-by-frame addition for phase
   // (cf. Resample)
   private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape)
-      with GenChunkImpl[Shp]
-      with GenIn2DImpl[BufD, BufD] {
+    extends Handlers(name, layer, shape) {
 
-    private[this] var incr    : Double = _  // single sample delay
-    private[this] var phaseOff: Double = _
+    private[this] val hFreq   = Handlers.InDAux   (this, shape.in0)()
+    private[this] val hPhase  = Handlers.InDAux   (this, shape.in1)(_ % 1.0)
+    private[this] val hOut    = Handlers.OutDMain (this, shape.out, alwaysProcess = true)
+
     private[this] var phase   : Double = _  // internal state; does not include `phaseOff`
-    private[this] var init = true
 
-    protected def processChunk(inOff: Int, outOff: Int, chunk: Int): Unit = {
-      // println(s"LFSaw.processChunk($bufIn0, $chunk)")
+    protected def onDone(inlet: Inlet[_]): Unit = assert(false)
 
-      var inOffI    = inOff
-      var outOffI   = outOff
-      val stop      = inOffI + chunk
-      val b0        = if (bufIn0 == null) null else bufIn0.buf
-      val b1        = if (bufIn1 == null) null else bufIn1.buf
-      val out       = bufOut0.buf
-      val stop0     = if (b0 == null) 0 else bufIn0.size
-      val stop1     = if (b1 == null) 0 else bufIn1.size
+    @tailrec
+    protected def process(): Unit = {
+      val rem = min(hFreq.available, min(hPhase.available, hOut.available))
+      if (rem == 0) return
 
-      var incrV     = incr
-      var phaseOffV = phaseOff
+      val out       = hOut.array
+      var outOffI   = hOut.offset
       var phaseV    = phase
+      val stop      = outOffI + rem
 
-      if (init) {
-        incrV     = b0(inOffI) // * 1.0
-        phaseOffV = b1(inOffI) % 1.0
-        phaseV    = -incrV
-        init      = false
-
-      } else {
-      }
-
-      while (inOffI < stop) {
-        if (inOffI < stop0) incrV     = b0(inOffI) // * 1.0
-        if (inOffI < stop1) phaseOffV = b1(inOffI) % 1.0
-        val phaseVNew = (phaseV + incrV) % 1.0
-        val x         = phaseVNew + phaseOffV
+      while (outOffI < stop) {
+        val incV      = hFreq .next()
+        val phaseOffV = hPhase.next()
+        val phaseVNew = (phaseV + incV) % 1.0
+        val x         = phaseV + phaseOffV
         out(outOffI)  = (x % 1.0) * 2 - 1
         phaseV        = phaseVNew
-        inOffI       += 1
-        outOffI      += 1
+        outOffI += 1
       }
-      incr      = incrV
-      phaseOff  = phaseOffV
-      phase     = phaseV
+      hOut.advance(rem)
+      phase = phaseV
+
+      process()
     }
   }
 }

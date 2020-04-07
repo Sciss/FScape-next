@@ -8,6 +8,8 @@ object LFSawTest extends App {
   val g = Graph {
     import graph._
 //    val gen  = LFSaw(1.0/300, phase = 0.5)
+    LFSaw(1.0/800, phase = 0.0).poll(0, "first")
+    LFSaw(1.0/800, phase = 0.5).poll(0, "zero")
     val gen = LFSaw(1.0/800, phase = 0.75 /* 0.25 */)
     val up  = (gen + 1) * 2
     val a   = up.min(1)
