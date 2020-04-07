@@ -27,18 +27,20 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * a non-delayed `RunningSum`.
   *
   * @param in     the signal to track
-  * @param trig   a trigger occurs when transitioning from non-positive to positive.
-  *               At this point (an initially) the internal state is set to zero.
+  * @param gate   a gate that when greater than zero (an initially) sets the
+  *               the internal state is set to zero.
   */
-final case class RunningSum(in: GE, trig: GE = 0) extends UGenSource.SingleOut {
+final case class RunningSum(in: GE, gate: GE = 0) extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
-    unwrap(this, Vector(in.expand, trig.expand))
+    unwrap(this, Vector(in.expand, gate.expand))
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
     UGen.SingleOut(this, args)
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
-    val Vec(in, trig) = args
-    stream.RunningSum(in = in.toDouble, trig = trig.toInt)
+    val Vec(in, gate) = args
+    import in.tpe
+    val out = stream.RunningSum[in.A, in.Buf](in = in.toElem, gate = gate.toInt)
+    tpe.mkStreamOut(out)
   }
 }

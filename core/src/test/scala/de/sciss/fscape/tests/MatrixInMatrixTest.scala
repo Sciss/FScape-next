@@ -52,8 +52,8 @@ object MatrixInMatrixTest extends App {
     val i3        = flt
     val frameTr1  = Metro(frameSize)
     val frameTr2  = Metro(frameSize)
-    val maxR      = RunningMax(i3, trig = frameTr1).drop(frameSize - 1)
-    val minR      = RunningMin(i3, trig = frameTr1).drop(frameSize - 1)
+    val maxR      = RunningMax(i3, gate = frameTr1).drop(frameSize - 1)
+    val minR      = RunningMin(i3, gate = frameTr1).drop(frameSize - 1)
     val max       = Gate(maxR, gate = frameTr2)
     val min       = Gate(minR, gate = frameTr2)
     val mul       = (max - min).reciprocal

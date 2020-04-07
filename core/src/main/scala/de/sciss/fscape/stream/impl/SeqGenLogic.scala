@@ -18,6 +18,7 @@ import akka.stream.{FanInShape3, Inlet}
 import de.sciss.fscape.stream.impl.Handlers._
 
 import scala.annotation.tailrec
+import scala.math.min
 
 final class SeqGenLogicI(name: String, shape: FanInShape3[BufI, BufI, BufL, BufI], layer: Layer)
                         (inc: (Int, Int) => Int)
@@ -106,7 +107,7 @@ abstract class SeqGenLogic[A, E >: Null <: BufElem[A]](name: String, shape: FanI
 
   @tailrec
   final protected def process(): Unit = {
-    if (init) {
+    while (init) {
       if (hLen.isConstant) {
         if (hOut.flush()) completeStage()
         return
@@ -114,18 +115,16 @@ abstract class SeqGenLogic[A, E >: Null <: BufElem[A]](name: String, shape: FanI
       if (!(hLen.hasNext && hStart.hasNext)) return
       remain  = hLen  .next()
       x       = hStart.next()
-      init    = false
+      if (remain > 0) init = false
     }
 
-    val rem = math.min(math.min(hOut.available, hStep.available), remain).toInt
-    if (rem > 0) {
-      x       = run(x, rem)
-      remain -= rem
-    }
+    val rem = min(min(hOut.available, hStep.available), remain).toInt
+    if (rem == 0) return
 
-    if (remain == 0L) {
-      init = true
-      process()
-    }
+    x = run(x, rem)
+    remain -= rem
+
+    if (remain == 0L) init = true
+    process() // because we advance `hStep` we should always loop
   }
 }

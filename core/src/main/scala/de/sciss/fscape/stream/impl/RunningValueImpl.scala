@@ -15,50 +15,67 @@ package de.sciss.fscape
 package stream
 package impl
 
-import akka.stream.Shape
-import akka.stream.stage.GraphStageLogic
-import de.sciss.fscape.stream.impl.deprecated.FilterChunkImpl
+import akka.stream.{FanInShape2, Inlet}
+import de.sciss.fscape.stream.impl.Handlers.{InIAux, InMain, OutMain}
 
-@deprecated("Should move to using Handlers", since = "2.35.1")
-trait RunningValueImpl[S <: Shape] extends FilterChunkImpl[BufD, BufD, S] {
-  _: GraphStageLogic =>
+import scala.annotation.tailrec
+import scala.math.min
 
-  // ---- abstract ----
+final class RunningValueImpl[@specialized(Args) A, E <: BufElem[A]](name: String, layer: Layer,
+                                                                    shape: FanInShape2[E, BufI, E],
+                                                 neutralValue: A)(combine: (A, A) => A)
+                                                (implicit control: Control, tpe: StreamType[A, E])
+  extends Handlers[FanInShape2[E, BufI, E]](name, layer, shape) {
 
-  protected def neutralValue: Double
+  private[this] val hIn   : InMain  [A, E]  = InMain  [A, E](this, shape.in0)
+  private[this] val hOut  : OutMain [A, E]  = OutMain [A, E](this, shape.out)
+  private[this] val hGate : InIAux          = InIAux        (this, shape.in1)()
 
-  protected def combine(a: Double, b: Double): Double
+  private[this] var value = neutralValue
 
-  protected def bufIn0 : BufD
-  protected def bufIn1 : BufI
-  protected def bufOut0: BufD
+  private def run(in: Array[A], inOff: Int, out: Array[A], outOff: Int, len: Int): Unit = {
+    var i     = inOff
+    var j     = outOff
+    val stop  = inOff + len
+    val g     = hGate
+    var y     = value
+    while (i < stop) {
+      val x = in(i)
+      y = if (g.next() > 0) {
+        x
+      } else {
+        combine(x, y)
+      }
+      out(j) = y
+      i += 1
+      j += 1
+    }
+    value = y
+  }
 
   // ---- impl ----
 
-  private[this] var value = neutralValue
-  private[this] var trig0 = false
+  protected def onDone(inlet: Inlet[_]): Unit =
+    if (hOut.flush()) completeStage()
 
-  protected final def processChunk(inOff: Int, outOff: Int, chunk: Int): Unit = {
-    var inOffI  = inOff
-    var outOffI = outOff
-    val stop0   = inOffI + chunk
-    val b0      = bufIn0.buf
-    val b1      = if (bufIn1 == null) null else bufIn1.buf
-    val out     = bufOut0.buf
-    val stop1   = if (b1 == null) 0 else bufIn1.size
-    var v       = value
-    var t0      = trig0
-    var t1      = t0
-    while (inOffI < stop0) {
-      val x0 = b0(inOffI)
-      if (inOffI < stop1) t1 = !t0 && b1(inOffI) > 0
-      v = if (t1) x0 else combine(v, x0)
-      out(outOffI) = v
-      inOffI  += 1
-      outOffI += 1
-      t0       = t1
+  @tailrec
+  protected def process(): Unit = {
+    val rem = min(hIn.available, min(hOut.available, hGate.available))
+    if (rem == 0) return
+
+    val in      = hIn .array
+    val out     = hOut.array
+    val inOff   = hIn .offset
+    val outOff  = hOut.offset
+    run(in, inOff, out, outOff, rem)
+    hIn .advance(rem)
+    hOut.advance(rem)
+
+    if (hIn.isDone) {
+      if (hOut.flush()) completeStage()
+      return
     }
-    value = v
-    trig0 = t0
+
+    process()
   }
 }

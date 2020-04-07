@@ -98,13 +98,6 @@ trait GenIn2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike, Out >: Null <: 
 }
 
 @deprecated("Should move to using Handlers", since = "2.35.1")
-trait GenIn2DImpl[In0 >: Null <: BufLike, In1 >: Null <: BufLike]
-  extends GenIn2Impl[In0, In1, BufD]
-    with Out1DoubleImpl[FanInShape2[In0, In1, BufD]] {
-  _: GraphStageLogic with Node =>
-}
-
-@deprecated("Should move to using Handlers", since = "2.35.1")
 trait GenIn2IImpl[In0 >: Null <: BufLike, In1 >: Null <: BufLike]
   extends GenIn2Impl[In0, In1, BufI]
     with Out1IntImpl[FanInShape2[In0, In1, BufI]] {

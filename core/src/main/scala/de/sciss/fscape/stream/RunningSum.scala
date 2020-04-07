@@ -14,40 +14,41 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.{Attributes, FanInShape2}
-import de.sciss.fscape.stream.impl.deprecated.FilterIn2DImpl
+import akka.stream.{Attributes, FanInShape2, Inlet, Outlet}
 import de.sciss.fscape.stream.impl.{NodeImpl, RunningValueImpl, StageImpl}
 
 object RunningSum {
-  def apply(in: OutD, trig: OutI)(implicit b: Builder): OutD = {
-    val stage0  = new Stage(b.layer)
+  def apply[A, E <: BufElem[A]](in: Outlet[E], gate: OutI)(implicit b: Builder, tpe: StreamType[A, E]): Outlet[E] = {
+    val stage0  = new Stage[A, E](b.layer)
     val stage   = b.add(stage0)
     b.connect(in  , stage.in0)
-    b.connect(trig, stage.in1)
+    b.connect(gate, stage.in1)
     stage.out
   }
 
   private final val name = "RunningSum"
 
-  private type Shp = FanInShape2[BufD, BufI, BufD]
+  private type Shp[E] = FanInShape2[E, BufI, E]
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shp](name) {
+  private final class Stage[A, E <: BufElem[A]](layer: Layer)(implicit ctrl: Control, tpe: StreamType[A, E])
+    extends StageImpl[Shp[E]](name) {
+
     val shape: Shape = new FanInShape2(
-      in0 = InD (s"$name.in"  ),
-      in1 = InI (s"$name.trig"),
-      out = OutD(s"$name.out" )
+      in0 = Inlet [E](s"$name.in"  ),
+      in1 = InI      (s"$name.trig"),
+      out = Outlet[E](s"$name.out" )
     )
 
-    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
-  }
-
-  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape)
-      with RunningValueImpl[Shp]
-      with FilterIn2DImpl[BufD, BufI] {
-
-    protected def neutralValue: Double = 0.0
-
-    protected def combine(a: Double, b: Double): Double = a + b
+    def createLogic(attr: Attributes): NodeImpl[Shape] = {
+      val res: RunningValueImpl[_, _] = if (tpe.isDouble) {
+        new RunningValueImpl[Double, BufD](name, layer, shape.asInstanceOf[Shp[BufD]], 0.0)(_ + _)
+      } else if (tpe.isInt) {
+        new RunningValueImpl[Int   , BufI](name, layer, shape.asInstanceOf[Shp[BufI]], 0  )(_ + _)
+      } else {
+        assert (tpe.isLong)
+        new RunningValueImpl[Long  , BufL](name, layer, shape.asInstanceOf[Shp[BufL]], 0L )(_ + _)
+      }
+      res.asInstanceOf[RunningValueImpl[A, E]]
+    }
   }
 }
