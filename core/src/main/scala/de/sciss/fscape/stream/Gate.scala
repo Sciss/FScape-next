@@ -15,8 +15,10 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape2, Inlet, Outlet}
-import de.sciss.fscape.stream.impl.deprecated.{FilterChunkImpl, FilterIn2Impl}
-import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
+
+import scala.annotation.tailrec
+import scala.math.min
 
 object Gate {
   def apply[A, E <: BufElem[A]](in: Outlet[E], gate: OutI)
@@ -59,32 +61,42 @@ object Gate {
 
   private final class Logic[@specialized(Args) A, E <: BufElem[A]](shape: Shp[E], layer: Layer)
                                                                   (implicit ctrl: Control, tpe: StreamType[A, E])
-    extends NodeImpl(name, layer, shape)
-      with FilterIn2Impl[E, BufI, E]
-      with FilterChunkImpl[E, E, Shp[E]] {
+    extends Handlers(name, layer, shape) {
 
-    private[this] var high  = false
+    private[this] val hIn   = Handlers.InMain [A, E](this, shape.in0)
+    private[this] val hGate = Handlers.InIAux       (this, shape.in1)()
+    private[this] val hOut  = Handlers.OutMain[A, E](this, shape.out)
+
     private[this] val zero  = tpe.zero
 
-    protected def allocOutBuf0(): E = tpe.allocBuf()
+    protected def onDone(inlet: Inlet[_]): Unit =
+      if (hOut.flush()) completeStage()
 
-    protected def processChunk(inOff: Int, outOff: Int, len: Int): Unit = {
-      val b0      = bufIn0.buf
-      val b1      = if (bufIn1 == null) null else bufIn1.buf
-      val stop1   = if (b1     == null) 0    else bufIn1.size
-      val out     = bufOut0.buf
-      var h0      = high
-      var inOffI  = inOff
-      var outOffI = outOff
-      val stop0   = inOff + len
-      while (inOffI < stop0) {
-        if (inOffI < stop1) h0 = b1(inOffI) > 0
-        val v0 = if (h0) b0(inOffI) else zero // 0.0
-        out(outOffI) = v0
-        inOffI  += 1
-        outOffI += 1
+    @tailrec
+    protected def process(): Unit = {
+      val rem     = min(hIn.available, min(hOut.available, hGate.available))
+      if (rem == 0) return
+
+      val in      = hIn .array
+      val out     = hOut.array
+      var inOff   = hIn .offset
+      var outOff  = hOut.offset
+      val stop0   = inOff + rem
+      while (inOff < stop0) {
+        val gate  = hGate.next() > 0
+        val v0    = if (gate) in(inOff) else zero // 0.0
+        out(outOff) = v0
+        inOff  += 1
+        outOff += 1
       }
-      high = h0
+      hIn .advance(rem)
+      hOut.advance(rem)
+
+      if (hIn.isDone) {
+        if (hOut.flush()) completeStage()
+        return
+      }
+      process()
     }
   }
 }

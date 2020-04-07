@@ -16,7 +16,8 @@ package de.sciss.fscape
 import de.sciss.file._
 
 object Util {
-  final val log2 = math.log(2)
+  final val log2  = math.log  (2.0)
+  final val sqrt2 = math.sqrt (2.0)
 
   // ---- multi-channel ----
 

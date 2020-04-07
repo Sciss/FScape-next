@@ -15,8 +15,8 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape5}
-import de.sciss.fscape.stream.impl.deprecated.{FilterIn5DImpl, FilterLogicImpl, WindowedLogicImpl}
-import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.Handlers.{InDAux, InDMain, InIAux, OutDMain}
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl, WindowedLogicD}
 
 object Loudness {
   var DEBUG = false
@@ -50,59 +50,41 @@ object Loudness {
   }
 
   private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape)
-      with WindowedLogicImpl[Shp]
-      with FilterLogicImpl[BufD, Shp]
-      with FilterIn5DImpl[BufD, BufD, BufI, BufD, BufI] {
+    extends Handlers(name, layer, shape) with WindowedLogicD[Shp] {
 
-    private[this] var winBuf    : Array[Double] = _
-    private[this] var winSize   : Int           = _
-    private[this] var spl       : Double        = _
-    private[this] var diffuse   : Boolean       = _
-    private[this] var sampleRate: Double        = _
+    protected     val hIn   : InDMain   = InDMain  (this, shape.in0)
+    protected     val hOut  : OutDMain  = OutDMain (this, shape.out)
+    private[this] val hSR   : InDAux    = InDAux   (this, shape.in1)()
+    private[this] val hSize : InIAux    = InIAux   (this, shape.in2)(math.max(1, _))  // XXX TODO --- can be zero?
+    private[this] val hSPL  : InDAux    = InDAux   (this, shape.in3)(math.max(1.0, _))
+    private[this] val hDiff : InIAux    = InIAux   (this, shape.in4)()
 
     private[this] val LT = new Array[Double](28)
 
-    protected def startNextWindow(inOff: Int): Long = {
-      val oldSize = winSize
-      if (bufIn1 != null && inOff < bufIn1.size) {
-        sampleRate = bufIn1.buf(inOff)
+    protected def winBufSize: Int = hSize.value
+
+    override protected def writeWinSize: Long = 1
+
+    protected def tryObtainWinParams(): Boolean = {
+      val ok = hSR.hasNext && hSize.hasNext && hSPL.hasNext && hDiff.hasNext
+      if (ok) {
+        hSize.next()  // the others are called in `processWindow`
       }
-      if (bufIn2 != null && inOff < bufIn2.size) {
-        winSize = math.max(1, bufIn2.buf(inOff))
-      }
-      if (bufIn3 != null && inOff < bufIn3.size) {
-        spl = math.max(1, bufIn3.buf(inOff))
-      }
-      if (bufIn4 != null && inOff < bufIn4.size) {
-        diffuse = bufIn4.buf(inOff) > 0
-      }
-      if (winSize != oldSize) {
-        winBuf = new Array(winSize)
-      }
-      winSize
+      ok
     }
 
-    protected def copyInputToWindow(inOff: Int, writeToWinOff: Long, chunk: Int): Unit =
-      Util.copy(bufIn0.buf, inOff, winBuf, writeToWinOff.toInt, chunk)
+    /** Called after a window has been fully read in. */
+    protected def processWindow(): Unit = {
+      val lt      = LT
+      val spl     = hSPL  .next()
+      val diffuse = hDiff .next() > 0
+      val sr      = hSR   .next()
 
-    protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit =
-      Util.copy(winBuf, readFromWinOff.toInt, bufOut0.buf, outOff, chunk)
-
-    override protected def stopped(): Unit = {
-      super.stopped()
-      winBuf = null
-    }
-
-    protected def processWindow(writeToWinOff: Long): Long = {
-      val lt    = LT
-      val _spl  = spl
-
-      val nonZero = zwickerBandsBody(winBuf, numFrames = writeToWinOff.toInt, sampleRate = sampleRate, LT = lt)
+      val nonZero = zwickerBandsBody(winBuf, numFrames = readOff.toInt, sampleRate = sr, LT = lt)
       val res = if (nonZero) {
         var i = 0
         while (i < lt.length) {
-          lt(i) += _spl
+          lt(i) += spl
           i += 1
         }
         zwicker(lt, diffuse = diffuse)
@@ -110,7 +92,6 @@ object Loudness {
         0.0
       }
       winBuf(0) = res
-      1
     }
   }
 
