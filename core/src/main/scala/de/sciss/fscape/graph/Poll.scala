@@ -41,6 +41,7 @@ final case class Poll(in: GE, gate: GE, label: String = "poll") extends UGenSour
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit = {
     val Vec(in, gate) = args
-    stream.Poll(in = in.toAny, gate = gate.toInt, label = label)
+    import in.tpe
+    stream.Poll[in.A, in.Buf](in = in.toElem, gate = gate.toInt, label = label)
   }
 }

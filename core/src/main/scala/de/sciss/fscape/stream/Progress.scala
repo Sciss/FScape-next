@@ -40,15 +40,14 @@ object Progress {
   }
 
   private final class Logic(shape: Shp, layer: Layer, label: String)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape)
-      with PollImpl[BufD] {
+    extends PollImpl[Double, BufD](name, layer, shape) {
 
     private[this] val key = ctrl.mkProgress(label)
 
     override def toString = s"$name-L($label)"
 
-    protected def trigger(buf: BufD, off: Int): Unit = {
-      val fraction = buf.buf(off)
+    protected def trigger(buf: Array[Double], off: Int): Unit = {
+      val fraction = buf(off)
       ctrl.setProgress(key, fraction)
     }
   }
