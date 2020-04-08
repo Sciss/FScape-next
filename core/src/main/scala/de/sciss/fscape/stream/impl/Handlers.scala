@@ -614,7 +614,7 @@ object Handlers {
     def next(): A = {
       require (_hasNext)
       val _buf = buf
-      if (buf != null) {
+      if (_buf != null) {
         var _off = off
         _value = cond(_buf.buf(_off))
         if (!valid) valid = true
