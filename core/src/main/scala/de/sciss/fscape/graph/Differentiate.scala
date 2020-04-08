@@ -35,6 +35,8 @@ final case class Differentiate(in: GE) extends UGenSource.SingleOut {
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
     val Vec(in) = args
-    stream.Differentiate(in = in.toDouble)
+    import in.tpe
+    val out = stream.Differentiate[in.A, in.Buf](in = in.toElem)
+    tpe.mkStreamOut(out)
   }
 }

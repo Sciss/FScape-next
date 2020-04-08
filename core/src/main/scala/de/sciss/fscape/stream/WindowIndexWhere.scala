@@ -16,7 +16,8 @@ package stream
 
 import akka.stream.{Attributes, FanInShape2}
 import de.sciss.fscape.stream.impl.Handlers.{InIAux, InIMain, OutIMain}
-import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl, WindowedLogic}
+import de.sciss.fscape.stream.impl.logic.WindowedInAOutA
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
 
 import scala.math.max
 
@@ -44,7 +45,7 @@ object WindowIndexWhere {
   }
 
   private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
-    extends Handlers(name, layer, shape) with WindowedLogic[Int, BufI] {
+    extends Handlers(name, layer, shape) with WindowedInAOutA[Int, BufI] {
 
     override protected  val hIn   : InIMain   = InIMain (this, shape.in0)
     private[this]       val hSize : InIAux    = InIAux  (this, shape.in1)(max(0, _))

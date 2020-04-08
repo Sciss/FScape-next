@@ -14,13 +14,13 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.{Attributes, FlowShape}
-import de.sciss.fscape.stream.impl.deprecated.{FilterChunkImpl, FilterIn1DImpl}
+import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
+import de.sciss.fscape.stream.impl.logic.FilterIn1AOut1A
 import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 
 object Differentiate {
-  def apply(in: OutD)(implicit b: Builder): OutD = {
-    val stage0  = new Stage(b.layer)
+  def apply[A, E <: BufElem[A]](in: Outlet[E])(implicit b: Builder, tpe: StreamType[A, E]): Outlet[E] = {
+    val stage0  = new Stage[A, E](b.layer)
     val stage   = b.add(stage0)
     b.connect(in, stage.in)
     stage.out
@@ -28,38 +28,47 @@ object Differentiate {
 
   private final val name = "Differentiate"
 
-  private type Shp = FlowShape[BufD, BufD]
+  private type Shp[E] = FlowShape[E, E]
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shp](name) {
+  private final class Stage[A, E <: BufElem[A]](layer: Layer)(implicit ctrl: Control, tpe: StreamType[A, E])
+    extends StageImpl[Shp[E]](name) {
+
     val shape: Shape = new FlowShape(
-      in  = InD (s"$name.in"  ),
-      out = OutD(s"$name.out" )
+      in  = Inlet [E](s"$name.in"  ),
+      out = Outlet[E](s"$name.out" )
     )
 
-    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = {
+      val res: Logic[_, _] = if (tpe.isDouble) {
+        new Logic[Double, BufD](shape.asInstanceOf[Shp[BufD]], layer)(_ - _)
+      } else if (tpe.isInt) {
+        new Logic[Int   , BufI](shape.asInstanceOf[Shp[BufI]], layer)(_ - _)
+      } else {
+        assert (tpe.isLong)
+        new Logic[Long  , BufL](shape.asInstanceOf[Shp[BufL]], layer)(_ - _)
+      }
+      res.asInstanceOf[Logic[A, E]]
+    }
   }
 
-  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape)
-      with FilterIn1DImpl [BufD]
-      with FilterChunkImpl[BufD, BufD, Shp] {
+  private final class Logic[@specialized(Args) A, E <: BufElem[A]](shape: Shp[E], layer: Layer)(diff: (A, A) => A)
+                                                                  (implicit ctrl: Control, tpe: StreamType[A, E])
+    extends FilterIn1AOut1A[A, E](name, layer, shape) {
 
-    private[this] var xPrev = 0.0
+    private[this] var xPrev: A = tpe.zero
 
-    protected def processChunk(inOff: Int, outOff: Int, len: Int): Unit = {
-      val b0      = bufIn0  .buf
-      val out     = bufOut0 .buf
+    protected def run(in: Array[A], inOff0: Int, out: Array[A], outOff0: Int, n: Int): Unit = {
+      val stop    = inOff0 + n
+      var inOff   = inOff0
+      var outOff  = outOff0
       var x1      = xPrev
-      var inOffI  = inOff
-      var outOffI = outOff
-      val stop0   = inOff + len
-      while (inOffI < stop0) {
-        val x0        = b0(inOffI)
-        val y0        = x0 - x1
-        out(outOffI)  = y0
-        inOffI       += 1
-        outOffI      += 1
-        x1            = x0
+      while (inOff < stop) {
+        val x0      = in(inOff)
+        val y0      = diff(x0, x1)
+        out(outOff) = y0
+        x1          = x0
+        inOff      += 1
+        outOff     += 1
       }
       xPrev = x1
     }

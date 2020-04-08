@@ -15,7 +15,7 @@ package de.sciss.fscape
 
 import de.sciss.fscape.graph.BinaryOp._
 import de.sciss.fscape.graph.UnaryOp._
-import de.sciss.fscape.graph.{BinaryOp, ChannelProxy, Clip, ComplexBinaryOp, ComplexUnaryOp, Concat, Constant, Distinct, Drop, DropRight, DropWhile, Elastic, FilterSeq, Fold, Indices, Length, MatchLen, Metro, Poll, RunningMax, RunningMin, RunningProduct, RunningSum, Take, TakeRight, TakeWhile, UnaryOp, UnzipWindow, Wrap, Zip}
+import de.sciss.fscape.graph.{BinaryOp, ChannelProxy, Clip, ComplexBinaryOp, ComplexUnaryOp, Concat, Constant, Differentiate, Distinct, Drop, DropRight, DropWhile, Elastic, FilterSeq, Fold, Indices, Length, MatchLen, Metro, Poll, RunningMax, RunningMin, RunningProduct, RunningSum, Take, TakeRight, TakeWhile, UnaryOp, UnzipWindow, Wrap, Zip}
 import de.sciss.optional.Optional
 
 /** `GEOps1` are operations for graph elements (`GE`). Instead of having these operations directly defined
@@ -108,6 +108,8 @@ final class GEOps1(val `this`: GE) extends AnyVal { me =>
   def isNaN: GE = unOp(IsNaN)
 
   def nextPowerOfTwo: GE = unOp(NextPowerOfTwo)
+
+  def differentiate: GE = Differentiate(g)
 
   def elastic(n: GE = 1): GE = Elastic(g, n)
 

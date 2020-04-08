@@ -16,7 +16,8 @@ package stream
 
 import akka.stream.{Attributes, FanInShape6}
 import de.sciss.fscape.stream.impl.Handlers.{InDAux, InDMain, InIAux, OutDMain}
-import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl, WindowedLogicD}
+import de.sciss.fscape.stream.impl.logic.WindowedInDOutD
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
 import de.sciss.numbers.Implicits._
 
 object MelFilter {
@@ -51,7 +52,7 @@ object MelFilter {
   }
 
   private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
-    extends Handlers(name, layer, shape) with WindowedLogicD {
+    extends Handlers(name, layer, shape) with WindowedInDOutD {
 
     override protected  val hIn     : InDMain   = InDMain  (this, shape.in0)
     override protected  val hOut    : OutDMain  = OutDMain (this, shape.out)

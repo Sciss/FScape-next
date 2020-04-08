@@ -16,7 +16,8 @@ package stream
 
 import akka.stream.{Attributes, FanInShape5}
 import de.sciss.fscape.stream.impl.Handlers.{InDAux, InDMain, InIAux, OutDMain}
-import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl, WindowedLogicD}
+import de.sciss.fscape.stream.impl.logic.WindowedInDOutD
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
 
 object Loudness {
   var DEBUG = false
@@ -50,7 +51,7 @@ object Loudness {
   }
 
   private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
-    extends Handlers(name, layer, shape) with WindowedLogicD {
+    extends Handlers(name, layer, shape) with WindowedInDOutD {
 
     protected     val hIn   : InDMain   = InDMain  (this, shape.in0)
     protected     val hOut  : OutDMain  = OutDMain (this, shape.out)

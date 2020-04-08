@@ -16,7 +16,8 @@ package stream
 
 import akka.stream.{Attributes, FanInShape10}
 import de.sciss.fscape.stream.impl.Handlers.{InDAux, InDMain, InIAux, OutDMain}
-import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl, WindowedLogicD}
+import de.sciss.fscape.stream.impl.logic.WindowedInDOutD
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
 
 object FoldCepstrum {
   def apply(in: OutD, size: OutI,
@@ -61,7 +62,7 @@ object FoldCepstrum {
 
   private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
     extends Handlers(name, layer, shape)
-      with WindowedLogicD {
+      with WindowedInDOutD {
 
     private[this] var size: Int = _
 

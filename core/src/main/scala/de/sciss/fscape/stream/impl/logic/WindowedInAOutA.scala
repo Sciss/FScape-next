@@ -1,5 +1,5 @@
 /*
- *  WindowedLogic.scala
+ *  WindowedInAOutA.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2020 Hanns Holger Rutz. All rights reserved.
@@ -11,10 +11,11 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape.stream.impl
+package de.sciss.fscape.stream.impl.logic
 
 import akka.stream.Inlet
 import de.sciss.fscape.logStream
+import de.sciss.fscape.stream.impl.Handlers
 import de.sciss.fscape.stream.{BufD, BufElem, Node, StreamType}
 
 import scala.annotation.tailrec
@@ -24,7 +25,7 @@ import scala.math.min
   * This is for window processing UGens where window parameters include
   * `winSize` and possibly others, and will be polled per window.
   */
-trait WindowedLogic[A, E <: BufElem[A]] extends Node {
+trait WindowedInAOutA[A, E <: BufElem[A]] extends Node {
   _: Handlers[_] =>
 
   // ---- abstract ----
@@ -186,7 +187,7 @@ trait WindowedLogic[A, E <: BufElem[A]] extends Node {
 }
 
 /** Windowed logic for double I/O */
-trait WindowedLogicD extends WindowedLogic[Double, BufD] {
+trait WindowedInDOutD extends WindowedInAOutA[Double, BufD] {
   _: Handlers[_] =>
 
   protected final val tpe: StreamType[Double, BufD] = StreamType.double

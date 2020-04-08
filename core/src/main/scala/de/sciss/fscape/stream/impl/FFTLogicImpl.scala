@@ -16,6 +16,7 @@ package de.sciss.fscape.stream.impl
 import akka.stream.{Attributes, FanInShape3, FanInShape4}
 import de.sciss.fscape.Util
 import de.sciss.fscape.stream.impl.Handlers._
+import de.sciss.fscape.stream.impl.logic.WindowedInDOutD
 import de.sciss.fscape.stream.{BufD, BufI, Builder, Control, InD, InI, Layer, OutD, OutI}
 import de.sciss.numbers
 import edu.emory.mathcs.jtransforms.fft.DoubleFFT_1D
@@ -23,7 +24,7 @@ import edu.emory.mathcs.jtransforms.fft.DoubleFFT_1D
 import scala.annotation.switch
 
 /** Base class for 1-dimensional FFT transforms. */
-trait FFTLogicImpl extends WindowedLogicD {
+trait FFTLogicImpl extends WindowedInDOutD {
   _: Handlers[_] =>
 
   // ---- abstract ----

@@ -16,7 +16,8 @@ package stream
 
 import akka.stream.{Attributes, FanInShape4, Inlet, Outlet}
 import de.sciss.fscape.stream.impl.Handlers.{InIAux, InMain, OutMain}
-import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl, WindowedLogic}
+import de.sciss.fscape.stream.impl.logic.WindowedInAOutA
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
 import de.sciss.numbers.{IntFunctions => ri}
 
 import scala.annotation.switch
@@ -55,7 +56,7 @@ object WindowApply {
 
   private final class Logic[A, E <: BufElem[A]](shape: Shp[E], layer: Layer)
                                                (implicit ctrl: Control, protected val tpe: StreamType[A, E])
-    extends Handlers(name, layer, shape) with WindowedLogic[A, E] {
+    extends Handlers(name, layer, shape) with WindowedInAOutA[A, E] {
 
     protected     val hIn   : InMain  [A, E]  = InMain  (this, shape.in0)
     protected     val hOut  : OutMain [A, E]  = OutMain (this, shape.out)
