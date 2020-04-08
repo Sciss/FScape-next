@@ -15,8 +15,10 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape4, Inlet, Outlet}
-import de.sciss.fscape.stream.impl.deprecated.DemandFilterWindowedLogic
-import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.logic.FilterWindowedInAOutA
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
+
+import scala.math.{max, min}
 
 object ResizeWindow {
   /** Resizes the windowed input signal by trimming each
@@ -58,167 +60,119 @@ object ResizeWindow {
       out = Outlet[E] (s"$name.out"  )
     )
 
-    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic[A, E](shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = {
+      val res: Logic[_, _] = if (tpe.isDouble) {
+        new Logic[Double, BufD](shape.asInstanceOf[Shp[BufD]], layer)
+      } else if (tpe.isInt) {
+        new Logic[Int   , BufI](shape.asInstanceOf[Shp[BufI]], layer)
+      } else {
+        assert (tpe.isLong)
+        new Logic[Long  , BufL](shape.asInstanceOf[Shp[BufL]], layer)
+      }
+      res.asInstanceOf[Logic[A, E]]
+    }
   }
 
-  private final class Logic[A, E <: BufElem[A]](shape: Shp[E], layer: Layer)
+  private final class Logic[@specialized(Args) A, E <: BufElem[A]](shape: Shp[E], layer: Layer)
                                                (implicit ctrl: Control,
-                                                protected val tpe: StreamType[A, E])
-    extends NodeImpl(name, layer, shape)
-      with DemandFilterWindowedLogic[A, E, Shp[E]] {
+                                                tpe: StreamType[A, E])
+    extends FilterWindowedInAOutA[A, E, Shp[E]](name, layer, shape)(shape.in0, shape.out) {
+
+    private[this] val hSize   = Handlers.InIAux(this, shape.in1)(max(0 , _))
+    private[this] val hStart  = Handlers.InIAux(this, shape.in2)()
+    private[this] val hStop   = Handlers.InIAux(this, shape.in3)()
 
     private[this] var startPos    : Int = -1
     private[this] var startNeg    : Int = _
-    private[this] var stopPos     : Int = -1
-    private[this] var stopNeg     : Int = _
-
-    private[this] var bufStartOff : Int   = 0
-    private[this] var bufStart    : BufI  = _
-    private[this] var bufStopOff  : Int   = 0
-    private[this] var bufStop     : BufI  = _
-
-    private[this] var needsStart  = true
-    private[this] var needsStop   = true
-
-    private def startValid  = startPos  >= 0
-    private def stopValid   = stopPos   >= 0
-
-    // constructor
-    {
-      installMainAndWindowHandlers()
-      new _InHandlerImpl(inletStart)(startValid)
-      new _InHandlerImpl(inletStop )(stopValid )
-    }
-
-    protected def inletSignal : Inlet[E]  = shape.in0
-    protected def inletWinSize: InI       = shape.in1
-    private   def inletStart  : InI       = shape.in2
-    private   def inletStop   : InI       = shape.in3
-
-    protected def out0        : Outlet[E] = shape.out
-
-    protected def winParamsValid: Boolean = startValid && stopValid
-    protected def needsWinParams: Boolean = needsStart | needsStop
-
-    protected def requestWinParams(): Unit = {
-      needsStart  = true
-      needsStop   = true
-    }
-
-    protected def freeWinParamBuffers(): Unit = {
-      freeStartBuf()
-      freeStopBuf ()
-    }
-
-    private def freeStartBuf(): Unit =
-      if (bufStart != null) {
-        bufStart.release()
-        bufStart = null
-      }
-
-    private def freeStopBuf(): Unit =
-      if (bufStop != null) {
-        bufStop.release()
-        bufStop = null
-      }
+//    private[this] var stopPos     : Int = -1
+//    private[this] var stopNeg     : Int = _
+    private[this] var winInSize   : Int = _
+    private[this] var winOutSize  : Int = _
+    private[this] var _winBufSize : Int = _
 
     protected def tryObtainWinParams(): Boolean = {
-      var stateChange = false
+      val ok = hSize.hasNext && hStart.hasNext && hStop.hasNext
+      if (ok) {
+        val _winInSize  = hSize .next()
+        val start       = hStart.next()
+        val stop        = hStop .next()
 
-      if (needsStart && bufStart != null && bufStartOff < bufStart.size) {
-        val start   = bufStart.buf(bufStartOff)
-        startPos    = math.max(0, start)
-        startNeg    = math.min(0, start)
-        bufStartOff += 1
-        needsStart  = false
-        stateChange = true
-      } else if (isAvailable(inletStart)) {
-        freeStartBuf()
-        bufStart    = grab(inletStart)
-        bufStartOff = 0
-        tryPull(inletStart)
-        stateChange = true
-      } else if (needsStart && isClosed(inletStart) && startValid) {
-        needsStart  = false
-        stateChange = true
+        val _startPos   = max(0, start)
+        startNeg        = min(0, start)
+//        stopPos         = max(0, stop)
+        val _stopNeg    = min(0, stop)
+
+        startPos        = _startPos
+//        stopNeg         = _stopNeg
+
+        winInSize       = _winInSize
+        _winBufSize     = max(0 /*1*/, _winInSize - _startPos + _stopNeg)
+        winOutSize      = max(0 /*1*/, _winInSize - start + stop)
       }
-
-      if (needsStop && bufStop != null && bufStopOff < bufStop.size) {
-        val stop    = bufStop.buf(bufStopOff)
-        stopPos     = math.max(0, stop)
-        stopNeg     = math.min(0, stop)
-        bufStopOff += 1
-        needsStop   = false
-        stateChange = true
-      } else if (isAvailable(inletStop)) {
-        freeStopBuf()
-        bufStop     = grab(inletStop)
-        bufStopOff  = 0
-        tryPull(inletStop)
-        stateChange = true
-      } else if (needsStop && isClosed(inletStop) && stopValid) {
-        needsStop   = false
-        stateChange = true
-      }
-
-      stateChange
+      ok
     }
 
-    override protected def allWinParamsReady(winInSize: Int): Int =
-      math.max(0 /*1*/, winInSize - startPos + stopNeg)
+    protected def winBufSize: Int = _winBufSize
 
-    override protected def prepareWindow(win: Array[A], winInSize: Int, inSignalDone: Boolean): Long =
-      if (inSignalDone && winInSize == 0) 0
-      else math.max(0 /*1*/, winInSize - (startPos + startNeg) + (stopPos + stopNeg))
+    override protected def readWinSize  : Long = winInSize
+    override protected def writeWinSize : Long = winOutSize
 
-    override protected def clearInputTail(win: Array[A], readOff: Layer, chunk: Layer): Unit = {
-      val writeOffI = readOff
-      val skipStart = math.max(0, startPos - writeOffI)
+    protected def processWindow(): Unit = ()
+
+    override protected def clearWindowTail(): Unit = {
+      val writeOffI = readOff.toInt
+      val chunk     = winInSize - writeOffI
+      val skipStart = max(0, startPos - writeOffI)
       if (skipStart > chunk) return
 
       val winOff1   = writeOffI + skipStart - startPos
-      val chunk1    = /*if (win == null) 0 else*/ math.min(chunk - skipStart, win.length - winOff1)
+      val chunk1    = /*if (win == null) 0 else*/ min(chunk - skipStart, _winBufSize - winOff1)
       if (chunk1 <= 0) return
 
-      tpe.clear(win, winOff1, chunk1)
+      tpe.clear(winBuf, winOff1, chunk1)
     }
 
-    override protected def processInput(in: Array[A], inOff: Int, win: Array[A], readOff: Int, chunk: Int): Unit = {
-      val writeOffI = readOff // writeToWinOff.toInt
+    override protected def readIntoWindow(chunk: Int): Unit = {
+      val writeOffI = readOff.toInt // writeToWinOff.toInt
       // ex. startPos = 10, writeToWinOff = 4, chunk = 12, inOff = 7
       // then skipStart becomes 6, inOff1 becomes 13, winOff1 becomes 4 + 6 - 10 = 0, chunk1 becomes 6
       // and we effectively begin writing to the buffer begin having skipped 10 input frames.
-      val skipStart = math.max(0, startPos - writeOffI)
-      if (skipStart > chunk) return
+      val skipStart = max(0, startPos - writeOffI)
 
-      val inOff1    = inOff + skipStart
-      val winOff1   = writeOffI + skipStart - startPos
-      val chunk1    = /*if (win == null) 0 else*/ math.min(chunk - skipStart, win.length - winOff1)
-      if (chunk1 <= 0) return
-
-      System.arraycopy(in, inOff1, win, winOff1, chunk1)
+      if (skipStart <= chunk) {
+        val winOff1 = writeOffI + skipStart - startPos
+        val chunk1  = min(chunk - skipStart, _winBufSize - winOff1)
+        if (chunk1 > 0) {
+          if (skipStart > 0) hIn.skip(skipStart)
+          hIn.nextN(winBuf, winOff1, chunk1)
+          val skipStop = chunk - (chunk1 + skipStart)
+          if (skipStop  > 0) hIn.skip(skipStop)
+        } else {
+          hIn.skip(chunk)
+        }
+      } else {
+        hIn.skip(chunk)
+      }
     }
 
-    override protected def processOutput(win: Array[A], winInSize : Int , writeOff: Long,
-                                         out: Array[A], winOutSize: Long, outOff  : Int, chunk: Int): Unit = {
+    override protected def writeFromWindow(chunk: Int): Unit = {
       val readOffI  = writeOff.toInt
-      val arr       = bufOut0.buf
-      val zeroStart = math.min(chunk, math.max(0, -startNeg - readOffI))
+      val zeroStart = min(chunk, max(0, -startNeg - readOffI))
       if (zeroStart > 0) {
-        tpe.clear(arr, outOff, zeroStart)
+        tpe.clear(hOut.array, hOut.offset, zeroStart)
+        hOut.advance(zeroStart)
       }
       val winOff1   = readOffI + zeroStart + startNeg
-      val outOff1   = outOff + zeroStart
       val chunk1    = chunk - zeroStart
-      val chunk2    = /*if (win == null) 0 else*/ math.min(chunk1, math.max(0, win.length - winOff1))
+      val chunk2    = /*if (win == null) 0 else*/ min(chunk1, max(0, _winBufSize - winOff1))
       if (chunk2 > 0) {
-        System.arraycopy(win, winOff1, arr, outOff1, chunk2)
+        hOut.nextN(winBuf, winOff1, chunk2)
       }
 
       val zeroStop  = chunk - (chunk2 + zeroStart) // - chunk1
       if (zeroStop > 0) {
-        val outOff2 = outOff1 + chunk2
-        tpe.clear(arr, outOff2, zeroStop)
+        tpe.clear(hOut.array, hOut.offset, zeroStop)
+        hOut.advance(zeroStop)
       }
     }
   }

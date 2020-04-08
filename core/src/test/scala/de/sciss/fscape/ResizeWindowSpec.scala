@@ -36,8 +36,8 @@ class ResizeWindowSpec extends UGenSpec {
       val info = s"for inLen = $inLen, winInSz = $winInSz, start = $start, stop = $stop"
 
       assert(p.isCompleted)
-      val res = p.future.value.get
-      assert (res === Success(expected), info)
+      val res = getPromiseVec(p)
+      assert (res === expected, info)
     }
 
     for {
