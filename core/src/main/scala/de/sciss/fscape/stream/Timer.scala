@@ -15,7 +15,7 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FlowShape}
-import de.sciss.fscape.stream.impl.deprecated.{FilterChunkImpl, FilterIn1LImpl}
+import de.sciss.fscape.stream.impl.logic.FilterIn1Out1
 import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 
 object Timer {
@@ -40,16 +40,12 @@ object Timer {
   }
 
   private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape)
-      with FilterIn1LImpl[BufI]
-      with FilterChunkImpl[BufI, BufL, Shp] {
+    extends FilterIn1Out1[Int, BufI, Long, BufL](name, layer, shape) {
 
     private[this] var high      = false
     private[this] var count     = 0L
 
-    protected def processChunk(inOff: Int, outOff: Int, len: Int): Unit = {
-      val b0      = bufIn0.buf
-      val out     = bufOut0.buf
+    protected def run(in: Array[Layer], inOff: Layer, out: Array[Long], outOff: Layer, len: Layer): Unit = {
       var h0      = high
       var h1      = false
       var c0      = count
@@ -57,7 +53,7 @@ object Timer {
       var outOffI = outOff
       val stop0   = inOff + len
       while (inOffI < stop0) {
-        h1 = b0(inOffI) > 0
+        h1 = in(inOffI) > 0
         if (h1 && !h0) {
           // println(s"RESET FROM $c0")
           c0 = 0L

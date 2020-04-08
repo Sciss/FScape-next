@@ -15,7 +15,7 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
-import de.sciss.fscape.stream.impl.logic.FilterIn1AOut1A
+import de.sciss.fscape.stream.impl.logic.FilterIn1Out1
 import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 
 object Differentiate {
@@ -53,7 +53,7 @@ object Differentiate {
 
   private final class Logic[@specialized(Args) A, E <: BufElem[A]](shape: Shp[E], layer: Layer)(diff: (A, A) => A)
                                                                   (implicit ctrl: Control, tpe: StreamType[A, E])
-    extends FilterIn1AOut1A[A, E](name, layer, shape) {
+    extends FilterIn1Out1[A, E, A, E](name, layer, shape) {
 
     private[this] var xPrev: A = tpe.zero
 

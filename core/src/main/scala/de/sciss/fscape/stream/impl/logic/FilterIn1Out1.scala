@@ -21,20 +21,23 @@ import de.sciss.fscape.stream.{BufElem, Control, Layer, StreamType}
 import scala.annotation.tailrec
 import scala.math.min
 
-/** Building block for a one-inlet in/out filter with the same element type for input and output.
+/** Building block for a one-inlet in/out filter.
   * Implementing classes have to provide the core loop `run`.
   */
-abstract class FilterIn1AOut1A[A, E <: BufElem[A]](name: String, layer: Layer, shape: FlowShape[E, E])
-                                                  (implicit ctrl: Control, tpe: StreamType[A, E])
+abstract class FilterIn1Out1[A, E <: BufElem[A], B, F <: BufElem[B]](name: String, layer: Layer,
+                                                                     shape: FlowShape[E, F])
+                                                                    (implicit ctrl: Control,
+                                                                     aTpe: StreamType[A, E],
+                                                                     bTpe: StreamType[B, F])
   extends Handlers(name, layer, shape) {
 
   private[this] val hIn : InMain [A, E] = InMain [A, E](this, shape.in )
-  private[this] val hOut: OutMain[A, E] = OutMain[A, E](this, shape.out)
+  private[this] val hOut: OutMain[B, F] = OutMain[B, F](this, shape.out)
 
   protected def onDone(inlet: Inlet[_]): Unit =
     if (hOut.flush()) completeStage()
 
-  protected def run(in: Array[A], inOff: Int, out: Array[A], outOff: Int, n: Int): Unit
+  protected def run(in: Array[A], inOff: Int, out: Array[B], outOff: Int, n: Int): Unit
 
   @tailrec
   final protected def process(): Unit = {

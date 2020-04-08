@@ -15,7 +15,8 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape3, Inlet, Outlet}
-import de.sciss.fscape.stream.impl.deprecated.DemandFilterWindowedLogic
+import de.sciss.fscape.stream.impl.Handlers.InIAux
+import de.sciss.fscape.stream.impl.logic.FilterWindowedInAOutA
 import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 
 /** Reverses contents of windowed input. */
@@ -70,70 +71,31 @@ object ReverseWindow {
     }
   }
 
-  private final class Logic[@specialized(Int, Long, Double) A,
-    E <: BufElem[A]](shape: Shp[E], layer: Layer)(implicit ctrl: Control, protected val tpe: StreamType[A, E])
-    extends NodeImpl(name, layer, shape)
-      with DemandFilterWindowedLogic[A, E, Shp[E]] {
+  private final class Logic[@specialized(Args) A, E <: BufElem[A]](shape: Shp[E], layer: Layer)
+                                                                  (implicit ctrl: Control, tpe: StreamType[A, E])
+    extends FilterWindowedInAOutA[A, E, Shp[E]](name, layer, shape)(shape.in0, shape.out) {
 
-    private[this] var clump       : Int     = -1
-    private[this] var bufClumpOff : Int     = 0
-    private[this] var bufClump    : BufI    = _
-    private[this] var needsClump  : Boolean = true
+    private[this] val hSize : InIAux = InIAux(this, shape.in1)(math.max(0, _))
+    private[this] val hClump: InIAux = InIAux(this, shape.in2)(math.max(1, _))
 
-    // constructor
-    {
-      installMainAndWindowHandlers()
-      new _InHandlerImpl(inletClump)(clumpValid)
+    protected def winBufSize: Int = hSize.value
+
+    protected def tryObtainWinParams(): Boolean = {
+      val ok = hSize.hasNext && hClump.hasNext
+      if (ok) {
+        hSize .next()
+        hClump.next()
+      }
+      ok
     }
 
-    private def clumpValid = clump >= 0
-
-    protected def inletSignal : Inlet[E]  = shape.in0
-    protected def inletWinSize: InI       = shape.in1
-    protected def inletClump  : InI       = shape.in2
-
-    protected def out0        : Outlet[E] = shape.out
-
-    protected def winParamsValid: Boolean = clumpValid
-    protected def needsWinParams: Boolean = needsClump
-
-    protected def requestWinParams(): Unit = {
-      needsClump = true
-    }
-
-    protected def freeWinParamBuffers(): Unit =
-      freeClumpBuf()
-
-    private def freeClumpBuf(): Unit =
-      if (bufClump != null) {
-        bufClump.release()
-        bufClump = null
-      }
-
-    protected def tryObtainWinParams(): Boolean =
-      if (needsClump && bufClump != null && bufClumpOff < bufClump.size) {
-        clump       = math.max(1, bufClump.buf(bufClumpOff))
-        bufClumpOff += 1
-        needsClump = false
-        true
-      } else if (isAvailable(inletClump)) {
-        freeClumpBuf()
-        bufClump    = grab(inletClump)
-        bufClumpOff = 0
-        tryPull(inletClump)
-        true
-      } else if (needsClump && isClosed(inletClump) && clumpValid) {
-        needsClump = false
-        true
-      } else {
-        false
-      }
-
-    override protected def prepareWindow(win: Array[A], winInSize: Int, inSignalDone: Boolean): Long = {
+    protected def processWindow(): Unit = {
+      val win = winBuf
+      val wsz = winBufSize
       var i   = 0
-      val cl  = clump
+      val cl  = hClump.value
       val cl2 = cl + cl
-      var j   = winInSize - cl
+      var j   = wsz - cl
       while (i < j) {
         val k = i + cl
         while (i < k) {
@@ -145,7 +107,6 @@ object ReverseWindow {
         }
         j -= cl2
       }
-      winInSize
     }
   }
 }
