@@ -14,10 +14,11 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.{Attributes, FanInShape3, Inlet, Outlet}
-import de.sciss.fscape.graph.NormalizeWindow.{FitBipolar, FitUnipolar, Normalize, ZeroMean}
-import de.sciss.fscape.stream.impl.deprecated.DemandFilterWindowedLogic
-import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import akka.stream.{Attributes, FanInShape3}
+import de.sciss.fscape.graph.NormalizeWindow.{FitBipolar, FitUnipolar, ModeMax, Normalize, ZeroMean}
+import de.sciss.fscape.stream.impl.logic.FilterWindowedInAOutA
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
+import de.sciss.numbers.Implicits._
 
 import scala.annotation.switch
 
@@ -48,98 +49,38 @@ object NormalizeWindow {
   }
 
   private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape)
-      with DemandFilterWindowedLogic[Double, BufD, Shp] {
+    extends FilterWindowedInAOutA[Double, BufD, Shp](name, layer, shape)(shape.in0, shape.out) {
 
-    private[this] var mode      : Int     = -1
-    private[this] var bufModeOff: Int     = 0
-    private[this] var bufMode   : BufI    = _
-    private[this] var needsMode : Boolean = true
+    private[this] val hSize   = Handlers.InIAux(this, shape.in1)(math.max(1, _))
+    private[this] val hMode   = Handlers.InIAux(this, shape.in2)(_.clip(0, ModeMax))
 
-    // constructor
-    {
-      installMainAndWindowHandlers()
-      new _InHandlerImpl(inletMode)(modeValid)
+    protected def winBufSize: Int = hSize.value
+
+    protected def tryObtainWinParams(): Boolean = {
+      val ok = hSize.hasNext && hMode.hasNext
+      if (ok) {
+        hSize .next()
+        hMode .next()
+      }
+      ok
     }
 
-    private def modeValid = mode >= 0
+//    override protected val fullLastWindow = false
 
-    protected def tpe: StreamType[Double, BufD] = StreamType.double
-
-    protected def inletSignal : Inlet[BufD]   = shape.in0
-    protected def inletWinSize: InI           = shape.in1
-    protected def inletMode   : InI           = shape.in2
-    protected def out0        : Outlet[BufD]  = shape.out
-
-    protected def winParamsValid: Boolean = modeValid
-    protected def needsWinParams: Boolean = needsMode
-
-    protected def requestWinParams(): Unit = {
-      needsMode = true
-    }
-
-    protected def freeWinParamBuffers(): Unit =
-      freeModeBuf()
-
-    private def freeModeBuf(): Unit =
-      if (bufMode != null) {
-        bufMode.release()
-        bufMode = null
-      }
-
-    protected def tryObtainWinParams(): Boolean =
-      if (needsMode && bufMode != null && bufModeOff < bufMode.size) {
-        mode       = math.max(0, bufMode.buf(bufModeOff))
-        bufModeOff += 1
-        needsMode = false
-        true
-      } else if (isAvailable(inletMode)) {
-        freeModeBuf()
-        bufMode    = grab(inletMode)
-        bufModeOff = 0
-        tryPull(inletMode)
-        true
-      } else if (needsMode && isClosed(inletMode) && modeValid) {
-        needsMode = false
-        true
-      } else {
-        false
-      }
-
-    //    protected def startNextWindow(inOff: Int): Long = {
-//      if (bufIn1 != null && inOff < bufIn1.size) {
-//        val oldSize   = winSize
-//        val _winSize  = math.max(1, bufIn1.buf(inOff))
-//        if (_winSize != oldSize) {
-//          winBuf  = new Array[Double](_winSize)
-//          winSize = _winSize
-//        }
-//      }
-//      if (bufIn2 != null && inOff < bufIn2.size) {
-//        mode = math.max(0, math.min(ModeMax, bufIn2.buf(inOff)))
-//      }
-//      winSize
-//    }
-
-//    protected def copyInputToWindow(inOff: Int, writeToWinOff: Long, chunk: Int): Unit =
-//      Util.copy(bufIn0.buf, inOff, winBuf, writeToWinOff.toInt, chunk)
-//
-//    protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit =
-//      Util.copy(winBuf, readFromWinOff.toInt, bufOut0.buf, outOff, chunk)
-
-    override protected def prepareWindow(win: Array[Double], winInSize: Int, inSignalDone: Boolean): Long = {
-      val n = winInSize // writeToWinOff.toInt
+    protected def processWindow(): Unit = {
+      val n = winBufSize // writeToWinOff.toInt
 //      if (n < winSize) {
 //        Util.clear(winBuf, n, winSize - n)
 //      }
-      if (n > 0) (mode: @switch) match {
+      assert (n > 0)
+      val win   = winBuf
+      val mode  = hMode.value
+      (mode: @switch) match {
         case Normalize    => processNormalize (win, n)
         case FitUnipolar  => processFitRange  (win, n, lo =  0.0, hi =  1.0)
         case FitBipolar   => processFitRange  (win, n, lo = -1.0, hi = +1.0)
         case ZeroMean     => processZeroMean  (win, n)
       }
-
-      winInSize
     }
 
     private def processNormalize(b: Array[Double], n: Int): Unit = {
