@@ -20,13 +20,13 @@ object ConstQTest extends App {
     import graph._
     val in        = AudioFileIn(file = fIn, numChannels = 1)
     val slid      = Sliding(in, fftSize, winStep)
-    val winFun    = GenWindow(size = fftSize, shape = GenWindow.Hann)
+    val winFun    = GenWindow.Hann(fftSize)
     val windowed  = slid * winFun
     val rotWin    = RotateWindow(windowed, size = fftSize, amount = fftSize/2)
     val fft       = Real1FFT(rotWin, size = fftSize)
     val constQ    = ConstQ(fft, fftSize = fftSize, numBands = numBands)
     val norm      = constQ.ampDb.linLin(dbMin * 2, dbMax * 2, 0.0, 1.0).clip()
-    val rotImg    = RotateFlipMatrix(norm, rows = numWin, columns = numBands, mode = RotateFlipMatrix.Rot90CCW)
+    val rotImg    = RotateFlipMatrix.rot90CCW(norm, rows = numWin, columns = numBands)
     val specOut   = ImageFile.Spec(width = numWin, height = numBands, numChannels = 1)
     ImageFileOut(file = fOut, spec = specOut, in = rotImg)
   }

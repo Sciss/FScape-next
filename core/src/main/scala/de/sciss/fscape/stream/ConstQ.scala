@@ -16,11 +16,14 @@ package stream
 
 import akka.stream.{Attributes, FanInShape5}
 import de.sciss.fscape.graph.GenWindow.Hamming
-import de.sciss.fscape.stream.impl.deprecated.{FilterIn5DImpl, FilterLogicImpl, WindowedLogicImpl}
-import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.logic.FilterWindowedInAOutA
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
 import de.sciss.numbers
+import de.sciss.numbers.Implicits._
 import de.sciss.numbers.IntFunctions
 import edu.emory.mathcs.jtransforms.fft.DoubleFFT_1D
+
+import scala.math.max
 
 object ConstQ {
   def apply(in: OutD, fftSize: OutI, minFreqN: OutD, maxFreqN: OutD, numBands: OutI)(implicit b: Builder): OutD = {
@@ -56,10 +59,12 @@ object ConstQ {
   // XXX TODO --- we could store pre-calculated cosine tables for
   // sufficiently small table sizes
   private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape)
-      with FilterLogicImpl[BufD, Shp]
-      with WindowedLogicImpl[Shp]
-      with FilterIn5DImpl[BufD, BufI, BufD, BufD, BufI] {
+    extends FilterWindowedInAOutA[Double, BufD, Shp](name, layer, shape)(shape.in0, shape.out) {
+
+    private[this] val hSize     = Handlers.InIAux(this, shape.in1)(max(1, _))
+    private[this] val hMinFreqN = Handlers.InDAux(this, shape.in2)(_.clip(1.0e-7, 0.5d))
+    private[this] val hMaxFreqN = Handlers.InDAux(this, shape.in3)(_.clip(1.0e-7, 0.5d))
+    private[this] val hBands    = Handlers.InIAux(this, shape.in4)(max(1, _))
 
     private[this] var size      = 0
     private[this] var minFreqN  = -1d
@@ -72,44 +77,45 @@ object ConstQ {
 
     override protected def stopped(): Unit = {
       super.stopped()
-      inBuf  = null
-      outBuf = null
+      inBuf   = null
+      outBuf  = null
+      kernels = null
     }
 
-    protected def startNextWindow(inOff: Int): Long = {
-      var needsUpdate = false
-      if (bufIn1 != null && inOff < bufIn1.size) {
-        val _size = math.max(1, bufIn1.buf(inOff))
+    protected def winBufSize: Int = 0
+
+    override protected def readWinSize  : Long = size
+    override protected def writeWinSize : Long = numBands
+
+    protected def tryObtainWinParams(): Boolean = {
+      val ok = hSize.hasNext && hMinFreqN.hasNext && hMaxFreqN.hasNext && hBands.hasNext
+      if (ok) {
+        var needsUpdate = false
+        val _size = hSize.next()
         if (size != _size) {
           size        = _size
           needsUpdate = true
         }
-      }
-      if (bufIn2 != null && inOff < bufIn2.size) {
-        val _minFreqN = math.max(1.0e-7, math.min(0.5d, bufIn2.buf(inOff)))
+        val _minFreqN = hMinFreqN.next()
         if (minFreqN != _minFreqN) {
           minFreqN    = _minFreqN
           needsUpdate = true
         }
-      }
-      if (bufIn3 != null && inOff < bufIn3.size) {
-        val _maxFreqN = math.max(1.0e-7, math.min(0.5d, bufIn3.buf(inOff)))
+        val _maxFreqN = hMaxFreqN.next()
         if (maxFreqN != _maxFreqN) {
           maxFreqN    = _maxFreqN
           needsUpdate = true
         }
-      }
-      if (bufIn4 != null && inOff < bufIn4.size) {
-        val _numBands = math.max(1, bufIn4.buf(inOff))
+        val _numBands = hBands.next()
         if (numBands != _numBands) {
           numBands    = _numBands
           needsUpdate = true
         }
+        if (needsUpdate) {
+          updateConfig()
+        }
       }
-      if (needsUpdate) {
-        updateConfig()
-      }
-      size
+      ok
     }
 
     // mostly copied from ScissDSP's ConstQ
@@ -258,16 +264,20 @@ object ConstQ {
       kernels = _kernels
     }
 
-    protected def copyInputToWindow(inOff: Int, writeToWinOff: Long, chunk: Int): Unit =
-      Util.copy(bufIn0.buf, inOff, inBuf, writeToWinOff.toInt, chunk)
+    override protected def readIntoWindow(n: Int): Unit = {
+      val offI = readOff.toInt
+      hIn.nextN(inBuf, offI, n)
+    }
 
-    protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit =
-      Util.copy(outBuf, readFromWinOff.toInt, bufOut0.buf, outOff, chunk)
+    override protected def writeFromWindow(n: Int): Unit = {
+      val offI = writeOff.toInt
+      hOut.nextN(outBuf, offI, n)
+    }
 
-    protected def processWindow(writeToWinOff: Long): Long = {
+    protected def processWindow(): Unit = {
       val _bufIn      = inBuf
       val _bufOut     = outBuf
-      val inStop      = writeToWinOff.toInt & ~1
+      val inStop      = readOff.toInt & ~1
       val _numBands   = numBands
 
       var k = 0; var outOff = 0; while (k < _numBands) {
@@ -306,8 +316,6 @@ object ConstQ {
 
         k += 1; outOff += 1
       }
-
-      _numBands
     }
   }
 }

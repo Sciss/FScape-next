@@ -53,4 +53,11 @@ object RotateFlipMatrix {
   final val Rot180    = FlipX | FlipY
   final val Rot90CW   = 4
   final val Rot90CCW  = 8
+
+  def flipX   (in: GE, rows: GE, columns: GE): GE = RotateFlipMatrix(in = in, rows = rows, columns, mode = FlipX    )
+  def flipY   (in: GE, rows: GE, columns: GE): GE = RotateFlipMatrix(in = in, rows = rows, columns, mode = FlipY    )
+  def rot90CW (in: GE, rows: GE, columns: GE): GE = RotateFlipMatrix(in = in, rows = rows, columns, mode = Rot90CW  )
+  def rot90CCW(in: GE, rows: GE, columns: GE): GE = RotateFlipMatrix(in = in, rows = rows, columns, mode = Rot90CCW )
+  def rot180  (in: GE, rows: GE, columns: GE): GE = RotateFlipMatrix(in = in, rows = rows, columns, mode = Rot180   )
+  def through (in: GE, rows: GE, columns: GE): GE = RotateFlipMatrix(in = in, rows = rows, columns, mode = Through  )
 }
