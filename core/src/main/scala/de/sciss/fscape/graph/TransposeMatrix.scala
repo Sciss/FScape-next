@@ -28,9 +28,7 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * so the first samples constitute the first row,
   * the next samples constitute the second row, etc.
   *
-  * ''Note:'' This is an in-place process which uses
-  * less memory but possibly more time. A faster variant
-  * would be to use `RotateMirrorMatrix`
+  * '''Note:''' The UGens takes up twice the matrix size of memory.
   *
   * The output matrix is transposed (rows and columns
   * exchanged). So an input of `(a, b, c, d, e, f)`
@@ -46,6 +44,8 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * @param in       the input matrices
   * @param rows     the number of rows of the _input_
   * @param columns  the number of columns of the _input_
+  *
+  * @see [[RotateFlipMatrix]]
   */
 final case class TransposeMatrix(in: GE, rows: GE, columns: GE) extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
@@ -56,6 +56,8 @@ final case class TransposeMatrix(in: GE, rows: GE, columns: GE) extends UGenSour
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
     val Vec(in, rows, columns) = args
-    stream.TransposeMatrix(in = in.toDouble, rows = rows.toInt, columns = columns.toInt)
+    import in.tpe
+    val out = stream.TransposeMatrix[in.A, in.Buf](in = in.toElem, rows = rows.toInt, columns = columns.toInt)
+    tpe.mkStreamOut(out)
   }
 }

@@ -7,10 +7,10 @@ import de.sciss.fscape.{Graph, graph, stream}
 import scala.swing.Swing
 
 object TransposeTest extends App {
-  val width   = 1920 // 1024
-  val height  = 1080 // 768
-  val fIn     = userHome / "Documents" / "temp" / "test.jpg"
-  val fOut    = userHome / "Documents" / "temp" / "test-rot.jpg"
+  val width   = 2048 // 1920 // 1024
+  val height  = 1535 // 1080 // 768
+  val fIn     = userHome / "Pictures" / "naya" / "18237862_10156159758633065_8364916541260985254_o.jpg"
+  val fOut    = userHome / "Documents" / "test-rot.jpg"
 
   val g = Graph {
     import graph._

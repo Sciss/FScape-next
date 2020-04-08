@@ -23,7 +23,7 @@ object ResampleTest extends App {
       rollOff = 0.70, kaiserBeta = 6.5, zeroCrossings = 5
     )
     val factorI = (factor * 100).toInt
-    val fOut  = userHome / "Documents" / "temp" / s"resample_$factorI.aif"
+    val fOut  = userHome / "Documents" / s"resample_$factorI.aif"
     AudioFileOut(file = fOut, spec = AudioFileSpec(sampleRate = sr, numChannels = 1), in = sig)
   }
 
@@ -35,7 +35,7 @@ object ResampleTest extends App {
     val in    = in0.take(sr.toLong * 10)
     val factor = SinOsc(1.0/32).linExp(-1.0, 1.0, 0.5, 2.0)
     val sig   = Resample(in = in, factor = factor, minFactor = 0.5)
-    val fOut  = userHome / "Documents" / "temp" / "resample_mod.aif"
+    val fOut  = userHome / "Documents" / "resample_mod.aif"
     AudioFileOut(file = fOut, spec = AudioFileSpec(sampleRate = sr, numChannels = 1), in = sig)
   }
 
@@ -52,9 +52,9 @@ object ResampleTest extends App {
     AudioFileOut(file = fOut, spec = AudioFileSpec(sampleRate = sr, numChannels = 1), in = sig)
   }
 
-  lazy val g = Graph {
+  lazy val g4 = Graph {
     import graph._
-    val fIn     = userHome / "Pictures" / "13557722_10155088508818065_6474655863286963867_n.jpg"
+    val fIn     = userHome / "Pictures" / "naya" / "13557722_10155088508818065_6474655863286963867_n.jpg"
     val w       = 960
     val h       = 960 - 1
     val in      = ImageFileIn(fIn, numChannels = 3)
@@ -71,7 +71,7 @@ object ResampleTest extends App {
     val r2      = resample(in = tp, x = 1.01)
     val sig0    = TransposeMatrix(r2, w, h)
     val sig     = sig0 // .take(w * h)
-    val fOut    = userHome / "Documents" / "temp" / "naya-freq-mode.jpg"
+    val fOut    = userHome / "Documents" / "naya-freq-mode.jpg"
     ImageFileOut(file = fOut, spec = ImageFile.Spec(ImageFile.Type.JPG, width = w, height = h, numChannels = 3), in = sig)
   }
 
@@ -79,7 +79,7 @@ object ResampleTest extends App {
   config.useAsync   = false
 //  config.blockSize  = 960 // 100 // test
   implicit val ctrl: stream.Control = stream.Control(config)
-  ctrl.run(g1)
+  ctrl.run(g4)
 
   Swing.onEDT {
     SimpleGUI(ctrl)
