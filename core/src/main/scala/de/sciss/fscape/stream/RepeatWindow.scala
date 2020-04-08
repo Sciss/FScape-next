@@ -15,8 +15,8 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape3, Inlet, Outlet}
-import de.sciss.fscape.stream.impl.deprecated.DemandFilterWindowedLogic
-import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.logic.FilterWindowedInAOutA
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
 
 /** Repeats contents of windowed input.
   */
@@ -50,81 +50,52 @@ object RepeatWindow {
       out = Outlet[E] (s"$name.out"  )
     )
 
-    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic[A, E](shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = {
+      val res: Logic[_, _] = if (tpe.isDouble) {
+        new Logic[Double, BufD](shape.asInstanceOf[Shp[BufD]], layer)
+      } else if (tpe.isInt) {
+        new Logic[Int   , BufI](shape.asInstanceOf[Shp[BufI]], layer)
+      } else {
+        assert (tpe.isLong)
+        new Logic[Long  , BufL](shape.asInstanceOf[Shp[BufL]], layer)
+      }
+      res.asInstanceOf[Logic[A, E]]
+    }
   }
 
-  private final class Logic[A, E <: BufElem[A]](shape: Shp[E], layer: Layer)
-                                               (implicit ctrl: Control, protected val tpe: StreamType[A, E])
-    extends NodeImpl(name, layer, shape)
-    with DemandFilterWindowedLogic[A, E, Shp[E]] {
+  // XXX TODO --- optimize for the common case of size = constant 1
+  private final class Logic[@specialized(Args) A, E <: BufElem[A]](shape: Shp[E], layer: Layer)
+                                               (implicit ctrl: Control, tpe: StreamType[A, E])
+    extends FilterWindowedInAOutA[A, E, Shp[E]](name, layer, shape)(shape.in0, shape.out) {
 
-    private[this] var num         : Long  = -1
-    private[this] var bufNumOff   : Int   = 0
-    private[this] var bufNum      : BufL  = _
-    private[this] var needsNum = true
+    private[this] val hSize = Handlers.InIAux(this, shape.in1)(math.max(0 , _))
+    private[this] val hNum  = Handlers.InLAux(this, shape.in2)(math.max(0L, _))
 
-    private def numValid = num >= 0L
-
-    // constructor
-    {
-      installMainAndWindowHandlers()
-      new _InHandlerImpl(inletNum)(numValid)
+    protected def tryObtainWinParams(): Boolean = {
+      val ok = hSize.hasNext && hNum.hasNext
+      if (ok) {
+        hSize .next()
+        hNum  .next()
+      }
+      ok
     }
 
-    protected def inletSignal : Inlet[E]  = shape.in0
-    protected def inletWinSize: InI       = shape.in1
-    private   def inletNum    : InL       = shape.in2
+    protected def processWindow(): Unit = ()
 
-    protected def out0        : Outlet[E] = shape.out
+    protected def winBufSize: Int = hSize.value
 
-    protected def winParamsValid: Boolean = numValid
-    protected def needsWinParams: Boolean = needsNum
+    override protected def writeWinSize: Long = hNum.value * hSize.value
 
-    protected def requestWinParams(): Unit = {
-      needsNum = true
-    }
-
-    protected def freeWinParamBuffers(): Unit =
-      freeNumBuf()
-
-    private def freeNumBuf(): Unit =
-      if (bufNum != null) {
-        bufNum.release()
-        bufNum = null
-      }
-
-    protected def tryObtainWinParams(): Boolean =
-      if (needsNum && bufNum != null && bufNumOff < bufNum.size) {
-        num       = math.max(0 /*1*/, bufNum.buf(bufNumOff))
-        bufNumOff   += 1
-        needsNum = false
-        true
-      } else if (isAvailable(inletNum)) {
-        freeNumBuf()
-        bufNum    = grab(inletNum)
-        bufNumOff = 0
-        tryPull(inletNum)
-        true
-      } else if (needsNum && isClosed(inletNum) && numValid) {
-        needsNum = false
-        true
-      } else {
-        false
-      }
-
-    override protected def prepareWindow(in: Array[A], winSize: Int, inSignalDone: Boolean): Long =
-      num * winSize
-
-    override protected def processOutput(in : Array[A], winInSize : Int , writeOff : Long,
-                                         out: Array[A], winOutSize: Long, outOff   : Int , chunk: Int): Unit = {
-      var rem       = chunk
-      var outOff0   = outOff
-      var writeOff0 = writeOff
+    override protected def writeFromWindow(chunk: Int): Unit = {
+      var rem         = chunk
+      val in          = winBuf
+      var writeOff0   = writeOff
+      val winInSize   = winBufSize
       while (rem > 0) {
         val i     = (writeOff0 % winInSize).toInt
         val j     = math.min(rem, winInSize - i)
-        System.arraycopy(in, i, out, outOff0, j)
-        outOff0   += j
+        hOut.nextN(in, i, j)
+//        System.arraycopy(in, i, out, outOff0, j)
         writeOff0 += j
         rem       -= j
       }

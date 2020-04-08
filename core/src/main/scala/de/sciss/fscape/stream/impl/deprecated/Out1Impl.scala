@@ -15,7 +15,7 @@ package de.sciss.fscape.stream.impl.deprecated
 
 import akka.stream.Shape
 import akka.stream.stage.GraphStageLogic
-import de.sciss.fscape.stream.{BufD, BufI, BufL}
+import de.sciss.fscape.stream.{BufD, BufI}
 
 @deprecated("Should move to using Handlers", since = "2.35.1")
 trait Out1DoubleImpl[S <: Shape] extends InOutImpl[S] {
@@ -29,11 +29,4 @@ trait Out1IntImpl[S <: Shape] extends InOutImpl[S] {
   _: GraphStageLogic =>
 
   protected final def allocOutBuf0(): BufI = control.borrowBufI()
-}
-
-@deprecated("Should move to using Handlers", since = "2.35.1")
-trait Out1LongImpl[S <: Shape] extends InOutImpl[S] {
-  _: GraphStageLogic =>
-
-  protected final def allocOutBuf0(): BufL = control.borrowBufL()
 }
