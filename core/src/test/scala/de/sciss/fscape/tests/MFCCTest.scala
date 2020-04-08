@@ -51,8 +51,9 @@ object MFCCTest extends App {
     val covSize     = numCoef * sideLen
     val numCov      = numFrames / stepSize - (2 * sideLen)
 
-    val inMono      = if (numChannels == 1) in else ChannelProxy(in, 0) + ChannelProxy(in, 1) // XXX TODO --- missing Mix
-    val lap         = Sliding (inMono, fftSize, stepSize) * GenWindow(fftSize, GenWindow.Hann)
+    val inMono      = Mix.MonoEqP(in)
+    val sliding     = Sliding (inMono, fftSize, stepSize)
+    val lap         = sliding.elastic(2) * GenWindow.Hann(fftSize).elastic().matchLen(sliding)
     val fft         = Real1FFT(lap, fftSize, mode = 2)
     val mag         = fft.complex.mag
     val mel         = MelFilter(mag, fftSize/2, bands = numMel,
@@ -87,8 +88,8 @@ object MFCCTest extends App {
     val slices      = Slices(inDup, spansDesc)
     val spanLenAsc  = (framesAscF :+ numFrames) - (0L +: framesAscF)
 
-    val reconWindow = GenWindow(spanLenAsc, GenWindow.Hann).pow(1.0/8)
-    val slicesWin   = slices * reconWindow
+    val reconWindow = GenWindow.Hann(spanLenAsc).pow(1.0/8)
+    val slicesWin   = slices.elastic(2) * reconWindow.elastic().matchLen(slices)
     val slicesLap   = OverlapAdd(slicesWin, size = spanLenAsc, step = spanLenAsc - fadeFrames)
 
     val sig         = slicesLap

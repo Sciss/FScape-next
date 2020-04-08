@@ -15,8 +15,9 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape6}
-import de.sciss.fscape.stream.impl.deprecated.{FilterIn6DImpl, FilterLogicImpl, WindowedLogicImpl}
-import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.Handlers.{InDAux, InDMain, InIAux, OutDMain}
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl, WindowedLogicD}
+import de.sciss.numbers.Implicits._
 
 object MelFilter {
   def apply(in: OutD, size: OutI, minFreq: OutD, maxFreq: OutD, sampleRate: OutD, bands: OutI)
@@ -50,10 +51,15 @@ object MelFilter {
   }
 
   private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape)
-      with FilterLogicImpl[BufD, Shp]
-      with WindowedLogicImpl[Shp]
-      with FilterIn6DImpl[BufD, BufI, BufD, BufD, BufD, BufI] {
+    extends Handlers(name, layer, shape) with WindowedLogicD {
+
+    override protected  val hIn     : InDMain   = InDMain  (this, shape.in0)
+    override protected  val hOut    : OutDMain  = OutDMain (this, shape.out)
+    private[this]       val hSize   : InIAux    = InIAux   (this, shape.in1)(math.max(1, _))
+    private[this]       val hLoFreq : InDAux    = InDAux   (this, shape.in2)()
+    private[this]       val hHiFreq : InDAux    = InDAux   (this, shape.in3)()
+    private[this]       val hSR     : InDAux    = InDAux   (this, shape.in4)()
+    private[this]       val hBands  : InIAux    = InIAux   (this, shape.in5)(math.max(1, _))
 
     private[this] var magSize     = 0
     private[this] var minFreq     = 0.0
@@ -61,70 +67,66 @@ object MelFilter {
     private[this] var sampleRate  = 0.0
     private[this] var bands       = 0
 
-    private[this] var magBuf    : Array[Double] = _
     private[this] var melBuf    : Array[Double] = _
     private[this] var binIndices: Array[Int   ] = _
 
     override protected def stopped(): Unit = {
       super.stopped()
-      magBuf = null
+      melBuf      = null
+      binIndices  = null
     }
 
-    protected def startNextWindow(inOff: Int): Long = {
-      var updatedBins = false
-      if (bufIn1 != null && inOff < bufIn1.size) {
-        val _magSize = math.max(1, bufIn1.buf(inOff))
+    protected           def winBufSize  : Int   = magSize
+    override protected  def writeWinSize: Long  = bands
+
+    protected def tryObtainWinParams(): Boolean = {
+      val ok = hSize.hasNext && hLoFreq.hasNext && hHiFreq.hasNext && hSR.hasNext && hBands.hasNext
+      if (ok) {
+        var updatedBins = false
+        val _magSize = hSize.next()
         if (magSize != _magSize) {
           magSize     = _magSize
           updatedBins = true
         }
-      }
-      if (bufIn4 != null && inOff < bufIn4.size) {
-        val _sampleRate = bufIn4.buf(inOff)
+
+        val _sampleRate = hSR.next()
         if (sampleRate != _sampleRate) {
           sampleRate  = _sampleRate
           updatedBins = true
         }
-      }
-      if (bufIn2 != null && inOff < bufIn2.size) {
-        val nyquist   = sampleRate/2
-        val ceil      = (magSize - 1).toDouble / magSize * nyquist
-        val _minFreq  = math.max(0, math.min(ceil, bufIn2.buf(inOff)))
+        val nyquist   = _sampleRate/2
+        val ceil      = (_magSize - 1).toDouble / _magSize * nyquist
+
+        val _minFreq  = hLoFreq.next().clip(0.0, ceil)
         if (minFreq != _minFreq) {
           minFreq     = _minFreq
           updatedBins = true
         }
-      }
-      if (bufIn3 != null && inOff < bufIn3.size) {
-        val nyquist   = sampleRate / 2
-        val ceil      = (magSize - 1).toDouble / magSize * nyquist
-        val _maxFreq  = math.max(minFreq, math.min(ceil, bufIn3.buf(inOff)))
+
+        val _maxFreq  = hHiFreq.next().clip(_minFreq, ceil)
         if (maxFreq != _maxFreq) {
           maxFreq     = _maxFreq
           updatedBins = true
         }
-      }
-      if (bufIn5 != null && inOff < bufIn5.size) {
-        val _bands = math.max(1, bufIn5.buf(inOff))
+
+        val _bands = hBands.next()
         if (bands != _bands) {
           bands     = _bands
           updatedBins = true
         }
+
+        if (updatedBins) {
+          melBuf      = new Array[Double](_bands + 2) // we need two samples more internally
+          binIndices  = calcBinIndices()
+        }
       }
-      if (updatedBins) {
-        magBuf      = new Array[Double](magSize)
-        melBuf      = new Array[Double](bands + 2) // we need two samples more internally
-        binIndices  = calcBinIndices()
-      }
-      magSize
+      ok
     }
 
-    protected def copyInputToWindow(inOff: Int, writeToWinOff: Long, chunk: Int): Unit =
-      Util.copy(bufIn0.buf, inOff, magBuf, writeToWinOff.toInt, chunk)
-
-    protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit = {
+    override protected def writeFromWindow(n: Int): Unit = {
       // add `+ 1` because we skip that first value
-      Util.copy(melBuf, readFromWinOff.toInt + 1, bufOut0.buf, outOff, chunk)
+      val offI = writeOff.toInt + 1
+      hOut.nextN(melBuf, offI, n)
     }
 
     private def melToFreq(mel : Double): Double =  700 * (math.pow(10, mel / 2595) - 1)
@@ -154,11 +156,11 @@ object MelFilter {
       _binIdx
     }
 
-    protected def processWindow(writeToWinOff: Long): Long = {
+    protected def processWindow(): Unit = {
       val _bands  = bands
       val _melBuf = melBuf
       val _binIdx = binIndices
-      val _magBuf = magBuf
+      val _magBuf = winBuf // magBuf
       var k = 1
       while (k <= _bands) {
         val p = _binIdx(k - 1)
@@ -182,7 +184,6 @@ object MelFilter {
         _melBuf(k) = num
         k += 1
       }
-      bands
     }
   }
 }
