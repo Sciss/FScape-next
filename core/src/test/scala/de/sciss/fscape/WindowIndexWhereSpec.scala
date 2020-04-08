@@ -29,6 +29,9 @@ class WindowIndexWhereSpec extends UGenSpec {
 
       loop(inData, winSzSq, Vector.empty)
     }
+
+    def mkExpected(in: Vec[Int]): Int = in.indexWhere(_ > 0)
+
     // println(s"inDataSq $inDataSq")
     val expected: Vector[Int] = inDataSq.iterator.map { w =>
       mkExpected(w)

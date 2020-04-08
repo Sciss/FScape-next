@@ -63,8 +63,6 @@ object WindowMaxIndex {
     private[this] var index   : Int = _
     private[this] var maxValue: A   = _
 
-    protected def allocOutBuf0(): BufI = ctrl.borrowBufI()
-
     protected def tryObtainWinParams(): Boolean = {
       val ok = hSize.hasNext
       if (ok) {

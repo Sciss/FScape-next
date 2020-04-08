@@ -14,9 +14,10 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.{Attributes, FanInShape2, Inlet, Outlet}
-import de.sciss.fscape.stream.impl.deprecated.{DemandWindowedLogic, NoParamsDemandWindowLogic}
-import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import akka.stream.{Attributes, FanInShape2}
+import de.sciss.fscape.stream.impl.Handlers.{InDMain, InIAux, OutDMain}
+import de.sciss.fscape.stream.impl.logic.WindowedInDOutD
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
 
 object ReduceWindow {
   import graph.BinaryOp.Op
@@ -44,28 +45,34 @@ object ReduceWindow {
   }
 
   private final class Logic(shape: Shp, layer: Layer, op: Op)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape)
-      with DemandWindowedLogic[Double, BufD, Double, BufD, Shp] with NoParamsDemandWindowLogic {
+    extends Handlers(name, layer, shape) with WindowedInDOutD {
 
-    private[this] var value: Double  = _
+    type A = Double
 
-    protected def inletSignal : Inlet [BufD]  = shape.in0
-    protected def inletWinSize: InI           = shape.in1
-    protected def out0        : Outlet[BufD]  = shape.out
+    override protected  val hIn   : InDMain  = InDMain  (this, shape.in0)
+    override protected  val hOut  : OutDMain = OutDMain (this, shape.out)
+    private[this]       val hSize : InIAux   = InIAux   (this, shape.in1)(math.max(0 , _))
 
-    // constructor
-    {
-      installMainAndWindowHandlers()
+    private[this] var value: A = _
+
+    protected def tryObtainWinParams(): Boolean = {
+      val ok = hSize.hasNext
+      if (ok) {
+        hSize.next()
+      }
+      ok
     }
 
-    protected def tpe: StreamType[Double, BufD] = StreamType.double
+    protected def winBufSize: Int = 0
 
-    protected def allocOutBuf0(): BufD = ctrl.borrowBufD()
+    override protected def readWinSize  : Long = hSize.value
+    override protected def writeWinSize : Long = 1
 
-    override protected def allWinParamsReady(winInSize: Int): Int = 0
+    protected def processWindow(): Unit = ()
 
-    override protected def processInput(in  : Array[Double], inOff  : Int,
-                                        win : Array[Double], readOff: Int, chunk: Int): Unit = {
+    override protected def readIntoWindow(chunk: Int): Unit = {
+      val in      = hIn.array
+      val inOff   = hIn.offset
       var i       = inOff
       val stop    = i + chunk
       var _value  = value
@@ -79,18 +86,12 @@ object ReduceWindow {
         i += 1
       }
       value  = _value
+      hIn.advance(chunk)
     }
 
-    // fixes #56
-    override protected def clearInputTail(win: Array[Double], readOff: Int, chunk: Int): Unit = ()
-
-    override protected def prepareWindow(win: Array[Double], winInSize: Int, inSignalDone: Boolean): Long =
-      if (inSignalDone && winInSize == 0) 0 else 1
-
-    protected def processOutput(win: Array[Double], winInSize : Int , writeOff: Long,
-                                out: Array[Double], winOutSize: Long, outOff  : Int, chunk: Int): Unit = {
+    override protected def writeFromWindow(chunk: Int): Unit = {
       assert(writeOff == 0 && chunk == 1)
-      out(outOff) = value
+      hOut.next(value)
     }
   }
 }
