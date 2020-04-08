@@ -21,19 +21,23 @@ import de.sciss.fscape.stream.{BufD, BufElem, Node, StreamType}
 import scala.annotation.tailrec
 import scala.math.min
 
-/** Ok, '''another''' (third) attempt to isolate a correct building block.
-  * This is for window processing UGens where window parameters include
+/** This is a building block for window processing UGens where window parameters include
   * `winSize` and possibly others, and will be polled per window.
   */
-trait WindowedInAOutA[A, E <: BufElem[A]] extends Node {
+trait WindowedInAOutB[A, E <: BufElem[A], B, F <: BufElem[B], C, G <: BufElem[C]] extends Node {
   _: Handlers[_] =>
 
   // ---- abstract ----
 
-  protected def tpe   : StreamType[A, E]
+  /** The input signal type */
+  protected def aTpe  : StreamType[A, E]
+  /** The output signal type */
+  protected def bTpe  : StreamType[B, F]
+  /** The window signal type */
+  protected def wTpe  : StreamType[C, G]
 
   protected def hIn   : Handlers.InMain [A, E]
-  protected def hOut  : Handlers.OutMain[A, E]
+  protected def hOut  : Handlers.OutMain[B, F]
 
   /** Tries to prepare the parameters for the next window.
     * If successful, returns `true` otherwise `false`. If successful,
@@ -97,26 +101,20 @@ trait WindowedInAOutA[A, E <: BufElem[A]] extends Node {
     */
   protected def writeWinSize: Long = if (fullLastWindow) winBufSize else readOff
 
-  /** Reads in a number of frames. The default implementation copies to the window buffer. */
-  protected def readIntoWindow(n: Int): Unit = {
-    val offI = readOff.toInt
-    hIn.nextN(winBuf, offI, n)
-  }
+  /** Reads in a number of frames. */
+  protected def readIntoWindow(n: Int): Unit
 
-  /** Writes out a number of frames. The default implementation copies from the window buffer. */
-  protected def writeFromWindow(n: Int): Unit = {
-    val offI = writeOff.toInt
-    hOut.nextN(winBuf, offI, n)
-  }
+  /** Writes out a number of frames. */
+  protected def writeFromWindow(n: Int): Unit
 
   /** The default implementation clears from `readOff` to the end of the window buffer.
     * This method is not called if `fullLastWindow` returns `false`!
     */
-  protected final def clearWindowTail(): Unit = {
+  protected def clearWindowTail(): Unit = {
     val _buf = winBuf
     if (_buf != null && _buf.length > readOff) {
       val offI = readOff.toInt
-      tpe.clear(winBuf, offI, _buf.length - offI)
+      wTpe.clear(winBuf, offI, _buf.length - offI)
     }
     readOff += readRem
     readRem  = 0L
@@ -124,7 +122,7 @@ trait WindowedInAOutA[A, E <: BufElem[A]] extends Node {
 
   // ---- visible impl ----
 
-  protected final var winBuf: Array[A] = _
+  protected final var winBuf: Array[C] = _
   protected final var readRem   = 0L
   protected final var readOff   = 0L
   protected final var writeOff  = 0L
@@ -143,7 +141,7 @@ trait WindowedInAOutA[A, E <: BufElem[A]] extends Node {
 
       val _winBufSz = winBufSize
       if (winBuf == null || winBuf.length != _winBufSz) {
-        winBuf = if (_winBufSz == 0) null else tpe.newArray(_winBufSz)
+        winBuf = if (_winBufSz == 0) null else wTpe.newArray(_winBufSz)
       }
 
       readOff  = 0L
@@ -183,6 +181,32 @@ trait WindowedInAOutA[A, E <: BufElem[A]] extends Node {
     }
 
     process()
+  }
+}
+
+/** This is a building block for window processing UGens where window parameters include
+  * `winSize` and possibly others, and will be polled per window.
+  */
+trait WindowedInAOutA[A, E <: BufElem[A]] extends WindowedInAOutB[A, E, A, E, A, E] {
+  _: Handlers[_] =>
+
+  protected def tpe: StreamType[A, E]
+
+  protected final def aTpe: StreamType[A, E] = tpe
+  protected final def bTpe: StreamType[A, E] = tpe
+  protected final def wTpe: StreamType[A, E] = tpe
+
+
+  /** Reads in a number of frames. The default implementation copies to the window buffer. */
+  protected def readIntoWindow(n: Int): Unit = {
+    val offI = readOff.toInt
+    hIn.nextN(winBuf, offI, n)
+  }
+
+  /** Writes out a number of frames. The default implementation copies from the window buffer. */
+  protected def writeFromWindow(n: Int): Unit = {
+    val offI = writeOff.toInt
+    hOut.nextN(winBuf, offI, n)
   }
 }
 

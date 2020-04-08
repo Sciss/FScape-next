@@ -51,16 +51,15 @@ object WindowIndexWhere {
     private[this]       val hSize : InIAux    = InIAux  (this, shape.in1)(max(0, _))
     override protected  val hOut  : OutIMain  = OutIMain(this, shape.out)
 
-    private[this] var winSize : Int = _
-    private[this] var index   : Int = _
+    private[this] var index: Int = _
 
     protected def tpe: StreamType[Layer, BufI] = StreamType.int
 
     protected def tryObtainWinParams(): Boolean = {
       val ok = hSize.hasNext
       if (ok) {
-        winSize = hSize.next()
-        index   = -1
+        hSize.next()
+        index = -1
       }
       ok
     }
@@ -69,7 +68,7 @@ object WindowIndexWhere {
 
     protected def winBufSize: Int = 0
 
-    override protected def readWinSize  : Long = winSize
+    override protected def readWinSize  : Long = hSize.value
     override protected def writeWinSize : Long = 1 // if (winSize == 0) 0 else 1
 
     override protected def readIntoWindow(n: Int): Unit =

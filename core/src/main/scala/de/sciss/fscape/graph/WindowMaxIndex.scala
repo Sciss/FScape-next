@@ -36,6 +36,7 @@ final case class WindowMaxIndex(in: GE, size: GE) extends UGenSource.SingleOut {
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
     val Vec(in, size) = args
-    stream.WindowMaxIndex(in = in.toDouble, size = size.toInt)
+    import in.tpe
+    stream.WindowMaxIndex[in.A, in.Buf](in = in.toElem, size = size.toInt)
   }
 }

@@ -53,7 +53,9 @@ object StreamIn {
   object DoubleType extends StreamType[Double, BufD] {
     val ordering: Ordering[Double] = implicitly[Ordering[Double]] // Ordering.Double
 
-    val zero = 0.0
+    final val zero      = 0.0
+    final val minValue  = Double.NegativeInfinity
+    final val maxValue  = Double.PositiveInfinity
 
     final def mkStreamOut(out: OutD): StreamOut = out
 
@@ -141,7 +143,9 @@ object StreamIn {
   object IntType extends StreamType[Int, BufI] {
     val ordering: Ordering[Int] = Ordering.Int
 
-    val zero = 0
+    final val zero      = 0
+    final val minValue  = Int.MinValue
+    final val maxValue  = Int.MaxValue
 
     final def mkStreamOut(out: OutI): StreamOut = out
 
@@ -229,7 +233,9 @@ object StreamIn {
   object LongType extends StreamType[Long, BufL] {
     val ordering: Ordering[Long] = Ordering.Long
 
-    val zero = 0L
+    final val zero      = 0L
+    final val minValue  = Long.MinValue
+    final val maxValue  = Long.MaxValue
 
     final def mkStreamOut(out: OutL): StreamOut = out
 
@@ -414,6 +420,10 @@ trait StreamType[@specialized(Args) A, Buf <: BufElem[A]] {
   def clear(a: Array[A], off: Int, len: Int): Unit
 
   def zero: A
+
+  def minValue: A
+
+  def maxValue: A
 
 //  def reverse(a: Array[A], off: Int, len: Int): Unit
 
