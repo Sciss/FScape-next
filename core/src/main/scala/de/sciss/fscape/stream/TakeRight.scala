@@ -59,7 +59,7 @@ object TakeRight {
     extends Handlers(name, layer, shape) {
 
     private[this] val hIn   = Handlers.InMain [A, E](this, shape.in0)
-    private[this] val hSize = Handlers.InIAux       (this, shape.in1)(math.max(0, _))
+    private[this] val hSize = Handlers.InIAux       (this, shape.in1)(max(0, _))
     private[this] val hOut  = Handlers.OutMain[A, E](this, shape.out)
 
     private[this] var len     : Int       = _
@@ -96,21 +96,21 @@ object TakeRight {
         state     = 1
       }
       if (state == 1) {
-        readIntoWindow()
+        readIntoBuffer()
         if (!hIn.isDone) return
         bufRemain = min(bufWritten, len).toInt
         bufOff    = (max(0L, bufWritten - len) % bufSize).toInt
         state     = 2
       }
 
-      writeFromWindow()
+      writeFromBuffer()
       if (bufRemain == 0) {
         if (hOut.flush()) completeStage()
       }
     }
 
     @tailrec
-    private def readIntoWindow(): Unit = {
+    private def readIntoBuffer(): Unit = {
       val rem     = hIn.available
       if (rem == 0) return
 
@@ -126,10 +126,10 @@ object TakeRight {
         bufOff = (bufOff + chunk2) % bufSize
       }
       bufWritten += rem
-      readIntoWindow()
+      readIntoBuffer()
     }
 
-    private def writeFromWindow(): Unit = {
+    private def writeFromBuffer(): Unit = {
       val rem     = min(bufRemain, hOut.available)
       if (rem == 0) return
 

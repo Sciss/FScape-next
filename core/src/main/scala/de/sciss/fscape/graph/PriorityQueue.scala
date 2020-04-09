@@ -25,6 +25,9 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * top `size` items. By its nature, the UGen only starts outputting
   * values once the input signal (`keys`) has finished.
   *
+  * Both inputs are "hot" and the queue filling ends when either of
+  * `keys` or `values` is finished.
+  *
   * @param keys   the sorting keys; higher values mean higher priority
   * @param values the values corresponding with the keys and eventually
   *               output by the UGen. It is well possible to use the
