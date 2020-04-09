@@ -50,7 +50,7 @@ object LFSaw {
 
     private[this] val hFreq   = Handlers.InDAux   (this, shape.in0)()
     private[this] val hPhase  = Handlers.InDAux   (this, shape.in1)(_ % 1.0)
-    private[this] val hOut    = Handlers.OutDMain (this, shape.out, alwaysProcess = true)
+    private[this] val hOut    = Handlers.OutDMain (this, shape.out)
 
     private[this] var phase   : Double = _  // internal state; does not include `phaseOff`
 

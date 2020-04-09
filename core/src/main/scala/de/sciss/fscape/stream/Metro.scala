@@ -48,7 +48,7 @@ object Metro {
 
     private[this] val hPeriod = Handlers.InLAux   (this, shape.in0)(n => if (n > 0) n else 0x3fffffffffffffffL)
     private[this] val hPhase  = Handlers.InLAux   (this, shape.in1)()
-    private[this] val hOut    = Handlers.OutIMain (this, shape.out, alwaysProcess = true)
+    private[this] val hOut    = Handlers.OutIMain (this, shape.out)
 
     private[this] var phase     : Long  = _
     private[this] var remPeriod : Long = _

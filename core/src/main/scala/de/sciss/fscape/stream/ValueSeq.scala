@@ -65,7 +65,7 @@ object ValueSeq {
                                                (implicit ctrl: Control, tpe: StreamType[A, E])
     extends Handlers(name, layer, shape) {
 
-    private[this] val hOut  = Handlers.OutMain[A, E](this, shape.out, alwaysProcess = true)
+    private[this] val hOut  = Handlers.OutMain[A, E](this, shape.out)
     private[this] var index = 0
 
     protected def onDone(inlet: Inlet[_]): Unit = assert(false)

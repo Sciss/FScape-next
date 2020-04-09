@@ -51,7 +51,7 @@ object SinOsc {
 
     private[this] val hFreq   = Handlers.InDAux   (this, shape.in0)(_ * TwoPi)
     private[this] val hPhase  = Handlers.InDAux   (this, shape.in1)(_ % TwoPi)
-    private[this] val hOut    = Handlers.OutDMain (this, shape.out, alwaysProcess = true)
+    private[this] val hOut    = Handlers.OutDMain (this, shape.out)
 
     private[this] var phase   : Double = _  // internal state; does not include `phaseOff`
 

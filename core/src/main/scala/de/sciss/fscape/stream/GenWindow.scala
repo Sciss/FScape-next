@@ -54,7 +54,7 @@ object GenWindow {
     private[this] val hSize   = Handlers.InLAux   (this, shape.in0)(math.max(0L, _))
     private[this] val hShape  = Handlers.InIAux   (this, shape.in1)(_.clip(WinShape.MinId, WinShape.MaxId))
     private[this] val hParam  = Handlers.InDAux   (this, shape.in2)()
-    private[this] val hOut    = Handlers.OutDMain (this, shape.out, alwaysProcess = true)
+    private[this] val hOut    = Handlers.OutDMain (this, shape.out)
 
     private[this] var winSize: Long     = _
     private[this] var _shape : WinShape = Hann  // arbitrary default

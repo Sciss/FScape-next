@@ -38,7 +38,7 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * @param kernelWidth    width of the kernel signal. Read once per input image.
   * @param kernelHeight   height of the kernel signal. Read once per input image.
   * @param repeat         number of recursive application of the displacement per image. Read once per input image.
-  * @param wrap           if non-zero, wraps pixels around the image bounds, otherwise clips.
+  * @param wrap           if great than zero, wraps pixels around the image bounds, otherwise clips.
   */
 final case class GimpSlur(in: GE, width: GE, height: GE, kernel: GE, kernelWidth: GE, kernelHeight: GE,
                           repeat: GE = 1, wrap: GE = 0)

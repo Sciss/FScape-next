@@ -42,7 +42,7 @@ object WhiteNoise {
   private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
     extends Handlers(name, layer, shape) {
 
-    private[this] val hOut = Handlers.OutDMain(this, shape.out, alwaysProcess = true)
+    private[this] val hOut = Handlers.OutDMain(this, shape.out)
 
     protected def onDone(inlet: Inlet[_]): Unit = assert(false)
 

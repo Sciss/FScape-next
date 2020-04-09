@@ -18,7 +18,7 @@ object GimpSlurTest {
       printedName = "Neural"
       version(printedName)
 
-      val default = Config()
+      val default: Config = Config()
 
       val input : Opt[File] = opt(required = true, descr = "Image input file.")
       val output: Opt[File] = opt(required = true, descr = "Image output file.")
@@ -36,7 +36,7 @@ object GimpSlurTest {
         descr = s"Number of recursive repetitions, 1 or greater (default ${default.repeat})"
       )
       verify()
-      val config = Config(fIn = input(), fOut = output(), narrow = narrow(),
+      val config: Config = Config(fIn = input(), fOut = output(), narrow = narrow(),
         randomization = randomization(), repeat = repeat())
     }
 
@@ -59,12 +59,13 @@ object GimpSlurTest {
       val wvi     = wv.integrate
       assert(wvi.last == 1.0 && wvi.size == 9)
       val kernel  = ValueDoubleSeq(wvi: _*).take(wvi.size)
-      val slur    = GimpSlur(imgIn, width = width, height = height,
+      val slur    = GimpSlur(imgIn/*.out(0)*/, width = width, height = height,
         kernel = kernel, kernelWidth = 3, kernelHeight = 3,
         repeat = config.repeat)
       val tpeOut  = if (config.fOut.extL == "png") ImageFile.Type.PNG else ImageFile.Type.JPG
-      val specOut = specIn.copy(fileType = tpeOut, sampleFormat = ImageFile.SampleFormat.Int8)
-      ImageFileOut(file = config.fOut, spec = specOut, in = slur)
+      val specOut = specIn.copy(fileType = tpeOut, sampleFormat = ImageFile.SampleFormat.Int8 /*, numChannels = 1*/)
+       ImageFileOut(file = config.fOut, spec = specOut, in = slur)
+//      Length(slur).poll("lengths")
     }
 
     val sCfg      = stream.Control.Config()
