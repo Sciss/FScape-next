@@ -43,7 +43,7 @@ class PriorityQueueSpec extends UGenSpec {
       }
       // note: Queue may return different value orderings if there are duplicate keys
       // probably because of hash codes
-      val expKV = q.dequeueAll[(Int /*Double*/, Int)].reverse.toVector
+      val expKV = q.dequeueAll/*[(Int /*Double*/, Int)]*/.reverse.toVector
       // assert (res === exp, info)
 
 //      @tailrec
