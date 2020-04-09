@@ -16,8 +16,10 @@ package stream
 
 import akka.stream.{Attributes, FanInShape2, Inlet, Outlet}
 import de.sciss.fscape.graph.ConstantI
-import de.sciss.fscape.stream.impl.deprecated.FilterIn2Impl
-import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
+
+import scala.annotation.tailrec
+import scala.math.{max, min}
 
 object TakeRight {
   def last[A, E <: BufElem[A]](in: Outlet[E])
@@ -45,7 +47,7 @@ object TakeRight {
 
     val shape: Shape = new FanInShape2(
       in0 = Inlet [E](s"$name.in"    ),
-      in1 = InI        (s"$name.length"),
+      in1 = InI      (s"$name.length"),
       out = Outlet[E](s"$name.out"   )
     )
 
@@ -54,113 +56,93 @@ object TakeRight {
 
   private final class Logic[A, E <: BufElem[A]](shape: Shp[E], layer: Layer)
                                                (implicit ctrl: Control, tpe: StreamType[A, E])
-    extends NodeImpl(name, layer, shape)
-      with FilterIn2Impl[E, BufI, E] {
+    extends Handlers(name, layer, shape) {
+
+    private[this] val hIn   = Handlers.InMain [A, E](this, shape.in0)
+    private[this] val hSize = Handlers.InIAux       (this, shape.in1)(math.max(0, _))
+    private[this] val hOut  = Handlers.OutMain[A, E](this, shape.out)
 
     private[this] var len     : Int       = _
+    private[this] var bufSize : Int       = _
     private[this] var bufWin  : Array[A]  = _     // circular
     private[this] var bufWritten = 0L
 
-    private[this] var outOff              = 0
-    private[this] var outRemain           = 0
-    private[this] var outSent             = true
-
-    private[this] var bufOff    : Int = _
+    private[this] var bufOff    : Int = 0
     private[this] var bufRemain : Int = _
 
-    private[this] var writeMode = false
+    private[this] var state = 0 // 0 get length, 1 read into buffer, 2 write from buffer
 
-    protected def allocOutBuf0(): E = tpe.allocBuf()
+    override protected def stopped(): Unit = {
+      super.stopped()
+      bufWin = null
+    }
+
+    protected def onDone(inlet: Inlet[_]): Unit =
+      if (state == 0) {
+        completeStage()
+      } else {
+        assert (state == 1)
+        process()
+      }
 
     def process(): Unit = {
-      logStream(s"process() $this ${if (writeMode) "W" else "R"}")
+      logStream(s"process() $this state = $state")
 
-      if (writeMode) tryWrite()
-      else {
-        if (canRead) {
-          readIns()
-          if (bufWin == null) {
-            len    = math.max(1, bufIn1.buf(0))
-            bufWin = tpe.newArray(len) // new Array[A](len)
-          }
-          copyInputToBuffer()
-        }
-        if (isClosed(in0) && !isAvailable(in0)) {
-          bufRemain   = math.min(bufWritten, len).toInt
-          bufOff      = (math.max(0L, bufWritten - len) % len).toInt
-          writeMode   = true
-          tryWrite()
-        }
+      if (state == 0) {
+        if (!hSize.hasNext) return
+        len       = hSize.next()
+        bufSize   = max(len, ctrl.blockSize)
+        bufWin    = tpe.newArray(bufSize)
+        state     = 1
+      }
+      if (state == 1) {
+        readIntoWindow()
+        if (!hIn.isDone) return
+        bufRemain = min(bufWritten, len).toInt
+        bufOff    = (max(0L, bufWritten - len) % bufSize).toInt
+        state     = 2
+      }
+
+      writeFromWindow()
+      if (bufRemain == 0) {
+        if (hOut.flush()) completeStage()
       }
     }
 
-    private def copyInputToBuffer(): Unit = {
-      val inRemain  = bufIn0.size
-      val chunk     = math.min(inRemain, len)
-      var inOff     = inRemain - chunk
-      var bufOff    = ((bufWritten + inOff) % len).toInt
-      val chunk1    = math.min(chunk, len - bufOff)
+    @tailrec
+    private def readIntoWindow(): Unit = {
+      val rem     = hIn.available
+      if (rem == 0) return
+
+      val chunk   = min(rem, bufSize) // maximum one full buffer, as we loop the method
+      val chunk1  = min(chunk, bufSize - bufOff)
       if (chunk1 > 0) {
-        // println(s"copy1($inOff / $inRemain -> $bufOff / $len -> $chunk1")
-        System.arraycopy(bufIn0.buf, inOff, bufWin, bufOff, chunk1)
-//        Util.copy       (bufIn0.buf, inOff, bufWin, bufOff, chunk1)
-        bufOff = (bufOff + chunk1) % len
-        inOff += chunk1
+        hIn.nextN(bufWin, bufOff, chunk1)
+        bufOff = (bufOff + chunk1) % bufSize
       }
-      val chunk2 = chunk - chunk1
+      val chunk2  = chunk - chunk1
       if (chunk2 > 0) {
-        // println(s"copy2($inOff / $inRemain -> $bufOff / $len -> $chunk2")
-        System.arraycopy(bufIn0.buf, inOff, bufWin, bufOff, chunk2)
-//        Util.copy       (bufIn0.buf, inOff, bufWin, bufOff, chunk2)
-        // bufOff = (bufOff + chunk2) % len
-        // inOff += chunk2
+        hIn.nextN(bufWin, bufOff, chunk2)
+        bufOff = (bufOff + chunk2) % bufSize
       }
-      bufWritten += inRemain
+      bufWritten += rem
+      readIntoWindow()
     }
 
-    protected def tryWrite(): Unit = {
-      if (outSent) {
-        bufOut0        = allocOutBuf0()
-        outRemain     = bufOut0.size
-        outOff        = 0
-        outSent       = false
+    private def writeFromWindow(): Unit = {
+      val rem     = min(bufRemain, hOut.available)
+      if (rem == 0) return
+
+      val chunk1  = min(rem, bufSize - bufOff)
+      hOut.nextN(bufWin, bufOff, chunk1)
+      bufOff      = (bufOff + chunk1) % bufSize
+      val chunk2  = rem - chunk1
+      if (chunk2 > 0) {
+        hOut.nextN(bufWin, bufOff, chunk2)
+        bufOff = (bufOff + chunk2) % bufSize
       }
 
-      val chunk = math.min(bufRemain, outRemain)
-      if (chunk > 0) {
-        val chunk1  = math.min(len - bufOff, chunk)
-        System.arraycopy(bufWin, bufOff, bufOut0.buf, outOff, chunk1)
-//        Util.copy       (bufWin, bufOff, bufOut0.buf, outOff, chunk1)
-        bufOff  = (bufOff + chunk1) % len
-        outOff += chunk1
-        val chunk2  = chunk - chunk1
-        if (chunk2 > 0) {
-          System.arraycopy(bufWin, bufOff, bufOut0.buf, outOff, chunk2)
-//          Util.copy       (bufWin, bufOff, bufOut0.buf, outOff, chunk2)
-          bufOff  = (bufOff + chunk2) % len
-          outOff += chunk2
-        }
-
-        bufRemain -= chunk
-        outRemain -= chunk
-      }
-
-      val flushOut = bufRemain == 0
-      if (!outSent && (outRemain == 0 || flushOut) && isAvailable(out0)) {
-        if (outOff > 0) {
-          bufOut0.size = outOff
-          push(out0, bufOut0)
-        } else {
-          bufOut0.release()
-        }
-        bufOut0     = null.asInstanceOf[E]
-        outSent     = true
-      }
-
-      if (flushOut && outSent) {
-        logStream(s"completeStage() $this")
-        completeStage()
-      }
+      bufRemain -= rem
     }
   }
 }
