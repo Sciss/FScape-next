@@ -1,6 +1,6 @@
 package de.sciss.fscape.tests
 
-import de.sciss.fscape.{GE, Graph, graph, stream}
+import de.sciss.fscape.{Graph, graph, stream}
 
 // XXX TODO --- make a ScalaTest suite
 object OrthoTest extends App {
@@ -8,7 +8,7 @@ object OrthoTest extends App {
     import graph._
     val v1 = Vector(3.0, 1.0)
     val v2 = Vector(2.0, 2.0)
-    val vs = (v1 ++ v2).map(x => x: GE).reduce(_ ++ _)  // XXX TODO --- ugly
+    val vs = ValueDoubleSeq(v1 ++ v2: _*)
     val us = GramSchmidtMatrix(vs, columns = 2, rows = 2, normalize = 0)
     val es = GramSchmidtMatrix(vs, columns = 2, rows = 2, normalize = 1)
     RepeatWindow(us).poll(2, "us") // expected: (3, 1), (-0.4, 1.2)
