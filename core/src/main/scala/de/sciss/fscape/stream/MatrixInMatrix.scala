@@ -15,10 +15,13 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape8}
-import de.sciss.fscape.stream.impl.deprecated.{DemandFilterIn8D, DemandFilterLogic, DemandWindowedLogicOLD}
+import de.sciss.fscape.stream.impl.Handlers.InIAux
+import de.sciss.fscape.stream.impl.logic.FilterWindowedInAOutA
 import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import de.sciss.numbers.Implicits._
 
 import scala.annotation.tailrec
+import scala.math.{max, min}
 
 object MatrixInMatrix {
   def apply(in: OutD, rowsOuter: OutI, columnsOuter: OutI, rowsInner: OutI, columnsInner: OutI,
@@ -57,10 +60,15 @@ object MatrixInMatrix {
   }
 
   private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape)
-      with DemandWindowedLogicOLD[Shp]
-      with DemandFilterLogic[BufD, Shp]
-      with DemandFilterIn8D[BufD, BufI, BufI, BufI, BufI, BufI, BufI, BufI] {
+    extends FilterWindowedInAOutA[Double, BufD, Shp](name, layer, shape)(shape.in0, shape.out) {
+
+    private[this] val hRowsOut    : InIAux   = InIAux   (this, shape.in1)(max(1, _))
+    private[this] val hColsOut    : InIAux   = InIAux   (this, shape.in2)(max(1, _))
+    private[this] val hRowsIn     : InIAux   = InIAux   (this, shape.in3)(max(1, _))
+    private[this] val hColsIn     : InIAux   = InIAux   (this, shape.in4)(max(1, _))
+    private[this] val hRowStep    : InIAux   = InIAux   (this, shape.in5)(max(1, _))
+    private[this] val hColStep    : InIAux   = InIAux   (this, shape.in6)(max(1, _))
+    private[this] val hMode       : InIAux   = InIAux   (this, shape.in7)(_.clip(0, 2))
 
     private[this] var rowsOuter   : Int  = _
     private[this] var columnsOuter: Int  = _
@@ -74,66 +82,54 @@ object MatrixInMatrix {
     private[this] var numRowSteps : Int  = _
 
     private[this] var sizeOuter = 0
-    private[this] var winBuf  : Array[Double] = _
+    private[this] var frames    = 0L
 
-    protected def startNextWindow(): Long = {
-      val inOff = auxInOff
-      if (bufIn1 != null && inOff < bufIn1.size) {
-        rowsOuter = math.max(1, bufIn1.buf(inOff))
-      }
-      if (bufIn2 != null && inOff < bufIn2.size) {
-        columnsOuter = math.max(1, bufIn2.buf(inOff))
-      }
-      if (bufIn3 != null && inOff < bufIn3.size) {
-        rowsInner = math.min(math.max(1, bufIn3.buf(inOff)), rowsOuter)
-      }
-      if (bufIn4 != null && inOff < bufIn4.size) {
-        columnsInner = math.min(math.max(1, bufIn4.buf(inOff)), columnsOuter)
-      }
-      if (bufIn5 != null && inOff < bufIn5.size) {
-        rowStep = math.max(1, bufIn5.buf(inOff))
-      }
-      if (bufIn6 != null && inOff < bufIn6.size) {
-        columnStep = math.max(1, bufIn6.buf(inOff))
-      }
-      if (bufIn7 != null && inOff < bufIn7.size) {
-        mode = math.max(0, math.min(2, bufIn7.buf(inOff)))    // XXX TODO --- not yet used
-      }
-      numColSteps = columnsOuter / columnStep
-      numRowSteps = rowsOuter    / rowStep
-      sizeInner   = rowsInner * columnsInner
+    protected def tryObtainWinParams(): Boolean = {
+      val ok =
+        hRowsOut.hasNext &&
+        hColsOut.hasNext &&
+        hRowsIn .hasNext &&
+        hColsIn .hasNext &&
+        hRowStep.hasNext &&
+        hColStep.hasNext &&
+        hMode   .hasNext
 
-      val newSizeOuter = rowsOuter * columnsOuter
-      if (newSizeOuter != sizeOuter) {
-        sizeOuter = newSizeOuter
-        winBuf    = new Array(newSizeOuter)
-      }
+      if (ok) {
+        rowsOuter     = hRowsOut.next()
+        columnsOuter  = hColsOut.next()
+        rowsInner     = min(hRowsIn.next(), rowsOuter)
+        columnsInner  = min(hColsIn.next(), columnsOuter)
+        rowStep       = hRowStep.next()
+        columnStep    = hColStep.next()
+        mode          = hMode.next()  // XXX TODO --- not yet used
+        numColSteps   = columnsOuter / columnStep
+        numRowSteps   = rowsOuter    / rowStep
+        sizeInner     = rowsInner * columnsInner
 
-      sizeOuter
+        val newSizeOuter = rowsOuter * columnsOuter
+        if (newSizeOuter != sizeOuter) {
+          sizeOuter = newSizeOuter
+        }
+
+        val steps   = numColSteps.toLong * numRowSteps
+        if (steps > 0x7FFFFFFF) sys.error(s"Matrix too large - $steps steps is larger than 32bit")
+        frames = steps * sizeInner
+      }
+      ok
     }
 
-    protected def canStartNextWindow: Boolean = auxInRemain > 0 || (auxInValid && {
-      isClosed(in1) && isClosed(in2) && isClosed(in3) && isClosed(in4) &&
-      isClosed(in5) && isClosed(in6) && isClosed(in7)
-    })
+    protected def winBufSize: Int = sizeOuter
 
-    override protected def stopped(): Unit = {
-      super.stopped()
-      winBuf = null
-    }
+    override protected def writeWinSize: Long = frames
 
-    protected def copyInputToWindow(writeToWinOff: Long, chunk: Int): Unit =
-      Util.copy(bufIn0.buf, mainInOff, winBuf, writeToWinOff.toInt, chunk)
+    protected def processWindow(): Unit = ()
 
-    protected def processWindow(writeToWinOff: Long): Long = {
-      val steps   = numColSteps.toLong * numRowSteps
-      val frames  = steps * sizeInner
-      if (steps > 0x7FFFFFFF) sys.error(s"Matrix too large - $steps steps is larger than 32bit")
-      frames
+    override protected def writeFromWindow(n: Int): Unit = {
+      copyWindowToOutput(writeOff, chunk = n)
     }
 
     @tailrec
-    protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit = {
+    private def copyWindowToOutput(readFromWinOff: Long, chunk: Int): Unit = {
       val step        = (readFromWinOff / sizeInner).toInt
       val stepOff     = (readFromWinOff % sizeInner).toInt
       val _rowsIn     = rowsInner
@@ -150,8 +146,8 @@ object MatrixInMatrix {
       val colOff      = stepOff  % _colsIn
 
       val in          = winBuf
-      val out         = bufOut0.buf
-      var outOffI     = outOff
+      val out         = hOut.array
+      var outOffI     = hOut.offset
 
       var colIdx      = colStart + colOff
       var rowIdx      = rowStart + rowOff
@@ -178,9 +174,11 @@ object MatrixInMatrix {
           rowIdx += 1
         }
       }
-      
-      if (chunk2 < chunk) 
-        copyWindowToOutput(readFromWinOff = readFromWinOff + chunk2, outOff = outOff + chunk2, chunk = chunk - chunk2)
+
+      hOut.advance(chunk2)
+
+      if (chunk2 < chunk)
+        copyWindowToOutput(readFromWinOff = readFromWinOff + chunk2, chunk = chunk - chunk2)
     }
   }
 }

@@ -52,15 +52,15 @@ object MatrixInMatrixTest extends App {
     val i3        = flt
     val frameTr1  = Metro(frameSize)
     val frameTr2  = Metro(frameSize)
-    val maxR      = RunningMax(i3, gate = frameTr1).drop(frameSize - 1)
-    val minR      = RunningMin(i3, gate = frameTr1).drop(frameSize - 1)
+    val maxR      = RunningMax(i3, gate = frameTr1).last
+    val minR      = RunningMin(i3, gate = frameTr1).last
     val max       = Gate(maxR, gate = frameTr2)
     val min       = Gate(minR, gate = frameTr2)
     val mul       = (max - min).reciprocal
     val add       = -min
     val i3e       = i3.elastic(frameSize / cfg.blockSize + 1)
 
-    val noise     = WhiteNoise(0.1)
+    val noise     = WhiteNoise(0.1).take(frameSize)
     val i4        = (i3e + add) * mul + noise
 
     Progress(Frames(i4) / (2 * frameSize), Metro(width))
