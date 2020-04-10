@@ -16,10 +16,13 @@ package stream
 
 import akka.stream.{Attributes, FanInShape5}
 import de.sciss.file.File
-import de.sciss.fscape.stream.impl.deprecated.{FilterIn5DImpl, FilterLogicImpl, WindowedLogicImpl}
+import de.sciss.fscape.stream.impl.Handlers.{InDAux, InIAux, InLAux}
+import de.sciss.fscape.stream.impl.logic.FilterWindowedInAOutA
 import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeImpl}
-import de.sciss.numbers
+import de.sciss.numbers.Implicits._
 import de.sciss.numbers.{IntFunctions => ri, LongFunctions => rl}
+
+import scala.math.{max, min}
 
 // XXX TODO --- should have a progress indicator output (and way to stop inside storageFFT)
 object Fourier {
@@ -56,10 +59,12 @@ object Fourier {
   }
 
   private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape)
-      with WindowedLogicImpl[Shp]
-      with FilterLogicImpl[BufD, Shp]
-      with FilterIn5DImpl[BufD, BufL, BufL, BufD, BufI] {
+    extends FilterWindowedInAOutA[Double, BufD, Shp](name, layer, shape)(shape.in0, shape.out) {
+
+    private[this] val hSize : InLAux = InLAux   (this, shape.in1)(max(1L, _) * 2)
+    private[this] val hPad  : InLAux = InLAux   (this, shape.in2)(max(0L, _) * 2)
+    private[this] val hDir  : InDAux = InDAux   (this, shape.in3)()
+    private[this] val hMem  : InIAux = InIAux   (this, shape.in4)(i => max(2, i).nextPowerOfTwo)
 
     private[this] val fileBuffers   = new Array[FileBuffer](4)
     private[this] val tempFiles     = new Array[File      ](4)
@@ -75,9 +80,6 @@ object Fourier {
       super.stopped()
       freeFileBuffers()
     }
-
-    @inline private def fftInSizeFactor   = 2
-    @inline private def fftOutSizeFactor  = 2
 
     @inline private def freeInputFileBuffers(): Unit = freeFileBuffers(2)
     @inline private def freeFileBuffers     (): Unit = freeFileBuffers(4)
@@ -97,79 +99,82 @@ object Fourier {
       }
     }
 
-    protected def startNextWindow(inOff: Int): Long = {
-      import numbers.Implicits._
-      val inF = fftInSizeFactor
-      if (bufIn1 != null && inOff < bufIn1.size) {
-        size = math.max(1, bufIn1.buf(inOff)) * inF
-      }
-      if (bufIn2 != null && inOff < bufIn2.size) {
-        padding = math.max(0, bufIn2.buf(inOff)) * inF
+    protected def winBufSize: Int = 0
+
+    override protected def readWinSize  : Long = size
+    override protected def writeWinSize : Long = fftSize * 2
+
+    protected def tryObtainWinParams(): Boolean = {
+      val ok = hSize.hasNext && hPad.hasNext && hDir.hasNext && hMem.hasNext
+      if (ok) {
+        val inF = 2
+        size    = hSize .next()
+        padding = hPad  .next()
         padding = rl.nextPowerOfTwo(size + padding) - size
-      }
 
-      val n = (size + padding) / inF
-      if (n != fftSize) {
-        fftSize = n
-      }
+        val n = (size + padding) / inF
+        if (n != fftSize) {
+          fftSize = n
+        }
 
-      if (bufIn3 != null && inOff < bufIn3.size) {
-        dir   = bufIn3.buf(inOff)
+        dir   = hDir.next()
         gain  = if (dir > 0) 1.0 / fftSize else 1.0
-      }
-      if (bufIn4 != null && inOff < bufIn4.size) {
-        memAmount = math.min(fftSize, math.max(2, bufIn4.buf(inOff)).nextPowerOfTwo).toInt
-      }
+        memAmount = min(fftSize, hMem.next()).toInt
 
-      // create new buffers
-      freeFileBuffers()
-      var i = 0
-      while (i < 4) {
-        fileBuffers(i) = FileBuffer()
-        tempFiles  (i) = ctrl.createTempFile()
-        i += 1
+        // create new buffers
+        freeFileBuffers()
+        var i = 0
+        while (i < 4) {
+          fileBuffers(i) = FileBuffer()
+          tempFiles  (i) = ctrl.createTempFile()
+          i += 1
+        }
       }
-
-      size
+      ok
     }
 
-    protected def copyInputToWindow(inOff: Int, writeToWinOff: Long, chunk: Int): Unit = {
+    override protected def readIntoWindow(chunk: Int): Unit = {
       // Write first half of input to 0, second half to 1
-      var inOff0    = inOff
+      val in        = hIn.array
+      var inOff0    = hIn.offset
       var chunk0    = chunk
-      if (writeToWinOff < fftSize) {
-        val chunk1 = math.min(chunk0, fftSize - writeToWinOff).toInt
-        fileBuffers(0).write(bufIn0.buf, inOff0, chunk1)
+      if (readOff < fftSize) {
+        val chunk1 = min(chunk0, fftSize - readOff).toInt
+        fileBuffers(0).write(in, inOff0, chunk1)
         inOff0 += chunk1
         chunk0 -= chunk1
       }
       if (chunk0 > 0) {
-        fileBuffers(1).write(bufIn0.buf, inOff0, chunk0)
+        fileBuffers(1).write(in, inOff0, chunk0)
       }
+      hIn.advance(chunk)
     }
 
-    protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit = {
+    override protected def writeFromWindow(chunk: Int): Unit = {
       // Read first half of output from 2, second half from 3
+      val out       = hOut.array
+      val outOff    = hOut.offset
       var outOff0   = outOff
       var chunk0    = chunk
-      if (readFromWinOff < fftSize) {
-        val chunk1 = math.min(chunk0, fftSize - readFromWinOff).toInt
-        fileBuffers(2).read(bufOut0.buf, outOff0, chunk1)
+      if (writeOff < fftSize) {
+        val chunk1 = math.min(chunk0, fftSize - writeOff).toInt
+        fileBuffers(2).read(out, outOff0, chunk1)
         outOff0 += chunk1
         chunk0  -= chunk1
       }
       if (chunk0 > 0) {
-        fileBuffers(3).read(bufOut0.buf, outOff0, chunk0)
+        fileBuffers(3).read(out, outOff0, chunk0)
       }
       if (gain != 1.0) {
-        Util.mul(bufOut0.buf, outOff, chunk, gain) // scale correctly for forward FFT
+        Util.mul(out, outOff, chunk, gain) // scale correctly for forward FFT
       }
+      hOut.advance(chunk)
     }
 
-    protected def processWindow(writeToWinOff: Long): Long = {
-      var zero = (fftSize << 1) - writeToWinOff
-      if (writeToWinOff < fftSize) {
-        val chunk1 = math.min(zero, fftSize - writeToWinOff)
+    protected def processWindow(): Unit = {
+      var zero = (fftSize << 1) - readOff
+      if (readOff < fftSize) {
+        val chunk1 = math.min(zero, fftSize - readOff)
         fileBuffers(0).writeValue(0.0, chunk1)
         zero -= chunk1
       }
@@ -180,7 +185,6 @@ object Fourier {
       storageFFT(fileBuffers, tempFiles, len = fftSize, dir = dir, memAmount = memAmount)
 
       freeInputFileBuffers()    // we don't need the inputs any longer
-      fftSize * fftOutSizeFactor
     }
   }
 

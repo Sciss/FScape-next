@@ -11,17 +11,17 @@ import scala.swing.Swing
 
 object FourierTest extends App {
 //  val fIn   = userHome / "Music" / "work" / "mentasm-e8646341.aif"
-  val fIn   = userHome / "Documents" / "projects" / "Anemone"/ "minuten" / "rec" / "AnemoneRehearsal160527_15h24m.aif"
-  val fOut  = userHome / "Music" / "work" / "_killme.aif"
-  val fOut2 = userHome / "Music" / "work" / "_killme2.aif"
-  val fOut3 = userHome / "Music" / "work" / "_killme3.aif"
+  val fIn   = file("/") / "data" / "projects" / "Anemone"/ "minuten" / "rec" / "AnemoneRehearsal160527_15h24m.aif"
+  val fOut  = file("/") / "data" / "temp" / "_killme.aif"
+  val fOut2 = file("/") / "data" / "temp" / "_killme2.aif"
+  val fOut3 = file("/") / "data" / "temp" / "_killme3.aif"
 
   import graph._
   import numbers.Implicits._
 
   // showGraphLog = true
 
-  val inSpec = AudioFile.readSpec(fIn)
+  lazy val inSpec = AudioFile.readSpec(fIn)
 
   lazy val gCos = Graph {
     val sr = 44100.0
@@ -96,10 +96,11 @@ object FourierTest extends App {
     val fftSizeOut = fftSizeIn.nextPowerOfTwo
     assert(fftSizeOut == fftSizeIn)
     val fwd       = Fourier(in = complex, size = fftSizeIn , dir = +1)
+    AudioFileOut(file = fOut2, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = fwd.complex.mag)
     val bwd       = Fourier(in = fwd    , size = fftSizeOut, dir = -1)
     val norm      = complexNormalize(bwd)
-    val unzip     = UnzipWindow(in = norm)
-    val re        = ChannelProxy(unzip, 0)
+//    val unzip     = UnzipWindow(in = norm)
+    val re        = norm.complex.real // ChannelProxy(unzip, 0)
     // val im        = ChannelProxy(unzip, 1)
     AudioFileOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = re)
   }
@@ -128,7 +129,7 @@ object FourierTest extends App {
     gui = SimpleGUI(ctrl)
   }
 
-  ctrl.run(g)
+  ctrl.run(gFwdBwd)
 
   println("Running.")
 }
