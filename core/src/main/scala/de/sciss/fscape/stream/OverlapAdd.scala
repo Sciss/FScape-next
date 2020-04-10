@@ -14,11 +14,12 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.{Attributes, FanInShape3}
-import de.sciss.fscape.stream.impl.deprecated.{DemandChunkImpl, DemandFilterIn3D, DemandFilterLogic}
-import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import akka.stream.{Attributes, FanInShape3, Inlet}
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
 
+import scala.annotation.tailrec
 import scala.collection.mutable
+import scala.math.{max, min}
 
 /** Overlapping window summation. Counter-part to `Sliding`.
   */
@@ -64,15 +65,17 @@ object OverlapAdd {
   }
 
   private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape)
-      with DemandChunkImpl[Shp] /* DemandWindowedLogic[Shape] */
-      with DemandFilterLogic[BufD, Shp]
-      with DemandFilterIn3D[BufD, BufI, BufI] {
+    extends Handlers[Shp](name, layer, shape) {
 
-    private[this] var writeToWinOff     = 0L
-    private[this] var writeToWinRemain  = 0L
-    private[this] var readFromWinOff    = 0L
-    private[this] var readFromWinRemain = 0L
+    private[this] val hIn   = Handlers.InDMain  (this, shape.in0)
+    private[this] val hSize = Handlers.InIAux   (this, shape.in1)(max(1, _))
+    private[this] val hStep = Handlers.InIAux   (this, shape.in2)(max(1, _))
+    private[this] val hOut  = Handlers.OutDMain (this, shape.out)
+
+    private[this] var writeToWinOff     = 0
+    private[this] var writeToWinRemain  = 0
+    private[this] var readFromWinOff    = 0
+    private[this] var readFromWinRemain = 0
     private[this] var isNextWindow      = true
 
     private[this] var size  : Int  = _
@@ -80,38 +83,44 @@ object OverlapAdd {
 
     private[this] val windows = mutable.Buffer.empty[Window]
 
-    private  def startNextWindow(): Long = {
-      val inOff = auxInOff
-      if (bufIn1 != null && inOff < bufIn1.size) {
-        size = math.max(1, bufIn1.buf(inOff))
+    protected def onDone(inlet: Inlet[_]): Unit =
+      process()
+
+    private def tryObtainWinParams(): Boolean = {
+      val ok = hSize.hasNext && hStep.hasNext
+      if (ok) {
+        size = hSize.next()
+        step = hStep.next()
+        windows += new Window(new Array[Double](size))
       }
-      if (bufIn2 != null && inOff < bufIn2.size) {
-        step = math.max(1, bufIn2.buf(inOff))
-      }
-      windows += new Window(new Array[Double](size))
-      size  // -> writeToWinRemain
+      ok
     }
 
     private def copyInputToWindow(writeToWinOff: Long, chunk: Int): Unit = {
-      val inOff   = mainInOff
       val win     = windows.last
-      val chunk1  = math.min(chunk, win.inRemain)
+      val chunk1  = min(chunk, win.inRemain)
       if (chunk1 > 0) {
-        Util.copy(bufIn0.buf, inOff, win.buf, win.offIn, chunk1)
+        hIn.nextN(win.buf, win.offIn, chunk1)
         win.offIn += chunk1
+        val chunk2 = chunk - chunk1
+        if (chunk2 > 0) {
+          hIn.skip(chunk2)
+        }
+      } else {
+        hIn.skip(chunk)
       }
     }
 
-    private def processWindow(writeToWinOff: Long): Long = step
-
-    private def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit = {
-      Util.clear(bufOut0.buf, outOff, chunk)
+    private def copyWindowToOutput(readFromWinOff: Long, chunk: Int): Unit = {
+      val out     = hOut.array
+      val outOff  = hOut.offset
+      Util.clear(out, outOff, chunk)
       var i = 0
       while (i < windows.length) {  // take care of index as we drop windows on the way
         val win     = windows(i)
         val chunk1  = math.min(win.availableOut, chunk)
         if (chunk1 > 0) {
-          Util.add(win.buf, win.offOut, bufOut0.buf, outOff, chunk1)
+          Util.add(win.buf, win.offOut, out, outOff, chunk1)
           win.offOut += chunk1
         }
         if (win.outRemain == 0) {
@@ -120,23 +129,16 @@ object OverlapAdd {
           i += 1
         }
       }
+      hOut.advance(chunk)
     }
 
-    @inline
-    private[this] def canWriteToWindow  = readFromWinRemain == 0 && inValid
-
-    protected def processChunk(): Boolean = {
+    @tailrec
+    protected def process(): Unit = {
       var stateChange = false
 
-//      if (inputsEnded) {
-//        println("AQUI")
-//      }
-
-      if (canWriteToWindow) {
-        val flushIn0 = inputsEnded // inRemain == 0 && shouldComplete()
-
-        if (flushIn0) {
-          if (readFromWinRemain == 0 && windows.nonEmpty) {
+      if (readFromWinRemain == 0) { // aka can-write-to-window
+        if (hIn.isDone) {
+          if (windows.nonEmpty) {
             var i = 0
             var maxAvail = 0
             while (i < windows.length) { // take care of index as we drop windows on the way
@@ -147,35 +149,37 @@ object OverlapAdd {
               i += 1
             }
             readFromWinRemain = maxAvail
+          } else {
+            if (hOut.flush()) completeStage()
+            return
           }
 
         } else {
           if (isNextWindow) {
-            writeToWinRemain  = startNextWindow()
+            if (!tryObtainWinParams()) return
+            writeToWinRemain  = size // startNextWindow()
             isNextWindow      = false
             stateChange       = true
           }
 
-          val chunk     = math.min(writeToWinRemain, mainInRemain).toInt
+          val chunk = min(writeToWinRemain, hIn.available)
           if (chunk > 0) {
             // logStream(s"writeToWindow(); inOff = $inOff, writeToWinOff = $writeToWinOff, chunk = $chunk")
             if (chunk > 0) {
               copyInputToWindow(writeToWinOff = writeToWinOff, chunk = chunk)
-              mainInOff        += chunk
-              mainInRemain     -= chunk
               writeToWinOff    += chunk
               writeToWinRemain -= chunk
               stateChange       = true
             }
 
             if (writeToWinRemain == 0) {
-              readFromWinRemain = processWindow(writeToWinOff = writeToWinOff) // , flush = flushIn)
+              readFromWinRemain = step // processWindow(writeToWinOff = writeToWinOff) // , flush = flushIn)
               writeToWinOff     = 0
               readFromWinOff    = 0
               isNextWindow      = true
               stateChange       = true
-              auxInOff         += 1
-              auxInRemain      -= 1
+              // auxInOff         += 1
+              // auxInRemain      -= 1
               // logStream(s"processWindow(); readFromWinRemain = $readFromWinRemain")
             }
           }
@@ -183,21 +187,17 @@ object OverlapAdd {
       }
 
       if (readFromWinRemain > 0) {
-        val chunk = math.min(readFromWinRemain, outRemain).toInt
+        val chunk = min(readFromWinRemain, hOut.available)
         if (chunk > 0) {
           // logStream(s"readFromWindow(); readFromWinOff = $readFromWinOff, outOff = $outOff, chunk = $chunk")
-          copyWindowToOutput(readFromWinOff = readFromWinOff, outOff = outOff, chunk = chunk)
+          copyWindowToOutput(readFromWinOff = readFromWinOff, chunk = chunk)
           readFromWinOff    += chunk
           readFromWinRemain -= chunk
-          outOff            += chunk
-          outRemain         -= chunk
           stateChange        = true
         }
       }
 
-      stateChange
+      if (stateChange) process()
     }
-
-    protected def shouldComplete(): Boolean = inputsEnded && windows.isEmpty // writeToWinOff == 0 && readFromWinRemain == 0
   }
 }

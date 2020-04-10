@@ -9,8 +9,8 @@ import de.sciss.synth.io.{AudioFile, AudioFileSpec}
 import scala.swing.Swing
 
 object PercussionTest extends App {
-  val fIn   = file("/data") / "projects" / "Unlike_SpillOver" / "audio_work" / "mentasm-e8646341-63dcf8a8.aif"
-  val fOut  = file("/data") / "temp" / "_killme.aif"
+  val fIn   = file("/") / "data" / "projects" / "Unlike_SpillOver" / "audio_work" / "mentasm-e8646341-63dcf8a8.aif"
+  val fOut  = file("/") / "data" / "temp" / "_killme.aif"
 
   import graph._
   import numbers.Implicits._
