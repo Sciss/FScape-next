@@ -53,6 +53,7 @@ object MakeWorkspace {
       ModRemoveDC,
       ModInverseFilter,
       ModBleach,
+      ModSpectralShadow,
     ).sortBy(_.name)
 
   def help[S <: Sys[S]](m: Module)(implicit tx: S#Tx): Option[Markdown[S]] = {

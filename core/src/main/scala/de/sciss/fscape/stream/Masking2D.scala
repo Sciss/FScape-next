@@ -13,11 +13,14 @@
 
 package de.sciss.fscape.stream
 
-import akka.stream.{Attributes, FanInShape8, Outlet}
+import akka.stream.{Attributes, FanInShape8}
 import de.sciss.fscape.Util
-import de.sciss.fscape.stream.impl.deprecated.{DemandAuxInHandler, DemandInOutImpl, DemandProcessInHandler, DemandWindowedLogicOLD, Out1DoubleImpl, Out1LogicImpl, ProcessOutHandlerImpl}
-import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.Handlers.{InDAux, InDMain, InIAux, OutDMain}
+import de.sciss.fscape.stream.impl.logic.WindowedInA1A2OutB
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
 import de.sciss.numbers
+
+import scala.math.max
 
 object Masking2D {
   def apply(fg: OutD, bg: OutD, rows: OutI, columns: OutI, threshNoise: OutD, threshMask: OutD,
@@ -56,206 +59,18 @@ object Masking2D {
   }
 
   private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape)
-      with DemandWindowedLogicOLD[Shp]
-      with Out1DoubleImpl     [Shp]
-      with Out1LogicImpl[BufD, Shp]
-      with DemandInOutImpl    [Shp] {
+    extends Handlers(name, layer, shape)
+      with WindowedInA1A2OutB[Double, BufD, Double, BufD, Double, BufD, Double, BufD] {
 
-    private[this] var bufIn0 : BufD = _
-    private[this] var bufIn1 : BufD = _
-    private[this] var bufIn2 : BufI = _
-    private[this] var bufIn3 : BufI = _
-    private[this] var bufIn4 : BufD = _
-    private[this] var bufIn5 : BufD = _
-    private[this] var bufIn6 : BufI = _
-    private[this] var bufIn7 : BufI = _
-
-    protected var bufOut0: BufD = _
-
-    private[this] var _mainCanRead  = false
-    private[this] var _auxCanRead   = false
-    private[this] var _mainInValid  = false
-    private[this] var _auxInValid   = false
-    private[this] var _inValid      = false
-
-    protected def out0: Outlet[BufD] = shape.out
-
-    def mainCanRead : Boolean = _mainCanRead
-    def auxCanRead  : Boolean = _auxCanRead
-    def mainInValid : Boolean = _mainInValid
-    def auxInValid  : Boolean = _auxInValid
-    def inValid     : Boolean = _inValid
-
-    new DemandProcessInHandler(shape.in0, this)
-    new DemandProcessInHandler(shape.in1, this)
-    new DemandAuxInHandler    (shape.in2, this)
-    new DemandAuxInHandler    (shape.in3, this)
-    new DemandAuxInHandler    (shape.in4, this)
-    new DemandAuxInHandler    (shape.in5, this)
-    new DemandAuxInHandler    (shape.in6, this)
-    new DemandAuxInHandler    (shape.in7, this)
-    new ProcessOutHandlerImpl (shape.out, this)
-
-//    override def preStart(): Unit = {
-//      val sh = shape
-//      pull(sh.in0)
-//      pull(sh.in1)
-//      pull(sh.in2)
-//      pull(sh.in3)
-//      pull(sh.in4)
-//      pull(sh.in5)
-//      pull(sh.in6)
-//      pull(sh.in7)
-//    }
-
-    override protected def stopped(): Unit = {
-      super.stopped()
-      fgVec   = null
-      bgVec   = null
-      outVec  = null
-      kernel  = null
-      fgMat   = null
-      bgMat   = null
-      freeInputBuffers()
-      freeOutputBuffers()
-    }
-
-    protected def readMainIns(): Int = {
-      freeMainInBuffers()
-      val sh        = shape
-      bufIn0        = grab(sh.in0)
-      bufIn0.assertAllocated()
-      tryPull(sh.in0)
-
-      bufIn1        = grab(sh.in1)
-      bufIn1.assertAllocated()
-      tryPull(sh.in1)
-
-      if (!_mainInValid) {
-        _mainInValid= true
-        _inValid    = _auxInValid
-      }
-
-      _mainCanRead = false
-      math.min(bufIn0.size, bufIn1.size)
-    }
-
-    private def freeInputBuffers(): Unit = {
-      freeMainInBuffers()
-      freeAuxInBuffers()
-    }
-
-    private def freeAuxInBuffers(): Unit = {
-      if (bufIn2 != null) {
-        bufIn2.release()
-        bufIn2 = null
-      }
-      if (bufIn3 != null) {
-        bufIn3.release()
-        bufIn3 = null
-      }
-      if (bufIn4 != null) {
-        bufIn4.release()
-        bufIn4 = null
-      }
-      if (bufIn5 != null) {
-        bufIn5.release()
-        bufIn5 = null
-      }
-      if (bufIn6 != null) {
-        bufIn6.release()
-        bufIn6 = null
-      }
-      if (bufIn7 != null) {
-        bufIn7.release()
-        bufIn7 = null
-      }
-    }
-
-    private def freeMainInBuffers(): Unit = {
-      if (bufIn0 != null) {
-        bufIn0.release()
-        bufIn0 = null
-      }
-      if (bufIn1 != null) {
-        bufIn1.release()
-        bufIn1 = null
-      }
-    }
-
-    protected def readAuxIns(): Int = {
-      freeAuxInBuffers()
-      val sh    = shape
-      var sz    = 0
-
-      if (isAvailable(sh.in2)) {
-        bufIn2  = grab(sh.in2)
-        sz      = math.max(sz, bufIn2.size)
-        tryPull(sh.in2)
-      }
-      if (isAvailable(sh.in3)) {
-        bufIn3  = grab(sh.in3)
-        sz      = math.max(sz, bufIn3.size)
-        tryPull(sh.in3)
-      }
-      if (isAvailable(sh.in4)) {
-        bufIn4  = grab(sh.in4)
-        sz      = math.max(sz, bufIn4.size)
-        tryPull(sh.in4)
-      }
-      if (isAvailable(sh.in5)) {
-        bufIn5  = grab(sh.in5)
-        sz      = math.max(sz, bufIn5.size)
-        tryPull(sh.in5)
-      }
-      if (isAvailable(sh.in6)) {
-        bufIn6  = grab(sh.in6)
-        sz      = math.max(sz, bufIn6.size)
-        tryPull(sh.in6)
-      }
-      if (isAvailable(sh.in7)) {
-        bufIn7  = grab(sh.in7)
-        sz      = math.max(sz, bufIn7.size)
-        tryPull(sh.in7)
-      }
-
-      if (!_auxInValid) {
-        _auxInValid = true
-        _inValid    = _mainInValid
-      }
-
-      _auxCanRead = false
-      sz
-    }
-
-    def updateAuxCanRead(): Unit = {
-      val sh = shape
-      _auxCanRead =
-        ((isClosed(sh.in2) && _auxInValid) || isAvailable(sh.in2)) &&
-          ((isClosed(sh.in3) && _auxInValid) || isAvailable(sh.in3)) &&
-          ((isClosed(sh.in4) && _auxInValid) || isAvailable(sh.in4)) &&
-          ((isClosed(sh.in5) && _auxInValid) || isAvailable(sh.in5)) &&
-          ((isClosed(sh.in6) && _auxInValid) || isAvailable(sh.in6)) &&
-          ((isClosed(sh.in7) && _auxInValid) || isAvailable(sh.in7))
-    }
-
-    def updateMainCanRead(): Unit = {
-      val sh = shape
-      _mainCanRead = isAvailable(sh.in0) && isAvailable(sh.in1)
-    }
-
-    protected def inputsEnded: Boolean = {
-      val sh = shape
-      mainInRemain == 0 &&
-        ((isClosed(sh.in0) && !isAvailable(sh.in0)) || (isClosed(sh.in1) && !isAvailable(sh.in1)))
-    }
-
-    protected def freeOutputBuffers(): Unit =
-      if (bufOut0 != null) {
-        bufOut0.release()
-        bufOut0 = null
-      }
+    protected     val hIn1        : InDMain  = InDMain  (this, shape.in0)
+    protected     val hIn2        : InDMain  = InDMain  (this, shape.in1)
+    protected     val hOut        : OutDMain = OutDMain (this, shape.out)
+    private[this] val hRows       : InIAux   = InIAux   (this, shape.in2)(max(1, _))
+    private[this] val hCols       : InIAux   = InIAux   (this, shape.in3)(max(1, _))
+    private[this] val hThreshNoise: InDAux   = InDAux   (this, shape.in4)(max(0.0, _))
+    private[this] val hThreshMask : InDAux   = InDAux   (this, shape.in5)(max(0.0, _))
+    private[this] val hBlurRows   : InIAux   = InIAux   (this, shape.in6)(max(1, _))
+    private[this] val hBlurCols   : InIAux   = InIAux   (this, shape.in7)(max(1, _))
 
     private[this] var rows        = -1
     private[this] var columns     = -1
@@ -274,104 +89,113 @@ object Masking2D {
     private[this] var outVec  : Array[Double] = _
     private[this] var kernel  : Array[Double] = _
 
-    protected def startNextWindow(): Long = {
-      var newKernel = false
-      var newWin    = false
+    protected def a1Tpe : StreamType[Double, BufD] = StreamType.double
+    protected def a2Tpe : StreamType[Double, BufD] = StreamType.double
+    protected def bTpe  : StreamType[Double, BufD] = StreamType.double
+    protected def wTpe  : StreamType[Double, BufD] = StreamType.double
 
-      // 2: rows, 3: columns, 4: threshNoise, 5: threshMask, 6: blurRows, 7: blurColumns
-      val inOff = auxInOff
-      if (bufIn2 != null && inOff < bufIn2.size) {
-        val _rows = math.max(1, bufIn2.buf(inOff))
+    override protected def stopped(): Unit = {
+      super.stopped()
+      fgVec   = null
+      bgVec   = null
+      outVec  = null
+      kernel  = null
+      fgMat   = null
+      bgMat   = null
+    }
+
+    protected def tryObtainWinParams(): Boolean = {
+      val ok =
+        hRows       .hasNext &&
+        hCols       .hasNext &&
+        hThreshNoise.hasNext &&
+        hThreshMask .hasNext &&
+        hBlurRows   .hasNext &&
+        hBlurCols   .hasNext
+
+      if (ok) {
+        var newKernel = false
+        var newWin    = false
+
+        val _rows = hRows.next()
         if (rows != _rows) {
           rows = _rows
           newWin = true
         }
-      }
-      if (bufIn3 != null && inOff < bufIn3.size) {
-        val _columns = math.max(1, bufIn3.buf(inOff))
+        val _columns = hCols.next()
         if (columns != _columns) {
           columns = _columns
           newWin = true
         }
-      }
-      if (bufIn4 != null && inOff < bufIn4.size) {
-        threshNoise = math.max(0.0, bufIn4.buf(inOff))
-      }
-      if (bufIn5 != null && inOff < bufIn5.size) {
-        threshMask = math.max(0.0, bufIn5.buf(inOff))
-      }
-      if (bufIn6 != null && inOff < bufIn6.size) {
-        val _blurRows = math.max(1, bufIn6.buf(inOff))
+        threshNoise = hThreshNoise.next()
+        threshMask  = hThreshMask.next()
+        val _blurRows = hBlurRows.next()
         if (blurRows != _blurRows) {
           blurRows = _blurRows
           newKernel = true
         }
-      }
-      if (bufIn7 != null && inOff < bufIn7.size) {
-        val _blurColumns = math.max(1, bufIn7.buf(inOff))
+        val _blurColumns = hBlurCols.next()
         if (blurColumns != _blurColumns) {
           blurColumns = _blurColumns
           newKernel = true
         }
-      }
 
-      if (newWin) {
-        winSize = rows * columns
-        fgVec   = new Array(rows)
-        bgVec   = new Array(rows)
-        outVec  = new Array(rows)
-        fgMat   = new Array(winSize)
-        bgMat   = new Array(winSize)
-      }
+        if (newWin) {
+          winSize = rows * columns
+          fgVec   = new Array(rows)
+          bgVec   = new Array(rows)
+          outVec  = new Array(rows)
+          fgMat   = new Array(winSize)
+          bgMat   = new Array(winSize)
+        }
 
-      if (newKernel) {
-        val _blurRows     = blurRows
-        val _blurColumns  = blurColumns
-        val kCols         = _blurColumns * 2 + 1
-        val kRows         = _blurRows * 2 + 1
-        val kernelSize    = kCols * kRows
-        kernel = Array.tabulate(kernelSize) { i =>
-          import numbers.Implicits._
-          val col = i % kCols
-          val row = i / kCols
-          val ci  = col absDif _blurColumns
-          val ri  = row absDif _blurRows
-          // blurs refer to -60 dB point
-          val dc      = ci.toDouble / _blurColumns
-          val dr      = ri.toDouble / _blurRows
-          val dampCol = 0.001.pow(dc)
-          val dampRow = 0.001.pow(dr)
-          math.sqrt(dampCol * dampRow)
-          //          math .min(dampCol , dampRow)
-          //          math.sqrt((dampCol.squared + dampRow.squared) / 2)
+        if (newKernel) {
+          val _blurRows     = blurRows
+          val _blurColumns  = blurColumns
+          val kCols         = _blurColumns * 2 + 1
+          val kRows         = _blurRows * 2 + 1
+          val kernelSize    = kCols * kRows
+          kernel = Array.tabulate(kernelSize) { i =>
+            import numbers.Implicits._
+            val col = i % kCols
+            val row = i / kCols
+            val ci  = col absDif _blurColumns
+            val ri  = row absDif _blurRows
+            // blurs refer to -60 dB point
+            val dc      = ci.toDouble / _blurColumns
+            val dr      = ri.toDouble / _blurRows
+            val dampCol = 0.001.pow(dc)
+            val dampRow = 0.001.pow(dr)
+            math.sqrt(dampCol * dampRow)
+            //          math .min(dampCol , dampRow)
+            //          math.sqrt((dampCol.squared + dampRow.squared) / 2)
 
-          //          val dd = math.sqrt(dc.squared + dr.squared)
-          //          0.001.pow(dd)
+            //          val dd = math.sqrt(dc.squared + dr.squared)
+            //          0.001.pow(dd)
+          }
         }
       }
-
-      rows
+      ok
     }
 
-    protected def canStartNextWindow: Boolean = auxInRemain > 0 || (auxInValid && {
-      val sh = shape
-      import sh._
-      isClosed(in2) && isClosed(in3) && isClosed(in4) && isClosed(in5) && isClosed(in6) && isClosed(in7)
-    })
+    protected def winBufSize: Int = 0
 
-    protected def copyInputToWindow(writeToWinOff: Long, chunk: Int): Unit = {
-      val off = writeToWinOff.toInt
-      Util.copy(bufIn0.buf, mainInOff, fgVec, off, chunk)
-      Util.copy(bufIn1.buf, mainInOff, bgVec, off, chunk)
+    override protected def readWinSize  : Long = rows
+    override protected def writeWinSize : Long = rows
+
+    protected def readIntoWindow(chunk: Int): Unit = {
+      val off = readOff.toInt
+      hIn1.nextN(fgMat, off, chunk)
+      hIn2.nextN(bgMat, off, chunk)
     }
 
-    protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit = {
-      val inOff = readFromWinOff.toInt
-      Util.copy(outVec, inOff, bufOut0.buf, outOff, chunk)
+    protected def writeFromWindow(chunk: Int): Unit = {
+      val inOff = writeOff.toInt // readFromWinOff.toInt
+      hOut.nextN(outVec, inOff, chunk)
     }
 
-    protected def processWindow(writeToWinOff: Long): Long = {
-      val off   = writeToWinOff.toInt
+    protected def processWindow(): Unit = {
+      val off   = readOff.toInt // writeToWinOff.toInt
       val _fgV  = fgVec
       val _bgV  = bgVec
       val _rows = rows
@@ -471,8 +295,6 @@ object Masking2D {
 
         ri += 1
       }
-
-      _rows
     }
   }
 }
