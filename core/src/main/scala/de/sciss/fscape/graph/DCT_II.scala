@@ -21,14 +21,12 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 
 /** A UGen for type II discrete cosine transform.
   *
-  * '''Warning:''' window parameter modulation is currently not working correctly (issue #30)
-  *
   * @param in         input signal
   * @param size       input signal window size
   * @param numCoeffs  number of coefficients output
   * @param zero       if zero (default), the zero'th coefficient is
-  *                   _skipped_ in the output, if
-  *                   non-zero, the zero'th coefficient is
+  *                   ''skipped'' in the output, if
+  *                   greater than zero, the zero'th coefficient is
   *                   included. In any case, the output
   *                   window size is `numCoeffs`.
   */

@@ -15,8 +15,11 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape4}
-import de.sciss.fscape.stream.impl.deprecated.{FilterIn4DImpl, FilterLogicImpl, WindowedLogicImpl}
-import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.Handlers.InIAux
+import de.sciss.fscape.stream.impl.StageImpl
+import de.sciss.fscape.stream.impl.logic.FilterWindowedInAOutA
+
+import scala.math.max
 
 object DCT_II {
   def apply(in: OutD, size: OutI, numCoeffs: OutI, zero: OutI)(implicit b: Builder): OutD = {
@@ -47,61 +50,47 @@ object DCT_II {
   // XXX TODO --- we could store pre-calculated cosine tables for
   // sufficiently small table sizes
   private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape)
-      with FilterLogicImpl[BufD, Shp]
-      with WindowedLogicImpl[Shp]
-      with FilterIn4DImpl[BufD, BufI, BufI, BufI] {
+    extends FilterWindowedInAOutA[Double, BufD, Shp](name, layer, shape)(shape.in0, shape.out) {
+
+    private[this] val hSize       = InIAux  (this, shape.in1)(max(1, _))
+    private[this] val hNumCoeffs  = InIAux  (this, shape.in2)(max(1, _))
+    private[this] val hZero       = InIAux  (this, shape.in3)()
 
     private[this] var size      = 0
     private[this] var zero      = false
-    private[this] var numCoeffs = 0
+    private[this] var numCoeffs = -1
 
-    private[this] var winBuf  : Array[Double] = _
     private[this] var coefBuf : Array[Double] = _
 
     override protected def stopped(): Unit = {
       super.stopped()
-      winBuf  = null
       coefBuf = null
     }
 
-    protected def startNextWindow(inOff: Int): Long = {
-      var updatedBuf = false
-      if (bufIn1 != null && inOff < bufIn1.size) {
-        val _size = math.max(1, bufIn1.buf(inOff))
-        if (size != _size) {
-          size     = _size
-          updatedBuf = true
+    protected def tryObtainWinParams(): Boolean = {
+      val ok = hSize.hasNext && hNumCoeffs.hasNext && hZero.hasNext
+      if (ok) {
+        size = hSize.next()
+        zero = hZero.next() > 0
+        val numCoeffsOld = numCoeffs
+        numCoeffs = hNumCoeffs.next()
+        if (numCoeffs != numCoeffsOld) {
+          coefBuf = new Array[Double](numCoeffs)
         }
       }
-      if (bufIn3 != null && inOff < bufIn3.size) {
-        val _zero = bufIn3.buf(inOff) != 0
-        if (zero != _zero) {
-          zero        = _zero
-          updatedBuf  = true
-        }
-      }
-      if (bufIn2 != null && inOff < bufIn2.size) {
-        val _numCoeffs = math.max(1, bufIn2.buf(inOff))
-        if (numCoeffs != _numCoeffs) {
-          numCoeffs    = _numCoeffs
-          updatedBuf = true
-        }
-      }
-      if (updatedBuf) {
-        winBuf  = new Array[Double](size)
-        coefBuf = new Array[Double](numCoeffs)
-      }
-      size
+      ok
     }
 
-    protected def copyInputToWindow(inOff: Int, writeToWinOff: Long, chunk: Int): Unit =
-      Util.copy(bufIn0.buf, inOff, winBuf, writeToWinOff.toInt, chunk)
+    protected def winBufSize: Int = size
 
-    protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit =
-      Util.copy(coefBuf, readFromWinOff.toInt, bufOut0.buf, outOff, chunk)
+    override protected def writeWinSize: Long = numCoeffs
 
-    protected def processWindow(writeToWinOff: Long): Long = {
+    override protected def writeFromWindow(n: Layer): Unit = {
+      val offI = writeOff.toInt
+      hOut.nextN(coefBuf, offI, n)
+    }
+
+    protected def processWindow(): Unit = {
       val _size       = size
       val _numCoeffs  = numCoeffs
       val _bufIn      = winBuf
@@ -120,7 +109,6 @@ object DCT_II {
         }
         n += 1
       }
-      _numCoeffs
     }
   }
 }
