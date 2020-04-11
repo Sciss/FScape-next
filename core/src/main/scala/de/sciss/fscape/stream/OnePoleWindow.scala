@@ -15,8 +15,11 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape3}
-import de.sciss.fscape.stream.impl.deprecated.{FilterIn3DImpl, FilterLogicImpl, WindowedLogicImpl}
-import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.Handlers.{InDAux, InDMain, InIAux, OutDMain}
+import de.sciss.fscape.stream.impl.logic.WindowedInDOutD
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
+
+import scala.math.{abs, max}
 
 object OnePoleWindow {
   def apply(in: OutD, size: OutI, coef: OutD)(implicit b: Builder): OutD = {
@@ -44,41 +47,31 @@ object OnePoleWindow {
   }
 
   private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape)
-      with FilterLogicImpl[BufD, Shp]
-      with WindowedLogicImpl[Shp]
-      with FilterIn3DImpl[BufD, BufI, BufD] {
+    extends Handlers(name, layer, shape) with WindowedInDOutD {
 
-    private[this] var winSize = 0
-    private[this] var coef    = 0.0
-    private[this] var winBuf  : Array[Double] = _
-    
-    override protected def stopped(): Unit = {
-      super.stopped()
-      winBuf = null
+    protected     val hIn  : InDMain  = InDMain  (this, shape.in0)
+    protected     val hOut : OutDMain = OutDMain (this, shape.out)
+    private[this] val hSize: InIAux   = InIAux   (this, shape.in1)(max(1, _))
+    private[this] val hCoef: InDAux   = InDAux   (this, shape.in2)()
+
+    protected def winBufSize: Int = hSize.value
+
+    protected def tryObtainWinParams(): Boolean = {
+      val ok = hSize.hasNext && hCoef.hasNext
+      if (ok) {
+        hSize.next()
+        hCoef.next()
+      }
+      ok
     }
 
-    protected def startNextWindow(inOff: Int): Long = {
-      val oldSize = winSize
-      if (bufIn1 != null && inOff < bufIn1.size) {
-        winSize = math.max(1, bufIn1.buf(inOff))
-      }
-      if (bufIn2 != null && inOff < bufIn2.size) {
-        coef = bufIn2.buf(inOff)
-      }
-      if (winSize != oldSize) {
-        winBuf = new Array[Double](winSize)
-      }
-      winSize
-    }
-
-    protected def copyInputToWindow(inOff: Int, writeToWinOff: Long, chunk: Int): Unit = {
-      val cy    = coef
-      val cx    = 1.0 - math.abs(cy)
-      val a     = bufIn0.buf
+    override protected def readIntoWindow(chunk: Int): Unit = {
+      val cy    = hCoef.value
+      val cx    = 1.0 - abs(cy)
+      val a     = hIn.array
+      var ai    = hIn.offset
       val b     = winBuf
-      var ai    = inOff
-      var bi    = writeToWinOff.toInt
+      var bi    = readOff.toInt
       val stop  = ai + chunk
       while (ai < stop) {
         val x0 = a(ai)
@@ -88,11 +81,9 @@ object OnePoleWindow {
         ai += 1
         bi += 1
       }
+      hIn.advance(chunk)
     }
 
-    protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit =
-      Util.copy(winBuf, readFromWinOff.toInt, bufOut0.buf, outOff, chunk)
-
-    protected def processWindow(writeToWinOff: Long): Long = writeToWinOff
+    protected def processWindow(): Unit = ()
   }
 }
