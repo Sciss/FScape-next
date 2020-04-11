@@ -15,8 +15,11 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.{Attributes, FanInShape8}
-import de.sciss.fscape.stream.impl.deprecated.{DemandFilterIn8D, DemandFilterLogic, DemandWindowedLogicOLD}
+import de.sciss.fscape.stream.impl.Handlers.InIAux
+import de.sciss.fscape.stream.impl.logic.FilterWindowedInAOutA
 import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+
+import scala.math.{max, min}
 
 object MatrixOutMatrix {
   def apply(in: OutD, rowsInner: OutI, columnsInner: OutI, columnsOuter: OutI, rowOff: OutI, columnOff: OutI,
@@ -55,10 +58,15 @@ object MatrixOutMatrix {
   }
 
   private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape)
-      with DemandWindowedLogicOLD[Shp]
-      with DemandFilterLogic[BufD, Shp]
-      with DemandFilterIn8D[BufD, BufI, BufI, BufI, BufI, BufI, BufI, BufI] {
+    extends FilterWindowedInAOutA[Double, BufD, Shp](name, layer, shape)(shape.in0, shape.out) {
+
+    private[this] val hRowsIn : InIAux  = InIAux(this, shape.in1)(max(1, _))
+    private[this] val hColsIn : InIAux  = InIAux(this, shape.in2)(max(1, _))
+    private[this] val hColsOut: InIAux  = InIAux(this, shape.in3)(max(1, _))
+    private[this] val hRowOff : InIAux  = InIAux(this, shape.in4)(max(0, _))
+    private[this] val hColOff : InIAux  = InIAux(this, shape.in5)(max(0, _))
+    private[this] val hRowNum : InIAux  = InIAux(this, shape.in6)(max(1, _))
+    private[this] val hColNum : InIAux  = InIAux(this, shape.in7)(max(1, _))
 
     private[this] var rowsInner   : Int  = _
     private[this] var columnsInner: Int  = _
@@ -71,76 +79,61 @@ object MatrixOutMatrix {
 
     private[this] var winSizeIn   = 0
     private[this] var winSizeOut  = 0
-    private[this] var winInBuf  : Array[Double] = _
     private[this] var winOutBuf : Array[Double] = _
 
-    protected def startNextWindow(): Long = {
-      val inOff = auxInOff
-      if (bufIn1 != null && inOff < bufIn1.size) {
-        rowsInner = math.max(1, bufIn1.buf(inOff))
-      }
-      if (bufIn2 != null && inOff < bufIn2.size) {
-        columnsInner = math.max(1, bufIn2.buf(inOff))
-      }
-      if (bufIn3 != null && inOff < bufIn3.size) {
-        columnsOuter = math.max(1, bufIn3.buf(inOff))
-      }
-      if (bufIn4 != null && inOff < bufIn4.size) {
-        rowOff = math.max(0, math.min(rowsInner - 1, bufIn4.buf(inOff)))
-      }
-      if (bufIn5 != null && inOff < bufIn5.size) {
-        columnOff = math.max(0, math.min(columnsInner - 1, bufIn5.buf(inOff)))
-      }
-      if (bufIn6 != null && inOff < bufIn6.size) {
-        rowNum = math.max(1, math.min(rowsInner - rowOff, bufIn6.buf(inOff)))
-      }
-      if (bufIn7 != null && inOff < bufIn7.size) {
-        columnNum = math.max(1, math.min(columnsInner - columnOff, bufIn7.buf(inOff)))
-      }
-      numColStitch  = math.max(1, columnsOuter / columnNum)
-      columnsOuter  = columnNum * numColStitch
+    protected def tryObtainWinParams(): Boolean = {
+      val ok =
+        hRowsIn .hasNext &&
+        hColsIn .hasNext &&
+        hColsOut.hasNext &&
+        hRowOff .hasNext &&
+        hColOff .hasNext &&
+        hRowNum .hasNext &&
+        hColNum .hasNext
 
-      val newSizeIn = numColStitch * (rowsInner * columnsInner)
-      if (winSizeIn != newSizeIn) {
-        winSizeIn = newSizeIn
-        winInBuf  = new Array(newSizeIn)
-      }
-      val newSizeOut = columnsOuter * rowNum
-      if (winSizeOut != newSizeOut) {
-        winSizeOut = newSizeOut
-        winOutBuf  = new Array(newSizeOut)
-      }
+      if (ok) {
+        rowsInner     = hRowsIn .next()
+        columnsInner  = hColsIn .next()
+        columnsOuter  = hColsOut.next()
+        rowOff        = min(rowsInner     - 1         , hRowOff.next())
+        columnOff     = min(columnsInner  - 1         , hColOff.next())
+        rowNum        = min(rowsInner     - rowOff    , hRowNum.next())
+        columnNum     = min(columnsInner  - columnOff , hColNum.next())
 
-      newSizeIn
+        numColStitch  = max(1, columnsOuter / columnNum)
+        columnsOuter  = columnNum * numColStitch
+
+        winSizeIn     = numColStitch * (rowsInner * columnsInner)
+        val newSizeOut = columnsOuter * rowNum
+        if (winSizeOut != newSizeOut) {
+          winSizeOut = newSizeOut
+          winOutBuf  = new Array(newSizeOut)
+        }
+      }
+      ok
     }
 
-    protected def canStartNextWindow: Boolean = auxInRemain > 0 || (auxInValid && {
-      isClosed(in1) && isClosed(in2) && isClosed(in3) && isClosed(in4) &&
-      isClosed(in5) && isClosed(in6) && isClosed(in7)
-    })
+    protected def winBufSize: Int = winSizeIn
+
+    override protected def writeWinSize: Long = winSizeOut
 
     override protected def stopped(): Unit = {
       super.stopped()
-      winInBuf  = null
       winOutBuf = null
     }
 
-    protected def copyInputToWindow(writeToWinOff: Long, chunk: Int): Unit =
-      Util.copy(bufIn0.buf, mainInOff, winInBuf, writeToWinOff.toInt, chunk)
+    override protected def writeFromWindow(n: Int): Unit = {
+      val offI = writeOff.toInt
+      hOut.nextN(winOutBuf, offI, n)
+    }
 
-    protected def processWindow(writeToWinOff: Long): Long = {
-      val offI    = writeToWinOff.toInt
-      val _bufIn  = winInBuf
+    protected def processWindow(): Unit = {
+      val offI    = readOff.toInt
+      val _bufIn  = winBuf
       val _bufOut = winOutBuf
       if (offI < winSizeIn) {
         Util.clear(_bufIn, offI, winSizeIn - offI)
       }
-
-//      val FOO = _bufIn.sum
-//      val BAR = _bufIn.max
-//      if (BAR != 0.0) {
-//        println(s"AQUI. Sum $FOO, max $BAR")
-//      }
 
       var stitchIdx     = 0
       val _numColStitch = numColStitch
@@ -188,10 +181,7 @@ object MatrixOutMatrix {
 
 //      _numColStitch * _rowNum * _colNum
 //      _colOuter * _rowNum
-      winSizeOut
+//      winSizeOut
     }
-
-    protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit =
-      Util.copy(winOutBuf, readFromWinOff.toInt, bufOut0.buf, outOff, chunk)
   }
 }
