@@ -33,14 +33,13 @@ abstract class FilterWindowedInAOutA[A, E <: BufElem[A], S <: Shape](name: Strin
   protected final val hOut: OutMain[A, E] = OutMain[A, E](this, outlet)
 }
 
-abstract class FilterWindowedInAOutB[A, E <: BufElem[A], B, F <: BufElem[B], C, G <: BufElem[C], S <: Shape]
+abstract class FilterWindowedInAOutB[A, E <: BufElem[A], B, F <: BufElem[B], C, S <: Shape]
   (name: String, layer: Layer, shape: S)(inlet: Inlet[E], outlet: Outlet[F])
   (implicit control: Control,
    protected val aTpe: StreamType[A, E],
-   protected val bTpe: StreamType[B, F],
-   protected val wTpe: StreamType[C, G]
+   protected val bTpe: StreamType[B, F]
   )
-  extends Handlers[S](name, layer, shape) with WindowedInAOutB[A, E, B, F, C, G] {
+  extends Handlers[S](name, layer, shape) with WindowedInAOutB[A, E, B, F, C] {
 
   protected final val hIn : InMain [A, E] = InMain [A, E](this, inlet )
   protected final val hOut: OutMain[B, F] = OutMain[B, F](this, outlet)

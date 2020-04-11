@@ -56,12 +56,16 @@ object WindowMaxIndex {
   private final class Logic[@specialized(Args) A, E <: BufElem[A]](shape: Shp[E], layer: Layer)
                                                                   (gt: (A, A) => Boolean)
                                                (implicit ctrl: Control, protected val tpe: StreamType[A, E])
-    extends FilterWindowedInAOutB[A, E, Int, BufI, A, E, Shp[E]](name, layer, shape)(shape.in0, shape.out) {
+    extends FilterWindowedInAOutB[A, E, Int, BufI, A, Shp[E]](name, layer, shape)(shape.in0, shape.out) {
 
     private[this] val hSize = Handlers.InIAux(this, shape.in1)(math.max(0 , _))
 
     private[this] var index   : Int = _
     private[this] var maxValue: A   = _
+
+    protected def clearWindowTail(): Unit = ()
+
+    protected def newWindowBuffer(n: Int): Array[A] = tpe.newArray(n)
 
     protected def tryObtainWinParams(): Boolean = {
       val ok = hSize.hasNext

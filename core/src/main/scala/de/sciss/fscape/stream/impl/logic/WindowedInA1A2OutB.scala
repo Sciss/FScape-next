@@ -25,7 +25,7 @@ import scala.math.min
   *  where window parameters include
   * `winSize` and possibly others, and will be polled per window.
   */
-trait WindowedInA1A2OutB[A1, E1 <: BufElem[A1], A2, E2 <: BufElem[A2], B, F <: BufElem[B], C, G <: BufElem[C]]
+trait WindowedInA1A2OutB[A1, E1 <: BufElem[A1], A2, E2 <: BufElem[A2], B, F <: BufElem[B], C]
   extends Node {
 
   _: Handlers[_] =>
@@ -38,8 +38,6 @@ trait WindowedInA1A2OutB[A1, E1 <: BufElem[A1], A2, E2 <: BufElem[A2], B, F <: B
   protected def a2Tpe  : StreamType[A2, E2]
   /** The output signal type */
   protected def bTpe  : StreamType[B, F]
-  /** The window signal type */
-  protected def wTpe  : StreamType[C, G]
 
   protected def hIn1  : Handlers.InMain [A1, E1]
   protected def hIn2  : Handlers.InMain [A2, E2]
@@ -61,6 +59,16 @@ trait WindowedInA1A2OutB[A1, E1 <: BufElem[A1], A2, E2 <: BufElem[A2], B, F <: B
 
   /** Called after a window has been fully read in. */
   protected def processWindow(): Unit
+
+  /** Reads in a number of frames. */
+  protected def readIntoWindow(n: Int): Unit
+
+  /** Writes out a number of frames. */
+  protected def writeFromWindow(n: Int): Unit
+
+  protected def clearWindowTail(): Unit
+
+  protected def newWindowBuffer(n: Int): Array[C]
 
   // ---- default implementations that can be overridden if `super` is called ----
 
@@ -107,25 +115,6 @@ trait WindowedInA1A2OutB[A1, E1 <: BufElem[A1], A2, E2 <: BufElem[A2], B, F <: B
     */
   protected def writeWinSize: Long = if (fullLastWindow) winBufSize else readOff
 
-  /** Reads in a number of frames. */
-  protected def readIntoWindow(n: Int): Unit
-
-  /** Writes out a number of frames. */
-  protected def writeFromWindow(n: Int): Unit
-
-  /** The default implementation clears from `readOff` to the end of the window buffer.
-    * This method is not called if `fullLastWindow` returns `false`!
-    */
-  protected def clearWindowTail(): Unit = {
-    val _buf = winBuf
-    if (_buf != null && _buf.length > readOff) {
-      val offI = readOff.toInt
-      wTpe.clear(winBuf, offI, _buf.length - offI)
-    }
-    readOff += readRem
-    readRem  = 0L
-  }
-
   // ---- visible impl ----
 
   protected final var winBuf: Array[C] = _
@@ -147,7 +136,7 @@ trait WindowedInA1A2OutB[A1, E1 <: BufElem[A1], A2, E2 <: BufElem[A2], B, F <: B
 
       val _winBufSz = winBufSize
       if (winBuf == null || winBuf.length != _winBufSz) {
-        winBuf = if (_winBufSz == 0) null else wTpe.newArray(_winBufSz)
+        winBuf = if (_winBufSz == 0) null else newWindowBuffer(_winBufSz) // wTpe.newArray(_winBufSz)
       }
 
       readOff  = 0L

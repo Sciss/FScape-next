@@ -13,7 +13,8 @@ object SortWindowTest extends App {
     val in0     = ArithmSeq(length = 10) % 6  // 0,  1,  2,  3,  4, 5,  0,  1,  2,  3
     val in      = ReverseWindow(in0, 5)       // 4,  3,  2,  1,  0, 3,  2,  1,  0,  5
     val sig     = SortWindow(in, -in, 5)      // 0, -1, -2, -3, -4, 0, -1, -2, -3, -5
-    RepeatWindow(sig).poll(Metro(2), "sorted")
+    sig.poll(1, "in0")
+    //    sig.poll(1, "sorted")
   }
 
   ctrl.run(g)

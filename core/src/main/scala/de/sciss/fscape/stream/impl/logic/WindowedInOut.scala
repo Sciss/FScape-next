@@ -24,7 +24,7 @@ import scala.math.min
 /** This is a building block for window processing UGens where window parameters include
   * `winSize` and possibly others, and will be polled per window.
   */
-trait WindowedInAOutB[A, E <: BufElem[A], B, F <: BufElem[B], C, G <: BufElem[C]] extends Node {
+trait WindowedInAOutB[A, E <: BufElem[A], B, F <: BufElem[B], C] extends Node {
   _: Handlers[_] =>
 
   // ---- abstract ----
@@ -33,8 +33,6 @@ trait WindowedInAOutB[A, E <: BufElem[A], B, F <: BufElem[B], C, G <: BufElem[C]
   protected def aTpe  : StreamType[A, E]
   /** The output signal type */
   protected def bTpe  : StreamType[B, F]
-  /** The window signal type */
-  protected def wTpe  : StreamType[C, G]
 
   protected def hIn   : Handlers.InMain [A, E]
   protected def hOut  : Handlers.OutMain[B, F]
@@ -86,6 +84,16 @@ trait WindowedInAOutB[A, E <: BufElem[A], B, F <: BufElem[B], C, G <: BufElem[C]
     winBuf = null
   }
 
+  /** Reads in a number of frames. */
+  protected def readIntoWindow(n: Int): Unit
+
+  /** Writes out a number of frames. */
+  protected def writeFromWindow(n: Int): Unit
+
+  protected def clearWindowTail(): Unit
+
+  protected def newWindowBuffer(n: Int): Array[C]
+
   // ---- default implementations that can be overridden ----
 
   protected val fullLastWindow: Boolean = true
@@ -100,25 +108,6 @@ trait WindowedInAOutB[A, E <: BufElem[A], B, F <: BufElem[B], C, G <: BufElem[C]
     * implementation of `writeWinSize` will return ``
     */
   protected def writeWinSize: Long = if (fullLastWindow) winBufSize else readOff
-
-  /** Reads in a number of frames. */
-  protected def readIntoWindow(n: Int): Unit
-
-  /** Writes out a number of frames. */
-  protected def writeFromWindow(n: Int): Unit
-
-  /** The default implementation clears from `readOff` to the end of the window buffer.
-    * This method is not called if `fullLastWindow` returns `false`!
-    */
-  protected def clearWindowTail(): Unit = {
-    val _buf = winBuf
-    if (_buf != null && _buf.length > readOff) {
-      val offI = readOff.toInt
-      wTpe.clear(winBuf, offI, _buf.length - offI)
-    }
-    readOff += readRem
-    readRem  = 0L
-  }
 
   // ---- visible impl ----
 
@@ -141,7 +130,7 @@ trait WindowedInAOutB[A, E <: BufElem[A], B, F <: BufElem[B], C, G <: BufElem[C]
 
       val _winBufSz = winBufSize
       if (winBuf == null || winBuf.length != _winBufSz) {
-        winBuf = if (_winBufSz == 0) null else wTpe.newArray(_winBufSz)
+        winBuf = if (_winBufSz == 0) null else newWindowBuffer(_winBufSz)
       }
 
       readOff  = 0L
@@ -187,15 +176,28 @@ trait WindowedInAOutB[A, E <: BufElem[A], B, F <: BufElem[B], C, G <: BufElem[C]
 /** This is a building block for window processing UGens where window parameters include
   * `winSize` and possibly others, and will be polled per window.
   */
-trait WindowedInAOutA[A, E <: BufElem[A]] extends WindowedInAOutB[A, E, A, E, A, E] {
+trait WindowedInAOutA[A, E <: BufElem[A]] extends WindowedInAOutB[A, E, A, E, A] {
   _: Handlers[_] =>
 
   protected def tpe: StreamType[A, E]
 
   protected final def aTpe: StreamType[A, E] = tpe
   protected final def bTpe: StreamType[A, E] = tpe
-  protected final def wTpe: StreamType[A, E] = tpe
 
+  /** The default implementation clears from `readOff` to the end of the window buffer.
+    * This method is not called if `fullLastWindow` returns `false`!
+    */
+  protected def clearWindowTail(): Unit = {
+    val _buf = winBuf
+    if (_buf != null && _buf.length > readOff) {
+      val offI = readOff.toInt
+      tpe.clear(winBuf, offI, _buf.length - offI)
+    }
+    readOff += readRem
+    readRem  = 0L
+  }
+
+  protected def newWindowBuffer(n: Int): Array[A] = tpe.newArray(n)
 
   /** Reads in a number of frames. The default implementation copies to the window buffer. */
   protected def readIntoWindow(n: Int): Unit = {

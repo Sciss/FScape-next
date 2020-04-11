@@ -60,7 +60,7 @@ object Masking2D {
 
   private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
     extends Handlers(name, layer, shape)
-      with WindowedInA1A2OutB[Double, BufD, Double, BufD, Double, BufD, Double, BufD] {
+      with WindowedInA1A2OutB[Double, BufD, Double, BufD, Double, BufD, Double] {
 
     protected     val hIn1        : InDMain  = InDMain  (this, shape.in0)
     protected     val hIn2        : InDMain  = InDMain  (this, shape.in1)
@@ -93,6 +93,10 @@ object Masking2D {
     protected def a2Tpe : StreamType[Double, BufD] = StreamType.double
     protected def bTpe  : StreamType[Double, BufD] = StreamType.double
     protected def wTpe  : StreamType[Double, BufD] = StreamType.double
+
+    protected def clearWindowTail(): Unit = ()
+
+    protected def newWindowBuffer(n: Int): Array[Double] = new Array(n)
 
     override protected def stopped(): Unit = {
       super.stopped()
