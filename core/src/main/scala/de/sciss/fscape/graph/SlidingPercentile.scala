@@ -47,6 +47,9 @@ final case class SlidingPercentile(in: GE, len: GE = 3, frac: GE = 0.5, interp: 
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
     val Vec(in, size, frac, interp) = args
-    stream.SlidingPercentile(in = in.toDouble, len = size.toInt, frac = frac.toDouble, interp = interp.toInt)
+    import in.tpe
+    val out = stream.SlidingPercentile[in.A, in.Buf](in = in.toElem, len = size.toInt, frac = frac.toDouble,
+      interp = interp.toInt)
+    tpe.mkStreamOut(out)
   }
 }

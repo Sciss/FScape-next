@@ -27,7 +27,7 @@ class SlidingWindowPercentileSpec extends UGenSpec {
       import graph._
       val in = ValueIntSeq(inSq: _*)
       val m = SlidingWindowPercentile(in, winSize = wSz, medianLen = mLen)
-      val d = m.drop(8)
+      val d = m.drop(wSz * (mLen - 1))
       // d.poll(1, "out")
       DebugIntPromise(d, p)
     }
