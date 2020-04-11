@@ -16,10 +16,13 @@ package stream
 
 import akka.stream.{Attributes, FanInShape4}
 import de.sciss.fscape.graph.RotateFlipMatrix._
-import de.sciss.fscape.stream.impl.deprecated.{FilterIn4DImpl, FilterLogicImpl, WindowedLogicImpl}
-import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.Handlers.{InDMain, InIAux, OutDMain}
+import de.sciss.fscape.stream.impl.logic.WindowedInAOutA
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
 
 import scala.annotation.switch
+import math.max
+import de.sciss.numbers.Implicits._
 
 object RotateFlipMatrix {
   def apply(in: OutD, rows: OutI, columns: OutI, mode: OutI)(implicit b: Builder): OutD = {
@@ -52,10 +55,13 @@ object RotateFlipMatrix {
 
   // XXX TODO -- abstract over data type (BufD vs BufI)?
   private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape)
-      with WindowedLogicImpl[Shp]
-      with FilterLogicImpl[BufD, Shp]
-      with FilterIn4DImpl[BufD, BufI, BufI, BufI] {
+    extends Handlers(name, layer, shape) with WindowedInAOutA[Double, BufD] {
+
+    protected     val hIn   : InDMain   = InDMain (this, shape.in0)
+    protected     val hOut  : OutDMain  = OutDMain(this, shape.out)
+    private[this] val hRows : InIAux    = InIAux  (this, shape.in1)(max(1, _))
+    private[this] val hCols : InIAux    = InIAux  (this, shape.in2)(max(1, _))
+    private[this] val hMode : InIAux    = InIAux  (this, shape.in3)(_.clip(0, 11))
 
     private[this] var inBuf  : Array[Double] = _
     private[this] var outBuf : Array[Double] = _
@@ -65,18 +71,21 @@ object RotateFlipMatrix {
     private[this] var needsDoubleBuf: Boolean = _
     private[this] var winSize: Int = _
 
-    protected def startNextWindow(inOff: Int): Long = {
-      val oldSize = winSize
-      val oldMode = mode
-      if (bufIn1 != null && inOff < bufIn1.size) {
-        rows = math.max(1, bufIn1.buf(inOff))
-      }
-      if (bufIn2 != null && inOff < bufIn2.size) {
-        columns = math.max(1, bufIn2.buf(inOff))
-      }
-      val isSquare = rows == columns
-      if (bufIn3 != null && inOff < bufIn3.size) {
-        var _mode = math.max(0, math.min(11, bufIn3.buf(inOff)))
+    protected def tpe: StreamType[Double, BufD] = StreamType.double
+
+    protected def tryObtainWinParams(): Boolean = {
+      val ok =
+        hRows.hasNext &&
+        hCols.hasNext &&
+        hMode.hasNext
+
+      if (ok) {
+        val oldSize   = winSize
+        val oldMode   = mode
+        rows          = hRows.next()
+        columns       = hCols.next()
+        val isSquare  = rows == columns
+        var _mode     = hMode.next()
         // logically remove cw + ccw here
         if ((_mode & 12) == 12) _mode &= ~12
         // reduce number of steps
@@ -86,25 +95,31 @@ object RotateFlipMatrix {
         }
 
         mode = _mode
-      }
-      needsDoubleBuf  = !isSquare && (mode & 12) != 0
-      winSize         = rows * columns
-      if (winSize != oldSize) {
-        inBuf  = new Array[Double](winSize)
-        if (needsDoubleBuf) {
-          outBuf  = new Array[Double](winSize)
-        } else{
-          outBuf  = inBuf
+
+        needsDoubleBuf  = !isSquare && (mode & 12) != 0
+        winSize         = rows * columns
+        if (winSize != oldSize) {
+          inBuf  = new Array[Double](winSize)
+          if (needsDoubleBuf) {
+            outBuf  = new Array[Double](winSize)
+          } else{
+            outBuf  = inBuf
+          }
+        } else if (mode != oldMode) {
+          if (needsDoubleBuf) {
+            if (outBuf eq inBuf) outBuf = new Array[Double](winSize)
+          } else {
+            outBuf = inBuf
+          }
         }
-      } else if (mode != oldMode) {
-        if (needsDoubleBuf) {
-          if (outBuf eq inBuf) outBuf = new Array[Double](winSize)
-        } else {
-          outBuf = inBuf
-        }
       }
-      winSize
+      ok
     }
+
+    protected def winBufSize: Int = 0
+
+    override protected def readWinSize  : Long = winSize
+    override protected def writeWinSize : Long = winSize
 
     override protected def stopped(): Unit = {
       super.stopped()
@@ -112,11 +127,16 @@ object RotateFlipMatrix {
       outBuf  = null
     }
 
-    protected def copyInputToWindow(inOff: Int, writeToWinOff: Long, chunk: Int): Unit =
-      Util.copy(bufIn0.buf, inOff, inBuf, writeToWinOff.toInt, chunk)
+    override protected def readIntoWindow(n: Int): Unit = {
+      val offI = readOff.toInt
+      hIn.nextN(inBuf, offI, n)
+    }
 
-    protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit =
-      Util.copy(outBuf, readFromWinOff.toInt, bufOut0.buf, outOff, chunk)
+    /** Writes out a number of frames. The default implementation copies from the window buffer. */
+    override protected def writeFromWindow(n: Int): Unit = {
+      val offI = writeOff.toInt
+      hOut.nextN(outBuf, offI, n)
+    }
 
     // in-place
     private def flipX(): Unit = {
@@ -239,13 +259,7 @@ object RotateFlipMatrix {
       }
     }
 
-    protected def processWindow(writeToWinOff: Long): Long = {
-      val size = winSize
-      if (writeToWinOff < size) {
-        val writeOffI = writeToWinOff.toInt
-        Util.clear(inBuf, writeOffI, size - writeOffI)
-      }
-
+    protected def processWindow(): Unit = {
       val _mode = mode
       (_mode & 3: @switch) match {
         case Through  =>
@@ -259,8 +273,6 @@ object RotateFlipMatrix {
         case 2 => if (needsDoubleBuf) rot90CCW() else sqrRot90CCW()
         case 4 => transpose()
       }
-
-      size
     }
   }
 }

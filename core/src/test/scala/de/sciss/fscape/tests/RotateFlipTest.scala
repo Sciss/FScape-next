@@ -9,7 +9,7 @@ object RotateFlipTest extends App {
   def any2stringadd: Any = ()
 
   val ctrl      = stream.Control()
-  val dir       = userHome
+  val dir       = file("/") / "data" / "temp"
 
   val g = Graph {
     import graph._
