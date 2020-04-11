@@ -1,5 +1,5 @@
 /*
- *  RunningWindowMin.scala
+ *  RunningWindowProduct.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2020 Hanns Holger Rutz. All rights reserved.
@@ -19,9 +19,9 @@ import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-/** A UGen that like `RunningMin` calculates the minimum observed value of the
+/** A UGen that like `RunningProduct` calculates the product of the
   * running input. However, it operates on entire windows, i.e. it outputs
-  * windows that contain the minimum elements of all the past windows observed.
+  * windows that contain the sum elements of all the past windows observed.
   *
   * @param in     the windowed signal to monitor
   * @param size   the window size. This should normally be a constant. If modulated,
@@ -32,7 +32,7 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   *               until its end, beginning accumulation again from the successive
   *               window.
   */
-final case class RunningWindowMin(in: GE, size: GE, gate: GE = 0) extends UGenSource.SingleOut {
+final case class RunningWindowProduct(in: GE, size: GE, gate: GE = 0) extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
     unwrap(this, Vector(in.expand, size.expand, gate.expand))
 
@@ -42,7 +42,7 @@ final case class RunningWindowMin(in: GE, size: GE, gate: GE = 0) extends UGenSo
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
     val Vec(in, size, gate) = args
     import in.tpe
-    val out = stream.RunningWindowMin[in.A, in.Buf](in = in.toElem, size = size.toInt, gate = gate.toInt)
+    val out = stream.RunningWindowProduct[in.A, in.Buf](in = in.toElem, size = size.toInt, gate = gate.toInt)
     tpe.mkStreamOut(out)
   }
 }

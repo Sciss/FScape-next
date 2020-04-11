@@ -1,5 +1,5 @@
 /*
- *  RunningWindowMax.scala
+ *  RunningWindowProduct.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2020 Hanns Holger Rutz. All rights reserved.
@@ -17,9 +17,7 @@ package stream
 import akka.stream.{Attributes, FanInShape3, Inlet, Outlet}
 import de.sciss.fscape.stream.impl.{NodeImpl, RunningWindowValueLogic, StageImpl}
 
-import scala.math.max
-
-object RunningWindowMax {
+object RunningWindowProduct {
   def apply[A, E <: BufElem[A]](in: Outlet[E], size: OutI, gate: OutI)
                                (implicit b: Builder, tpe: StreamType[A, E]): Outlet[E] = {
     val stage0  = new Stage[A, E](b.layer)
@@ -30,7 +28,7 @@ object RunningWindowMax {
     stage.out
   }
 
-  private final val name = "RunningWindowMax"
+  private final val name = "RunningWindowProduct"
 
   private type Shp[E] = FanInShape3[E, BufI, BufI, E]
 
@@ -46,12 +44,12 @@ object RunningWindowMax {
 
     def createLogic(attr: Attributes): NodeImpl[Shape] = {
       val res: RunningWindowValueLogic[_, _] = if (tpe.isDouble) {
-        new RunningWindowValueLogic[Double, BufD](name, layer, shape.asInstanceOf[Shp[BufD]])(max)
+        new RunningWindowValueLogic[Double, BufD](name, layer, shape.asInstanceOf[Shp[BufD]])(_ * _)
       } else if (tpe.isInt) {
-        new RunningWindowValueLogic[Int   , BufI](name, layer, shape.asInstanceOf[Shp[BufI]])(max)
+        new RunningWindowValueLogic[Int   , BufI](name, layer, shape.asInstanceOf[Shp[BufI]])(_ * _)
       } else {
         assert (tpe.isLong)
-        new RunningWindowValueLogic[Long  , BufL](name, layer, shape.asInstanceOf[Shp[BufL]])(max)
+        new RunningWindowValueLogic[Long  , BufL](name, layer, shape.asInstanceOf[Shp[BufL]])(_ * _)
       }
       res.asInstanceOf[RunningWindowValueLogic[A, E]]
     }

@@ -14,40 +14,46 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.{Attributes, FanInShape3}
-import de.sciss.fscape.stream.impl.deprecated.FilterIn3DImpl
-import de.sciss.fscape.stream.impl.{NodeImpl, RunningWindowValueImpl, StageImpl}
+import akka.stream.{Attributes, FanInShape3, Inlet, Outlet}
+import de.sciss.fscape.stream.impl.{NodeImpl, RunningWindowValueLogic, StageImpl}
+
+import scala.math.min
 
 object RunningWindowMin {
-  def apply(in: OutD, size: OutI, trig: OutI)(implicit b: Builder): OutD = {
-    val stage0  = new Stage(b.layer)
+  def apply[A, E <: BufElem[A]](in: Outlet[E], size: OutI, gate: OutI)
+                               (implicit b: Builder, tpe: StreamType[A, E]): Outlet[E] = {
+    val stage0  = new Stage[A, E](b.layer)
     val stage   = b.add(stage0)
     b.connect(in  , stage.in0)
     b.connect(size, stage.in1)
-    b.connect(trig, stage.in2)
+    b.connect(gate, stage.in2)
     stage.out
   }
 
   private final val name = "RunningWindowMin"
 
-  private type Shp = FanInShape3[BufD, BufI, BufI, BufD]
+  private type Shp[E] = FanInShape3[E, BufI, BufI, E]
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shp](name) {
+  private final class Stage[A, E <: BufElem[A]](layer: Layer)(implicit ctrl: Control, tpe: StreamType[A, E])
+    extends StageImpl[Shp[E]](name) {
+
     val shape: Shape = new FanInShape3(
-      in0 = InD (s"$name.in"  ),
-      in1 = InI (s"$name.size"),
-      in2 = InI (s"$name.trig"),
-      out = OutD(s"$name.out" )
+      in0 = Inlet [E] (s"$name.in"  ),
+      in1 = InI       (s"$name.size"),
+      in2 = InI       (s"$name.gate"),
+      out = Outlet[E] (s"$name.out" )
     )
 
-    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
-  }
-
-  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape)
-      with RunningWindowValueImpl[Shp]
-      with FilterIn3DImpl[BufD, BufI, BufI] {
-
-    protected def combine(a: Double, b: Double): Double = math.min(a, b)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = {
+      val res: RunningWindowValueLogic[_, _] = if (tpe.isDouble) {
+        new RunningWindowValueLogic[Double, BufD](name, layer, shape.asInstanceOf[Shp[BufD]])(min)
+      } else if (tpe.isInt) {
+        new RunningWindowValueLogic[Int   , BufI](name, layer, shape.asInstanceOf[Shp[BufI]])(min)
+      } else {
+        assert (tpe.isLong)
+        new RunningWindowValueLogic[Long  , BufL](name, layer, shape.asInstanceOf[Shp[BufL]])(min)
+      }
+      res.asInstanceOf[RunningWindowValueLogic[A, E]]
+    }
   }
 }

@@ -23,29 +23,26 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * running input. However, it operates on entire windows, i.e. it outputs
   * windows that contain the maximum elements of all the past windows observed.
   *
-  * '''Warning:''' window parameter modulation is currently not working correctly (issue #30)
-  *
   * @param in     the windowed signal to monitor
   * @param size   the window size. This should normally be a constant. If modulated,
   *               the internal buffer will be re-allocated, essentially causing
   *               a reset trigger.
-  * @param trig   a trigger signal that clears the internal state. When a trigger
-  *               is observed, the _currently processed_ window is reset altogether
+  * @param gate   a gate signal that clears the internal state. When a gate is open (> 0),
+  *               the ''currently processed'' window is reset altogether
   *               until its end, beginning accumulation again from the successive
-  *               window. Normally one will thus want to emit a trigger in sync
-  *               with the _start_ of each window. Emitting multiple triggers per
-  *               window does not have any effect different from emitting the
-  *               first trigger in each window.
+  *               window.
   */
-final case class RunningWindowMax(in: GE, size: GE, trig: GE = 0) extends UGenSource.SingleOut {
+final case class RunningWindowMax(in: GE, size: GE, gate: GE = 0) extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
-    unwrap(this, Vector(in.expand, size.expand, trig.expand))
+    unwrap(this, Vector(in.expand, size.expand, gate.expand))
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
     UGen.SingleOut(this, args)
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
-    val Vec(in, size, trig) = args
-    stream.RunningWindowMax(in = in.toDouble, size = size.toInt, trig = trig.toInt)
+    val Vec(in, size, gate) = args
+    import in.tpe
+    val out = stream.RunningWindowMax[in.A, in.Buf](in = in.toElem, size = size.toInt, gate = gate.toInt)
+    tpe.mkStreamOut(out)
   }
 }

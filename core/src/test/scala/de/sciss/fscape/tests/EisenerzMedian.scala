@@ -17,9 +17,9 @@ object EisenerzMedian {
   def median(): Unit = {
     val SEQUENCE      = true
 
-    val baseDirIn     = userHome / "Documents" / "projects" / "Eisenerz" / "image_work6"
+    val baseDirIn     = file("/") / "data" / "projects" / "Eisenerz" / "image_work6"
     val templateIn    = baseDirIn / "frame-%d.jpg"
-    val baseDirOut    = userHome / "Documents" / "projects" / "Imperfect" / "image_diff6"
+    val baseDirOut    = file("/") / "data" / "temp"
     val templateOut   = baseDirOut / "frame-%d.jpg"
     val idxRange0     = 276 to 628
     val idxRange      = (if (SEQUENCE) idxRange0 else idxRange0.take(30)).map(x => x: GE)
@@ -65,9 +65,9 @@ object EisenerzMedian {
       def delayFrame(in: GE, n: Int): GE = in.drop(frameSize * n)
 
       def extractBrightness(in: GE): GE = {
-        val r   = ChannelProxy(in, 0)
-        val g   = ChannelProxy(in, 1)
-        val b   = ChannelProxy(in, 2)
+        val r   = in.out(0)
+        val g   = in.out(1)
+        val b   = in.out(2)
         (0.299 * r.squared + 0.587 * g.squared + 0.114 * b.squared).sqrt
       }
 
@@ -126,10 +126,10 @@ object EisenerzMedian {
 //      // XXX TODO --- use median instead of mean
 //      val mean      = Sliding(meanR.drop(medianLen - 1), size = 1, step = medianLen)
 
-      val medianTrig = Metro(frameSize.toLong * medianLen)
-      val minR      = RunningWindowMin(lumSlide, size = frameSize, trig = medianTrig)
-      val maxR      = RunningWindowMax(lumSlide, size = frameSize, trig = medianTrig)
-      val sumR      = RunningWindowSum(lumSlide, size = frameSize, trig = medianTrig)
+      val medianTrig = Metro(medianLen) // frameSize.toLong * medianLen)
+      val minR      = RunningWindowMin(lumSlide, size = frameSize, gate = medianTrig)
+      val maxR      = RunningWindowMax(lumSlide, size = frameSize, gate = medianTrig)
+      val sumR      = RunningWindowSum(lumSlide, size = frameSize, gate = medianTrig)
 //      val min       = ResizeWindow(minR, size = medianLen, start = medianLen - 1, stop = 0)
       val min       = ResizeWindow(minR, size = frameSize * medianLen, start = frameSize * (medianLen - 1), stop = 0)
       val max       = ResizeWindow(maxR, size = frameSize * medianLen, start = frameSize * (medianLen - 1), stop = 0)
@@ -168,7 +168,7 @@ object EisenerzMedian {
 //        val exposeSlid  = expose.elastic(dlyElastic) - exposeDly
         // OutOfMemoryError -- buffer to disk instead
         val exposeSlid  = exposeDly - BufferDisk(expose)
-        val sig         = (exposeSlid * gain).max(0.0).min(1.0).pow(gamma)
+        val sig         = (exposeSlid * gain).clip(0.0, 1.0).pow(gamma)
         val spec  = ImageFile.Spec(width = width, height = height, numChannels = /* 1 */ 3,
           fileType = ImageFile.Type.JPG /* PNG */, sampleFormat = ImageFile.SampleFormat.Int8,
           quality = 100)
