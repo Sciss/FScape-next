@@ -8,12 +8,12 @@ import scala.concurrent.Promise
 
 class SlidingSpec extends UGenSpec {
   "The Sliding UGen" should "work as intended" in {
-    var COUNT = 0
+//    var COUNT = 0
     for {
-      inLen <- Seq(2) // Seq(/*0,*/ 1, 7, 8, 9)
-      win   <- Seq(3) // Seq(/*0,*/ 1, 7, 8, 9)
-      step  <- Seq(2) // Seq(/*0,*/ 1, 7, 8, 9)
-      memSz <- Seq(16) // Seq(4, 16)
+      inLen <- Seq(/*0,*/ 1, 7, 8, 9)
+      win   <- Seq(/*0,*/ 1, 7, 8, 9)
+      step  <- Seq(/*0,*/ 1, 7, 8, 9)
+      memSz <- Seq(4, 16)
     } {
       val p = Promise[Vec[Int]]()
       val g = Graph {
@@ -25,7 +25,7 @@ class SlidingSpec extends UGenSpec {
 
       val cfg = Config()
       cfg.nodeBufferSize = memSz
-      runGraph(g, 8)
+      runGraph(g, 8, cfg)
 
       assert(p.isCompleted)
       val res     = getPromiseVec(p)
@@ -45,14 +45,30 @@ class SlidingSpec extends UGenSpec {
 
 //      val exp     = inSq.sliding(winM, stepM)/*.map(_.padTo(win, 0))*/.flatten.toVector
       val exp = loop(inSq, Vector.empty)
-      if (res != exp) {
-        println(s"-------------- inLen $inLen, win $win, step $step")
-        println(s"Obs: $res")
-        println(s"Exp: $exp")
-        COUNT += 1
-      }
-      // assert (res === exp, s"inLen $inLen, win $win, step $step")
+//      if (res != exp) {
+//        println(s"-------------- inLen $inLen, win $win, step $step")
+//        println(s"Obs: $res")
+//        println(s"Exp: $exp")
+//        COUNT += 1
+//      }
+       assert (res === exp, s"inLen $inLen, win $win, step $step")
     }
-    println(s"COUNT $COUNT")
+//    println(s"COUNT $COUNT")
+  }
+
+  it should "adhere to the documentation example" in {
+    val p = Promise[Vec[Int]]()
+    val g = Graph {
+      import graph._
+      val slid = Sliding(ArithmSeq(1, length = 4), size = 3, step = 1)
+      DebugIntPromise(slid, p)
+    }
+
+    runGraph(g)
+
+    assert(p.isCompleted)
+    val res = getPromiseVec(p)
+    val exp = Vec(1, 2, 3, 2, 3, 4, 3, 4, 0, 4)
+    assert(res === exp)
   }
 }

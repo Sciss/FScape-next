@@ -21,9 +21,21 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 
 /** A UGen that produces a sliding window over its input.
   *
-  * @param in     the input to be repacked into windows
-  * @param size   the window size
-  * @param step   the stepping factor in the input, between windows
+  * When the input terminates and the last window is not full, it will be flushed
+  * with its partial content. Otherwise, all windows are guaranteed to be zero-padded
+  * to the window length if they had been only partially filled when the input ended.
+  *
+  * Unlike the `sliding` operation of Scala collections, the UGen always performs steps
+  * for partial windows, e.g. `Sliding(ArithmSeq(1, length = 4), size = 3, step = 1)` will
+  * produce the flat output `1, 2, 3, 2, 3, 4, 3, 4, 0, 4`, thus there are four windows,
+  * the first two of which are full, the third which is full by padding, and the last is
+  * partial.
+  *
+  * @param in   the input to be repacked into windows
+  * @param size the window size. this is clipped to be at least one
+  * @param step the stepping factor in the input, between windows. This clipped
+  *             to be at least one. If step size is larger than window size, frames in
+  *             the input are skipped.
   *
   * @see [[OverlapAdd]]
   */

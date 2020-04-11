@@ -88,6 +88,8 @@ object Sliding {
     final def availableOut: Int = offIn - offOut
     final def outRemain   : Int = size  - offOut
 
+    final def isEmpty: Boolean = offIn == 0
+
     final def dispose(): Unit = if (raf != null) {
       raf.close()
       f.delete()
@@ -218,7 +220,7 @@ object Sliding {
     private[this] var step  : Int  = _
 
     private[this] val windows       = mutable.Buffer.empty[Window[A]]
-    private[this] var windowFrames  = 0
+//    private[this] var windowFrames  = 0
 
     private[this] var isNextWindow  = true
     private[this] var stepRemain    = 0
@@ -254,7 +256,7 @@ object Sliding {
     }
 
     private def processChunk(): Boolean = {
-      if (canPrepareStep && isNextWindow) {
+      if (isNextWindow && canPrepareStep) {
         if (!tryObtainWinParams()) return false
         stepRemain    = step
         isNextWindow  = false
@@ -270,10 +272,17 @@ object Sliding {
 
         if (stepRemain == 0) {
           isNextWindow = true
-          stateChange  = true
+          // stateChange  = true
         }
 
       } else if (hIn.isDone) { // flush
+        if (windows.nonEmpty) {
+          val win = windows.last
+          if (win.isEmpty) {
+            windows.remove(windows.length - 1)
+            stateChange = true
+          }
+        }
         var i = 0
         while (i < windows.length - 1) {
           val win = windows(i)
@@ -318,7 +327,7 @@ object Sliding {
           mkDiskWindow(sz, f, raf)
         }
         windows += win
-        windowFrames += sz
+//        windowFrames += sz
       }
       ok
     }
@@ -353,7 +362,7 @@ object Sliding {
         }
         if (win.outRemain == 0) {
           windows.remove(i)
-          windowFrames -= win.size0
+//          windowFrames -= win.size0
           win.dispose()
         } else {
           i = windows.length
