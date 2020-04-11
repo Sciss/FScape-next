@@ -22,8 +22,6 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 /** A UGen that maps short-time Fourier transformed spectra to the mel scale. To obtain
   * the MFCC, one has to take the log of the output of this UGen and decimate it with a `DCT`.
   *
-  * '''Warning:''' window parameter modulation is currently not working correctly (issue #30)
-  *
   * Example:
   * {{{
   * def mfcc(in: GE) = {

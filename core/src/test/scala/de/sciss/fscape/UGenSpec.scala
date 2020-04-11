@@ -1,7 +1,7 @@
 package de.sciss.fscape
 
 import de.sciss.fscape.graph.Constant
-import de.sciss.fscape.stream.Control.Config
+import de.sciss.fscape.stream.Control.{Config, ConfigBuilder}
 import de.sciss.kollflitz.Vec
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -44,8 +44,7 @@ class UGenSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  def runGraph(g: Graph, blockSize: Int = 1024): Unit = {
-    val cfg = Config()
+  def runGraph(g: Graph, blockSize: Int = 1024, cfg: ConfigBuilder = Config()): Unit = {
     cfg.blockSize = blockSize
     val ctl = stream.Control(cfg)
     ctl.run(g)

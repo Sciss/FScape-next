@@ -21,8 +21,6 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 
 /** A UGen that produces a sliding window over its input.
   *
-  * '''Warning:''' window parameter modulation is currently not working correctly (issue #30)
-  *
   * @param in     the input to be repacked into windows
   * @param size   the window size
   * @param step   the stepping factor in the input, between windows
@@ -38,6 +36,8 @@ final case class Sliding(in: GE, size: GE, step: GE) extends UGenSource.SingleOu
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
     val Vec(in, size, step) = args
-    stream.Sliding(in = in.toDouble, size = size.toInt, step = step.toInt)
+    import in.tpe
+    val out = stream.Sliding[in.A, in.Buf](in = in.toElem, size = size.toInt, step = step.toInt)
+    tpe.mkStreamOut(out)
   }
 }

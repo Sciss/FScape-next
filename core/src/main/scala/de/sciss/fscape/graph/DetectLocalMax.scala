@@ -27,8 +27,6 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * By definition, the first and last value in the input stream
   * cannot qualify for local maxima.
   *
-  * '''Warning:''' window parameter modulation is currently not working correctly (issue #30)
-  *
   * @param in     the signal to analyze for local maxima
   * @param size   the sliding window size. Each two
   *               emitted triggers are spaced apart at least

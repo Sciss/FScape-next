@@ -15,15 +15,16 @@ package de.sciss.fscape
 package stream
 
 import java.io.RandomAccessFile
-import java.nio.DoubleBuffer
 import java.nio.channels.FileChannel
+import java.nio.{DoubleBuffer, IntBuffer, LongBuffer}
 
-import akka.stream.{Attributes, FanInShape3}
+import akka.stream.{Attributes, FanInShape3, Inlet, Outlet}
 import de.sciss.file.File
-import de.sciss.fscape.stream.impl.deprecated.{ChunkImpl, FilterIn3DImpl, FilterLogicImpl}
-import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
 
+import scala.annotation.tailrec
 import scala.collection.mutable
+import scala.math.min
 
 /** Sliding overlapping window. */
 object Sliding {
@@ -34,8 +35,9 @@ object Sliding {
     *               If step size is larger than window size, frames in
     *               the input are skipped.
     */
-  def apply(in: OutD, size: OutI, step: OutI)(implicit b: Builder): OutD = {
-    val stage0  = new Stage(b.layer)
+  def apply[A, E <: BufElem[A]](in: Outlet[E], size: OutI, step: OutI)
+                               (implicit b: Builder, tpe: StreamType[A, E]): Outlet[E] = {
+    val stage0  = new Stage[A, E](b.layer)
     val stage   = b.add(stage0)
     b.connect(in  , stage.in0)
     b.connect(size, stage.in1)
@@ -43,18 +45,50 @@ object Sliding {
     stage.out
   }
 
-  private final class Window(val buf: DoubleBuffer, val size0: Int, f: File, raf: RandomAccessFile) {
-    def this(arr: Array[Double]) = this(DoubleBuffer.wrap(arr), arr.length, null, null)
+  private final val name = "Sliding"
 
-    var offIn : Int  = 0
-    var offOut: Int  = 0
-    var size  : Int  = size0
+  private type Shp[E] = FanInShape3[E, BufI, BufI, E]
 
-    def inRemain    : Int = size  - offIn
-    def availableOut: Int = offIn - offOut
-    def outRemain   : Int = size  - offOut
+  private final class Stage[A, E <: BufElem[A]](layer: Layer)(implicit ctrl: Control, tpe: StreamType[A, E])
+    extends StageImpl[Shp[E]](name) {
 
-    def dispose(): Unit = if (raf != null) {
+    val shape: Shape = new FanInShape3(
+      in0 = Inlet [E] (s"$name.in"  ),
+      in1 = InI       (s"$name.size"),
+      in2 = InI       (s"$name.step"),
+      out = Outlet[E] (s"$name.out" )
+    )
+
+    def createLogic(attr: Attributes): NodeImpl[Shape] = {
+      val res: Logic[_, _] = if (tpe.isDouble) {
+        new LogicD(shape.asInstanceOf[Shp[BufD]], layer)
+      } else if (tpe.isInt) {
+        new LogicI(shape.asInstanceOf[Shp[BufI]], layer)
+      } else {
+        require (tpe.isLong)
+        new LogicL(shape.asInstanceOf[Shp[BufL]], layer)
+      }
+      res.asInstanceOf[Logic[A, E]]
+    }
+  }
+
+  private abstract class Window[A](final val size0: Int, f: File, raf: RandomAccessFile) {
+
+    def writeFrom (arr: Array[A], off: Int, num: Int): Unit
+    def readTo    (arr: Array[A], off: Int, num: Int): Unit
+
+    final protected var offIn : Int  = 0
+    final protected var offOut: Int  = 0
+    final protected var size  : Int  = size0
+
+    final def zero(): Unit = offIn  = size
+    final def trim(): Unit = size   = offIn
+
+    final def inRemain    : Int = size  - offIn
+    final def availableOut: Int = offIn - offOut
+    final def outRemain   : Int = size  - offOut
+
+    final def dispose(): Unit = if (raf != null) {
       raf.close()
       f.delete()
     }
@@ -62,32 +96,128 @@ object Sliding {
     override def toString = s"Window(offIn = $offIn, offOut = $offOut, size = $size)"
   }
 
-  private final val name = "Sliding"
+  private final class WindowD(buf: DoubleBuffer, size0: Int, f: File, raf: RandomAccessFile)
+    extends Window[Double](size0, f, raf) {
 
-  private type Shp = FanInShape3[BufD, BufI, BufI, BufD]
+    type A = Double
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shp](name) {
-    val shape: Shape = new FanInShape3(
-      in0 = InD (s"$name.in"  ),
-      in1 = InI (s"$name.size"),
-      in2 = InI (s"$name.step"),
-      out = OutD(s"$name.out" )
-    )
+    def this(arr: Array[Double]) = this(DoubleBuffer.wrap(arr), arr.length, null, null)
 
-    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
+    def writeFrom(arr: Array[A], off: Int, num: Int): Unit = {
+      buf.position(offIn)
+      buf.put(arr, off, num)
+      offIn += num
+    }
+
+    def readTo(arr: Array[A], off: Int, num: Int): Unit = {
+      buf.position(offOut)
+      buf.get(arr, off, num)
+      offOut += num
+    }
   }
 
-  // XXX TODO -- abstract over data type (BufD vs BufI)?
-  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape)
-      with ChunkImpl[Shp]
-      with FilterLogicImpl[BufD, Shp]
-      with FilterIn3DImpl[BufD, BufI, BufI] {
+  private final class WindowI(buf: IntBuffer, size0: Int, f: File, raf: RandomAccessFile)
+    extends Window[Int](size0, f, raf) {
+
+    type A = Int
+
+    def this(arr: Array[Int]) = this(IntBuffer.wrap(arr), arr.length, null, null)
+
+    def writeFrom(arr: Array[A], off: Int, num: Int): Unit = {
+      buf.position(offIn)
+      buf.put(arr, off, num)
+      offIn += num
+    }
+
+    def readTo(arr: Array[A], off: Int, num: Int): Unit = {
+      buf.position(offOut)
+      buf.get(arr, off, num)
+      offOut += num
+    }
+  }
+
+  private final class WindowL(buf: LongBuffer, size0: Int, f: File, raf: RandomAccessFile)
+    extends Window[Long](size0, f, raf) {
+
+    type A = Long
+
+    def this(arr: Array[Long]) = this(LongBuffer.wrap(arr), arr.length, null, null)
+
+    def writeFrom(arr: Array[A], off: Int, num: Int): Unit = {
+      buf.position(offIn)
+      buf.put(arr, off, num)
+      offIn += num
+    }
+
+    def readTo(arr: Array[A], off: Int, num: Int): Unit = {
+      buf.position(offOut)
+      buf.get(arr, off, num)
+      offOut += num
+    }
+  }
+
+  private final class LogicD(shape: Shp[BufD], layer: Layer)(implicit ctrl: Control)
+    extends Logic[Double, BufD](shape, layer) {
+
+    type A = Double
+
+    protected def mkMemWindow(sz: Int): Window[A] = new WindowD(new Array(sz))
+
+    def mkDiskWindow(sz: Int, f: File, raf: RandomAccessFile): Window[A] = {
+      val fch   = raf.getChannel
+      val bb    = fch.map(FileChannel.MapMode.READ_WRITE, 0L, sz * 8)
+      val db    = bb.asDoubleBuffer()
+      new WindowD(db, sz, f, raf)
+    }
+  }
+
+  private final class LogicI(shape: Shp[BufI], layer: Layer)(implicit ctrl: Control)
+    extends Logic[Int, BufI](shape, layer) {
+
+    type A = Int
+
+    protected def mkMemWindow(sz: Int): Window[A] = new WindowI(new Array(sz))
+
+    def mkDiskWindow(sz: Int, f: File, raf: RandomAccessFile): Window[A] = {
+      val fch   = raf.getChannel
+      val bb    = fch.map(FileChannel.MapMode.READ_WRITE, 0L, sz * 4)
+      val db    = bb.asIntBuffer()
+      new WindowI(db, sz, f, raf)
+    }
+  }
+
+  private final class LogicL(shape: Shp[BufL], layer: Layer)(implicit ctrl: Control)
+    extends Logic[Long, BufL](shape, layer) {
+
+    type A = Long
+
+    protected def mkMemWindow(sz: Int): Window[A] = new WindowL(new Array(sz))
+
+    def mkDiskWindow(sz: Int, f: File, raf: RandomAccessFile): Window[A] = {
+      val fch   = raf.getChannel
+      val bb    = fch.map(FileChannel.MapMode.READ_WRITE, 0L, sz * 8)
+      val db    = bb.asLongBuffer()
+      new WindowL(db, sz, f, raf)
+    }
+  }
+
+  private abstract class Logic[A, E <: BufElem[A]](shape: Shp[E], layer: Layer)
+                                                  (implicit ctrl: Control, tpe: StreamType[A, E])
+    extends Handlers(name, layer, shape) {
+
+    protected def mkMemWindow (sz: Int): Window[A]
+
+    protected def mkDiskWindow(sz: Int, f: File, raf: RandomAccessFile): Window[A]
+
+    private[this] val hIn     = Handlers.InMain [A, E](this, shape.in0)
+    private[this] val hSize   = Handlers.InIAux       (this, shape.in1)(math.max(1, _)) // XXX TODO -- allow zero?
+    private[this] val hStep   = Handlers.InIAux       (this, shape.in2)(math.max(1, _)) // XXX TODO -- allow zero?
+    private[this] val hOut    = Handlers.OutMain[A, E](this, shape.out)
 
     private[this] var size  : Int  = _
     private[this] var step  : Int  = _
 
-    private[this] val windows       = mutable.Buffer.empty[Window]
+    private[this] val windows       = mutable.Buffer.empty[Window[A]]
     private[this] var windowFrames  = 0
 
     private[this] var isNextWindow  = true
@@ -101,10 +231,9 @@ object Sliding {
         input frames (i.e. with four windows in memory).
      */
     @inline
-    private def canPrepareStep = stepRemain == 0 && bufIn0 != null &&
-      (windows.isEmpty || windows.head.inRemain > 0)
+    private def canPrepareStep = stepRemain == 0 && (windows.isEmpty || windows.head.inRemain > 0)
 
-    protected def shouldComplete(): Boolean = inputsEnded && windows.isEmpty
+    private def shouldComplete(): Boolean = hIn.isDone && windows.isEmpty
 
     override protected def stopped(): Unit = {
       super.stopped()
@@ -112,41 +241,44 @@ object Sliding {
       windows.clear()
     }
 
-    protected def processChunk(): Boolean = {
+    final protected def onDone(inlet: Inlet[_]): Unit =
+      process()
+
+    @tailrec
+    final protected def process(): Unit = {
+      val ok = processChunk()
+      if (shouldComplete()) {
+        if (hOut.flush()) completeStage()
+
+      } else if (ok) process()
+    }
+
+    private def processChunk(): Boolean = {
+      if (canPrepareStep && isNextWindow) {
+        if (!tryObtainWinParams()) return false
+        stepRemain    = step
+        isNextWindow  = false
+      }
+
       var stateChange = false
 
-//      println(s"--- SLID canPrepareStep = $canPrepareStep; isNextWindow = $isNextWindow")
-      if (canPrepareStep && isNextWindow) {
-        stepRemain    = startNextWindow(inOff = inOff)
-//        println(s"--- SLID stepRemain = $stepRemain")
-        isNextWindow  = false
-        stateChange   = true
-      }
-
-      val chunkIn = math.min(stepRemain, inRemain)
-//      println(s"--- SLID chunkIn = $chunkIn")
+      val chunkIn = min(stepRemain, hIn.available)
       if (chunkIn > 0) {
-        /* val chunk1 = */ copyInputToWindows(chunkIn)
-//        println(s"--- SLID copyInputToWindows($chunkIn) -> $chunk1")
-//        if (chunk1 > 0) {
-          inOff       += chunkIn // chunk1
-          inRemain    -= chunkIn // chunk1
-          stepRemain  -= chunkIn // chunk1
-          stateChange  = true
+        copyInputToWindows(chunkIn)
+        stepRemain  -= chunkIn
+        stateChange  = true
 
-          if (stepRemain == 0) {
-            isNextWindow = true
-            stateChange  = true
-          }
-//        }
-      }
-      else if (inputsEnded) { // flush
-//        println(s"--- SLID inputsEnded")
+        if (stepRemain == 0) {
+          isNextWindow = true
+          stateChange  = true
+        }
+
+      } else if (hIn.isDone) { // flush
         var i = 0
         while (i < windows.length - 1) {
           val win = windows(i)
           if (win.inRemain > 0) {
-            win.offIn   = win.size    // 'zeroed'
+            win.zero()  // 'zeroed'
             stateChange = true
           }
           i += 1
@@ -154,20 +286,16 @@ object Sliding {
         if (windows.nonEmpty) {
           val win = windows.last
           if (win.inRemain > 0) {
-            win.size    = win.offIn   // 'trimmed'
+            win.trim()   // 'trimmed'
             stateChange = true
           }
         }
       }
 
-      val chunkOut = outRemain
-//      println(s"--- SLID chunkOut = $chunkOut")
+      val chunkOut = hOut.available
       if (chunkOut > 0) {
         val chunk1 = copyWindowsToOutput(chunkOut)
         if (chunk1 > 0) {
-          // println(s"--- SLID copyWindowsToOutput($chunkOut) -> $chunk1")
-          outOff      += chunk1
-          outRemain   -= chunk1
           stateChange  = true
         }
       }
@@ -175,72 +303,55 @@ object Sliding {
       stateChange
     }
 
-    @inline
-    private def startNextWindow(inOff: Int): Int = {
-      if (bufIn1 != null && inOff < bufIn1.size) {
-        size = math.max(1, bufIn1.buf(inOff))
+    private def tryObtainWinParams(): Boolean = {
+      val ok = hSize.hasNext && hStep.hasNext
+      if (ok) {
+        size = hSize.next()
+        step = hStep.next()
+
+        val sz  = size
+        val win: Window[A] = if (sz <= ctrl.nodeBufferSize) {
+          mkMemWindow(sz)
+        } else {
+          val f     = ctrl.createTempFile()
+          val raf   = new RandomAccessFile(f, "rw")
+          mkDiskWindow(sz, f, raf)
+        }
+        windows += win
+        windowFrames += sz
       }
-      if (bufIn2 != null && inOff < bufIn2.size) {
-        step = math.max(1, bufIn2.buf(inOff))
-      }
-      val sz  = size
-      val win = if (sz <= ctrl.nodeBufferSize) {
-        val arr = new Array[Double](sz)
-        new Window(arr)
-      } else {
-        val f     = ctrl.createTempFile()
-        val raf   = new RandomAccessFile(f, "rw")
-        val fch   = raf.getChannel
-        val bb    = fch.map(FileChannel.MapMode.READ_WRITE, 0L, sz * 8)
-        val buf   = bb.asDoubleBuffer()
-        new Window(buf, sz, f, raf)
-      }
-      windows += win
-      windowFrames += sz
-      step  // -> writeToWinRemain
+      ok
     }
 
-    @inline
-    private def copyInputToWindows(chunk: Int): Unit /* Int */ = {
+    private def copyInputToWindows(chunk: Int): Unit = {
+      val in    = hIn.array
+      val inOff = hIn.offset
       var i = 0
-//      var res = 0
       while (i < windows.length) {
         val win = windows(i)
-        val chunk1 = math.min(win.inRemain, chunk)
+        val chunk1 = min(win.inRemain, chunk)
         if (chunk1 > 0) {
-          val wb = win.buf
-          wb.position(win.offIn)
-          wb.put(bufIn0.buf, inOff, chunk1)
-//          Util.copy(bufIn0.buf, inOff, win.buf, win.offIn, chunk1)
-//          println(s"SLID copying $chunk1 frames from in at $inOff to window $i at ${win.offIn}")
-          win.offIn += chunk1
-//          res = math.max(res, chunk1)
+          win.writeFrom(in, inOff, chunk1)
         }
         i += 1
       }
-//      res
+      hIn.advance(chunk)
     }
 
-    @inline
     private def copyWindowsToOutput(chunk: Int): Int = {
-      var i = 0
       var chunk0  = chunk
-      var outOff0 = outOff
+      val out     = hOut.array
+      var outOff0 = hOut.offset
+      var i = 0
       while (chunk0 > 0 && i < windows.length) {  // take care of index as we drop windows on the way
         val win     = windows(i)
-        val chunk1  = math.min(chunk0, win.availableOut)
+        val chunk1  = min(chunk0, win.availableOut)
         if (chunk1 > 0) {
-          val wb = win.buf
-          wb.position(win.offOut)
-          wb.get(bufOut0.buf, outOff0, chunk1)
-//          Util.copy(win.buf, win.offOut, bufOut0.buf, outOff0, chunk1)
-          // println(s"SLID copying $chunk1 frames from window $i at ${win.offOut} to out at $outOff0")
-          win.offOut += chunk1
+          win.readTo(out, outOff0, chunk1)
           chunk0     -= chunk1
           outOff0    += chunk1
         }
         if (win.outRemain == 0) {
-          // println("SLID dropping window 0")
           windows.remove(i)
           windowFrames -= win.size0
           win.dispose()
@@ -248,7 +359,9 @@ object Sliding {
           i = windows.length
         }
       }
-      chunk - chunk0
+      val res = chunk - chunk0
+      hOut.advance(res)
+      res
     }
   }
 }

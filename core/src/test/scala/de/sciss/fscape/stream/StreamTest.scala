@@ -116,7 +116,7 @@ object StreamTest extends App {
 //    val fftSize     = 131072
     val fftSize     = 32768 // 8192
     val winStep     = fftSize // / 4
-    val inW         = Sliding       (in = in  , size = const(fftSize), step    = const(winStep))
+    val inW         = Sliding[Double, BufD](in = in  , size = const(fftSize), step    = const(winStep))
     val fft         = Real1FullFFT  (in = inW , size = const(fftSize), padding = const(0))
 
     // 'percussion'
@@ -227,7 +227,7 @@ object StreamTest extends App {
     val in          = AudioFileIn(file = fIn, numChannels = 1).head
     val fftSize     = 131072 // 32768 // 8192
     val winStep     = fftSize / 4
-    val inW         = Sliding       (in = in  , size = const(fftSize), step    = const(winStep))
+    val inW         = Sliding[Double, BufD](in = in  , size = const(fftSize), step    = const(winStep))
     val fft0        = Real1FullFFT  (in = inW , size = const(fftSize), padding = const(0))
     val fft         = fft0 // ComplexUnaryOp(in = fft0, op = ComplexUnaryOp.Conj)
 
@@ -286,7 +286,7 @@ object StreamTest extends App {
     val in          = AudioFileIn(file = fIn, numChannels = 1).head
     val fftSize     = 131072 // 32768 // 8192
     val winStep     = fftSize / 4
-    val inW         = Sliding       (in = in  , size = const(fftSize), step    = const(winStep))
+    val inW         = Sliding[Double, BufD](in = in  , size = const(fftSize), step    = const(winStep))
     val fft0        = Real1FullFFT  (in = inW , size = const(fftSize), padding = const(0))
     val fft         = fft0 // ComplexUnaryOp(in = fft0, op = ComplexUnaryOp.Conj)
 

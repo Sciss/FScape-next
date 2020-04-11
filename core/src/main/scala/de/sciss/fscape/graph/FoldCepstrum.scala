@@ -28,8 +28,6 @@ object FoldCepstrum {
     )
 }
 /**
-  * '''Warning:''' window parameter modulation is currently not working correctly (issue #30)
-  *
   * We operate on a complex cepstrum (`size` is the number of complex frames). We distinguish
   * a left `L` (causal) and right `R` (anti-causal) half. The formulas then are
   *

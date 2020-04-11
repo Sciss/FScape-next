@@ -28,8 +28,6 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * either distinguish between these two cases, or just treat output value
   * of `<= 3.0` as silences.
   *
-  * '''Warning:''' window parameter modulation is currently not working correctly (issue #30)
-  *
   * @param  in          the signal to analyse
   * @param  sampleRate  sample rate of the input signal
   * @param  size        the window size for which to calculate values
