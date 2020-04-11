@@ -26,6 +26,11 @@ object NormalizeWindow {
   final val ZeroMean    = 3
 
   final val ModeMax     = 3
+
+  def normalize   (in: GE, size: GE): GE = NormalizeWindow(in, size, mode = Normalize   )
+  def fitUnipolar (in: GE, size: GE): GE = NormalizeWindow(in, size, mode = FitUnipolar )
+  def fitBipolar  (in: GE, size: GE): GE = NormalizeWindow(in, size, mode = FitBipolar  )
+  def zeroMean    (in: GE, size: GE): GE = NormalizeWindow(in, size, mode = ZeroMean    )
 }
 
 /** A UGen that normalizes each input window according to a mode.

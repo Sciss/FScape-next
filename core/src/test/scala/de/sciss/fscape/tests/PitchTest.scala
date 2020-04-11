@@ -65,9 +65,9 @@ object PitchTest extends App {
 
     println(s"minLag $minLag, maxLag $maxLag, winSize $winSize, winPadded $winPadded, fftSize $fftSize, stepSize $stepSize, numSteps $numSteps")
 
-    def mkWindow(): GE = GenWindow(winSize, shape = GenWindow.Hann).take(slidLen)
+    def mkWindow(): GE = GenWindow.Hann(winSize).take(slidLen)
 
-    val inLeak  = NormalizeWindow(inSlid, winSize, mode = NormalizeWindow.ZeroMean)
+    val inLeak  = NormalizeWindow.zeroMean(inSlid, winSize)
     val inW     = inLeak * mkWindow()
     val peaks0  = WindowApply(RunningMax(inLeak.abs, Metro(winSize)), winSize, winSize - 1)
 //    RepeatWindow(peaks).poll(Metro(2), "peak")
@@ -81,7 +81,7 @@ object PitchTest extends App {
       //      val c0    = WindowApply(ar0B, size = fftSize, index = 0)
       //      val c0W   = RepeatWindow(c0, num = fftSize)
       //      ar0B / c0W
-      if (!normalize) ar1 else NormalizeWindow(ar1, size = fftSizeH, mode = NormalizeWindow.Normalize)
+      if (!normalize) ar1 else NormalizeWindow.normalize(ar1, size = fftSizeH)
     }
 
     // val localPeak = inW.abs.max
@@ -166,7 +166,7 @@ object PitchTest extends App {
 //    Plot1D(freqsSel, size = numSteps)
 
 //    RepeatWindow(lagsSel).poll(Metro(2), "lags-sel")
-    RepeatWindow(freqsSel).poll(Metro(2), "path")
+    freqsSel.poll(1, "path")
 //    freqsSel.last.poll(0, "last")
 
 //    val osc = Vector.tabulate(NumCandidates) { i =>
@@ -189,13 +189,12 @@ object PitchTest extends App {
   config.useAsync = false
   config.blockSize  = 512 // 4096
   implicit val ctrl: stream.Control = stream.Control(config)
+  val t1 = System.currentTimeMillis()
   ctrl.run(g)
 
-  println("Running.")
-
-  Swing.onEDT {
-    SimpleGUI(ctrl)
-  }
+//  println("Running.")
 
   Await.result(ctrl.status, Duration.Inf)
+  val t2 = System.currentTimeMillis()
+  println(s"Took ${t2-t1} ms.")
 }
