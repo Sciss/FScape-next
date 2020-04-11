@@ -60,7 +60,7 @@ object AffineTransformTest {
       val tempIn    = dir0 / "photos" / "161008_HH"/ "_MG_%d.JPG"
       // val fIn       = userHome / "Documents" / "projects" / "Imperfect" / "photos" / "raspi" / "manual_gain.jpg"
 //      val tempOut   = userHome / "Documents" / "projects" / "Imperfect" / "precious"/ "test-%d.jpg"
-      val tempOut   = userHome / "Documents" / "temp"/ "test-%d.jpg"
+      val tempOut   = file("/") / "data" / "temp"/ "test-%d.jpg"
       // val fOut      = userHome / "Documents" / "temp" / "_killme.jpg"
       val widthIn0  = 3456
       val heightIn0 = 5184
@@ -90,7 +90,7 @@ object AffineTransformTest {
 
       require((tempIn.parent / tempIn.name.format(indexIn)).isFile)
 
-      val indicesIn = Seq.fill(seqLen)(indexIn: GE).reduce(_ ++ _)
+      val indicesIn = ValueIntSeq(Seq.fill(seqLen)(indexIn):_ *)
       val img       = ImageFileSeqIn(template = tempIn, numChannels = 3, indices = indicesIn)
 
   //    at.translate  (-cx, -cy)
@@ -121,7 +121,7 @@ object AffineTransformTest {
       println(s"SHAPE: [${transformsT.size}][${transformsT(0).size}]")
 
       val mat = transformsT.zipWithIndex.map { case (cSeq, _ /* cIdx */) =>
-        val cSeqGE = cSeq.map(x => x: GE).reduce(_ ++ _)
+        val cSeqGE = ValueDoubleSeq(cSeq: _*) // .map(x => x: GE).reduce(_ ++ _)
         val res = RepeatWindow(cSeqGE, num = frameSizeOut)
         // Length(res).poll(0, s"coef $cIdx length")
         // res.poll(Metro(frameSizeOut), s"coef $cIdx")
@@ -151,7 +151,7 @@ object AffineTransformTest {
 
       val spec  = ImageFile.Spec(width = widthOut, height = heightOut, numChannels = 3, fileType = ImageFile.Type.JPG)
   //    ImageFileOut(file = fOut, spec = spec, in = sig)
-      val indicesOut = (1 to seqLen).map(x => x: GE).reduce(_ ++ _)
+      val indicesOut = ValueIntSeq(1 to seqLen: _*)
       ImageFileSeqOut(template = tempOut, spec = spec, in = sig, indices = indicesOut)
 
       Progress(in = Frames(ChannelProxy(sig, 0)) / (frameSizeOut * seqLen), Metro(widthOut /* frameSizeOut */))

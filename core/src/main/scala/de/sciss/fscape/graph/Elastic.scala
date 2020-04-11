@@ -29,6 +29,8 @@ final case class Elastic(in: GE, num: GE = 1) extends UGenSource.SingleOut {
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
     val Vec(in, num) = args
-    stream.Elastic(in = in.toDouble, num = num.toInt)
+    import in.tpe
+    val out = stream.BufferMemory[in.A, in.Buf](in = in.toElem, length = num.toInt, lenMul = b.control.blockSize)
+    tpe.mkStreamOut(out)
   }
 }
