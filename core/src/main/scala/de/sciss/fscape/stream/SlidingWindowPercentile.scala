@@ -14,21 +14,20 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.{Attributes, FanInShape5}
-import de.sciss.fscape.stream.impl.deprecated.{FilterIn5DImpl, FilterLogicImpl, WindowedLogicImpl}
+import akka.stream.{Attributes, FanInShape5, Inlet, Outlet}
+import de.sciss.fscape.stream.impl.Handlers.{InDAux, InIAux}
+import de.sciss.fscape.stream.impl.logic.FilterWindowedInAOutA
 import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import de.sciss.numbers.Implicits._
 
 import scala.annotation.tailrec
 import scala.collection.mutable
+import scala.math.max
 
-/*
-
-  XXX TODO: modulating window size and frac has not been tested
-
- */
 object SlidingWindowPercentile {
-  def apply(in: OutD, winSize: OutI, medianLen: OutI, frac: OutD, interp: OutI)(implicit b: Builder): OutD = {
-    val stage0  = new Stage(b.layer)
+  def apply[A, E <: BufElem[A]](in: Outlet[E], winSize: OutI, medianLen: OutI, frac: OutD, interp: OutI)
+                               (implicit b: Builder, tpe: StreamType[A, E]): Outlet[E] = {
+    val stage0  = new Stage[A, E](b.layer)
     val stage   = b.add(stage0)
     b.connect(in        , stage.in0)
     b.connect(winSize   , stage.in1)
@@ -40,112 +39,122 @@ object SlidingWindowPercentile {
 
   private final val name = "SlidingWindowPercentile"
 
-  private type Shp = FanInShape5[BufD, BufI, BufI, BufD, BufI, BufD]
+  private type Shp[E] = FanInShape5[E, BufI, BufI, BufD, BufI, E]
 
 //  private final val lessThanOne = java.lang.Double.longBitsToDouble(0x3fefffffffffffffL)
   private final val lessThanOne = java.lang.Math.nextDown(1.0)
 
-  private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shp](name) {
+  private final class Stage[A, E <: BufElem[A]](layer: Layer)(implicit ctrl: Control, tpe: StreamType[A, E])
+    extends StageImpl[Shp[E]](name) {
+
     val shape: Shape = new FanInShape5(
-      in0 = InD (s"$name.in"        ),
-      in1 = InI (s"$name.winSize"   ),
-      in2 = InI (s"$name.medianLen" ),
-      in3 = InD (s"$name.frac"      ),
-      in4 = InI (s"$name.interp"    ),
-      out = OutD(s"$name.out"       )
+      in0 = Inlet [E] (s"$name.in"        ),
+      in1 = InI       (s"$name.winSize"   ),
+      in2 = InI       (s"$name.medianLen" ),
+      in3 = InD       (s"$name.frac"      ),
+      in4 = InI       (s"$name.interp"    ),
+      out = Outlet[E] (s"$name.out"       )
     )
 
-    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = {
+      val res: Logic[_, _] = if (tpe.isDouble) {
+        new Logic[Double, BufD](shape.asInstanceOf[Shp[BufD]], layer)(_ < _)
+      } else if (tpe.isInt) {
+        new Logic[Int   , BufI](shape.asInstanceOf[Shp[BufI]], layer)(_ < _)
+      } else {
+        assert (tpe.isLong)
+        new Logic[Long  , BufL](shape.asInstanceOf[Shp[BufL]], layer)(_ < _)
+      }
+      res.asInstanceOf[Logic[A, E]]
+    }
   }
 
-  private final class Pixel {
-    var medianBuf    : Array[Double] = _
+  private final class Pixel[A: Ordering] {
+    var medianBuf    : Array[A] = _
     var medianBufIdx  = 0
 
     // we follow the typical approach with two priority queues,
     // split at the percentile
-    val pqLo  = new mutable.PriorityQueueWithRemove[Double]
-    val pqHi  = new mutable.PriorityQueueWithRemove[Double]
+    val pqLo  = new mutable.PriorityQueueWithRemove[A]
+    val pqHi  = new mutable.PriorityQueueWithRemove[A]
   }
 
-  // XXX TODO -- abstract over data type (BufD vs BufI)?
-  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape)
-      with FilterLogicImpl[BufD, Shp]
-      with WindowedLogicImpl[Shp]
-      with FilterIn5DImpl[BufD, BufI, BufI, BufD, BufI] {
+  private final class Logic[@specialized(Args) A, E <: BufElem[A]](shape: Shp[E], layer: Layer)(lt: (A, A) => Boolean)
+                                                                  (implicit ctrl: Control, tpe0: StreamType[A, E])
+    extends FilterWindowedInAOutA[A, E, Shp[E]](name, layer, shape)(shape.in0, shape.out) {
+
+    private[this] val hWinSize    = InIAux  (this, shape.in1)(max(1, _))
+    private[this] val hMedianLen  = InIAux  (this, shape.in2)(max(1, _))
+    private[this] val hFrac       = InDAux  (this, shape.in3)(_.clip(0.0, lessThanOne))
+    private[this] val hInterp     = InIAux  (this, shape.in4)()
 
     private[this] var winSize     : Int     = 0
     private[this] var medianLen   : Int     = 0
     private[this] var frac        : Double  = -1d
     private[this] var interp      : Boolean = _
 
-    private[this] var pixels      : Array[Pixel]  = _
-    private[this] var winBuf      : Array[Double] = _
+    private[this] var pixels      : Array[Pixel[A]]  = _
 
     override protected def stopped(): Unit = {
       super.stopped()
       pixels = null
     }
 
-    protected def startNextWindow(inOff: Int): Long = {
-      var _needsUpdate = false
-      if (bufIn1 != null && inOff < bufIn1.size) {
-        val newWinSize = math.max(1, bufIn1.buf(inOff))
+    protected def winBufSize: Int = winSize
+
+    import tpe.ordering
+
+    protected def tryObtainWinParams(): Boolean = {
+      val ok =
+        hWinSize  .hasNext &&
+        hMedianLen.hasNext &&
+        hFrac     .hasNext &&
+        hInterp   .hasNext
+
+      if (ok) {
+        var _needsUpdate = false
+        val newWinSize = hWinSize.next()
         if (winSize != newWinSize) {
           winSize     = newWinSize
-          val _pixels = new Array[Pixel](newWinSize)
+          val _pixels = new Array[Pixel[A]](newWinSize)
           var i = 0
           while (i < _pixels.length) {
-            _pixels(i) = new Pixel
+            _pixels(i) = new Pixel[A]
             i += 1
           }
           pixels        = _pixels
-          winBuf        = new Array[Double](newWinSize)
           _needsUpdate  = true
         }
-      }
-      if (bufIn2 != null && inOff < bufIn2.size) {
-        val newMedLen = math.max(1, bufIn2.buf(inOff))
+        val newMedLen = hMedianLen.next()
         if (medianLen != newMedLen) {
           medianLen = newMedLen
           _needsUpdate = true
         }
-      }
-      if (bufIn3 != null && inOff < bufIn3.size) {
         // such that `(frac * n).toInt < n` holds
-        val newFrac = math.max(0d, math.min(lessThanOne, bufIn3.buf(inOff)))
+        val newFrac = hFrac.next()
         if (frac != newFrac) {
           frac = newFrac
           _needsUpdate = true
         }
-      }
-      if (bufIn4 != null && inOff < bufIn4.size) {
-        interp = bufIn4.buf(inOff) != 0
-      }
 
-      if (_needsUpdate) {
-        val _pixels = pixels
-        var i = 0
-        while (i < _pixels.length) {
-          updatePixel(_pixels(i))
-          i += 1
+        interp = hInterp.next() > 0
+
+        if (_needsUpdate) {
+          val _pixels = pixels
+          var i = 0
+          while (i < _pixels.length) {
+            updatePixel(_pixels(i))
+            i += 1
+          }
         }
       }
-
-      winSize
+      ok
     }
 
-    protected def copyInputToWindow(inOff: Int, writeToWinOff: Long, chunk: Int): Unit =
-      Util.copy(bufIn0.buf, inOff, winBuf, writeToWinOff.toInt, chunk)
-
-    protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit =
-      Util.copy(winBuf, readFromWinOff.toInt, bufOut0.buf, outOff, chunk)
-
-    protected def processWindow(writeToWinOff: Long): Long = {
+    protected def processWindow(): Unit = {
       val _pixels = pixels
       var i         = 0
-      val stop    = writeToWinOff.toInt
+      val stop    = readOff.toInt
 
       while (i < stop) {
         val valueIn   = winBuf(i)
@@ -153,11 +162,9 @@ object SlidingWindowPercentile {
         winBuf(i)     = valueOut
         i += 1
       }
-
-      writeToWinOff
     }
 
-    private def updatePixel(pixel: Pixel): Unit = {
+    private def updatePixel(pixel: Pixel[A]): Unit = {
       import pixel._
 
       @inline
@@ -167,7 +174,7 @@ object SlidingWindowPercentile {
       var shrink  = oldSize - medianLen
       val newSize = shrink != 0
       if (newSize) {
-        val newBuf    = new Array[Double](medianLen)
+        val newBuf    = tpe.newArray(medianLen)
         val oldMedIdx = medianBufIdx
         val chunk     = math.min(medianLen, oldSize)
         if (chunk > 0) {  // since _size must be > 0, it implies that oldSize > 0
@@ -198,9 +205,9 @@ object SlidingWindowPercentile {
       }
     }
 
-    private def removePQ(pixel: Pixel, d: Double): Unit = {
+    private def removePQ(pixel: Pixel[A], d: A): Unit = {
       import pixel._
-      val pqRem = if (pqLo.nonEmpty && pqLo.max >= d) pqLo else pqHi
+      val pqRem = if (pqLo.nonEmpty && !lt(pqLo.max, d)) pqLo else pqHi
       assert(pqRem.remove(d))
     }
 
@@ -212,7 +219,7 @@ object SlidingWindowPercentile {
 
     // tot-size must be > 0
     @tailrec
-    private def balancePQ(pixel: Pixel, tgt: Int): Unit = {
+    private def balancePQ(pixel: Pixel[A], tgt: Int): Unit = {
       import pixel._
       val idxInDif = pqLo.size - tgt
       if (idxInDif <= 0) {
@@ -224,13 +231,13 @@ object SlidingWindowPercentile {
       }
     }
 
-    private def processPixel(valueIn: Double, pixel: Pixel): Double = {
+    private def processPixel(valueIn: A, pixel: Pixel[A]): A = {
       import pixel._
 
       @inline
       def calcTotSize(): Int = pqLo.size + pqHi.size
 
-      val pqIns    = if (pqLo.isEmpty || valueIn < pqLo.max) pqLo else pqHi
+      val pqIns    = if (pqLo.isEmpty || lt(valueIn, pqLo.max)) pqLo else pqHi
       val valueOld = medianBuf(medianBufIdx)
       medianBuf(medianBufIdx) = valueIn
       medianBufIdx += 1

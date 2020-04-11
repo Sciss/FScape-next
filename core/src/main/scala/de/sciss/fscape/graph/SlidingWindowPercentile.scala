@@ -52,7 +52,9 @@ final case class SlidingWindowPercentile(in: GE, winSize: GE, medianLen: GE = 3,
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
     val Vec(in, winSize, medianLen, frac, interp) = args
-    stream.SlidingWindowPercentile(in = in.toDouble, winSize = winSize.toInt, medianLen = medianLen.toInt,
-      frac = frac.toDouble, interp = interp.toInt)
+    import in.tpe
+    val out = stream.SlidingWindowPercentile[in.A, in.Buf](in = in.toElem, winSize = winSize.toInt,
+      medianLen = medianLen.toInt, frac = frac.toDouble, interp = interp.toInt)
+    tpe.mkStreamOut(out)
   }
 }

@@ -22,7 +22,8 @@ object SlidingWindowPercentileTest extends App {
     )
 
     val m  = SlidingWindowPercentile(in, winSize = 4, medianLen = 3, frac = 0.5)
-    RepeatWindow(m).poll(Metro(2), "out")
+    m.drop(8).poll(1, "out")
+//    Length(m).poll("m.length")
   }
 
   stream.Control().run(g)
