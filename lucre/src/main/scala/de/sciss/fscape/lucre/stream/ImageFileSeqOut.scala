@@ -43,10 +43,10 @@ object ImageFileSeqOut {
 
   private final val name = "ImageFileSeqOut"
 
-  private type Shape = In6UniformSinkShape[BufI, BufI, BufI, BufI, BufI, BufI, BufD]
+  private type Shp = In6UniformSinkShape[BufI, BufI, BufI, BufI, BufI, BufI, BufD]
 
   private final class Stage(layer: Layer, template: File, numChannels: Int)(implicit protected val ctrl: Control)
-    extends BlockingGraphStage[Shape](s"$name(${template.name})") {
+    extends BlockingGraphStage[Shp](s"$name(${template.name})") {
 
     require (numChannels > 0)
 
@@ -60,13 +60,14 @@ object ImageFileSeqOut {
       Vector.tabulate(numChannels)(ch => InD(s"$name.in$ch"))
     )
 
-    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer, template, numChannels = numChannels)
+    def createLogic(attr: Attributes): NodeImpl[Shape] =
+      new Logic(shape, layer, template, numChannels = numChannels)
   }
 
-  private final class Logic(shape: Shape, layer: Layer, protected val template: File, protected val numChannels: Int)
+  private final class Logic(shape: Shp, layer: Layer, protected val template: File, protected val numChannels: Int)
                            (implicit ctrl: Control)
     extends NodeImpl(s"$name(${template.name})", layer, shape)
-      with ImageFileSeqOutImpl[Shape] with ImageFileOutReadsSpec[Shape] { self =>
+      with ImageFileSeqOutImpl[Shp] with ImageFileOutReadsSpec[Shp] { self =>
 
     protected val inletsImg   : Vec[InD]  = shape.inlets6.toIndexedSeq
     protected val inletIndices:     InI   = shape.in5

@@ -20,6 +20,8 @@ import de.sciss.fscape.graph.ImageFileSeqIn.formatTemplate
 import de.sciss.fscape.logStream
 import de.sciss.fscape.stream.{BufI, InI}
 
+import scala.annotation.tailrec
+
 trait ImageFileSeqOutImpl[S <: Shape] extends ImageFileOutImpl[S] {
   logic: NodeImpl[S] =>
 
@@ -122,6 +124,7 @@ trait ImageFileSeqOutImpl[S <: Shape] extends ImageFileOutImpl[S] {
     }
   }
 
+  @tailrec
   private def process(): Unit = {
     logStream(s"process() $this")
     var stateChange = false

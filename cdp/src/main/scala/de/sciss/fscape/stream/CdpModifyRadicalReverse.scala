@@ -33,12 +33,12 @@ object CdpModifyRadicalReverse {
 
   private final val name = "CdpModifyRadicalReverse"
 
-  private type Shape = FlowShape[BufD, BufD]
+  private type Shp = FlowShape[BufD, BufD]
 
   private final class Stage(layer: Layer)(implicit ctrl: Control)
-    extends BlockingGraphStage[Shape](name) {
+    extends BlockingGraphStage[Shp](name) {
 
-    val shape = FlowShape(
+    val shape: Shape = FlowShape(
       InD (s"$name.in"),
       OutD(s"$name.out")
     )
@@ -46,7 +46,7 @@ object CdpModifyRadicalReverse {
     def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
   }
 
-  private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape) with NodeHasInitImpl with InHandler with OutHandler {
 
     private[this] var afSource      : io.AudioFile  = _

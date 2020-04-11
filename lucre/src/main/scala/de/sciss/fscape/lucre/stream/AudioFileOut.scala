@@ -49,11 +49,11 @@ object AudioFileOut {
 
   private final val name = "AudioFileOut"
 
-  private type Shape = In3UniformFanInShape[BufI, BufI, BufD, BufD, BufL]
+  private type Shp = In3UniformFanInShape[BufI, BufI, BufD, BufD, BufL]
 
   private final class Stage(layer: Layer, fileTr: Try[File], name: String, numChannels: Int)
                            (implicit protected val ctrl: Control)
-    extends BlockingGraphStage[Shape](name) {
+    extends BlockingGraphStage[Shp](name) {
 
     val shape: Shape = In3UniformFanInShape(
       InI (s"$name.fileType"    ),
@@ -63,10 +63,11 @@ object AudioFileOut {
       OutL(s"$name.out")
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer, fileTr, name = name, numChannels = numChannels)
+    def createLogic(attr: Attributes): NodeImpl[Shape] =
+      new Logic(shape, layer, fileTr, name = name, numChannels = numChannels)
   }
 
-  private final class Logic(shape: Shape, layer: Layer, fileTr: Try[File], name: String, numChannels: Int)
+  private final class Logic(shape: Shp, layer: Layer, fileTr: Try[File], name: String, numChannels: Int)
                            (implicit ctrl: Control)
     extends NodeImpl(name, layer, shape) with NodeHasInitImpl
       with OutHandler { logic: GraphStageLogic =>

@@ -1,14 +1,14 @@
 package de.sciss.fscape.tests
 
 import de.sciss.file._
-import de.sciss.fscape.gui.SimpleGUI
 import de.sciss.fscape.{Graph, graph, stream}
 import de.sciss.synth.io.AudioFileSpec
 
-import scala.swing.Swing
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
 
 object OffsetOverlapAddTest extends App {
-  val out = userHome / "Music" / "work" / "_killme.aif"
+  val out = file("/") / "data" / "temp" / "_killme.aif"
 
   val config = stream.Control.Config()
   config.blockSize = 1024
@@ -32,9 +32,10 @@ object OffsetOverlapAddTest extends App {
 
   ctrl.run(g)
 
-  Swing.onEDT {
-    SimpleGUI(ctrl)
-  }
+//  Swing.onEDT {
+//    SimpleGUI(ctrl)
+//  }
 
   println("Running.")
+  Await.result(ctrl.status, Duration.Inf)
 }

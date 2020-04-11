@@ -29,19 +29,19 @@ object Action {
 
   private final val name = "Action"
 
-  private type Shape = SinkShape[BufI]
+  private type Shp = SinkShape[BufI]
 
   private final class Stage(layer: Layer, ref: Input.Action.Value)(implicit ctrl: Control)
-    extends StageImpl[Shape](name) {
+    extends StageImpl[Shp](name) {
 
-    val shape = new SinkShape(
+    val shape: Shape = new SinkShape(
       in = InI(s"$name.trig")
     )
 
-    def createLogic(attr: Attributes) = new Logic(shape, layer, ref)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer, ref)
   }
 
-  private final class Logic(shape: Shape, layer: Layer, ref: Input.Action.Value)(implicit ctrl: Control)
+  private final class Logic(shape: Shp, layer: Layer, ref: Input.Action.Value)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape)
       with Sink1Impl[BufI] {
 

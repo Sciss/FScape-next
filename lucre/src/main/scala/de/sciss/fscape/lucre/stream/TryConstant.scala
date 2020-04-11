@@ -22,16 +22,16 @@ import de.sciss.fscape.stream.impl.NodeImpl
 import scala.util.{Failure, Success, Try}
 
 object TryConstant {
-  def apply[A, E >: Null <: BufElem[A]](elemTr: Try[E])(implicit b: stream.Builder): Outlet[E] = {
+  def apply[A, E <: BufElem[A]](elemTr: Try[E])(implicit b: stream.Builder): Outlet[E] = {
     val stage0  = new Stage[A, E](elemTr, b.layer)
     val stage   = b.add(stage0)
     stage.out
   }
 
-  private type Shape[A, E >: Null <: BufElem[A]] = SourceShape[E]
+  private type Shp[E] = SourceShape[E]
 
-  private final class Stage[A, E >: Null <: BufElem[A]](elemTr: Try[E], layer: Layer)(implicit control: Control)
-    extends GraphStage[Shape[A, E]] {
+  private final class Stage[A, E <: BufElem[A]](elemTr: Try[E], layer: Layer)(implicit control: Control)
+    extends GraphStage[Shp[E]] {
 
     private val name: String = elemTr match {
       case Success(e)   => e.buf(0).toString
@@ -49,7 +49,7 @@ object TryConstant {
     def createLogic(attr: Attributes): GraphStageLogic = new Logic[A, E](shape, name, layer, elemTr)
   }
 
-  private final class Logic[A, E >: Null <: BufElem[A]](shape: Shape[A, E], name: String, layer: Layer, elemTr: Try[E])
+  private final class Logic[A, E <: BufElem[A]](shape: Shp[E], name: String, layer: Layer, elemTr: Try[E])
                                                        (implicit control: Control)
     extends NodeImpl(name, layer, shape) with OutHandler {
 

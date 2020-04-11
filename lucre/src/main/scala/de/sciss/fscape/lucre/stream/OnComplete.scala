@@ -21,8 +21,6 @@ import scala.util.{Failure, Success}
 
 object OnComplete {
   def apply(ref: Input.Action.Value)(implicit b: Builder): Unit = {
-//    val stage0 = new Stage(b.layer, ref)
-//    b.add(stage0)
     val ctrl = b.control
     import ctrl.config.executionContext
     ctrl.status.onComplete { tr =>
@@ -33,26 +31,4 @@ object OnComplete {
       ref.execute(message)
     }
   }
-
-//  private final val name = "OnComplete"
-//
-//  private type Shape = ClosedShape
-//
-//  private final class Stage(layer: Layer, ref: Input.Action.Value)(implicit ctrl: Control)
-//    extends StageImpl[Shape](name) {
-//
-//    val shape: Shape = ClosedShape
-//
-//    def createLogic(attr: Attributes) = new Logic(shape, layer, ref)
-//  }
-//
-//  private final class Logic(shape: Shape, layer: Layer, ref: Input.Action.Value)(implicit ctrl: Control)
-//    extends NodeImpl(name, layer, shape) with NodeHasInitImpl {
-//
-//    override protected def init(): Unit = {
-//      super.init()
-//      import ctrl.config.executionContext
-//      ctrl.status.onComplete(ref.execute(_))
-//    }
-//  }
 }
