@@ -21,8 +21,6 @@ import de.sciss.fscape.stream.StreamIn
 import scala.collection.immutable.{IndexedSeq => Vec}
 
 /** Debugging utility that plots 1D "windows" of the input data.
-  *
-  * '''Warning:''' window parameter modulation is currently not working correctly (issue #30)
   */
 final case class Plot1D(in: GE, size: GE, label: String = "plot") extends UGenSource.ZeroOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): Unit =
@@ -33,6 +31,7 @@ final case class Plot1D(in: GE, size: GE, label: String = "plot") extends UGenSo
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit = {
     val Vec(in, size) = args
-    stream.Plot1D(in = in.toDouble, size = size.toInt, label = label)
+    import in.tpe
+    stream.Plot1D[in.A, in.Buf](in = in.toElem, size = size.toInt, label = label)
   }
 }

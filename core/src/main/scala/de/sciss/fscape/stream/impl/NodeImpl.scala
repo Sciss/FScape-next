@@ -30,13 +30,15 @@ abstract class NodeImpl[+S <: Shape](protected final val name: String, val layer
 
   // very important: `getAsyncCallback` must only be called on the
   // graph-stage-logic constructor or `onPull`, `onPush`!
-  private[this] val async = getAsyncCallback { _: Unit =>
-    launch()
+  private[this] val asyncF = getAsyncCallback { (f: () => Unit) =>
+    f()
   }
+
+  final def async(body: => Unit): Unit = asyncF.invoke(() => body)
 
   final def launchAsync(): Future[Unit] = {
     implicit val ex: ExecutionContext = control.config.executionContext
-    async.invokeWithFeedback(()).map(_ => ())
+    asyncF.invokeWithFeedback(() => launch()).map(_ => ())
   }
 
   protected def launch(): Unit = {
@@ -55,12 +57,10 @@ abstract class NodeImpl[+S <: Shape](protected final val name: String, val layer
     }
   }
 
-  final def failAsync(ex: Exception): Unit = {
-    val async = getAsyncCallback { _: Unit =>
+  final def failAsync(ex: Exception): Unit =
+    asyncF.invoke { () =>
       failStage(ex)
     }
-    async.invoke(())
-  }
 
   protected final def notifyFail(ex: Throwable): Unit = {
     control.nodeFailed(this, ex)
@@ -68,13 +68,11 @@ abstract class NodeImpl[+S <: Shape](protected final val name: String, val layer
   }
 
   def completeAsync(): Future[Unit] = {
-    val async = getAsyncCallback { _: Unit =>
+    implicit val ex: ExecutionContext = control.config.executionContext
+    asyncF.invokeWithFeedback { () =>
       logStream(s"$this - completeAsync")
       completeStage()
-    }
-
-    implicit val ex: ExecutionContext = control.config.executionContext
-    async.invokeWithFeedback(()).map(_ => ())
+    }.map(_ => ())
   }
 
   // XXX TODO --- should use Handlers now?

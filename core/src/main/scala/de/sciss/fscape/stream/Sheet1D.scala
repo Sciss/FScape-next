@@ -14,21 +14,20 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.Attributes
-import de.sciss.fscape.stream.impl.deprecated.{FilterLogicImpl, Sink2Impl}
+import akka.stream.{Attributes, Inlet, Outlet}
 import de.sciss.fscape.stream.impl.shapes.SinkShape2
-import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.{NodeImpl, Plot1DLogic, StageImpl}
 import de.sciss.swingplus.ListView
 import javax.swing.table.{AbstractTableModel, DefaultTableColumnModel, TableColumn}
 
-import scala.annotation.tailrec
 import scala.swing.ScrollPane.BarPolicy
 import scala.swing.Table.{AutoResizeMode, ElementMode}
-import scala.swing.{Component, Frame, ScrollPane, Swing, Table}
+import scala.swing.{Component, ScrollPane, Swing, Table}
 
 object Sheet1D {
-  def apply(in: OutD, size: OutI, label: String)(implicit b: Builder): Unit = {
-    val stage0  = new Stage(layer = b.layer, label = label)
+  def apply[A, E <: BufElem[A]](in: Outlet[E], size: OutI, label: String)
+                               (implicit b: Builder, tpe: StreamType[A, E]): Unit = {
+    val stage0  = new Stage[A, E](layer = b.layer, label = label)
     val stage   = b.add(stage0)
     b.connect(in  , stage.in0)
     b.connect(size, stage.in1)
@@ -36,61 +35,42 @@ object Sheet1D {
 
   private final val name = "Sheet1D"
 
-  private type Shp = SinkShape2[BufD, BufI]
+  private type Shp[E] = SinkShape2[E, BufI]
 
-  private final class Stage(layer: Layer, label: String)(implicit ctrl: Control) extends StageImpl[Shp](name) {
+  private final class Stage[A, E <: BufElem[A]](layer: Layer, label: String)
+                                               (implicit ctrl: Control, tpe: StreamType[A, E])
+    extends StageImpl[Shp[E]](name) {
+
     val shape: Shape = SinkShape2(
-      in0 = InD (s"$name.in"  ),
-      in1 = InI (s"$name.trig")
+      in0 = Inlet[E](s"$name.in"  ),
+      in1 = InI     (s"$name.size")
     )
 
-    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape = shape, layer = layer, label = label)
+    def createLogic(attr: Attributes): NodeImpl[Shape] =
+      new Logic[A, E](shape = shape, layer = layer, label = label)
   }
 
-  private final class PlotData(
+  private final class PlotData[A](
                                 /*val hName: String, val hUnits: String,*/ val hData: Array[String],
                                 /*val vName: String, val vUnits: String,*/ val vData: Array[String],
-                                /*val mName: String, val mUnits: String,*/ val mData: Array[Array[Double]],
+//                                /*val mName: String, val mUnits: String,*/ val mData: Array[Array[A]],
+                                /*val mName: String, val mUnits: String,*/ val mData: Array[A],
                                 val is1D: Boolean
                               )
 
-  private final class Logic(shape: Shp, layer: Layer, label: String)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape)
-      with FilterLogicImpl[BufD, Shp]
-      with Sink2Impl[BufD, BufI] {
+  private final class Logic[A, E <: BufElem[A]](shape: Shp[E], layer: Layer, label: String)
+                                               (implicit ctrl: Control, tpe: StreamType[A, E])
+    extends Plot1DLogic[A, E](name, shape, layer, label) {
 
-    override def toString = s"$name-L($label)"
-
-    private[this] var winSize: Int = _
-    private[this] var winBuf: Array[Double] = _
-
-    private[this] var framesRead        = 0L
-
-    private[this] var inOff             = 0  // regarding `bufIn`
-    protected     var inRemain          = 0
-
-    private[this] var writeToWinOff     = 0
-    private[this] var writeToWinRemain  = 0
-    private[this] var isNextWindow      = true
-
-    @volatile
-    private[this] var canWriteToWindow = true
-
-    // ---- gui ----
-
-    private[this] var _plotData = new PlotData(
-      /*"", "",*/ new Array(0), /*"", "",*/ new Array(0), /*"", "",*/ new Array(0), is1D = false)
+    private[this] var _plotData = new PlotData[A](
+      /*"", "",*/ new Array(0), /*"", "",*/ new Array(0), /*"", "",*/ null /*new Array(0)*/, is1D = false)
 
     private[this] object mTable extends AbstractTableModel {
       def getRowCount   : Int = _plotData.vData.length
       def getColumnCount: Int = if (_plotData.is1D) 1 else _plotData.hData.length
 
       def getValueAt(rowIdx: Int, colIdx: Int): AnyRef = {
-        //        val f = if (_plotData.mData.length > rowIdx) {
-        //          val row = _plotData.mData(rowIdx)
-        //          if (row.length > colIdx) row(colIdx) else Float.NaN
-        //        } else Float.NaN
-        val f = if (_plotData.is1D) _plotData.mData(0)(rowIdx) else _plotData.mData(rowIdx)(colIdx)
+        val f = _plotData.mData(rowIdx) // if (_plotData.is1D) _plotData.mData(0)(rowIdx) else _plotData.mData(rowIdx)(colIdx)
         f.toString  // XXX TODO
       }
     }
@@ -127,42 +107,10 @@ object Sheet1D {
           colIdx += 1
         }
       }
-
-//      private def updateHeader2D(): Unit = {
-//        import DimensionIndex.{shouldUseUnitsString, unitsStringFormatter}
-//        val units   = _plotData.hUnits
-//        val lbUnits = shouldUseUnitsString(units)
-//        val data    = _plotData.hData
-//        val labels  = if (lbUnits) {
-//          val fmt = unitsStringFormatter(units)
-//          data.map(fmt(_))
-//        } else {
-//          data.map(_.toString)
-//        }
-//
-//        val oldNum  = getColumnCount
-//        val newNum  = data.length
-//        val stop1   = math.min(oldNum, newNum)
-//        var colIdx  = 0
-//        while (colIdx < stop1) {
-//          val col = getColumn(colIdx)
-//          col.setHeaderValue(labels(colIdx))
-//          colIdx += 1
-//        }
-//        while (colIdx < newNum) {
-//          mkColumn(colIdx, labels(colIdx))
-//          colIdx += 1
-//        }
-//        while (colIdx < oldNum) {
-//          val col = getColumn(newNum)
-//          removeColumn(col)
-//          colIdx += 1
-//        }
-//      }
     }
 
     // called on EDT
-    private def updateData(data: PlotData): Unit = {
+    private def updateData(data: PlotData[A], hasGUI: Boolean): Unit = {
       val colSizeChanged  = data.hData.length != _plotData.hData.length
       val colDataChanged  = colSizeChanged || !data.hData.sameElements(_plotData.hData)
       val rowSizeChanged  = data.vData.length != _plotData.vData.length
@@ -177,16 +125,13 @@ object Sheet1D {
       if (rowDataChanged) {
         updateRows()
       }
-      if (initGUI) {
-        initGUI = false
+      if (!hasGUI) {
         //        val plot      = chart.getSheet.asInstanceOf[XYSheet]
         //        val xAxis     = plot.getDomainAxis
         //        val renderer  = plot.getRenderer
         frame.open()
       }
     }
-
-    private[this] var initGUI = true
 
     private[this] lazy val mList = ListView.Model.empty[String]
 
@@ -220,7 +165,7 @@ object Sheet1D {
       }
     }
 
-    private[this] lazy val panel: Component = {
+    protected lazy val panel: Component = {
       val ggTable                   = new Table
       ggTable.peer.setAutoCreateColumnsFromModel(false)
       ggTable.peer.setColumnModel(mTableColumn)
@@ -246,114 +191,20 @@ object Sheet1D {
       ggScroll
     }
 
-    private[this] lazy val frame = new Frame {
-      title     = label
-      contents  = panel
-      pack()
-      centerOnScreen()
-    }
-
-    // ---- methods ----
-
-    //    override def launch(): Unit = {
-    //      super.launch()
-    //      Swing.onEDT {
-    //        frame.open()
-    //      }
-    //    }
-
-    @inline
-    private[this] def shouldRead = inRemain == 0 && canRead
-
-    private def shouldComplete(): Boolean = inputsEnded && writeToWinOff == 0 // && readFromWinRemain == 0
-
-    @tailrec
-    def process(): Unit = {
-      logStream(s"process() $this")
-      var stateChange = false
-
-      if (shouldRead) {
-        inRemain    = readIns()
-        inOff       = 0
-        stateChange = true
-      }
-
-      if (processChunk()) stateChange = true
-
-      if (shouldComplete()) {
-        logStream(s"completeStage() $this")
-        completeStage()
-      }
-      else if (stateChange) process()
-    }
-
-    private def startNextWindow(inOff: Int): Int = {
-      val oldSize = winSize
-      if (bufIn1 != null && inOff < bufIn1.size) {
-        winSize = math.max(0, bufIn1.buf(inOff))
-      }
-      if (oldSize != winSize) {
-        winBuf = new Array[Double](winSize)
-      }
-      winSize
-    }
-
-    private def copyInputToWindow(chunk: Int): Unit =
-      Util.copy(bufIn0.buf, inOff, winBuf, writeToWinOff, chunk)
-
-    private def processWindow(writeToWinOff: Int): Unit = {
-      val vData   = Array.tabulate(writeToWinOff)(_.toString)
+    protected def processWindow(data: Array[A], num: Int, framesRead: Long, hasGUI: Boolean): Unit = {
+      val vData   = Array.tabulate(num)(_.toString)
       val hData   = Array.tabulate(1)(_.toString)
-      val mData0  = new Array[Double](writeToWinOff)
-      System.arraycopy(winBuf, 0, mData0, 0, writeToWinOff)
+      val mData0  = tpe.newArray(num)
+      System.arraycopy(data, 0, mData0, 0, num)
       val _data = new PlotData(
         hData = hData,
         vData = vData,
-        mData = Array.fill(1)(mData0),
+        mData = mData0, // Array[Array[A]](mData0),
         is1D  = true
       )
-      assert(canWriteToWindow)
-      canWriteToWindow = false
       Swing.onEDT {
-        updateData(_data)
+        updateData(_data, hasGUI = hasGUI)
       }
-      framesRead += writeToWinOff
-    }
-
-    private def processChunk(): Boolean = {
-      var stateChange = false
-
-      if (canWriteToWindow) {
-        val flushIn0 = inputsEnded // inRemain == 0 && shouldComplete()
-        if (isNextWindow && !flushIn0) {
-          writeToWinRemain  = startNextWindow(inOff = inOff)
-          isNextWindow      = false
-          stateChange       = true
-        }
-
-        val chunk     = math.min(writeToWinRemain, inRemain)
-        val flushIn   = flushIn0 && writeToWinOff > 0
-        if (chunk > 0 || flushIn) {
-          if (chunk > 0) {
-            copyInputToWindow(chunk = chunk)
-            inOff            += chunk
-            inRemain         -= chunk
-            writeToWinOff    += chunk
-            writeToWinRemain -= chunk
-            stateChange       = true
-          }
-
-          if (writeToWinRemain == 0 || flushIn) {
-            processWindow(writeToWinOff = writeToWinOff) // , flush = flushIn)
-            writeToWinOff     = 0
-            // readFromWinOff    = 0
-            isNextWindow      = true
-            stateChange       = true
-          }
-        }
-      }
-
-      stateChange
     }
   }
 }

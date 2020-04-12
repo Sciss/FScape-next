@@ -15,7 +15,6 @@ package de.sciss.fscape.stream.impl.deprecated
 
 import akka.stream.stage.GraphStageLogic
 import akka.stream.{Inlet, Shape, SinkShape}
-import de.sciss.fscape.stream.impl.shapes.SinkShape2
 import de.sciss.fscape.stream.{BufLike, Node}
 
 @deprecated("Should move to using Handlers", since = "2.35.1")
@@ -83,72 +82,4 @@ trait Sink1Impl[In0 >: Null <: BufLike]
     _canRead = isAvailable(in0)
 
   new ProcessInHandlerImpl(in0, this)
-}
-
-/** Building block for sinks with `Sink2Shape` type graph stage logic.
-  * A sink keeps consuming input until left inlet is closed.
-  */
-@deprecated("Should move to using Handlers", since = "2.35.1")
-trait Sink2Impl[In0 >: Null <: BufLike, In1 >: Null <: BufLike]
-  extends SinkImpl[SinkShape2[In0, In1]] {
-  _: GraphStageLogic with Node =>
-
-  // ---- impl ----
-
-  protected final var bufIn0: In0 = _
-  protected final var bufIn1: In1 = _
-
-  protected final val in0: Inlet[In0]  = shape.in0
-  protected final val in1: Inlet[In1]  = shape.in1
-
-  private[this] final var _canRead = false
-  private[this] final var _inValid = false
-
-  final def canRead: Boolean = _canRead
-  final def inValid: Boolean = _inValid
-
-  override protected def stopped(): Unit = {
-    freeInputBuffers()
-    freeOutputBuffers()
-  }
-
-  protected final def readIns(): Int = {
-    freeInputBuffers()
-
-    bufIn0 = grab(in0)
-    bufIn0.assertAllocated()
-    tryPull(in0)
-
-    if (isAvailable(in1)) {
-      bufIn1 = grab(in1)
-      tryPull(in1)
-    }
-
-    _inValid = true
-    _canRead = false
-    bufIn0.size
-  }
-
-  protected final def freeInputBuffers(): Unit = {
-    if (bufIn0 != null) {
-      bufIn0.release()
-      bufIn0 = null
-    }
-    if (bufIn1 != null) {
-      bufIn1.release()
-      bufIn1 = null
-    }
-  }
-
-  final def updateCanRead(): Unit = {
-    // XXX TODO -- actually we should require that we have
-    // acquired at least one buffer of each inlet. that could
-    // be checked in `onUpstreamFinish` which should probably
-    // close the stage if not a single buffer had been read!
-    _canRead = isAvailable(in0) &&
-      ((isClosed(in1) && _inValid) || isAvailable(in1))
-  }
-
-  new ProcessInHandlerImpl(in0, this)
-  new AuxInHandlerImpl    (in1, this)
 }

@@ -16,21 +16,21 @@ package stream
 
 import java.awt.Color
 
-import akka.stream.Attributes
+import akka.stream.{Attributes, Inlet, Outlet}
 import de.sciss.chart.module.Charting
-import de.sciss.fscape.stream.impl.deprecated.{FilterLogicImpl, Sink2Impl}
 import de.sciss.fscape.stream.impl.shapes.SinkShape2
-import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.{NodeImpl, Plot1DLogic, StageImpl}
 import org.jfree.chart.axis.NumberAxis
 import org.jfree.chart.plot.{PlotOrientation, XYPlot}
 import org.jfree.chart.{ChartFactory, ChartPanel}
 import org.jfree.data.xy.{XYSeries, XYSeriesCollection}
 
-import scala.swing.{Component, Frame, Swing}
+import scala.swing.{Component, Swing}
 
 object Plot1D {
-  def apply(in: OutD, size: OutI, label: String)(implicit b: Builder): Unit = {
-    val stage0  = new Stage(layer = b.layer, label = label)
+  def apply[A, E <: BufElem[A]](in: Outlet[E], size: OutI, label: String)
+                               (implicit b: Builder, tpe: StreamType[A, E]): Unit = {
+    val stage0  = new Stage[A, E](layer = b.layer, label = label)
     val stage   = b.add(stage0)
     b.connect(in  , stage.in0)
     b.connect(size, stage.in1)
@@ -38,40 +38,24 @@ object Plot1D {
 
   private final val name = "Plot1D"
 
-  private type Shp = SinkShape2[BufD, BufI]
+  private type Shp[E] = SinkShape2[E, BufI]
 
-  private final class Stage(layer: Layer, label: String)(implicit ctrl: Control) extends StageImpl[Shp](name) {
+  private final class Stage[A, E <: BufElem[A]](layer: Layer, label: String)
+                                               (implicit ctrl: Control, tpe: StreamType[A, E])
+    extends StageImpl[Shp[E]](name) {
+
     val shape: Shape = SinkShape2(
-      in0 = InD (s"$name.in"  ),
-      in1 = InI (s"$name.trig")
+      in0 = Inlet[E](s"$name.in"  ),
+      in1 = InI     (s"$name.size")
     )
 
-    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape = shape, layer = layer, label = label)
+    def createLogic(attr: Attributes): NodeImpl[Shape] =
+      new Logic[A, E](shape = shape, layer = layer, label = label)
   }
 
-  private final class Logic(shape: Shp, layer: Layer, label: String)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape)
-      with FilterLogicImpl[BufD, Shp]
-      with Sink2Impl[BufD, BufI] {
-
-    override def toString = s"$name-L($label)"
-
-    private[this] var winSize: Int = _
-    private[this] var winBuf: Array[Double] = _
-
-    private[this] var framesRead        = 0L
-
-    private[this] var inOff             = 0  // regarding `bufIn`
-    protected     var inRemain          = 0
-
-    private[this] var writeToWinOff     = 0
-    private[this] var writeToWinRemain  = 0
-    private[this] var isNextWindow      = true
-
-    @volatile
-    private[this] var canWriteToWindow = true
-
-    // ---- gui ----
+  private final class Logic[A, E <: BufElem[A]](shape: Shp[E], layer: Layer, label: String)
+                                               (implicit ctrl: Control, tpe: StreamType[A, E])
+    extends Plot1DLogic[A, E](name, shape, layer, label) {
 
     private[this] lazy val dataset = new XYSeriesCollection
 
@@ -92,20 +76,21 @@ object Plot1D {
       res
     }
 
-    private def updateData(series: XYSeries): Unit = {
+    private def updateData(series: XYSeries, pos: Long, _hasGUI: Boolean): Unit = {
       val ds = dataset
       ds.removeAllSeries()
       ds.addSeries(series)
-      if (initGUI) {
-        initGUI = false
+      val n = series.getItemCount
+      chart.getXYPlot.getDomainAxis.setRange(pos, pos + n)
+
+      if (!_hasGUI) {
 //        val plot      = chart.getPlot.asInstanceOf[XYPlot]
 //        val xAxis     = plot.getDomainAxis
 //        val renderer  = plot.getRenderer
         frame.open()
       }
+//      if (ended) endedGUI()
     }
-
-    private[this] var initGUI = true
 
     private[this] lazy val panelJ = {
       val ch        = chart
@@ -121,115 +106,22 @@ object Plot1D {
       plot.setRangeGridlinePaint (Color.gray )
       res
     }
-    private[this] lazy val panel = Component.wrap(panelJ)
 
-    private[this] lazy val frame = new Frame {
-      title     = label
-      contents  = panel
-      pack()
-      centerOnScreen()
-    }
+    protected lazy val panel: Component = Component.wrap(panelJ)
 
-    // ---- methods ----
-
-//    override def launch(): Unit = {
-//      super.launch()
-//      Swing.onEDT {
-//        frame.open()
-//      }
-//    }
-
-    @inline
-    private[this] def shouldRead = inRemain == 0 && canRead
-
-    private def shouldComplete(): Boolean = inputsEnded && writeToWinOff == 0 // && readFromWinRemain == 0
-
-    def process(): Unit = {
-      logStream(s"process() $this")
-      var stateChange = false
-
-      if (shouldRead) {
-        inRemain    = readIns()
-        inOff       = 0
-        stateChange = true
-      }
-
-      if (processChunk()) stateChange = true
-
-      if (shouldComplete()) {
-        logStream(s"completeStage() $this")
-        completeStage()
-      }
-      else if (stateChange) process()
-    }
-
-    private def startNextWindow(inOff: Int): Int = {
-      val oldSize = winSize
-      if (bufIn1 != null && inOff < bufIn1.size) {
-        winSize = math.max(0, bufIn1.buf(inOff))
-      }
-      if (oldSize != winSize) {
-        winBuf = new Array[Double](winSize)
-      }
-      winSize
-    }
-
-    private def copyInputToWindow(chunk: Int): Unit =
-      Util.copy(bufIn0.buf, inOff, winBuf, writeToWinOff, chunk)
-
-    private def processWindow(writeToWinOff: Int): Unit = {
+    protected def processWindow(data: Array[A], num: Int, framesRead: Long, hasGUI: Boolean): Unit = {
       import Charting._
       val series = new XYSeries(name, false /* autoSort */, false /* allowDuplicateXValues */)
       var i = 0
       var f = framesRead
-      val b = winBuf
-      while (i < writeToWinOff) {
-        series.add(f, b(i))
+      while (i < num) {
+        series.add(f, data(i).asInstanceOf[Number])
         i += 1
         f += 1
       }
-      assert(canWriteToWindow)
-      canWriteToWindow = false
       Swing.onEDT {
-        updateData(series)
+        updateData(series, pos = framesRead, _hasGUI = hasGUI)
       }
-      framesRead += writeToWinOff
-    }
-
-    private def processChunk(): Boolean = {
-      var stateChange = false
-
-      if (canWriteToWindow) {
-        val flushIn0 = inputsEnded // inRemain == 0 && shouldComplete()
-        if (isNextWindow && !flushIn0) {
-          writeToWinRemain  = startNextWindow(inOff = inOff)
-          isNextWindow      = false
-          stateChange       = true
-        }
-
-        val chunk     = math.min(writeToWinRemain, inRemain)
-        val flushIn   = flushIn0 && writeToWinOff > 0
-        if (chunk > 0 || flushIn) {
-          if (chunk > 0) {
-            copyInputToWindow(chunk = chunk)
-            inOff            += chunk
-            inRemain         -= chunk
-            writeToWinOff    += chunk
-            writeToWinRemain -= chunk
-            stateChange       = true
-          }
-
-          if (writeToWinRemain == 0 || flushIn) {
-            processWindow(writeToWinOff = writeToWinOff) // , flush = flushIn)
-            writeToWinOff     = 0
-            // readFromWinOff    = 0
-            isNextWindow      = true
-            stateChange       = true
-          }
-        }
-      }
-
-      stateChange
     }
   }
 }

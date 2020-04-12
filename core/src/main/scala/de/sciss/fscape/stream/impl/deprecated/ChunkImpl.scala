@@ -13,10 +13,9 @@
 
 package de.sciss.fscape.stream.impl.deprecated
 
+import akka.stream.Shape
 import akka.stream.stage.GraphStageLogic
-import akka.stream.{Inlet, Shape}
 import de.sciss.fscape.logStream
-import de.sciss.fscape.stream.BufLike
 
 import scala.annotation.tailrec
 
@@ -110,16 +109,6 @@ trait SameChunkImpl[S <: Shape] extends ChunkImpl[S] {
     }
     res
   }
-}
-
-@deprecated("Should move to using Handlers", since = "2.35.1")
-trait FilterChunkImpl[In0 <: BufLike, Out <: BufLike, S <: Shape] extends SameChunkImpl[S] {
-  _: GraphStageLogic =>
-
-  protected def in0: Inlet[In0]
-
-  protected final def shouldComplete(): Boolean =
-    inRemain == 0 && isClosed(in0) && !isAvailable(in0)
 }
 
 @deprecated("Should move to using Handlers", since = "2.35.1")

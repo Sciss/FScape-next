@@ -20,7 +20,8 @@ object DEnvGenTest extends App {
 
     Length(env).poll(0, "length")
 
-    Plot1D(env, size = lengths.sum, label = "env")
+//    Plot1D(env, size = lengths.sum, label = "env")
+    Sheet1D(env, size = lengths.sum, label = "env")
   }
 
   val cfg = stream.Control.Config()

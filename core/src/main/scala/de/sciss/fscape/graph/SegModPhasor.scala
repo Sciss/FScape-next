@@ -21,7 +21,7 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 
 /** A phasor UGen that takes new frequency values at the beginning of each cycle.
   * It can be used to implement the 'segmod' program of Döbereiner and Lorenz.
-  * In contrast, `LFSaw` continuously reads frequency values, it
+  * In contrast to `LFSaw` which continuously reads frequency values, its
   * output values go from zero to one, and the phase argument is only used
   * internally (the output signal always starts at zero).
   *

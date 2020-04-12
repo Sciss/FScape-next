@@ -15,7 +15,7 @@ package de.sciss.fscape.stream.impl.deprecated
 
 import akka.stream.stage.GraphStageLogic
 import akka.stream.{FanInShape2, Inlet, Outlet}
-import de.sciss.fscape.stream.{BufD, BufI, BufLike, Node}
+import de.sciss.fscape.stream.{BufI, BufLike, Node}
 
 /** Building block for generators with `FanInShape2` type graph stage logic.
   * A generator keeps producing output until down-stream is closed, and does

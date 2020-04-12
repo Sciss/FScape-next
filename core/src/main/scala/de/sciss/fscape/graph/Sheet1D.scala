@@ -33,6 +33,7 @@ final case class Sheet1D(in: GE, size: GE, label: String = "sheet") extends UGen
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit = {
     val Vec(in, size) = args
-    stream.Sheet1D(in = in.toDouble, size = size.toInt, label = label)
+    import in.tpe
+    stream.Sheet1D[in.A, in.Buf](in = in.toElem, size = size.toInt, label = label)
   }
 }
