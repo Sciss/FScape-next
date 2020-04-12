@@ -14,11 +14,11 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.{Attributes, FanInShape4}
-import de.sciss.fscape.stream.impl.deprecated.DemandFilterIn4D
-import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import akka.stream.{Attributes, FanInShape4, Inlet}
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
 
 import scala.annotation.tailrec
+import scala.math.{abs, max, min, pow}
 
 object Limiter {
   def apply(in: OutD, attack: OutI, release: OutI, ceiling: OutD)(implicit b: Builder): OutD = {
@@ -48,30 +48,24 @@ object Limiter {
   }
 
   private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape)
-      with DemandFilterIn4D[BufD, BufI, BufI, BufD]
-  {
+    extends Handlers(name, layer, shape) {
+
+    private[this] val hIn   = Handlers.InDMain  (this, shape.in0)
+    private[this] val hAtk  = Handlers.InIAux   (this, shape.in1)(max(1, _))
+    private[this] val hRls  = Handlers.InIAux   (this, shape.in2)(max(1, _))
+    private[this] val hCeil = Handlers.InDAux   (this, shape.in3)(_ % 1.0)
+    private[this] val hOut  = Handlers.OutDMain (this, shape.out)
 
     private[this] var atk60     : Int     = 1
     private[this] var rls60     : Int     = 1
-    //    private[this] var atkSize   : Int     = _
-    //    private[this] var rlsSize   : Int     = _
     private[this] var ceiling   : Double  = 1.0
     private[this] var atkSize   : Int     = _
     private[this] var envSize   : Int     = _
 
     private[this] var init          = true
 
-    //    protected def shouldComplete(): Boolean =
-    //      inRemain == 0 && isClosed(in0) && !isAvailable(in0)
-
     private[this] var envBuf  : Array[Double] = _
     private[this] var gainBuf : Array[Double] = _
-
-    private[this] var outOff      = 0
-    private[this] var outRemain   = 0
-    private[this] var inOff       = 0
-    private[this] var inRemain    = 0
 
     private[this] var gainReadOff   : Int = _
     private[this] var gainWriteOff  : Int = _
@@ -86,107 +80,90 @@ object Limiter {
       gainBuf = null
     }
 
-    @tailrec
-    def process(): Unit = {
-      var stateChange = false
+    protected def onDone(inlet: Inlet[_]): Unit =
+      process()
 
-      if (init) {
-        if (auxCanRead) {
-          val auxRemain = readAuxIns()
-          if (auxRemain > 0) {
-            val auxInOff = 0
-            if (bufIn1 != null && auxInOff < bufIn1.size) {
-              atk60     = math.max(1, bufIn1.buf(auxInOff))
-            }
-            if (bufIn2 != null && auxInOff < bufIn2.size) {
-              rls60     = math.max(1, bufIn2.buf(auxInOff))
-            }
-            if (bufIn3 != null && auxInOff < bufIn3.size) {
-              ceiling = bufIn3.buf(auxInOff)
-            }
+    private def tryInit(): Boolean = {
+      val ok = hAtk.hasNext && hRls.hasNext && hCeil.hasNext
+      if (ok) {
+        atk60   = hAtk  .next()
+        rls60   = hRls  .next()
+        ceiling = hCeil .next()
 
-            val _atkSize  = (atk60 * 2.5).toInt
-            atkSize       = _atkSize
-            val rlsSize   = (rls60 * 2.5).toInt
-            val atkCoef   = Math.pow(1.0e-3, 1.0 / atk60)
-            val rlsCoef   = Math.pow(1.0e-3, 1.0 / rls60)
+        val _atkSize  = (atk60 * 2.5).toInt
+        atkSize       = _atkSize
+        val rlsSize   = (rls60 * 2.5).toInt
+        val atkCoef   = pow(1.0e-3, 1.0 / atk60)
+        val rlsCoef   = pow(1.0e-3, 1.0 / rls60)
 
-            val _envSize    = _atkSize + rlsSize
-            envSize         = _envSize
-            val _env        = new Array[Double](_envSize)
-            _env(_atkSize) = 1.0
-            var i = 1
-            while (i < _atkSize) {
-              _env(_atkSize - i) = Math.pow(atkCoef, i)
-              i += 1
-            }
-            i = 1
-            while (i < rlsSize) {
-              _env(_atkSize + i) = Math.pow(rlsCoef, i)
-              i += 1
-            }
-            envBuf = _env
-
-            gainBuf = new Array[Double](_envSize)
-            Util.fill(gainBuf, 0, _envSize, 1.0)
-
-            gainReadOff   = _atkSize
-            gainWriteOff  = 0
-            outSkip       = _atkSize
-
-            init        = false
-            stateChange = true
-          }
+        val _envSize    = _atkSize + rlsSize
+        envSize         = _envSize
+        val _env        = new Array[Double](_envSize)
+        _env(_atkSize) = 1.0
+        var i = 1
+        while (i < _atkSize) {
+          _env(_atkSize - i) = pow(atkCoef, i)
+          i += 1
         }
-      } else {
-        if (bufOut0 == null) {
-          bufOut0     = allocOutBuf0()
-          outRemain   = bufOut0.size
-          outOff      = 0
-          stateChange = true
+        i = 1
+        while (i < rlsSize) {
+          _env(_atkSize + i) = pow(rlsCoef, i)
+          i += 1
         }
+        envBuf = _env
 
-        val chunk0 = math.min(inRemain, outRemain)
-        if (chunk0 > 0) {
-          processChunk(chunk0)
-          stateChange = true
+        gainBuf = new Array[Double](_envSize)
+        Util.fill(gainBuf, 0, _envSize, 1.0)
 
-        } else {
-          if (inRemain == 0 && mainCanRead) {
-            inRemain = readMainIns()
-            inOff = 0
-            stateChange = true
-          } else if (outRemain == 0 && canWrite) {
-            writeOuts(outOff)
-            stateChange = true
-          } else if (inRemain == 0 && isClosed(in0)) {
-            val chunk1 = math.min(framesRead - framesWritten, outRemain).toInt
-            if (chunk1 > 0) {
-              processChunk(chunk1)
-              stateChange = true
-            }
-            if (framesRead == framesWritten && canWrite) {
-              writeOuts(outOff)
-              completeStage()
-            }
-          }
-        }
+        gainReadOff   = _atkSize
+        gainWriteOff  = 0
+        outSkip       = _atkSize
       }
-
-      if (stateChange) process()
+      ok
     }
 
+    @tailrec
+    def process(): Unit = {
+      if (init) {
+        if (!tryInit()) return
+        init = false
+      }
+
+      val chunk0 = min(hIn.available, hOut.available)
+      if (chunk0 > 0) {
+        processChunk(chunk0)
+
+      } else if (hIn.isDone) {
+        val chunk1 = min(framesRead - framesWritten, hOut.available).toInt
+        if (chunk1 == 0) return
+
+        processChunk(chunk1)
+        if (framesRead == framesWritten) {
+          if (hOut.flush()) completeStage()
+          return
+        }
+
+      } else {
+        return
+      }
+
+      process()
+    }
+
+    // chunk is guaranteed to be <= hOut.available
     private def processChunk(chunk: Int): Unit = {
-      val _in       = bufIn0  .buf
-      var _inOff    = inOff
-      var _inRem    = inRemain
-      val _out      = bufOut0 .buf
+      var inRem     = hIn .available
+      val in        = if (inRem > 0) hIn.array  else null
+      val inOff0    = if (inRem > 0) hIn.offset else 0
+      var inOff     = inOff0
+      val out       = hOut.array
+      val outOff0   = hOut.offset
+      var outOff    = outOff0
+
       val _env      = envBuf
       val _gain     = gainBuf
       var _gainRd   = gainReadOff
       var _gainWr   = gainWriteOff
-      var _outOff   = outOff
-      var _outRem   = outRemain
       val _ceil     = ceiling
       val _atkSize  = atkSize
       val _envSize  = envSize
@@ -194,17 +171,16 @@ object Limiter {
       var i = 0
       while (i < chunk) {
         if (_outSkip == 0) {
-          _out(_outOff) = _gain(_gainWr)
-          _outOff   += 1
-          _outRem   -= 1
+          out(outOff) = _gain(_gainWr)
+          outOff   += 1
         } else {
           _outSkip -= 1
         }
 
-        val m   = if (_inRem > 0) {
-          val res = Math.abs(_in(_inOff))
-          _inOff  += 1
-          _inRem  -= 1
+        val m = if (inRem > 0) {
+          val res = abs(in(inOff))
+          inOff  += 1
+          inRem  -= 1
           res
         } else {
           0.0
@@ -244,15 +220,19 @@ object Limiter {
 
       }
 
-      framesRead    += _inOff  - inOff
-      framesWritten += _outOff - outOff
+      val aIn   = inOff  - inOff0
+      val aOut  = outOff - outOff0
+      if (aIn > 0) {
+        framesRead += aIn
+        hIn.advance(aIn)
+      }
+      if (aOut > 0) {
+        framesWritten += aOut
+        hOut.advance(aOut)
+      }
 
       // println(s"read $framesRead, written $framesWritten")
 
-      inOff         = _inOff
-      inRemain      = _inRem
-      outOff        = _outOff
-      outRemain     = _outRem
       outSkip       = _outSkip
       gainReadOff   = _gainRd
       gainWriteOff  = _gainWr
