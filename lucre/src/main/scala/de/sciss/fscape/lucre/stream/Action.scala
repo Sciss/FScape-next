@@ -14,17 +14,19 @@
 package de.sciss.fscape
 package lucre.stream
 
-import akka.stream.{Attributes, SinkShape}
+import akka.stream.{Attributes, Inlet, SinkShape}
 import de.sciss.fscape.lucre.UGenGraphBuilder.Input
-import de.sciss.fscape.stream.impl.deprecated.Sink1Impl
-import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.Handlers.InIMain
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
 import de.sciss.fscape.stream.{BufI, Builder, Control, _}
 
+import scala.annotation.tailrec
+
 object Action {
-  def apply(trig: OutI, ref: Input.Action.Value)(implicit b: Builder): Unit = {
+  def apply(gate: OutI, ref: Input.Action.Value)(implicit b: Builder): Unit = {
     val stage0  = new Stage(b.layer, ref)
     val stage   = b.add(stage0)
-    b.connect(trig, stage.in)
+    b.connect(gate, stage.in)
   }
 
   private final val name = "Action"
@@ -42,36 +44,35 @@ object Action {
   }
 
   private final class Logic(shape: Shp, layer: Layer, ref: Input.Action.Value)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape)
-      with Sink1Impl[BufI] {
+    extends Handlers(name, layer, shape) {
 
-    private[this] var high0 = false
+    protected val hIn: InIMain = InIMain(this, shape.in)
 
-    def process(): Unit = {
-      if (!canRead) {
-        if (isClosed(shape.in)) {
-          logStream(s"completeStage() $this")
-          completeStage()
-        }
-        return
-      }
+    protected def onDone(inlet: Inlet[_]): Unit =
+      completeStage()
 
-      logStream(s"process() $this")
+    @tailrec
+    protected def process(): Unit = {
+      val rem = hIn.available
+      if (rem == 0) return
 
-      val stop0   = readIns()
-      val b0      = bufIn0.buf
-      var h0      = high0
-      var h1      = h0
-      var inOffI  = 0
-      while (inOffI < stop0) {
-        if (inOffI < stop0) h1 = b0(inOffI) > 0
-        if (h1 && !h0) {
+      val in        = hIn.array
+      var inOff0    = hIn.offset
+      val stop0     = inOff0 + rem
+      while (inOff0 < stop0) {
+        val gate = in(inOff0) > 0
+        if (gate) {
           ref.execute(None)
         }
-        inOffI  += 1
-        h0       = h1
+        inOff0 += 1
       }
-      high0 = h0
+      hIn.advance(rem)
+
+      if (hIn.isDone) {
+        completeStage()
+      } else {
+        process()
+      }
     }
   }
 }

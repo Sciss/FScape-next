@@ -32,7 +32,7 @@ object ActionTest extends App {
       import graph.{AudioFileOut => _, _}
       import lucre.graph._
       val sig   = Line(0, 1, length = 100000000) // WhiteNoise()
-      val tr    = sig > 0.9 // sig >= 0 & sig < 0.0001
+      val tr    = Trig(sig > 0.9) // sig >= 0 & sig < 0.0001
       Action(trig = tr, key = "action")
     }
     f.attr.put("action", a)

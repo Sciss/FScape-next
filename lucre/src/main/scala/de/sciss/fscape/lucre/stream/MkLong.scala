@@ -14,11 +14,11 @@
 package de.sciss.fscape
 package lucre.stream
 
-import akka.stream.{Attributes, SinkShape}
+import akka.stream.{Attributes, Inlet, SinkShape}
 import de.sciss.fscape.lucre.FScape.Output
 import de.sciss.fscape.lucre.UGenGraphBuilder.OutputRef
-import de.sciss.fscape.stream.impl.deprecated.Sink1Impl
-import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.Handlers.InLMain
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
 import de.sciss.fscape.stream.{BufL, Builder, Control, _}
 import de.sciss.serial.{DataOutput, Serializer}
 
@@ -42,25 +42,18 @@ object MkLong {
   }
 
   private final class Logic(shape: Shp, layer: Layer, ref: OutputRef)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape)
-      with Sink1Impl[BufL] {
+    extends Handlers(name, layer, shape) {
 
-    def process(): Unit = {
-      if (!canRead) {
-        if (isClosed(shape.in)) {
-          logStream(s"completeStage() $this")
-          completeStage()
-        }
-        return
-      }
+    protected val hIn: InLMain = InLMain(this, shape.in)
 
-      logStream(s"process() $this")
+    protected def onDone(inlet: Inlet[_]): Unit =
+      completeStage()
 
-      val stop0   = readIns()
-      val b0      = bufIn0.buf
-      if (stop0 > 0) {
+    protected def process(): Unit = {
+      if (hIn.hasNext) {
+        val v = hIn.next()
         ref.complete(new Output.Writer {
-          override val outputValue: Long = b0(0)
+          override val outputValue: Long = v
           def write(out: DataOutput): Unit =
             Serializer.Long.write(outputValue, out)
         })

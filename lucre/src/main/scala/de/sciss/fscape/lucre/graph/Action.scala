@@ -33,7 +33,7 @@ object Action {
 
     private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit = {
       val Vec(trig) = args
-      lucre.stream.Action(trig = trig.toInt, ref = ref)
+      lucre.stream.Action(gate = trig.toInt, ref = ref)
     }
 
     override def productPrefix: String = s"Action$$WithRef"

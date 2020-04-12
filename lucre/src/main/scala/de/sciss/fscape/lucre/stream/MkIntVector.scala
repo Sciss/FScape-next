@@ -14,15 +14,16 @@
 package de.sciss.fscape
 package lucre.stream
 
-import akka.stream.{Attributes, SinkShape}
+import akka.stream.{Attributes, Inlet, SinkShape}
 import de.sciss.fscape.lucre.FScape.Output
 import de.sciss.fscape.lucre.UGenGraphBuilder.OutputRef
-import de.sciss.fscape.stream.impl.deprecated.Sink1Impl
-import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.Handlers.InIMain
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
 import de.sciss.fscape.stream.{Builder, Control, _}
 import de.sciss.lucre.expr.IntVector
 import de.sciss.serial.DataOutput
 
+import scala.annotation.tailrec
 import scala.collection.immutable.{IndexedSeq => Vec}
 
 object MkIntVector {
@@ -45,34 +46,46 @@ object MkIntVector {
   }
 
   private final class Logic(shape: Shp, layer: Layer, ref: OutputRef)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape)
-      with Sink1Impl[BufI] {
+    extends Handlers(name, layer, shape) {
 
-    private[this] val builder = Vec.newBuilder[Int]
+    type A = Int
 
-    def process(): Unit = {
-      if (!canRead) {
-        if (isClosed(shape.in)) {
-          ref.complete(new Output.Writer {
-            override val outputValue: Vec[Int] = builder.result()
+    private[this] val builder = Vec.newBuilder[A]
 
-            def write(out: DataOutput): Unit =
-              IntVector.valueSerializer.write(outputValue, out)
-          })
-          completeStage()
-        }
-        return
-      }
+    protected val hIn: InIMain = InIMain(this, shape.in)
 
-      logStream(s"process() $this")
+    protected def onDone(inlet: Inlet[_]): Unit = finish()
 
-      val stop0     = readIns()
-      val b0        = bufIn0.buf
+    private def finish(): Unit = {
+      val v = builder.result()
+      ref.complete(new Output.Writer {
+        override val outputValue: Vec[A] = v
+
+        def write(out: DataOutput): Unit =
+          IntVector.valueSerializer.write(outputValue, out)
+      })
+      completeStage()
+    }
+
+    @tailrec
+    protected def process(): Unit = {
+      val rem = hIn.available
+      if (rem == 0) return
+
+      val in        = hIn.array
+      var inOff0    = hIn.offset
+      val stop0     = inOff0 + rem
       val _builder  = builder
-      var inOff0    = 0
       while (inOff0 < stop0) {
-        _builder += b0(inOff0)
+        _builder += in(inOff0)
         inOff0 += 1
+      }
+      hIn.advance(rem)
+
+      if (hIn.isDone) {
+        finish()
+      } else {
+        process()
       }
     }
   }
