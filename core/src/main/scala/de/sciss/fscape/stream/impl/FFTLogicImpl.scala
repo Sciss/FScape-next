@@ -22,6 +22,7 @@ import de.sciss.numbers
 import edu.emory.mathcs.jtransforms.fft.DoubleFFT_1D
 
 import scala.annotation.switch
+import scala.math.max
 
 /** Base class for 1-dimensional FFT transforms. */
 trait FFTLogicImpl extends WindowedInDOutD {
@@ -65,11 +66,9 @@ trait FFTLogicImpl extends WindowedInDOutD {
 abstract class FFTHalfStageImpl(name: String)
   extends StageImpl[FanInShape4[BufD, BufI, BufI, BufI, BufD]](name) {
 
-  type S = FanInShape4[BufD, BufI, BufI, BufI, BufD]
-
   // ---- impl ----
 
-  final val shape: S = new FanInShape4(
+  final val shape: Shape = new FanInShape4(
     in0 = InD (s"$name.in"     ),
     in1 = InI (s"$name.size"   ),
     in2 = InI (s"$name.padding"),
@@ -91,11 +90,9 @@ abstract class FFTHalfStageImpl(name: String)
 abstract class FFTFullStageImpl(name: String)
   extends StageImpl[FanInShape3[BufD, BufI, BufI, BufD]](name) {
 
-  type S = FanInShape3[BufD, BufI, BufI, BufD]
-
   // ---- impl ----
 
-  final val shape = new FanInShape3(
+  final val shape: Shape = new FanInShape3(
     in0 = InD (s"$name.in"     ),
     in1 = InI (s"$name.size"   ),
     in2 = InI (s"$name.padding"),
@@ -113,40 +110,40 @@ abstract class FFTFullStageImpl(name: String)
 }
 
 final class Real1FFTStageImpl(layer: Layer)(implicit ctrl: Control) extends FFTHalfStageImpl("Real1FFT") {
-  def createLogic(attr: Attributes): NodeImpl[S] = new Real1FFTLogicImpl(name, shape, layer)
+  def createLogic(attr: Attributes): NodeImpl[Shape] = new Real1FFTLogicImpl(name, shape, layer)
 }
 
 final class Real1IFFTStageImpl(layer: Layer)(implicit ctrl: Control) extends FFTHalfStageImpl("Real1IFFT") {
-  def createLogic(attr: Attributes): NodeImpl[S] = new Real1IFFTLogicImpl(name, shape, layer)
+  def createLogic(attr: Attributes): NodeImpl[Shape] = new Real1IFFTLogicImpl(name, shape, layer)
 }
 
 final class Real1FullFFTStageImpl(layer: Layer)(implicit ctrl: Control) extends FFTFullStageImpl("Real1FullFFT") {
-  def createLogic(attr: Attributes): NodeImpl[S] = new Real1FullFFTLogicImpl(name, shape, layer)
+  def createLogic(attr: Attributes): NodeImpl[Shape] = new Real1FullFFTLogicImpl(name, shape, layer)
 }
 
 final class Real1FullIFFTStageImpl(layer: Layer)(implicit ctrl: Control) extends FFTFullStageImpl("Real1FullIFFT") {
-  def createLogic(attr: Attributes): NodeImpl[S] = new Real1FullIFFTLogicImpl(name, shape, layer)
+  def createLogic(attr: Attributes): NodeImpl[Shape] = new Real1FullIFFTLogicImpl(name, shape, layer)
 }
 
 final class Complex1FFTStageImpl(layer: Layer)(implicit ctrl: Control) extends FFTFullStageImpl("ComplexIFFT") {
-  def createLogic(attr: Attributes): NodeImpl[S] = new Complex1FFTLogicImpl(name, shape, layer)
+  def createLogic(attr: Attributes): NodeImpl[Shape] = new Complex1FFTLogicImpl(name, shape, layer)
 }
 
 final class Complex1IFFTStageImpl(layer: Layer)(implicit ctrl: Control) extends FFTFullStageImpl("Complex1IFFT") {
-  def createLogic(attr: Attributes): NodeImpl[S] = new Complex1IFFTLogicImpl(name, shape, layer)
+  def createLogic(attr: Attributes): NodeImpl[Shape] = new Complex1IFFTLogicImpl(name, shape, layer)
 }
 
 abstract class FFTHalfLogicImpl(name: String, shape: FanInShape4[BufD, BufI, BufI, BufI, BufD], layer: Layer)
                                (implicit ctrl: Control)
-  extends Handlers[FanInShape4[BufD, BufI, BufI, BufI, BufD]](name, shape = shape, layer = layer)
+  extends Handlers(name, layer, shape)
     with FFTLogicImpl {
 
   import numbers.Implicits._
 
   protected final val hIn     : InDMain   = InDMain  (this, shape.in0)
   protected final val hOut    : OutDMain  = OutDMain (this, shape.out)
-  protected final val hSize   : InIAux    = InIAux   (this, shape.in1)(_.max(0))
-  protected final val hPadding: InIAux    = InIAux   (this, shape.in2)(_.max(0))
+  protected final val hSize   : InIAux    = InIAux   (this, shape.in1)(max(0, _))
+  protected final val hPadding: InIAux    = InIAux   (this, shape.in2)(max(0, _))
   protected final val hMode   : InIAux    = InIAux   (this, shape.in3)(_.clip(0, 2))
 
   protected final var mode      : Int = _   // 0 - packed, 1 - unpacked, 2 - discarded
@@ -235,13 +232,13 @@ final class Real1IFFTLogicImpl(name: String, shape: FanInShape4[BufD, BufI, BufI
 
 abstract class FFTFullLogicImpl(name: String, shape: FanInShape3[BufD, BufI, BufI, BufD], layer: Layer)
                                (implicit ctrl: Control)
-  extends Handlers[FanInShape3[BufD, BufI, BufI, BufD]](name, shape = shape, layer = layer)
+  extends Handlers(name, shape = shape, layer = layer)
     with FFTLogicImpl {
 
   protected final val hIn     : InDMain   = InDMain  (this, shape.in0)
   protected final val hOut    : OutDMain  = OutDMain (this, shape.out)
-  protected final val hSize   : InIAux    = InIAux   (this, shape.in1)(_.max(0))
-  protected final val hPadding: InIAux    = InIAux   (this, shape.in2)(_.max(0))
+  protected final val hSize   : InIAux    = InIAux   (this, shape.in1)(max(0, _))
+  protected final val hPadding: InIAux    = InIAux   (this, shape.in2)(max(0, _))
 
   final def winBufSize: Int = fftSize << 1
 }
