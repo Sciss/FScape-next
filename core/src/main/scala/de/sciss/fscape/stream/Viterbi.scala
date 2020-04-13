@@ -14,13 +14,12 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.stage.InHandler
-import akka.stream.{Attributes, FanInShape4, Inlet, Outlet}
-import de.sciss.fscape.stream.impl.deprecated.{Out1IntImpl, Out1LogicImpl, ProcessOutHandlerImpl}
-import de.sciss.fscape.stream.impl.{NodeHasInitImpl, NodeImpl, StageImpl}
+import akka.stream.{Attributes, FanInShape4, Inlet}
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
 
 import scala.annotation.{switch, tailrec}
 import scala.collection.mutable
+import scala.math.{max, min}
 
 object Viterbi {
   def apply(mul: OutD, add: OutD, numStates: OutI, numFrames: OutI)(implicit b: Builder): OutI = {
@@ -50,25 +49,15 @@ object Viterbi {
   }
 
   private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape)
-      with NodeHasInitImpl with Out1IntImpl[Shp] with Out1LogicImpl[BufI, Shp] {
+    extends Handlers(name, layer, shape) {
 
-    private[this] var bufIn0 : BufD = _
-    private[this] var bufIn1 : BufD = _
-    private[this] var bufIn2 : BufI = _
-    private[this] var bufIn3 : BufI = _
-    protected     var bufOut0: BufI = _
+    private[this] val hInMul      = Handlers.InDMain  (this, shape.in0)
+    private[this] val hInAdd      = Handlers.InDMain  (this, shape.in1)
+    private[this] val hNumStates  = Handlers.InIAux   (this, shape.in2)(max(1, _))
+    private[this] val hNumFrames  = Handlers.InIAux   (this, shape.in3)(n => if (n < 0) -1 else max(1, n))
+    private[this] val hOut        = Handlers.OutIMain (this, shape.out)
 
-    protected def out0: Outlet[BufI] = shape.out
-
-    private[this] var inOff0: Int   = 0
-    private[this] var inOff1: Int   = 0
-    private[this] var inOff2: Int   = 0
-    private[this] var inOff3: Int   = 0
-    private[this] var outOff0: Int  = 0
-
-    private[this] var needsNumStates: Boolean = _
-    private[this] var needsNumFrames: Boolean = _
+    private[this] var needsNum: Boolean = true
 
     private[this] var numStates = 0
     private[this] var statesSq  = 0
@@ -93,38 +82,8 @@ object Viterbi {
     private[this] var innerAddOff : Int = _
     private[this] var innerMulEqual: Boolean = _
     private[this] var innerAddEqual: Boolean = _
-    
-    private[this] var in0Ended  = false
-    private[this] var in1Ended  = false
 
-    private[this] var stage: Int = _
-
-    def inValid: Boolean = throw new UnsupportedOperationException
-
-    private final class _InHandlerImpl[A](in: Inlet[A]) extends InHandler {
-      def onPush(): Unit = {
-        logStream(s"onPush($in)")
-        process()
-      }
-
-      override def onUpstreamFinish(): Unit = {
-        logStream(s"onUpstreamFinish($in)")
-        process()
-      }
-
-      setInHandler(in, this)
-    }
-
-    new _InHandlerImpl(shape.in0)
-    new _InHandlerImpl(shape.in1)
-    new _InHandlerImpl(shape.in2)
-    new _InHandlerImpl(shape.in3)
-    new ProcessOutHandlerImpl(shape.out, this)
-
-    override protected def init(): Unit = {
-      super.init()
-      prepareStage0()
-    }
+    private[this] var stage: Int = 0
 
     override protected def stopped(): Unit = {
       super.stopped()
@@ -137,157 +96,72 @@ object Viterbi {
       psiCurr   = null
       psiSeq    = null
       psiSeqB   = null
-      freeInputBuffers()
-      freeOutputBuffers()
     }
-
-    private def freeInputBuffers(): Unit = {
-      freeBufIn0()
-      freeBufIn1()
-      freeBufIn2()
-      freeBufIn3()
-    }
-
-
-    private def freeBufIn0(): Unit =
-      if (bufIn0 != null) {
-        bufIn0.release()
-        bufIn0 = null
-      }
-
-    private def freeBufIn1(): Unit =
-      if (bufIn1 != null) {
-        bufIn1.release()
-        bufIn1 = null
-      }
-
-    private def freeBufIn2(): Unit =
-      if (bufIn2 != null) {
-        bufIn2.release()
-        bufIn2 = null
-      }
-
-    private def freeBufIn3(): Unit =
-      if (bufIn3 != null) {
-        bufIn3.release()
-        bufIn3 = null
-      }
-
-    protected def freeOutputBuffers(): Unit =
-      if (bufOut0 != null) {
-        bufOut0.release()
-        bufOut0 = null
-      }
 
     private def prepareStage0(): Unit = {
-      needsNumFrames  = true
-      needsNumStates  = true
-      stage           = 0
+      needsNum  = true
+      stage     = 0
     }
 
     // stage == 0: get new parameters
     private def processStage0(): Boolean = {
-      var stateChange = false
+      if (needsNum) {
+        if (!(hNumStates.hasNext && hNumFrames.hasNext)) return false
 
-      if (needsNumStates) {
-        if (bufIn2 != null && inOff2 < bufIn2.size) {
-          numStates       = math.max(1, bufIn2.buf(inOff2))
-          inOff2         += 1
-          needsNumStates  = false
-          stateChange     = true
-        } else if (isAvailable(shape.in2)) {
-          freeBufIn2()
-          bufIn2  = grab(shape.in2)
-          inOff2  = 0
-          tryPull(shape.in2)
-          stateChange = true
-        } else if (isClosed(shape.in2)) {
-          if (numStates > 0) {
-            needsNumStates  = false
-            stateChange     = true
-          } else {
-            completeStage()
-          }
-        }
+        numStates = hNumStates.next()
+        numFrames = hNumFrames.next()
+        needsNum  = false
       }
 
-      if (needsNumFrames) {
-        if (bufIn3 != null && inOff3 < bufIn3.size) {
-          val n           = bufIn3.buf(inOff3)
-          numFrames       = if (n < 0) -1 else math.max(1, n)
-          inOff3         += 1
-          needsNumFrames  = false
-          stateChange     = true
-        } else if (isAvailable(shape.in3)) {
-          freeBufIn3()
-          bufIn3    = grab(shape.in3)
-          inOff3    = 0
-          tryPull(shape.in3)
-          stateChange = true
-        } else if (isClosed(shape.in3)) {
-          if (numFrames >= -1) {
-            needsNumFrames  = false
-            stateChange     = true
-          } else {
-            completeStage()
-          }
-        }
+      val _statesSq = numStates * numStates
+      if (statesSq != _statesSq) {
+        statesSq      = _statesSq
+        innerMul      = new Array(_statesSq)
+        innerAdd      = new Array(_statesSq)
+        innerMulEqual = true
+        innerAddEqual = true
       }
 
-      if (!needsNumStates && !needsNumFrames) {
-//        _auxValid   = true
-        val _statesSq = numStates * numStates
-        if (statesSq != _statesSq) {
-          statesSq      = _statesSq
-          innerMul      = new Array(_statesSq)
-          innerAdd      = new Array(_statesSq)
-          innerMulEqual = true
-          innerAddEqual = true
+      prepareStage1()
+
+      frameOff = 0
+      if (numFrames < 0) {
+        // unknown number of frames, use array builders
+        if (psiCurr == null || psiCurr.length != numStates) {
+          psiCurr = new Array(numStates)
         }
+        psiSeq  = null
+        psiSeqB = Array.newBuilder
 
-        prepareStage1()
-
-        frameOff = 0
-        if (numFrames < 0) {
-          // unknown number of frames, use array builders
-          if (psiCurr == null || psiCurr.length != numStates) {
-            psiCurr = new Array(numStates)
-          }
-          psiSeq  = null
-          psiSeqB = Array.newBuilder
-
-          if (deltaCurr == null || deltaCurr.length != numStates) {
-            deltaCurr = new Array(numStates)
-            deltaPrev = new Array(numStates)
-          }
-          deltaSeq  = null
-          deltaSeqB = Array.newBuilder
-
-        } else {
-          val numFramesP = numFrames + 1  // we ensure >= 2 and valid access to `numFrames`
-          // known number of frames, use two-dimensional arrays
-          if (psiSeq == null || psiSeq.length != numFramesP || psiSeq(0).length != numStates) {
-            psiSeq = Array.ofDim(numFramesP, numStates)
-          }
-          psiCurr = psiSeq(0)
-          psiSeqB = null
-
-          if (deltaSeq == null || deltaSeq.length != numFramesP || deltaSeq(0).length != numStates) {
-            deltaSeq = Array.ofDim(numFramesP, numStates)
-          }
-          deltaCurr = deltaSeq(0)
-          deltaPrev = deltaSeq(numFramesP - 1) // doesn't matter as long as it's not identical to deltaCurr
-          deltaSeqB = null
+        if (deltaCurr == null || deltaCurr.length != numStates) {
+          deltaCurr = new Array(numStates)
+          deltaPrev = new Array(numStates)
         }
+        deltaSeq  = null
+        deltaSeqB = Array.newBuilder
 
-        stateChange = true
+      } else {
+        val numFramesP = numFrames + 1  // we ensure >= 2 and valid access to `numFrames`
+        // known number of frames, use two-dimensional arrays
+        if (psiSeq == null || psiSeq.length != numFramesP || psiSeq(0).length != numStates) {
+          psiSeq = Array.ofDim(numFramesP, numStates)
+        }
+        psiCurr = psiSeq(0)
+        psiSeqB = null
+
+        if (deltaSeq == null || deltaSeq.length != numFramesP || deltaSeq(0).length != numStates) {
+          deltaSeq = Array.ofDim(numFramesP, numStates)
+        }
+        deltaCurr = deltaSeq(0)
+        deltaPrev = deltaSeq(numFramesP - 1) // doesn't matter as long as it's not identical to deltaCurr
+        deltaSeqB = null
       }
 
-      stateChange
+      true
     }
 
     private def prepareStage1(): Unit = {
-      if (in0Ended) {
+      if (hInMul.isDone) {
         val _statesSq = statesSq
         if (!innerMulEqual) {
           val _buf      = innerMul
@@ -300,7 +174,7 @@ object Viterbi {
         innerMulOff = 0
       }
 
-      if (in1Ended) {
+      if (hInAdd.isDone) {
         val _statesSq = statesSq
         if (!innerAddEqual) {
           val _buf      = innerAdd
@@ -316,51 +190,29 @@ object Viterbi {
       stage = 1
     }
 
+    private def insEnded: Boolean = hInMul.isDone && hInAdd.isDone
+
     // stage == 1: collect inner matrix
     private def processStage1(): Boolean = {
       var stateChange = false
 
-      if (!in0Ended) {
-        if (bufIn0 != null && inOff0 < bufIn0.size) {
-          val chunk = math.min(statesSq - innerMulOff, bufIn0.size - inOff0)
-          if (chunk > 0) {
-            Util.copy(bufIn0.buf, inOff0, innerMul, innerMulOff, chunk)
-            innerMulEqual = false
-            inOff0       += chunk
-            innerMulOff  += chunk
-            stateChange   = true
-          }
-        } else if (isAvailable(shape.in0)) {
-          freeBufIn0()
-          bufIn0      = grab(shape.in0)
-          inOff0      = 0
-          tryPull(shape.in0)
-          stateChange = true
-        } else if (isClosed(shape.in0)) {
-          in0Ended    = true
-          stateChange = true
+      {
+        val chunk = min(statesSq - innerMulOff, hInMul.available)
+        if (chunk > 0) {
+          hInMul.nextN(innerMul, innerMulOff, chunk)
+          innerMulEqual = false
+          innerMulOff  += chunk
+          stateChange   = true
         }
       }
 
-      if (!in1Ended) {
-        if (bufIn1 != null && inOff1 < bufIn1.size) {
-          val chunk = math.min(statesSq - innerAddOff, bufIn1.size - inOff1)
-          if (chunk > 0) {
-            Util.copy(bufIn1.buf, inOff1, innerAdd, innerAddOff, chunk)
-            innerAddEqual = false
-            inOff1       += chunk
-            innerAddOff  += chunk
-            stateChange   = true
-          }
-        } else if (isAvailable(shape.in1)) {
-          freeBufIn1()
-          bufIn1      = grab(shape.in1)
-          inOff1      = 0
-          tryPull(shape.in1)
-          stateChange = true
-        } else if (isClosed(shape.in1)) {
-          in1Ended    = true
-          stateChange = true
+      {
+        val chunk = min(statesSq - innerAddOff, hInAdd.available)
+        if (chunk > 0) {
+          hInAdd.nextN(innerAdd, innerAddOff, chunk)
+          innerAddEqual = false
+          innerAddOff  += chunk
+          stateChange   = true
         }
       }
 
@@ -368,11 +220,11 @@ object Viterbi {
         stage       = 2
         stateChange = true
 
-      } else if (in0Ended && in1Ended && innerMulOff == 0 && innerAddOff == 0) {
+      } else if (insEnded && innerMulOff == 0 && innerAddOff == 0) {
         prepareStage3()
 
       } else {
-        if (in0Ended) {
+        if (hInMul.isDone) {
           val _mulOff   = innerMulOff
           val _statesSq = statesSq
           val chunk     = _statesSq - _mulOff
@@ -385,7 +237,7 @@ object Viterbi {
             stateChange   = true
           }
         }
-        if (in1Ended) {
+        if (hInAdd.isDone) {
           val _addOff   = innerAddOff
           val _statesSq = statesSq
           val chunk     = _statesSq - _addOff
@@ -437,7 +289,7 @@ object Viterbi {
 
       deltaPrev  = _curr
       frameOff  += 1
-      val framesDone = (frameOff == numFrames) || (in0Ended && in1Ended)
+      val framesDone = (frameOff == numFrames) || insEnded
 
       if (deltaSeqB == null) {
         deltaCurr = deltaSeq(frameOff)
@@ -510,28 +362,20 @@ object Viterbi {
     private def processStage3(): Boolean = {
       var stateChange = false
 
-      if (bufOut0 == null) {
-        bufOut0 = allocOutBuf0()
-        outOff0 = 0
-      }
-
-      val chunk = math.min(writeRem, bufOut0.size - outOff0)
+      val chunk = min(writeRem, hOut.available)
       if (chunk > 0) {
         val pathOff = path.length - writeRem
-        Util.copy(path, pathOff, bufOut0.buf, outOff0, chunk)
+        hOut.nextN(path, pathOff, chunk)
         writeRem   -= chunk
-        outOff0    += chunk
         stateChange = true
       }
 
       val stageDone = writeRem == 0
-      val flush     = stageDone && in0Ended && in1Ended
+      val flush     = stageDone && insEnded
 
-
-      if ((outOff0 == bufOut0.size || flush) && canWrite) {
-        writeOuts(outOff0)
-        stateChange = true
-        if (flush) completeStage()
+      if (flush && hOut.flush()) {
+        completeStage()
+        return false
       }
 
       if (stageDone && !flush) {
@@ -540,6 +384,9 @@ object Viterbi {
 
       stateChange
     }
+
+    protected def onDone(inlet: Inlet[_]): Unit =
+      process()
 
     @tailrec
     def process(): Unit = {

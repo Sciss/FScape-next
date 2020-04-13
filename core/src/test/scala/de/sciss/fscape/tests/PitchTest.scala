@@ -1,14 +1,12 @@
 package de.sciss.fscape.tests
 
 import de.sciss.file._
-import de.sciss.fscape.gui.SimpleGUI
 import de.sciss.fscape.{GE, Graph, stream}
 import de.sciss.numbers.Implicits._
 import de.sciss.synth.io.AudioFile
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
-import scala.swing.Swing
 
 /*
 
