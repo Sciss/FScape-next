@@ -93,7 +93,7 @@ object SlidingPercentile {
       medianBuf = null
     }
 
-    protected def auxAvailable: Int =
+    protected def auxInAvailable: Int =
       min(hMedianLen.available, min(hFrac.available, hInterp.available))
 
     protected def run(in: Array[A], inOff: Int, out: Array[A], outOff: Int, chunk: Int): Unit = {

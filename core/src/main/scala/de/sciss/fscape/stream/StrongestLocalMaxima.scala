@@ -14,11 +14,13 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.stage.OutHandler
-import akka.stream.{Attributes, Outlet}
-import de.sciss.fscape.stream.impl.deprecated.{AuxInHandlerImpl, FilterLogicImpl, FullInOutImpl, ProcessInHandlerImpl, WindowedLogicImpl}
+import akka.stream.{Attributes, Inlet}
+import de.sciss.fscape.stream.impl.Handlers.{InDAux, InDMain, InIAux, OutDMain}
+import de.sciss.fscape.stream.impl.logic.WindowedMultiInOut
 import de.sciss.fscape.stream.impl.shapes.In7Out2Shape
-import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
+
+import scala.math.{max, min}
 
 object StrongestLocalMaxima {
   def apply(in: OutD, size: OutI, minLag: OutI, maxLag: OutI, thresh: OutD, octaveCost: OutD, num: OutI)
@@ -58,10 +60,17 @@ object StrongestLocalMaxima {
 
   // XXX TODO -- abstract over data type (BufD vs BufI)?
   private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape)
-      with WindowedLogicImpl[Shp]
-      with FullInOutImpl[Shp]
-      with FilterLogicImpl[BufD, Shp] {
+    extends Handlers(name, layer, shape) with WindowedMultiInOut {
+
+    private[this] val hIn     : InDMain   = InDMain (this, shape.in0)
+    private[this] val hSize   : InIAux    = InIAux  (this, shape.in1)(max(2, _))
+    private[this] val hMinLag : InIAux    = InIAux  (this, shape.in2)(max(1, _))
+    private[this] val hMaxLag : InIAux    = InIAux  (this, shape.in3)(max(1, _))
+    private[this] val hThresh : InDAux    = InDAux  (this, shape.in4)(max(0.0, _))
+    private[this] val hOctCost: InDAux    = InDAux  (this, shape.in5)(max(0.0, _))
+    private[this] val hNum    : InIAux    = InIAux  (this, shape.in6)(max(1, _))
+    private[this] val hOut0   : OutDMain  = OutDMain(this, shape.out0)
+    private[this] val hOut1   : OutDMain  = OutDMain(this, shape.out1)
 
     private[this] var acBuf       : Array[Double] = _
     private[this] var lagBuf      : Array[Double] = _
@@ -71,240 +80,78 @@ object StrongestLocalMaxima {
     private[this] var minLag      : Int     = _
     private[this] var maxLag      : Int     = _
     private[this] var thresh      : Double  = _
-    private[this] var octaveCost  : Double  = _
+    private[this] var octCost     : Double  = _
     private[this] var numPaths    : Int     = 0
 
-    protected     var bufIn0 : BufD  = _
-    private[this] var bufIn1 : BufI  = _
-    private[this] var bufIn2 : BufI  = _
-    private[this] var bufIn3 : BufI  = _
-    private[this] var bufIn4 : BufD  = _
-    private[this] var bufIn5 : BufD  = _
-    private[this] var bufIn6 : BufI  = _
-    private[this] var bufOut0: BufD = _
-    private[this] var bufOut1: BufD = _
+    protected def mainInDone: Boolean =
+      hIn.isDone
 
-    protected def in0: InD = shape.in0
+    protected def isHotIn(inlet: Inlet[_]): Boolean =
+      inlet == hIn.inlet
 
-    private[this] var _canRead  = false
-    private[this] var _inValid  = false
-    private[this] var _canWrite = false
+    protected def outAvailable: Int =
+      min(hOut0.available, hOut1.available)
 
-    def canRead : Boolean = _canRead
-    def inValid : Boolean = _inValid
-    def canWrite: Boolean = _canWrite
+    protected def mainInAvailable: Int =
+      hIn.available
 
-    private final class OutHandlerImpl[A](out: Outlet[A])
-      extends OutHandler {
-
-      def onPull(): Unit = {
-        logStream(s"onPull($out)")
-        updateCanWrite()
-        if (canWrite) process()
-      }
-
-      override def onDownstreamFinish(cause: Throwable): Unit = {
-        val allClosed = shape.outlets.forall(isClosed(_))
-        logStream(s"onDownstreamFinish($out) allClosed = $allClosed")
-        if (allClosed) super.onDownstreamFinish(cause)
-      }
-
-      setOutHandler(out, this)
-    }
-
-    new ProcessInHandlerImpl (shape.in0, this)
-    new AuxInHandlerImpl     (shape.in1, this)
-    new AuxInHandlerImpl     (shape.in2, this)
-    new AuxInHandlerImpl     (shape.in3, this)
-    new AuxInHandlerImpl     (shape.in4, this)
-    new AuxInHandlerImpl     (shape.in5, this)
-    new AuxInHandlerImpl     (shape.in6, this)
-    new OutHandlerImpl       (shape.out0)
-    new OutHandlerImpl       (shape.out1)
-
-    def updateCanWrite(): Unit = {
-      val sh = shape
-      _canWrite =
-        (isClosed(sh.out0) || isAvailable(sh.out0)) &&
-        (isClosed(sh.out1) || isAvailable(sh.out1))
-    }
-
-    protected def writeOuts(off: Int): Unit = {
-      if (off > 0 && isAvailable(shape.out0)) {
-        bufOut0.size = off
-        push(shape.out0, bufOut0)
-      } else {
-        bufOut0.release()
-      }
-      if (off > 0 && isAvailable(shape.out1)) {
-        bufOut1.size = off
-        push(shape.out1, bufOut1)
-      } else {
-        bufOut1.release()
-      }
-      bufOut0   = null
-      bufOut1   = null
-      _canWrite = false
-    }
-
-    protected def allocOutputBuffers(): Int = {
-      bufOut0 = ctrl.borrowBufD()
-      bufOut1 = ctrl.borrowBufD()
-      bufOut0.size
-    }
+    protected def flushOut(): Boolean =
+      hOut0.flush() & hOut1.flush() // careful to always call both
 
     override protected def stopped(): Unit = {
+      super.stopped()
       acBuf       = null
       lagBuf      = null
       lagIBuf     = null
       strengthBuf = null
-      freeInputBuffers()
-      freeOutputBuffers()
     }
 
-    protected def readIns(): Int = {
-      freeInputBuffers()
-      val sh    = shape
-      bufIn0    = grab(sh.in0)
-      bufIn0.assertAllocated()
-      tryPull(sh.in0)
+    protected def tryObtainWinParams(): Boolean = {
+      val ok =
+        hSize   .hasNext &&
+        hMinLag .hasNext &&
+        hMaxLag .hasNext &&
+        hThresh .hasNext &&
+        hOctCost.hasNext &&
+        hNum    .hasNext
 
-      if (isAvailable(sh.in1)) {
-        bufIn1 = grab(sh.in1)
-        tryPull(sh.in1)
-      }
-      if (isAvailable(sh.in2)) {
-        bufIn2 = grab(sh.in2)
-        tryPull(sh.in2)
-      }
-      if (isAvailable(sh.in3)) {
-        bufIn3 = grab(sh.in3)
-        tryPull(sh.in3)
-      }
-      if (isAvailable(sh.in4)) {
-        bufIn4 = grab(sh.in4)
-        tryPull(sh.in4)
-      }
-      if (isAvailable(sh.in5)) {
-        bufIn5 = grab(sh.in5)
-        tryPull(sh.in5)
-      }
-      if (isAvailable(sh.in6)) {
-        bufIn6 = grab(sh.in6)
-        tryPull(sh.in6)
-      }
-
-      _inValid = true
-      _canRead = false
-      bufIn0.size
-    }
-
-    protected def freeInputBuffers(): Unit = {
-      if (bufIn0 != null) {
-        bufIn0.release()
-        bufIn0 = null
-      }
-      if (bufIn1 != null) {
-        bufIn1.release()
-        bufIn1 = null
-      }
-      if (bufIn2 != null) {
-        bufIn2.release()
-        bufIn2 = null
-      }
-      if (bufIn3 != null) {
-        bufIn3.release()
-        bufIn3 = null
-      }
-      if (bufIn4 != null) {
-        bufIn4.release()
-        bufIn4 = null
-      }
-      if (bufIn5 != null) {
-        bufIn5.release()
-        bufIn5 = null
-      }
-      if (bufIn6 != null) {
-        bufIn6.release()
-        bufIn6 = null
-      }
-    }
-
-    protected def freeOutputBuffers(): Unit = {
-      if (bufOut0 != null) {
-        bufOut0.release()
-        bufOut0 = null
-      }
-      if (bufOut1 != null) {
-        bufOut1.release()
-        bufOut1 = null
-      }
-    }
-
-    def updateCanRead(): Unit = {
-      val sh = shape
-      _canRead = isAvailable(sh.in0) &&
-        ((isClosed(sh.in1) && _inValid) || isAvailable(sh.in1)) &&
-        ((isClosed(sh.in2) && _inValid) || isAvailable(sh.in2)) &&
-        ((isClosed(sh.in3) && _inValid) || isAvailable(sh.in3)) &&
-        ((isClosed(sh.in4) && _inValid) || isAvailable(sh.in4)) &&
-        ((isClosed(sh.in5) && _inValid) || isAvailable(sh.in5)) &&
-        ((isClosed(sh.in6) && _inValid) || isAvailable(sh.in6))
-    }
-
-//    private def sz(b: BufLike): String = if (b == null) "null" else b.size.toString
-
-    protected def startNextWindow(inOff: Int): Long = {
-//      println(s"startNextWindow($inOff) : ${sz(bufIn1)}, ${sz(bufIn2)}, ${sz(bufIn3)}, ${sz(bufIn4)}, ${sz(bufIn5)}, ${sz(bufIn6)}")
-      // size: OutI, minLag: OutI, maxLag: OutI, thresh: OutD, octaveCost: OutD, n:
-
-      if (bufIn1 != null && inOff < bufIn1.size) {
+      if (ok) {
         val oldSize   = acSize
-        val _winSize  = math.max(2, bufIn1.buf(inOff))
+        val _winSize  = hSize.next()
         if (_winSize != oldSize) {
           acBuf  = new Array[Double](_winSize)
           acSize = _winSize
         }
-      }
-      if (bufIn2 != null && inOff < bufIn2.size) {
-        minLag = math.max(1, bufIn2.buf(inOff))
-        // println(s"minLag $minLag")
-      }
-      if (bufIn3 != null && inOff < bufIn3.size) {
-        maxLag = math.max(1, bufIn3.buf(inOff))
-        // println(s"maxLag $maxLag")
-      }
-      if (bufIn4 != null && inOff < bufIn4.size) {
-        thresh = math.max(0.0, bufIn4.buf(inOff)) // * 0.5
-        // println(s"thresh ${thresh * 2}")
-      }
-      if (bufIn5 != null && inOff < bufIn5.size) {
-        octaveCost = math.max(0.0, bufIn5.buf(inOff)) / Util.log2
-        // println(s"octaveCost ${octaveCost * Util.log2}")
-      }
-      if (bufIn6 != null && inOff < bufIn6.size) {
-        val oldN = numPaths
-        numPaths = math.max(1, bufIn6.buf(inOff))
+        minLag    = hMinLag.next()
+        maxLag    = hMaxLag.next()
+        thresh    = hThresh.next()
+        octCost   = hOctCost.next()
+        val oldN  = numPaths
+        numPaths  = hNum.next()
         if (numPaths != oldN) {
           lagBuf      = new Array[Double](numPaths)
           lagIBuf     = new Array[Int   ](numPaths)
           strengthBuf = new Array[Double](numPaths)
         }
       }
-      acSize
+      ok
     }
 
-    protected def copyInputToWindow(inOff: Int, writeToWinOff: Long, chunk: Int): Unit =
-      Util.copy(bufIn0.buf, inOff, acBuf, writeToWinOff.toInt, chunk)
+    protected def readWinSize : Long = acSize
+    protected def writeWinSize: Long = numPaths
 
-    protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit = {
-      val rOff = readFromWinOff.toInt
-      Util.copy(lagBuf      , rOff, bufOut0.buf, outOff, chunk)
-      Util.copy(strengthBuf , rOff, bufOut1.buf, outOff, chunk)
+    protected def readIntoWindow(chunk: Int): Unit = {
+      hIn.nextN(acBuf, readOff.toInt, chunk)
     }
 
-    protected def processWindow(writeToWinOff: Long): Long = {
-      val sz0     = writeToWinOff.toInt
+    protected def writeFromWindow(chunk: Int): Unit = {
+      val rOff = writeOff.toInt
+      hOut0.nextN(lagBuf      , rOff, chunk)
+      hOut1.nextN(strengthBuf , rOff, chunk)
+    }
+
+    protected def processWindow(): Unit = {
+      val sz0     = readOff.toInt
       val _buf    = acBuf
       val _bufSz  = acSize
       if (sz0 < _bufSz) {
@@ -366,13 +213,13 @@ object StrongestLocalMaxima {
             pathsTaken += 1
             res
           } else {
-            val strengthC = strength + octaveCost * math.log (_maxLag / lag)
+            val strengthC = strength + octCost * math.log (_maxLag / lag)
             var weakest   = strengthC
             var res = -1
             var j = 0
             while (j < n) {
               val lagJ      = lagBuf      (j)
-              val strengthJ = strengthBuf (j) + octaveCost * math.log(_maxLag / lagJ)
+              val strengthJ = strengthBuf (j) + octCost * math.log(_maxLag / lagJ)
               if (strengthJ < weakest) {
                 weakest = strengthJ
                 res     = j
@@ -407,7 +254,7 @@ object StrongestLocalMaxima {
 //      // lagBuf(pathsTaken) = 0.0
 //      strengthBuf(pathsTaken) = math.sqrt(intensity) // 18 * intensity // math.min(1.0, 18 * intensity)
 
-      n
+//      n
     }
 
     // adapted from Praat's NUMinterpol.cpp

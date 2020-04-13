@@ -40,13 +40,13 @@ abstract class FilterInAOutB[A, E <: BufElem[A], B, F <: BufElem[B], S <: Shape]
 
   protected def run(in: Array[A], inOff: Int, out: Array[B], outOff: Int, n: Int): Unit
 
-  protected def auxAvailable: Int
+  protected def auxInAvailable: Int
 
   @tailrec
   final protected def process(): Unit = {
     val remIO = min(hIn.available, hOut.available)
     if (remIO == 0) return
-    val rem   = min(remIO, auxAvailable)
+    val rem   = min(remIO, auxInAvailable)
     if (rem   == 0) return
 
     val in      = hIn .array
@@ -75,5 +75,5 @@ abstract class FilterIn1Out1[A, E <: BufElem[A], B, F <: BufElem[B]](name: Strin
                                                                      bTpe: StreamType[B, F])
   extends FilterInAOutB[A, E, B, F, FlowShape[E, F]](name, layer, shape)(shape.in, shape.out) {
 
-  protected final def auxAvailable: Int = Int.MaxValue
+  protected final def auxInAvailable: Int = Int.MaxValue
 }

@@ -47,7 +47,7 @@ object OnePole {
     private[this] val hCoef = Handlers.InDAux(this, shape.in1)()
     private[this] var yPrev = 0.0
 
-    protected def auxAvailable: Int = hCoef.available
+    protected def auxInAvailable: Int = hCoef.available
 
     protected def run(in: Array[Double], inOff: Int, out: Array[Double], outOff: Int, len: Int): Unit = {
       val coef    = hCoef   // XXX TODO --- could optimize by using `InDMain` instead.
