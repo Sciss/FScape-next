@@ -14,11 +14,14 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.Attributes
-import de.sciss.fscape.stream.impl.deprecated.{FilterLogicImpl, In6Out3Impl, WindowedLogicImpl}
+import akka.stream.{Attributes, Inlet}
+import de.sciss.fscape.stream.impl.Handlers.{InDAux, InDMain, InIAux, OutDMain}
+import de.sciss.fscape.stream.impl.logic.WindowedMultiInOut
 import de.sciss.fscape.stream.impl.shapes.In6Out3Shape
-import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
 import de.sciss.numbers
+
+import scala.math.{max, min}
 
 object PeakCentroid2D {
   def apply(in: OutD, width: OutI, height: OutI, thresh1: OutD, thresh2: OutD, radius: OutI)
@@ -56,17 +59,22 @@ object PeakCentroid2D {
 
   // XXX TODO -- abstract over data type (BufD vs BufI)?
   private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape)
-      with WindowedLogicImpl[Shp]
-      with FilterLogicImpl[BufD, Shp]
-      with In6Out3Impl[BufD, BufI, BufI, BufD, BufD, BufI, BufD, BufD, BufD] {
+    extends Handlers(name, layer, shape) with WindowedMultiInOut {
 
     override def toString = s"$name-L@${hashCode.toHexString}"
 
-    protected def allocOutBuf0(): BufD = ctrl.borrowBufD()
-    protected def allocOutBuf1(): BufD = ctrl.borrowBufD()
-    protected def allocOutBuf2(): BufD = ctrl.borrowBufD()
-    
+    // in: OutD, width: OutI, height: OutI, thresh1: OutD, thresh2: OutD, radius: OutI
+
+    private[this] val hIn     : InDMain   = InDMain (this, shape.in0)
+    private[this] val hWidth  : InIAux    = InIAux  (this, shape.in1)(max(1, _))
+    private[this] val hHeight : InIAux    = InIAux  (this, shape.in2)(max(1, _))
+    private[this] val hThresh1: InDAux    = InDAux  (this, shape.in3)()
+    private[this] val hThresh2: InDAux    = InDAux  (this, shape.in4)()
+    private[this] val hRadius : InIAux    = InIAux  (this, shape.in5)(max(1, _))
+    private[this] val hOut0   : OutDMain  = OutDMain(this, shape.out0)
+    private[this] val hOut1   : OutDMain  = OutDMain(this, shape.out1)
+    private[this] val hOut2   : OutDMain  = OutDMain(this, shape.out1)
+
     private[this] var width  : Int    = _
     private[this] var height : Int    = _
     private[this] var thresh1: Double = _
@@ -74,56 +82,78 @@ object PeakCentroid2D {
     private[this] var radius : Int    = _
 
     private[this] var winBuf      : Array[Double] = _
-    private[this] var size        : Int = _
+    private[this] var size        : Int = -1
 
     private[this] var translateX  : Double = _
     private[this] var translateY  : Double = _
     private[this] var peak        : Double = _
 
-    protected def startNextWindow(inOff: Int): Long = {
-      val oldSize = size
-      if (bufIn1 != null && inOff < bufIn1.size) {
-        width = math.max(1, bufIn1.buf(inOff))
-      }
-      if (bufIn2 != null && inOff < bufIn2.size) {
-        height = math.max(1, bufIn2.buf(inOff))
-      }
-      size = width * height
-      if (size != oldSize) {
-        winBuf = new Array[Double](size)
-      }
-
-      if (bufIn3 != null && inOff < bufIn3.size) thresh1 = bufIn3.buf(inOff)
-      if (bufIn4 != null && inOff < bufIn4.size) thresh2 = bufIn4.buf(inOff)
-      if (bufIn5 != null && inOff < bufIn5.size) radius  = math.max(1, bufIn5.buf(inOff))
-
-//      println(s"width = $width, height = $height; thresh1 = $thresh1, thresh2 = $thresh2; radius = $radius")
-
-      size
+    override protected def stopped(): Unit = {
+      super.stopped()
+      winBuf = null
     }
 
-    protected def copyInputToWindow(inOff: Int, writeToWinOff: Long, chunk: Int): Unit =
-      Util.copy(bufIn0.buf, inOff, winBuf, writeToWinOff.toInt, chunk)
+    protected def mainInAvailable : Int = hIn.available
+    protected def outAvailable    : Int = min(hOut0.available, min(hOut1.available, hOut2.available))
+
+    protected def mainInDone: Boolean = hIn.isDone
+
+    protected def isHotIn(inlet: Inlet[_]): Boolean = inlet == hIn.inlet
+
+    protected def flushOut(): Boolean =
+      hOut0.flush() & hOut1.flush() && hOut2.flush()  // careful to always call all three
+
+    protected def tryObtainWinParams(): Boolean = {
+      val ok =
+        hWidth  .hasNext &&
+        hHeight .hasNext &&
+        hThresh1.hasNext &&
+        hThresh2.hasNext &&
+        hRadius .hasNext
+
+      if (ok) {
+        val oldSize = size
+        width   = hWidth  .next()
+        height  = hHeight .next()
+        thresh1 = hThresh1.next()
+        thresh2 = hThresh2.next()
+        radius  = hRadius .next()
+
+        size = width * height
+        if (size != oldSize) {
+          winBuf = new Array[Double](size)
+        }
+
+        // println(s"width = $width, height = $height; thresh1 = $thresh1, thresh2 = $thresh2; radius = $radius")
+      }
+      ok
+    }
+
+    protected def readWinSize : Long = size
+    protected def writeWinSize: Long = 1
+
+    protected def readIntoWindow(chunk: Int): Unit = {
+      hIn.nextN(winBuf, readOff.toInt, chunk)
+    }
 
     // private var COUNT = 0
 
-    protected def copyWindowToOutput(readFromWinOff: Long, outOff: Int, chunk: Int): Unit = {
-      assert(readFromWinOff == 0 && chunk == 1)
-      // Util.copy(winBuf, readFromWinOff, bufOut0.buf, outOff, chunk)
-      bufOut0.buf(outOff) = translateX
-      bufOut1.buf(outOff) = translateY
-      bufOut2.buf(outOff) = peak
+    protected def writeFromWindow(chunk: Int): Unit = {
+      assert(writeOff == 0 && chunk == 1)
+      hOut0.next(translateX )
+      hOut1.next(translateY )
+      hOut2.next(peak       )
 //      COUNT += 1
 //      println(f"elapsed = ${COUNT * 1024 / 44100.0}%1.2f sec - tx $translateX%1.2f; ty $translateY%1.2f, pk $peak%1.2f")
-      println(f"tx ${(translateX + 0.5).toInt}, pk = $peak%1.2f")
+//      println(f"tx ${(translateX + 0.5).toInt}, pk = $peak%1.2f")
     }
 
     @inline
     private def pixel(x: Int, y: Int): Double = winBuf(y * width + x)
 
-    protected def processWindow(writeToWinOff: Long): Long = {
-      if (writeToWinOff < size) {
-        val writeOffI = writeToWinOff.toInt
+    protected def processWindow(): Unit = {
+      if (readOff < size) {
+        val writeOffI = readOff.toInt
         Util.clear(winBuf, writeOffI, size - writeOffI)
       }
 
@@ -213,7 +243,6 @@ object PeakCentroid2D {
       translateX = cx // bufOut0.buf(0) = cx
       translateY = cx // bufOut1.buf(0) = cy
       peak       = cs // bufOut2.buf(0) = cs
-      1
     }
   }
 }
