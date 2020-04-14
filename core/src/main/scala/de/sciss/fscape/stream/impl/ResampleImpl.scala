@@ -37,7 +37,9 @@ abstract class ResampleImpl[S <: Shape](name: String, layer: Layer, shape: S)(im
   protected def availableInFrames : Int
   protected def availableOutFrames: Int
 
-  // NOTE: there seems to be a bug when using higher values than around 8
+  /** Extra size for the internal buffers; must be greater than zero.
+    * The larger the `PAD` the more data can be internally buffered
+    */
   protected def PAD: Int
 
   protected def processChunk(): Boolean
@@ -118,8 +120,9 @@ abstract class ResampleImpl[S <: Shape](name: String, layer: Layer, shape: S)(im
    */
   private[this] var inPhase0      = 0.0
   private[this] var inPhaseCount  = 0L
-  private[this] var outPhase      = 0L
+  private[this] var outPhase      = 0L  // the `outPhase` refers to the write-pointer from the non-resampled input
 
+  // the `inPhase` refers to the read-pointer for producing resampled output
   @inline
   private[this] def inPhase: Double = inPhase0 + inPhaseCount * smpIncr
 
@@ -172,8 +175,10 @@ abstract class ResampleImpl[S <: Shape](name: String, layer: Layer, shape: S)(im
       newTable
     }
 
-    // XXX TODO --- since fltLenH changes, in fact we should also re-calculate the winLen
-    // and create a new winBuf...
+    // XXX TODO if fltLenH and fltSmpPerCrossing change, in fact should we also re-calculate the winLen
+    // and create a new winBuf...? ; I don't think so, because `maxFltLenH` is basically
+    // based on `fltLenH/fltSmpPerCrossing` and `fltLenH` is proportional to `fltSmpPerCrossing`.
+    // The crucial element will be a change in `zeroCrossings` or `rollOff`
     def updateTable(): Unit = {
       fltLenH = ((fltSmpPerCrossing * zeroCrossings) / rollOff + 0.5).toInt
       fltBuf  = new Array[Double](fltLenH)
@@ -230,19 +235,14 @@ abstract class ResampleImpl[S <: Shape](name: String, layer: Layer, shape: S)(im
     var cond = true
     while (cond) {
       cond = false
-      val winReadStop   = inPhase.toLong + _maxFltLenH
       val isFlush       = hIn.isDone
-      val inRem0        = if (isFlush) flushRemain else availableInFrames
-      val writeToWinLen = min(inRem0, winReadStop + PAD - outPhase).toInt
-
-      // XXX TODO --- we have to investigate this additional constraint;
-      // we need it because otherwise, we might write more than a full winBuf,
-      // and chunk2 might become too large and cause an ArrayIndexOutOfBoundsException
-//      val writeToWinLen = min(min(inRem0, winReadStop + PAD - outPhase).toInt, _winLen)
+      val inRem         = if (isFlush) flushRemain else availableInFrames
+      val advanceBaseW  = outPhase + _maxFltLenH
+      var advance       = advanceBaseW - inPhase.toLong
+      val writeToWinLen = min(inRem, _winLen - max(0, advance)).toInt
 
       if (writeToWinLen > 0) {
         val winWriteOff = (outPhase % _winLen).toInt
-        //          println(s"writeToWinLen = $writeToWinLen; winWriteOff = $winWriteOff; _winLen = ${_winLen}")
         val chunk1      = min(writeToWinLen, _winLen - winWriteOff)
         if (chunk1 > 0) {
           if (isFlush) {
@@ -263,22 +263,23 @@ abstract class ResampleImpl[S <: Shape](name: String, layer: Layer, shape: S)(im
           }
         }
         outPhase     += writeToWinLen
-        // winWriteOff   = (winWriteOff + writeToWinLen) % _winLen // UNUSED
+        advance      += writeToWinLen
 
         cond          = true
         stateChange   = true
       }
 
-      var readFromWinLen = min(auxRem, min(availableOutFrames, outPhase - winReadStop))
+      var outRem        = min(auxRem, availableOutFrames)
+      val advanceBaseR  = outPhase - _maxFltLenH
+      advance = advanceBaseR - inPhase.toLong
+      if (outRem > 0 && advance > 0) {
 
-      if (readFromWinLen > 0) {
-        // println(s"readFromWinLen = $readFromWinLen; srcOffI = ${(inPhase.toLong % _winLen).toInt}; _winLen = ${_winLen}")
-        while (readFromWinLen > 0) {
+        var _inPhase  = inPhase
+        var _inPhaseL = inPhase.toLong
+        do {
           val newTable = readOneAux()
           if (newTable) updateTable()
 
-          val _inPhase  = inPhase
-          val _inPhaseL = inPhase.toLong
           val _fltIncr  = fltIncr
           val _fltBuf   = fltBuf
           val _fltBufD  = fltBufD
@@ -320,9 +321,14 @@ abstract class ResampleImpl[S <: Shape](name: String, layer: Layer, shape: S)(im
           }
 
           copyValueToOut()
-          inPhaseCount   += 1
-          readFromWinLen -= 1
-        }
+          inPhaseCount += 1
+          outRem       -= 1
+          _inPhase      = inPhase
+          _inPhaseL     = inPhase.toLong
+          advance       = advanceBaseR - _inPhaseL
+
+        } while (outRem > 0 && advance > 0)
+
         cond        = true
         stateChange = true
       }

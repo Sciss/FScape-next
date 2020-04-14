@@ -10,17 +10,18 @@ object ResampleTest extends App {
   lazy val g1 = Graph {
     import graph._
     val sr    = 44100.0
-    val in0   = SinOsc(441/sr)
+    val f0    = 100.0 // 441.0
+    val in0   = SinOsc(f0/sr)
 //    val in0   = WhiteNoise()
     val in    = in0.take(sr.toLong * 10.0)
-    val factor = 1.0/4 // 128
+    val factor = 1.0/32
 //    val factor = 1.0
 //        val factor = 2.0
     val sig   = Resample(in = in, factor = factor,
-      rollOff = 0.70, kaiserBeta = 6.5, zeroCrossings = 2 // 5
+      rollOff = 0.70, kaiserBeta = 6.5, zeroCrossings = 5
     )
-    val factorI = (factor * 100).toInt
-    val fOut  = userHome / "Documents" / s"resample_$factorI.aif"
+    // val factorI = (factor * 100).toInt
+    val fOut  = userHome / "Documents" / s"resample-test.aif"
     AudioFileOut(file = fOut, spec = AudioFileSpec(sampleRate = sr, numChannels = 1), in = sig)
   }
 
@@ -30,7 +31,8 @@ object ResampleTest extends App {
     val in0   = SinOsc(441/sr)
     //    val in0   = WhiteNoise()
     val in    = in0.take(sr.toLong * 10)
-    val factor = SinOsc(1.0/32).linExp(-1.0, 1.0, 0.5, 2.0)
+    val period = 3200 // 32
+    val factor = SinOsc(1.0/period).linExp(-1.0, 1.0, 0.5, 2.0)
     val sig   = Resample(in = in, factor = factor, minFactor = 0.5)
     val fOut  = userHome / "Documents" / "resample_mod.aif"
     AudioFileOut(file = fOut, spec = AudioFileSpec(sampleRate = sr, numChannels = 1), in = sig)
@@ -45,7 +47,7 @@ object ResampleTest extends App {
     val factor  = Line(1.0, 0.1, len)
     val sig0    = Resample(in = in, factor = factor, minFactor = 0.1)
     val sig     = sig0.take(len)
-    val fOut    = userHome / "Documents" / "temp" / "resample_mod.aif"
+    val fOut    = userHome / "Documents" / "resample_line.aif"
     AudioFileOut(file = fOut, spec = AudioFileSpec(sampleRate = sr, numChannels = 1), in = sig)
   }
 
@@ -73,5 +75,5 @@ object ResampleTest extends App {
   }
 
   val ctrl: stream.Control = stream.Control()
-  ctrl.run(g1)
+  ctrl.run(g3)
 }

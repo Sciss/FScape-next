@@ -58,7 +58,7 @@ object Resample {
 
     // rather arbitrary, but > 1 increases speed; for matrix resample, we'd want very small to save memory
     // N.B.: there is a bug (#37) that has to do with this value. Still investigating; 8 seems safe
-    protected val PAD = 8 // 32
+    protected val PAD: Int = ctrl.blockSize // 8 // 32
 
     private[this] var winBuf: Array[Double] = _   // circular
 
