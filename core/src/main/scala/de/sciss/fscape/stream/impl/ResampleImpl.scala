@@ -241,7 +241,7 @@ abstract class ResampleImpl[S <: Shape](name: String, layer: Layer, shape: S)(im
 //      val writeToWinLen = min(min(inRem0, winReadStop + PAD - outPhase).toInt, _winLen)
 
       if (writeToWinLen > 0) {
-        var winWriteOff = (outPhase % _winLen).toInt
+        val winWriteOff = (outPhase % _winLen).toInt
         //          println(s"writeToWinLen = $writeToWinLen; winWriteOff = $winWriteOff; _winLen = ${_winLen}")
         val chunk1      = min(writeToWinLen, _winLen - winWriteOff)
         if (chunk1 > 0) {
@@ -263,7 +263,7 @@ abstract class ResampleImpl[S <: Shape](name: String, layer: Layer, shape: S)(im
           }
         }
         outPhase     += writeToWinLen
-        winWriteOff   = (winWriteOff + writeToWinLen) % _winLen
+        // winWriteOff   = (winWriteOff + writeToWinLen) % _winLen // UNUSED
 
         cond          = true
         stateChange   = true

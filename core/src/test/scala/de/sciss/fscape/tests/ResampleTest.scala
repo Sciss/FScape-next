@@ -1,11 +1,8 @@
 package de.sciss.fscape.tests
 
 import de.sciss.file._
-import de.sciss.fscape.gui.SimpleGUI
 import de.sciss.fscape.{GE, Graph, graph, stream}
 import de.sciss.synth.io.AudioFileSpec
-
-import scala.swing.Swing
 
 object ResampleTest extends App {
   def any2stringadd: Any = ()
@@ -16,11 +13,11 @@ object ResampleTest extends App {
     val in0   = SinOsc(441/sr)
 //    val in0   = WhiteNoise()
     val in    = in0.take(sr.toLong * 10.0)
-    val factor = 1.0/128
+    val factor = 1.0/4 // 128
 //    val factor = 1.0
 //        val factor = 2.0
     val sig   = Resample(in = in, factor = factor,
-      rollOff = 0.70, kaiserBeta = 6.5, zeroCrossings = 5
+      rollOff = 0.70, kaiserBeta = 6.5, zeroCrossings = 2 // 5
     )
     val factorI = (factor * 100).toInt
     val fOut  = userHome / "Documents" / s"resample_$factorI.aif"
@@ -75,13 +72,6 @@ object ResampleTest extends App {
     ImageFileOut(file = fOut, spec = ImageFile.Spec(ImageFile.Type.JPG, width = w, height = h, numChannels = 3), in = sig)
   }
 
-  val config = stream.Control.Config()
-  config.useAsync   = false
-//  config.blockSize  = 960 // 100 // test
-  implicit val ctrl: stream.Control = stream.Control(config)
+  val ctrl: stream.Control = stream.Control()
   ctrl.run(g1)
-
-  Swing.onEDT {
-    SimpleGUI(ctrl)
-  }
 }
