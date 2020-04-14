@@ -14,10 +14,12 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.stage.InHandler
 import akka.stream.{Attributes, FanInShape6}
-import de.sciss.fscape.stream.impl.deprecated.{Out1DoubleImpl, Out1LogicImpl}
+import de.sciss.fscape.stream.impl.Handlers.{InDAux, InDMain, InIAux, OutDMain}
 import de.sciss.fscape.stream.impl.{NodeImpl, ResampleImpl, StageImpl}
+import de.sciss.numbers.Implicits._
+
+import scala.math.max
 
 object Resample {
   def apply(in: OutD, factor: OutD, minFactor: OutD, rollOff: OutD, kaiserBeta: OutD, zeroCrossings: OutI)
@@ -52,42 +54,13 @@ object Resample {
   }
 
   private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape)
-    with ResampleImpl[Shp]
-    with Out1LogicImpl[BufD, Shp]
-    with Out1DoubleImpl[Shp] {
+    extends ResampleImpl(name, layer, shape) {
 
     // rather arbitrary, but > 1 increases speed; for matrix resample, we'd want very small to save memory
     // N.B.: there is a bug (#37) that has to do with this value. Still investigating; 8 seems safe
     protected val PAD = 8 // 32
 
-    private[this] var bufIn           : BufD = _
-
-    private[this] var _inMainValid  = false
-    private[this] var _canReadMain  = false
-
-    private[this] var winBuf      : Array[Double] = _   // circular
-
-    // ---- handlers / constructor ----
-
-    setHandler(in0, new InHandler {
-      def onPush(): Unit = {
-        logStream(s"onPush($in0)")
-        _canReadMain = true
-        process()
-      }
-
-      override def onUpstreamFinish(): Unit = {
-        logStream(s"onUpstreamFinish($in0)")
-        if (_inMainValid) process() // may lead to `flushOut`
-        else {
-          if (!isAvailable(in0)) {
-            logStream(s"Invalid process $in0")
-            completeStage()
-          }
-        }
-      }
-    })
+    private[this] var winBuf: Array[Double] = _   // circular
 
     // ---- start/stop ----
 
@@ -96,42 +69,15 @@ object Resample {
       winBuf  = null
     }
 
-    protected def freeMainInputBuffers(): Unit =
-      if (bufIn != null) {
-        bufIn.release()
-        bufIn = null
-      }
-
-    def freeOutputBuffers(): Unit =
-      if (bufOut0 != null) {
-        bufOut0.release()
-        bufOut0 = null
-      }
-
-    protected def readMainIns(): Int = {
-      freeMainInputBuffers()
-      bufIn = grab(in0)
-      tryPull(in0)
-      _inMainValid = true
-      _canReadMain = false
-      bufIn.size
-    }
-
     // ---- infra ----
 
-    protected def in0             : InD  = shape.in0
-    protected def inFactor        : InD  = shape.in1
-    protected def inMinFactor     : InD  = shape.in2
-    protected def inRollOff       : InD  = shape.in3
-    protected def inKaiserBeta    : InD  = shape.in4
-    protected def inZeroCrossings : InI  = shape.in5
-    protected def out0            : OutD = shape.out
-
-    protected def inMainValid: Boolean = _inMainValid
-    protected def canReadMain: Boolean = _canReadMain
-
-    protected def availableInFrames : Int = inMainRemain
-    protected def availableOutFrames: Int = outRemain
+    protected val hIn            : InDMain  = InDMain (this, shape.in0)
+    protected val hFactor        : InDAux   = InDAux  (this, shape.in1)(max(0.0, _))
+    protected val hMinFactor     : InDAux   = InDAux  (this, shape.in2)(max(0.0, _))
+    protected val hRollOff       : InDAux   = InDAux  (this, shape.in3)(_.clip(0.0, 1.0))
+    protected val hKaiserBeta    : InDAux   = InDAux  (this, shape.in4)(max(1.0, _))
+    protected val hZeroCrossings : InIAux   = InIAux  (this, shape.in5)(max(1, _))
+    protected val hOut           : OutDMain = OutDMain(this, shape.out)
 
     // ---- process ----
 
@@ -144,10 +90,11 @@ object Resample {
       Util.clear(winBuf, off, len)
 
     protected def copyInToWinBuf(winOff: Int, len: Int): Unit = {
-      Util.copy(bufIn.buf, inMainOff, winBuf, winOff, len)
-      inMainOff    += len
-      inMainRemain -= len
+      hIn.nextN(winBuf, winOff, len)
     }
+
+    protected def availableInFrames : Int = hIn .available
+    protected def availableOutFrames: Int = hOut.available
 
     private[this] var value = 0.0
 
@@ -158,9 +105,7 @@ object Resample {
       value += winBuf(winOff) * weight
 
     protected def copyValueToOut(): Unit = {
-      bufOut0.buf(outOff) = value * gain
-      outOff    += 1
-      outRemain -= 1
+      hOut.next(value * gain)
     }
   }
 }

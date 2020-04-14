@@ -16,34 +16,26 @@ package stream
 package impl
 
 import akka.stream.{Inlet, Shape}
-import akka.stream.stage.{GraphStageLogic, InHandler, OutHandler}
-import de.sciss.fscape.stream.impl.deprecated.FullInOutImpl
+import de.sciss.fscape.stream.impl.Handlers.{InDAux, InDMain, InIAux, OutDMain}
 
 import scala.annotation.tailrec
 import scala.math._
 
-@deprecated("Should move to using Handlers", since = "2.35.1")
-trait ResampleImpl[S <: Shape] extends FullInOutImpl[S] {
-  _: GraphStageLogic with Node =>
+abstract class ResampleImpl[S <: Shape](name: String, layer: Layer, shape: S)(implicit control: Control)
+  extends Handlers(name, layer, shape) {
 
   // ---- abstract ----
 
-  protected def in0             : InD
-  protected def inFactor        : InD
-  protected def inMinFactor     : InD
-  protected def inRollOff       : InD
-  protected def inKaiserBeta    : InD
-  protected def inZeroCrossings : InI
-  protected def out0            : OutD
-
-  protected def canReadMain: Boolean
-  protected def inMainValid: Boolean
-  protected def readMainIns(): Int
+  protected def hIn             : InDMain
+  protected def hFactor         : InDAux  // max(0.0, _)
+  protected def hMinFactor      : InDAux  // max(0.0, _)
+  protected def hRollOff        : InDAux  // _.clip(0.0, 1.0)
+  protected def hKaiserBeta     : InDAux  // max(1.0, _)
+  protected def hZeroCrossings  : InIAux  // max(1, _)
+  protected def hOut            : OutDMain
 
   protected def availableInFrames : Int
   protected def availableOutFrames: Int
-
-  protected def allocOutputBuffers(): Int
 
   // NOTE: there seems to be a bug when using higher values than around 8
   protected def PAD: Int
@@ -62,11 +54,7 @@ trait ResampleImpl[S <: Shape] extends FullInOutImpl[S] {
 
   protected def copyValueToOut(): Unit
 
-  protected def freeMainInputBuffers(): Unit
-
   // ---- impl ----
-
-  protected final var bufOut0 : BufD = _
 
   private[this] var init          = true
   private[this] var factor        = -1.0
@@ -74,22 +62,6 @@ trait ResampleImpl[S <: Shape] extends FullInOutImpl[S] {
   private[this] var rollOff       = -1.0
   private[this] var kaiserBeta    = -1.0
   private[this] var zeroCrossings = -1
-
-  private[this] var bufFactor       : BufD = _
-  private[this] var bufMinFactor    : BufD = _
-  private[this] var bufRollOff      : BufD = _
-  private[this] var bufKaiserBeta   : BufD = _
-  private[this] var bufZeroCrossings: BufI = _
-
-  protected final var inMainRemain  = 0
-  protected final var inMainOff     = 0
-  private[this] var inAuxRemain     = 0
-  private[this] var inAuxOff        = 0
-
-  protected final var outRemain     = 0
-  protected final var outOff        = 0
-
-  private[this] var outSent       = true
 
   private[this] var fltIncr     : Double        = _
   private[this] var smpIncr     : Double        = _
@@ -102,192 +74,26 @@ trait ResampleImpl[S <: Shape] extends FullInOutImpl[S] {
   private[this] var fltGain     : Double        = _
   private[this] var winLen      : Int           = _
 
-  private[this] var _inAuxValid   = false
-  private[this] var _canReadAux   = false
-
-  // ---- handlers / constructor ----
-
-  protected final def shouldComplete(): Boolean = inMainRemain == 0 && isClosed(in0) && !isAvailable(in0)
-
-  private class AuxInHandler[A](in: Inlet[A])
-    extends InHandler {
-
-    def onPush(): Unit = {
-      logStream(s"onPush($in)")
-      testRead()
-    }
-
-    private[this] def testRead(): Unit = {
-      updateCanReadAux()
-      if (_canReadAux) process()
-    }
-
-    override def onUpstreamFinish(): Unit = {
-      logStream(s"onUpstreamFinish($in)")
-      if (_inAuxValid || isAvailable(in)) {
-        testRead()
-      } else {
-        println(s"Invalid aux $in")
-        completeStage()
-      }
-    }
-
-    setHandler(in, this)
-  }
-
-  new AuxInHandler(inFactor       )
-  new AuxInHandler(inMinFactor    )
-  new AuxInHandler(inRollOff      )
-  new AuxInHandler(inKaiserBeta   )
-  new AuxInHandler(inZeroCrossings)
-
-  setHandler(out0, new OutHandler {
-    def onPull(): Unit = {
-      logStream(s"onPull($out0)")
-      updateCanWrite()
-      if (canWrite) process()
-    }
-
-    override def onDownstreamFinish(cause: Throwable): Unit = {
-      logStream(s"onDownstreamFinish($out0)")
-      super.onDownstreamFinish(cause)
-    }
-  })
-
   // ---- start/stop ----
 
   override protected def stopped(): Unit = {
+    super.stopped()
     fltBuf  = null
     fltBufD = null
-    freeInputBuffers()
-    freeOutputBuffers()
   }
-
-  protected final def freeInputBuffers(): Unit = {
-    freeMainInputBuffers()
-    freeAuxInputBuffers()
-  }
-
-  // ----
-
-  @inline
-  private[this] def shouldReadAux: Boolean = inAuxRemain == 0 && _canReadAux
-
-  private def updateCanReadAux(): Unit =
-    _canReadAux =
-      ((isClosed(inFactor       ) && _inAuxValid) || isAvailable(inFactor       )) &&
-      ((isClosed(inMinFactor    ) && _inAuxValid) || isAvailable(inMinFactor    )) &&
-      ((isClosed(inRollOff      ) && _inAuxValid) || isAvailable(inRollOff      )) &&
-      ((isClosed(inKaiserBeta   ) && _inAuxValid) || isAvailable(inKaiserBeta   )) &&
-      ((isClosed(inZeroCrossings) && _inAuxValid) || isAvailable(inZeroCrossings))
-
-  private def readAuxIns(): Int = {
-    freeAuxInputBuffers()
-    var res = 0
-
-    if (isAvailable(inFactor)) {
-      bufFactor = grab(inFactor)
-      tryPull(inFactor)
-      res = bufFactor.size
-    }
-
-    if (isAvailable(inMinFactor)) {
-      bufMinFactor = grab(inMinFactor)
-      tryPull(inMinFactor)
-      res = max(res, bufMinFactor.size)
-    }
-
-    if (isAvailable(inRollOff)) {
-      bufRollOff = grab(inRollOff)
-      tryPull(inRollOff)
-      res = max(res, bufRollOff.size)
-    }
-
-    if (isAvailable(inKaiserBeta)) {
-      bufKaiserBeta = grab(inKaiserBeta)
-      tryPull(inKaiserBeta)
-      res = max(res, bufKaiserBeta.size)
-    }
-
-    if (isAvailable(inZeroCrossings)) {
-      bufZeroCrossings = grab(inZeroCrossings)
-      tryPull(inZeroCrossings)
-      res = max(res, bufZeroCrossings.size)
-    }
-
-    _inAuxValid = true
-    _canReadAux = false
-    res
-  }
-
-  private def freeAuxInputBuffers(): Unit = {
-    if (bufFactor != null) {
-      bufFactor.release()
-      bufFactor = null
-    }
-    if (bufMinFactor != null) {
-      bufMinFactor.release()
-      bufMinFactor = null
-    }
-    if (bufRollOff != null) {
-      bufRollOff.release()
-      bufRollOff = null
-    }
-    if (bufKaiserBeta != null) {
-      bufKaiserBeta.release()
-      bufKaiserBeta = null
-    }
-    if (bufZeroCrossings != null) {
-      bufZeroCrossings.release()
-      bufZeroCrossings = null
-    }
-  }
-
-  final def canRead: Boolean = canReadMain && _canReadAux
-  final def inValid: Boolean = inMainValid && _inAuxValid
-
-  final def updateCanRead(): Unit     = throw new IllegalStateException("Not applicable")
-  protected final def readIns(): Int  = throw new IllegalStateException("Not applicable")
 
   // ---- process ----
 
-  @inline
-  private[this] def shouldReadMain: Boolean = inMainRemain == 0 && canReadMain
+  protected def onDone(inlet: Inlet[_]): Unit =
+    process()
 
   @tailrec
   final def process(): Unit = {
     logStream(s"process() $this")
-    var stateChange = false
+    val stateChange = processChunk()
 
-    if (shouldReadMain) {
-      inMainRemain  = readMainIns()
-      inMainOff     = 0
-      stateChange   = true
-    }
-    if (shouldReadAux) {
-      inAuxRemain   = readAuxIns()
-      inAuxOff      = 0
-      stateChange   = true
-    }
-
-    if (outSent) {
-      outRemain     = allocOutputBuffers()
-      outOff        = 0
-      outSent       = false
-      stateChange   = true
-    }
-
-    if (inValid && processChunk()) stateChange = true
-
-    val flushOut = shouldComplete() && flushRemain == 0
-    if (!outSent && (outRemain == 0 || flushOut) && canWrite) {
-      writeOuts(outOff)
-      outSent     = true
-      stateChange = true
-    }
-
-    if (flushOut && outSent) {
-      logStream(s"completeStage() $this")
+    val flushOut = hIn.isDone && flushRemain == 0
+    if (flushOut && hOut.flush()) {
       completeStage()
     }
     else if (stateChange) process()
@@ -325,49 +131,44 @@ trait ResampleImpl[S <: Shape] extends FullInOutImpl[S] {
   protected final def resample(): Boolean = {
     var stateChange = false
 
+    var auxRem =
+      min(hFactor.available, min(hRollOff.available, min(hKaiserBeta.available, hZeroCrossings.available)))
+
     // updates all but `minFactor`
     def readOneAux(): Boolean = {
       var newTable  = false
-      val inAuxOffI = inAuxOff
 
-      if (bufFactor != null && inAuxOffI < bufFactor.size) {
-        val newFactor = max(0.0, bufFactor.buf(inAuxOffI))
-        if (factor != newFactor) {
-          if (inPhaseCount > 0) {
-            inPhase0      = inPhase
-            inPhaseCount  = 0L
-          }
-          factor  = newFactor
-          smpIncr = 1.0 / newFactor
-          fltIncr = fltSmpPerCrossing * min(1.0, newFactor)
-          updateGain()
+      val newFactor = hFactor.next()
+      if (factor != newFactor) {
+        if (inPhaseCount > 0) {
+          inPhase0      = inPhase
+          inPhaseCount  = 0L
         }
+        factor  = newFactor
+        smpIncr = 1.0 / newFactor
+        fltIncr = fltSmpPerCrossing * min(1.0, newFactor)
+        updateGain()
       }
 
-      if (bufRollOff != null && inAuxOffI < bufRollOff.size) {
-        val newRollOff = max(0.0, min(1.0, bufRollOff.buf(inAuxOffI)))
-        if (rollOff != newRollOff) {
-          rollOff   = newRollOff
-          newTable  = true
-        }
+      val newRollOff = hRollOff.next()
+      if (rollOff != newRollOff) {
+        rollOff   = newRollOff
+        newTable  = true
       }
 
-      if (bufKaiserBeta != null && inAuxOffI < bufKaiserBeta.size) {
-        val newKaiserBeta = max(0.0, bufKaiserBeta.buf(inAuxOffI))
-        if (kaiserBeta != newKaiserBeta) {
-          kaiserBeta  = newKaiserBeta
-          newTable    = true
-        }
+      val newKaiserBeta = hKaiserBeta.next()
+      if (kaiserBeta != newKaiserBeta) {
+        kaiserBeta  = newKaiserBeta
+        newTable    = true
       }
 
-      if (bufZeroCrossings != null && inAuxOffI < bufZeroCrossings.size) {
-        val newZeroCrossings = max(1, bufZeroCrossings.buf(inAuxOffI))
-        if (zeroCrossings != newZeroCrossings) {
-          zeroCrossings = newZeroCrossings
-          newTable      = true
-        }
+      val newZeroCrossings = hZeroCrossings.next()
+      if (zeroCrossings != newZeroCrossings) {
+        zeroCrossings = newZeroCrossings
+        newTable      = true
       }
 
+      auxRem -= 1
       newTable
     }
 
@@ -383,8 +184,11 @@ trait ResampleImpl[S <: Shape] extends FullInOutImpl[S] {
       updateGain()
     }
 
+    if (auxRem == 0) return false
+
     if (init) {
-      minFactor = max(0.0, bufMinFactor.buf(0))
+      if (!hMinFactor.hasNext) return false
+      minFactor = hMinFactor.next()
       readOneAux()
       updateTable()
       if (minFactor == 0.0) minFactor = factor
@@ -393,7 +197,7 @@ trait ResampleImpl[S <: Shape] extends FullInOutImpl[S] {
       winLen          = (maxFltLenH << 1) + PAD
       allocWinBuf(winLen)
       flushRemain     = maxFltLenH
-      init = false
+      init            = false
     }
 
     val _winLen     = winLen
@@ -423,12 +227,11 @@ trait ResampleImpl[S <: Shape] extends FullInOutImpl[S] {
 
      */
 
-    val isFlush = shouldComplete()
-
     var cond = true
     while (cond) {
       cond = false
       val winReadStop   = inPhase.toLong + _maxFltLenH
+      val isFlush       = hIn.isDone
       val inRem0        = if (isFlush) flushRemain else availableInFrames
       val writeToWinLen = min(inRem0, winReadStop + PAD - outPhase).toInt
 
@@ -466,17 +269,13 @@ trait ResampleImpl[S <: Shape] extends FullInOutImpl[S] {
         stateChange   = true
       }
 
-      var readFromWinLen = min(availableOutFrames, outPhase - winReadStop)
+      var readFromWinLen = min(auxRem, min(availableOutFrames, outPhase - winReadStop))
 
       if (readFromWinLen > 0) {
         // println(s"readFromWinLen = $readFromWinLen; srcOffI = ${(inPhase.toLong % _winLen).toInt}; _winLen = ${_winLen}")
         while (readFromWinLen > 0) {
-          if (inAuxRemain > 0) {
-            val newTable = readOneAux()
-            inAuxOff    += 1
-            inAuxRemain -= 1
-            if (newTable) updateTable()
-          }
+          val newTable = readOneAux()
+          if (newTable) updateTable()
 
           val _inPhase  = inPhase
           val _inPhaseL = inPhase.toLong
