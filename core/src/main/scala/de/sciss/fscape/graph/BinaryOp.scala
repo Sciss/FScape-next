@@ -17,7 +17,7 @@ package graph
 import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
-import de.sciss.numbers.{DoubleFunctions => rd, DoubleFunctions2 => rd2}
+import de.sciss.numbers.{DoubleFunctions => rd, DoubleFunctions2 => rd2, LongFunctions => rl}
 
 import scala.annotation.switch
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -25,47 +25,52 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 object BinaryOp {
   object Op {
     def apply(id: Int): Op = (id: @switch) match {
-      case Plus     .id => Plus
-      case Minus    .id => Minus
-      case Times    .id => Times
-      case Div      .id => Div
-      case Mod      .id => Mod
-      case Eq       .id => Eq
-      case Neq      .id => Neq
-      case Lt       .id => Lt
-      case Gt       .id => Gt
-      case Leq      .id => Leq
-      case Geq      .id => Geq
-      case Min      .id => Min
-      case Max      .id => Max
-      case BitAnd   .id => BitAnd
-      case BitOr    .id => BitOr
-      case BitXor   .id => BitXor
-      case RoundTo  .id => RoundTo
-      case RoundUpTo.id => RoundUpTo
-      case Trunc    .id => Trunc
-      case Atan2    .id => Atan2
-      case Hypot    .id => Hypot
-      case Hypotx   .id => Hypotx
-      case Pow      .id => Pow
-      case Ring1    .id => Ring1
-      case Ring2    .id => Ring2
-      case Ring3    .id => Ring3
-      case Ring4    .id => Ring4
-      case Difsqr   .id => Difsqr
-      case Sumsqr   .id => Sumsqr
-      case Sqrsum   .id => Sqrsum
-      case Sqrdif   .id => Sqrdif
-      case Absdif   .id => Absdif
-      case Thresh   .id => Thresh
-      case Amclip   .id => Amclip
-      case Scaleneg .id => Scaleneg
-      case Clip2    .id => Clip2
-      case Excess   .id => Excess
-      case Fold2    .id => Fold2
-      case Wrap2    .id => Wrap2
-      case FirstArg .id => FirstArg
-      case SecondArg.id => SecondArg
+      case Plus               .id => Plus
+      case Minus              .id => Minus
+      case Times              .id => Times
+      case Div                .id => Div
+      case Mod                .id => Mod
+      case Eq                 .id => Eq
+      case Neq                .id => Neq
+      case Lt                 .id => Lt
+      case Gt                 .id => Gt
+      case Leq                .id => Leq
+      case Geq                .id => Geq
+      case Min                .id => Min
+      case Max                .id => Max
+      case And                .id => And
+      case Or                 .id => Or
+      case Xor                .id => Xor
+      case Lcm                .id => Lcm
+      case Gcd                .id => Gcd
+      case RoundTo            .id => RoundTo
+      case RoundUpTo          .id => RoundUpTo
+      case Trunc              .id => Trunc
+      case Atan2              .id => Atan2
+      case Hypot              .id => Hypot
+      case Hypotx             .id => Hypotx
+      case Pow                .id => Pow
+      case LeftShift          .id => LeftShift
+      case RightShift         .id => RightShift
+      case UnsignedRightShift .id => UnsignedRightShift
+      case Ring1              .id => Ring1
+      case Ring2              .id => Ring2
+      case Ring3              .id => Ring3
+      case Ring4              .id => Ring4
+      case Difsqr             .id => Difsqr
+      case Sumsqr             .id => Sumsqr
+      case Sqrsum             .id => Sqrsum
+      case Sqrdif             .id => Sqrdif
+      case Absdif             .id => Absdif
+      case Thresh             .id => Thresh
+      case Amclip             .id => Amclip
+      case Scaleneg           .id => Scaleneg
+      case Clip2              .id => Clip2
+      case Excess             .id => Excess
+      case Fold2              .id => Fold2
+      case Wrap2              .id => Wrap2
+      case FirstArg           .id => FirstArg
+      case SecondArg          .id => SecondArg
     }
 
     final val MinId = Plus      .id
@@ -107,7 +112,7 @@ object BinaryOp {
     else
       ConstantL(n)
 
-  case object Plus extends Op {
+  case object Plus extends Op { // OpSame
     final val id = 0
     override val name = "+"
 
@@ -133,7 +138,7 @@ object BinaryOp {
     }
   }
 
-  case object Minus extends Op {
+  case object Minus extends Op {  // OpSame
     final val id = 1
     override val name = "-"
 
@@ -159,7 +164,7 @@ object BinaryOp {
     }
   }
 
-  case object Times extends Op {
+  case object Times extends Op {  // OpSame
     final val id = 2
     override val name = "*"
 
@@ -191,7 +196,7 @@ object BinaryOp {
   }
 
   // case object IDiv           extends Op(  3 )
-  case object Div extends Op {
+  case object Div extends Op {  // OpSame
     final val id = 4
     override val name = "/"
 
@@ -218,7 +223,7 @@ object BinaryOp {
     }
   }
 
-  case object Mod extends Op {
+  case object Mod extends Op {  // OpSame
     final val id = 5
     override val name = "%"
 
@@ -238,7 +243,7 @@ object BinaryOp {
     }
   }
 
-  case object Eq extends Op {
+  case object Eq extends Op { // OpSame
     final val id = 6
     override val name = "sig_=="
 
@@ -246,7 +251,7 @@ object BinaryOp {
     override def apply(a: Constant, b: Constant): Constant = if (a.value == b.value) 1 else 0
   }
 
-  case object Neq extends Op {
+  case object Neq extends Op {  // OpSame
     final val id = 7
     override val name = "sig_!="
 
@@ -254,7 +259,7 @@ object BinaryOp {
     override def apply(a: Constant, b: Constant): Constant = if (a.value != b.value) 1 else 0
   }
 
-  case object Lt extends Op {
+  case object Lt extends Op { // DI, II, LI
     final val id = 8
     override val name = "<"
 
@@ -276,7 +281,7 @@ object BinaryOp {
     }
   }
 
-  case object Gt extends Op {
+  case object Gt extends Op { // DI, LI, II
     final val id = 9
     override val name = ">"
 
@@ -298,7 +303,7 @@ object BinaryOp {
     }
   }
 
-  case object Leq extends Op {
+  case object Leq extends Op {  // DI, LI, II
     final val id = 10
     override val name = "<="
 
@@ -320,7 +325,7 @@ object BinaryOp {
     }
   }
 
-  case object Geq extends Op {
+  case object Geq extends Op {  // DI, LI, II
     final val id = 11
     override val name = ">="
 
@@ -342,7 +347,7 @@ object BinaryOp {
     }
   }
 
-  case object Min extends Op {
+  case object Min extends Op {  // OpSame
     final val id = 12
     def apply(a: Double, b: Double): Double = rd.min(a, b)
 
@@ -355,7 +360,7 @@ object BinaryOp {
     }
   }
 
-  case object Max extends Op {
+  case object Max extends Op {  // OpSame
     final val id = 13
     def apply(a: Double, b: Double): Double = rd.max(a, b)
 
@@ -368,7 +373,7 @@ object BinaryOp {
     }
   }
 
-  case object BitAnd extends Op {
+  case object And extends Op { // OpSame
     final val id = 14
     override val name = "&"
 
@@ -383,7 +388,7 @@ object BinaryOp {
     }
   }
 
-  case object BitOr extends Op {
+  case object Or extends Op {  // OpSame
     final val id = 15
     override val name = "|"
 
@@ -398,7 +403,7 @@ object BinaryOp {
     }
   }
 
-  case object BitXor extends Op {
+  case object Xor extends Op { // OpSame
     final val id = 16
     override val name = "^"
 
@@ -413,14 +418,22 @@ object BinaryOp {
     }
   }
 
-  // case object Lcm            extends Op( 17 )
-  // case object Gcd            extends Op( 18 )
-  case object RoundTo extends Op {
+  case object Lcm extends Op {  // OpSame
+    final val id = 17
+    def apply(a: Double, b: Double): Double = rl.lcm(a.toLong, b.toLong).toDouble
+  }
+
+  case object Gcd extends Op {  // OpSame
+    final val id = 18
+    def apply(a: Double, b: Double): Double = rl.gcd(a.toLong, b.toLong).toDouble
+  }
+
+  case object RoundTo extends Op {  // OpSame
     final val id = 19
     def apply(a: Double, b: Double): Double = rd.roundTo(a, b)
   }
 
-  case object RoundUpTo extends Op {
+  case object RoundUpTo extends Op {  // OpSame
     final val id = 20
     def apply(a: Double, b: Double): Double = rd.roundUpTo(a, b)
   }
@@ -456,9 +469,21 @@ object BinaryOp {
     def apply(a: Double, b: Double): Double = rd.pow(a, b)
   }
 
-  // case object <<             extends Op( 26 )
-  // case object >>             extends Op( 27 )
-  // case object UnsgnRghtShft  extends Op( 28 )
+  case object LeftShift extends Op {  // OpSame
+    final val id = 26
+    def apply(a: Double, b: Double): Double = (a.toLong << b.toLong).toDouble
+  }
+
+  case object RightShift extends Op {  // OpSame
+    final val id = 27
+    def apply(a: Double, b: Double): Double = (a.toLong >> b.toLong).toDouble
+  }
+
+  case object UnsignedRightShift extends Op {  // OpSame
+    final val id = 28
+    def apply(a: Double, b: Double): Double = (a.toLong >>> b.toLong).toDouble
+  }
+
   // case object Fill           extends Op( 29 )
   case object Ring1 extends Op {
     final val id = 30
@@ -480,31 +505,29 @@ object BinaryOp {
     def apply(a: Double, b: Double): Double = rd2.ring4(a, b)
   }
 
-  case object Difsqr extends Op {
+  case object Difsqr extends Op { // IL, LL
     final val id = 34
     def apply(a: Double, b: Double): Double = rd.difSqr(a, b)
   }
 
-  case object Sumsqr extends Op {
+  case object Sumsqr extends Op { // IL, LL
     final val id = 35
     def apply(a: Double, b: Double): Double = rd.sumSqr(a, b)
   }
 
-  case object Sqrsum extends Op {
+  case object Sqrsum extends Op { // IL, LL
     final val id = 36
     def apply(a: Double, b: Double): Double = rd.sqrSum(a, b)
   }
 
-  case object Sqrdif extends Op {
+  case object Sqrdif extends Op { // IL, LL
     final val id = 37
     def apply(a: Double, b: Double): Double = rd.sqrDif(a, b)
   }
 
-  case object Absdif extends Op {
+  case object Absdif extends Op { // OpSame
     final val id = 38
     def apply(a: Double, b: Double): Double = rd.absDif(a, b)
-
-    override def apply(a: Constant, b: Constant): Constant = UnaryOp.Abs(Minus(a, b))
   }
 
   case object Thresh extends Op {
@@ -523,18 +546,18 @@ object BinaryOp {
   }
 
   // XXX TODO --- refined apply
-  case object Clip2 extends Op {
+  case object Clip2 extends Op {  // OpSame
     final val id = 42
     def apply(a: Double, b: Double): Double = rd.clip2(a, b)
   }
 
-  case object Excess extends Op {
+  case object Excess extends Op { // OpSame
     final val id = 43
     def apply(a: Double, b: Double): Double = rd.excess(a, b)
   }
 
   // XXX TODO --- refined apply
-  case object Fold2 extends Op {
+  case object Fold2 extends Op {  // OpSame
     final val id = 44
     def apply(a: Double, b: Double): Double = rd.fold2(a, b)
   }
@@ -545,7 +568,7 @@ object BinaryOp {
     def apply(a: Double, b: Double): Double = rd.wrap2(a, b)
   }
 
-    case object FirstArg extends Op {
+    case object FirstArg extends Op { // OpSame
       final val id = 46
 
       def apply(a: Double, b: Double) : Double = a
@@ -556,7 +579,7 @@ object BinaryOp {
   // case object Rrand          extends Op( 47 )
   // case object ExpRRand       extends Op( 48 )
 
-  case object SecondArg extends Op {
+  case object SecondArg extends Op {  // OpSame
     final val id = 100
     def apply(a: Double, b: Double): Double = b
 

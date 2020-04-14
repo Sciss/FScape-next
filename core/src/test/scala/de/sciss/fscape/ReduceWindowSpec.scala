@@ -8,9 +8,9 @@ import scala.concurrent.Promise
 
 class ReduceWindowSpec extends UGenSpec {
   "The ReduceWindow UGen" should "work as intended" in {
-    import BinaryOp.{BitAnd, Max, Min, Plus, Times}
+    import BinaryOp.{And, Max, Min, Plus, Times}
 
-    val opSq = Seq(BitAnd, Max, Min, Plus, Times)
+    val opSq = Seq(And, Max, Min, Plus, Times)
 
     val rnd         = new util.Random(2L)
     val winSzSq     = List.fill(40)(rnd.nextInt(10) + 1)  // don't test zero for now

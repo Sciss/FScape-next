@@ -19,14 +19,14 @@ import de.sciss.fscape.{GE, UGen, UGenGraph, UGenIn, UGenInLike, UGenSource, str
 import scala.collection.immutable.{IndexedSeq => Vec}
 
 object ReduceWindow {
-  import BinaryOp.{BitAnd, BitOr, BitXor, Max, Min, Plus, Times}
+  import BinaryOp.{And, Or, Xor, Max, Min, Plus, Times}
   def +  (in: GE, size: GE): ReduceWindow = apply(in, size = size, op = Plus  .id)
   def *  (in: GE, size: GE): ReduceWindow = apply(in, size = size, op = Times .id)
   def min(in: GE, size: GE): ReduceWindow = apply(in, size = size, op = Min   .id)
   def max(in: GE, size: GE): ReduceWindow = apply(in, size = size, op = Max   .id)
-  def &  (in: GE, size: GE): ReduceWindow = apply(in, size = size, op = BitAnd.id)
-  def |  (in: GE, size: GE): ReduceWindow = apply(in, size = size, op = BitOr .id)
-  def ^  (in: GE, size: GE): ReduceWindow = apply(in, size = size, op = BitXor.id)
+  def &  (in: GE, size: GE): ReduceWindow = apply(in, size = size, op = And.id)
+  def |  (in: GE, size: GE): ReduceWindow = apply(in, size = size, op = Or .id)
+  def ^  (in: GE, size: GE): ReduceWindow = apply(in, size = size, op = Xor.id)
 }
 
 /** A UGen that reduces all elements in each window to single values, for example

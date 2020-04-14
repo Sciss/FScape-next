@@ -318,9 +318,9 @@ final class GEOps2(val `this`: GE) extends AnyVal { me =>
   def >=      (b: GE): GE = binOp(Geq     , b)
   def min     (b: GE): GE = binOp(Min     , b)
   def max     (b: GE): GE = binOp(Max     , b)
-  def &       (b: GE): GE = binOp(BitAnd  , b)
-  def |       (b: GE): GE = binOp(BitOr   , b)
-  def ^       (b: GE): GE = binOp(BitXor  , b)
+  def &       (b: GE): GE = binOp(And  , b)
+  def |       (b: GE): GE = binOp(Or   , b)
+  def ^       (b: GE): GE = binOp(Xor  , b)
   // def lcm(b: GE): GE = ...
   // def gcd(b: GE): GE = ...
 

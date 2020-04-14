@@ -19,7 +19,7 @@ import de.sciss.fscape.{GE, UGenGraph, UGenIn, UGenInLike, UGenSource, stream}
 import scala.collection.immutable.{IndexedSeq => Vec}
 
 object Reduce {
-  import BinaryOp.{BitAnd, BitOr, BitXor, Max, Min, Plus, Times}
+  import BinaryOp.{And, Or, Xor, Max, Min, Plus, Times}
   /** Same result as `Mix( _ )` */
   def +  (elem: GE): Reduce = apply(elem, Plus  .id)
   def *  (elem: GE): Reduce = apply(elem, Times .id)
@@ -27,9 +27,9 @@ object Reduce {
   //   def all_sig_!=( elem: GE ) = ...
   def min(elem: GE): Reduce = apply(elem, Min   .id)
   def max(elem: GE): Reduce = apply(elem, Max   .id)
-  def &  (elem: GE): Reduce = apply(elem, BitAnd.id)
-  def |  (elem: GE): Reduce = apply(elem, BitOr .id)
-  def ^  (elem: GE): Reduce = apply(elem, BitXor.id)
+  def &  (elem: GE): Reduce = apply(elem, And.id)
+  def |  (elem: GE): Reduce = apply(elem, Or .id)
+  def ^  (elem: GE): Reduce = apply(elem, Xor.id)
 }
 
 final case class Reduce(elem: GE, op: Int) extends UGenSource.SingleOut {
