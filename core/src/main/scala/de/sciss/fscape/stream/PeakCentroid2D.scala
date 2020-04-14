@@ -14,7 +14,7 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.{Attributes, Inlet}
+import akka.stream.{Attributes, Inlet, Outlet}
 import de.sciss.fscape.stream.impl.Handlers.{InDAux, InDMain, InIAux, OutDMain}
 import de.sciss.fscape.stream.impl.logic.WindowedMultiInOut
 import de.sciss.fscape.stream.impl.shapes.In6Out3Shape
@@ -93,15 +93,32 @@ object PeakCentroid2D {
       winBuf = null
     }
 
-    protected def mainInAvailable : Int = hIn.available
-    protected def outAvailable    : Int = min(hOut0.available, min(hOut1.available, hOut2.available))
+    protected def mainInAvailable: Int = hIn.available
+
+    protected def outAvailable: Int = {
+      var res = Int.MaxValue
+      if (!hOut0.isDone) res = min(res, hOut0.available)
+      if (!hOut1.isDone) res = min(res, hOut1.available)
+      if (!hOut2.isDone) res = min(res, hOut2.available)
+      res
+    }
 
     protected def mainInDone: Boolean = hIn.isDone
 
     protected def isHotIn(inlet: Inlet[_]): Boolean = inlet == hIn.inlet
 
-    protected def flushOut(): Boolean =
-      hOut0.flush() & hOut1.flush() && hOut2.flush()  // careful to always call all three
+    protected def flushOut(): Boolean = {
+      var res = true
+      if (!hOut0.isDone) res &= hOut0.flush()
+      if (!hOut1.isDone) res &= hOut1.flush()
+      if (!hOut2.isDone) res &= hOut2.flush()
+      res
+    }
+
+    protected def outDone: Boolean = hOut0.isDone && hOut1.isDone && hOut2.isDone
+
+    override protected def onDone(outlet: Outlet[_]): Unit =
+      super.onDone(outlet)
 
     protected def tryObtainWinParams(): Boolean = {
       val ok =
@@ -140,9 +157,9 @@ object PeakCentroid2D {
 
     protected def writeFromWindow(chunk: Int): Unit = {
       assert(writeOff == 0 && chunk == 1)
-      hOut0.next(translateX )
-      hOut1.next(translateY )
-      hOut2.next(peak       )
+      if (!hOut0.isDone) hOut0.next(translateX )
+      if (!hOut1.isDone) hOut1.next(translateY )
+      if (!hOut2.isDone) hOut2.next(peak       )
 //      COUNT += 1
 //      println(f"elapsed = ${COUNT * 1024 / 44100.0}%1.2f sec - tx $translateX%1.2f; ty $translateY%1.2f, pk $peak%1.2f")
 //      println(f"tx ${(translateX + 0.5).toInt}, pk = $peak%1.2f")

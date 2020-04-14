@@ -13,7 +13,7 @@
 
 package de.sciss.fscape.stream.impl.logic
 
-import akka.stream.Inlet
+import akka.stream.{Inlet, Outlet}
 import de.sciss.fscape.logStream
 import de.sciss.fscape.stream.Node
 import de.sciss.fscape.stream.impl.Handlers
@@ -67,6 +67,10 @@ trait WindowedMultiInOut extends Node {
     */
   protected def mainInDone: Boolean
 
+  /** Whether all outputs are done and thus the stage should be terminated.
+    */
+  protected def outDone: Boolean
+
   /** Whether an inlet constitutes a crucial input whose closure should
     * result in stage termination.
     */
@@ -88,6 +92,9 @@ trait WindowedMultiInOut extends Node {
         process()
       }
     }
+
+  protected def onDone(outlet : Outlet[_]): Unit =
+    if (outDone) completeStage()
 
   private def enterStage2(): Unit = {
     processWindow()

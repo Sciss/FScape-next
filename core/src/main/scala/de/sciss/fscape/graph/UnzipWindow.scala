@@ -47,6 +47,8 @@ final case class UnzipWindowN(numOutputs: Int, in: GE, size: GE = 1) extends UGe
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit builder: stream.Builder): Vec[StreamOut] = {
     val Vec(in, size) = args
-    stream.UnzipWindowN(numOutputs = numOutputs, in = in.toDouble, size = size.toInt)
+    import in.tpe
+    val outs = stream.UnzipWindowN[in.A, in.Buf](numOutputs = numOutputs, in = in.toElem, size = size.toInt)
+    outs.map(tpe.mkStreamOut)
   }
 }

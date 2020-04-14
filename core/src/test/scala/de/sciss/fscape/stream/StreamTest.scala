@@ -124,7 +124,7 @@ object StreamTest extends App {
     val logC        = BinaryOp      (in1 = log , in2 = const(-56 /* -80 */), op = graph.BinaryOp.Max)
     val cep0        = Complex1IFFT  (in  = logC, size = const(fftSize), padding = const(0))
     val cep         = BinaryOp      (in1 = cep0 , in2 = const(1.0/fftSize), op = graph.BinaryOp.Times)
-    val (pos0, neg0) = UnzipWindow   (in = cep , size = const(fftSize))
+    val (pos0, neg0) = UnzipWindow[Double, BufD](in = cep , size = const(fftSize))
     import GraphDSL.Implicits._
     val pos1        = ResizeWindow[Double, BufD](in = pos0, size = const(fftSize), start = const(0), stop = const(2)) // 'add nyquist'
     val neg1        = ResizeWindow[Double, BufD](in = neg0, size = const(fftSize), start = const(0), stop = const(2)) // 'add dc'
@@ -153,8 +153,8 @@ object StreamTest extends App {
 
      */
 
-    val (aIn, bIn)  = UnzipWindow   (in = pos , size = const(1))
-    val (cIn, dIn)  = UnzipWindow   (in = negR, size = const(1))
+    val (aIn, bIn)  = UnzipWindow[Double, BufD](in = pos , size = const(1))
+    val (cIn, dIn)  = UnzipWindow[Double, BufD](in = negR, size = const(1))
 
     // 'variant 1'
 //    val crr =  0; val cri =  0
@@ -196,8 +196,8 @@ object StreamTest extends App {
     val dm2         = BinaryOp(op = Times, in1 = bInB(1), in2 = const(cai))
     val dOut        = BinaryOp(op = Plus , in1 = dm1, in2 = dm2)
 
-    val posOut0     = ZipWindowN(in = List(aOut, bOut), size = const(1))
-    val negOutR0    = ZipWindowN(in = List(cOut, dOut), size = const(1))
+    val posOut0     = ZipWindowN[Double, BufD](in = List(aOut, bOut), size = const(1))
+    val negOutR0    = ZipWindowN[Double, BufD](in = List(cOut, dOut), size = const(1))
 
     val posOut1     = ResizeWindow[Double, BufD](in = posOut0 , size = const(fftSize + 2), start = const(0), stop = const(-2))
     // here `start` because we do this before reversal
@@ -206,7 +206,7 @@ object StreamTest extends App {
     val posOut      = posOut1.buffer(size = fftSize/blockSize, overflowStrategy = OverflowStrategy.backpressure).outlet
     val negOutR     = negOutR1 // .buffer(size = fftSize/blockSize, overflowStrategy = OverflowStrategy.backpressure).outlet
     val negOut      = ReverseWindow[Double, BufD](in = negOutR, size = const(fftSize), clump = const(2))
-    val logOut      = ZipWindowN(in = List(posOut, negOut), size = const(fftSize))
+    val logOut      = ZipWindowN[Double, BufD](in = List(posOut, negOut), size = const(fftSize))
     val freq0       = Complex1FFT   (in = logOut, size = const(fftSize), padding = const(0))
     val freq        = BinaryOp      (in1 = freq0 , in2 = const(fftSize), op = Times)
     val fftOut      = ComplexUnaryOp(in = freq  , op = graph.ComplexUnaryOp.Exp)

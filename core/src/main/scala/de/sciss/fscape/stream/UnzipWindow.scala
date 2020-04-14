@@ -14,13 +14,14 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.stage.{InHandler, OutHandler}
-import akka.stream.{Attributes, Inlet}
-import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import akka.stream.{Attributes, Inlet, Outlet}
+import de.sciss.fscape.stream.impl.Handlers.{InIAux, InMain, OutMain}
+import de.sciss.fscape.stream.impl.logic.WindowedMultiInOut
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
 
-import scala.annotation.tailrec
 import scala.collection.immutable.{IndexedSeq => Vec, Seq => ISeq}
 import scala.collection.{Seq => SSeq}
+import scala.math.{max, min}
 
 /** Unzips a signal into two based on a window length. */
 object UnzipWindow {
@@ -28,8 +29,9 @@ object UnzipWindow {
     * @param in     the signal to unzip
     * @param size   the window size. this is clipped to be `&lt;= 1`
     */
-  def apply(in: OutD, size: OutI)(implicit b: Builder): (OutD, OutD) = {
-    val SSeq(out0, out1) = UnzipWindowN(2, in = in, size = size)
+  def apply[A, E <: BufElem[A]](in: Outlet[E], size: OutI)
+                               (implicit b: Builder, tpe: StreamType[A, E]): (Outlet[E], Outlet[E]) = {
+    val SSeq(out0, out1) = UnzipWindowN[A, E](2, in = in, size = size)
     (out0, out1)
   }
 }
@@ -41,8 +43,9 @@ object UnzipWindowN {
     * @param in         the signal to unzip
     * @param size       the window size. this is clipped to be `&lt;= 1`
     */
-  def apply(numOutputs: Int, in: OutD, size: OutI)(implicit b: Builder): Vec[OutD] = {
-    val stage0  = new Stage(layer = b.layer, numOutputs = numOutputs)
+  def apply[A, E <: BufElem[A]](numOutputs: Int, in: Outlet[E], size: OutI)
+                               (implicit b: Builder, tpe: StreamType[A, E]): Vec[Outlet[E]] = {
+    val stage0  = new Stage[A, E](layer = b.layer, numOutputs = numOutputs)
     val stage   = b.add(stage0)
     b.connect(in  , stage.in0)
     b.connect(size, stage.in1)
@@ -52,227 +55,134 @@ object UnzipWindowN {
 
   private final val name = "UnzipWindowN"
 
-  private final case class Shp(in0: InD, in1: InI, outlets: ISeq[OutD]) extends akka.stream.Shape {
+  private final case class Shp[E](in0: Inlet[E], in1: InI, outlets: ISeq[Outlet[E]]) extends akka.stream.Shape {
     val inlets: ISeq[Inlet[_]] = Vector(in0, in1)
 
-    override def deepCopy(): Shp =
+    override def deepCopy(): Shp[E] =
       Shp(in0.carbonCopy(), in1.carbonCopy(), outlets.map(_.carbonCopy()))
   }
 
-  private final class Stage(layer: Layer, numOutputs: Int)(implicit ctrl: Control) extends StageImpl[Shp](name) {
+  private final class Stage[A, E <: BufElem[A]](layer: Layer, numOutputs: Int)
+                                               (implicit ctrl: Control, tpe: StreamType[A, E])
+    extends StageImpl[Shp[E]](name) {
+
     val shape: Shape = Shp(
-      in0     = InD(s"$name.in"),
-      in1     = InI(s"$name.size"),
-      outlets = Vector.tabulate(numOutputs)(idx => OutD(s"$name.out$idx"))
+      in0     = Inlet[E](s"$name.in"),
+      in1     = InI     (s"$name.size"),
+      outlets = Vector.tabulate(numOutputs)(idx => Outlet[E](s"$name.out$idx"))
     )
 
-    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic[A, E](shape, layer)
   }
 
-  // XXX TODO -- abstract over data type (BufD vs BufI)?
-  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape) {
+  private final class Logic[A, E <: BufElem[A]](shape: Shp[E], layer: Layer)
+                                               (implicit ctrl: Control, tpe: StreamType[A, E])
+    extends Handlers(name, layer, shape) with WindowedMultiInOut {
 
-    private[this] var bufIn0: BufD = _
-    private[this] var bufIn1: BufI = _
+    private[this] val numOutputs = shape.outlets.size
 
-    private[this] var canRead = false
+    private[this] val hIn   : InMain[A, E]  = InMain[A, E](this, shape.in0)
+    private[this] val hSize : InIAux        = InIAux      (this, shape.in1)(max(1, _))
 
-    private[this] var winRemain         = 0
-    private[this] var inOff             = 0  // regarding `bufIn`
-    private[this] var inRemain          = 0
+    private[this] val hOuts : Array[OutMain[A, E]]  =
+      Array.tabulate(numOutputs)(ch => OutMain[A, E](this, shape.outlets(ch)))
 
-    private[this] var isNextWindow      = true
+    private[this] var winBuf: Array[A] = _
 
-    /*
-        We maintain buffers for each outlet.
-        This way we can circulate fast and
-        many times per outlet before having
-        to flash a particular outlet
-        (imagine the case of winSize == 1)
-     */
-    private[this] val outputs: Array[Output]  = shape.outlets.iterator.map(new Output(_)).toArray
-    private[this] val numOutputs              = outputs.length
-    private[this] var outIndex                = numOutputs - 1
+    private[this] var size      : Int = -1
+    private[this] var sizeIn    : Int = _
 
-    private[this] var size      : Int = _
+    override protected def launch(): Unit =
+      if (numOutputs == 0) completeStage() else super.launch()
 
-    @inline
-    private[this] def shouldRead  = inRemain  == 0 && canRead
-    @inline
-    private[this] def shouldNext  = isNextWindow && bufIn0 != null
-
-    private final class Output(val let: OutD) extends OutHandler {
-      var buf: BufD = _
-      var off       = 0
-      var remain    = 0
-      var sent      = true
-
-      def onPull(): Unit = {
-        logStream(s"onPull($let)")
-        process()
-      }
-
-      override def onDownstreamFinish(cause: Throwable): Unit = {
-        val all = shape.outlets.forall(out => isClosed(out))
-        logStream(s"onDownstreamFinish() $let - $all")
-        if (all) {
-          super.onDownstreamFinish(cause)
-        } else {
-          process()
+    protected def tryObtainWinParams(): Boolean = {
+      val ok = hSize.hasNext
+      if (ok) {
+        val _size = hSize.next()
+        if (size != _size) {
+          size    = _size
+          sizeIn  = _size * numOutputs
+          winBuf  = tpe.newArray(sizeIn)
         }
       }
+      ok
     }
 
     override protected def stopped(): Unit = {
       super.stopped()
-      freeInputBuffers()
-      freeOutputBuffers()
+      winBuf = null
     }
 
-    private def readIns(): Int = {
-      freeInputBuffers()
-      val sh    = shape
-      bufIn0    = grab(sh.in0)
-      tryPull(sh.in0)
+    protected def readWinSize : Long = sizeIn
+    protected def writeWinSize: Long = size
 
-      if (isAvailable(sh.in1)) {
-        bufIn1 = grab(sh.in1)
-        tryPull(sh.in1)
-      }
-
-      canRead = false
-      bufIn0.size
+    protected def readIntoWindow(n: Int): Unit = {
+      hIn.nextN(winBuf, readOff.toInt, n)
     }
 
-    private def freeInputBuffers(): Unit = {
-      if (bufIn0 != null) {
-        bufIn0.release()
-        bufIn0 = null
-      }
-      if (bufIn1 != null) {
-        bufIn1.release()
-        bufIn1 = null
+    protected def writeFromWindow(n: Int): Unit = {
+      var offI  = writeOff.toInt
+      val sz    = size
+      var ch    = offI / sz
+      var chOff = offI % sz
+      var rem   = n
+      val a     = hOuts
+      val b     = winBuf
+      while (rem > 0) {
+        val chunk = min(rem, sz - chOff)
+        val out = a(ch)
+        if (!out.isDone) out.nextN(b, offI, chunk)
+        ch   += 1
+        chOff = 0
+        offI += chunk
+        rem  -= chunk
       }
     }
 
-    private def freeOutputBuffers(): Unit =
-      outputs.foreach { out =>
-        if (out.buf != null) {
-          out.buf.release()
-          out.buf = null
-        }
-      }
+    protected def mainInAvailable: Int = hIn.available
 
-    private def updateCanRead(): Unit = {
-      val sh = shape
-      canRead = isAvailable(shape.in0) &&
-        (isClosed(sh.in1) || isAvailable(sh.in1))
-      if (canRead) process()
+    protected def outAvailable: Int = {
+      val a   = hOuts
+      var res = Int.MaxValue
+      var ch  = 0
+      while (ch < numOutputs) {
+        val out = a(ch)
+        if (!out.isDone) res = min(res, out.available)
+        ch += 1
+      }
+      res
     }
 
-    @inline
-    private[this] def allocOutBuf(): BufD = ctrl.borrowBufD()
+    protected def mainInDone: Boolean = hIn.isDone
 
-    @tailrec
-    private def process(): Unit = {
-      logStream(s"process() $this")
-      // becomes `true` if state changes,
-      // in that case we run this method again.
-      var stateChange = false
+    protected def isHotIn(inlet: Inlet[_]): Boolean = true
 
-      if (shouldRead) {
-        inRemain    = readIns()
-        inOff       = 0
-        stateChange = true
+    protected def flushOut(): Boolean = {
+      val a   = hOuts
+      var res = true
+      var ch  = 0
+      while (ch < numOutputs) {
+        val out = a(ch)
+        if (!out.isDone) res &= out.flush()
+        ch += 1
       }
-
-      if (shouldNext) {
-        if (bufIn1 != null && inOff < bufIn1.size) {
-          size = math.max(1, bufIn1.buf(inOff))
-        }
-        winRemain     = size
-        outIndex     += 1
-        if (outIndex == numOutputs) outIndex = 0
-        isNextWindow  = false
-        stateChange   = true
-      }
-
-      val inWinRem = math.min(inRemain, winRemain)
-      if (inWinRem > 0) {
-        val out = outputs(outIndex)
-        if (out.sent) {
-          out.buf       = allocOutBuf()
-          out.remain    = out.buf.size
-          out.off       = 0
-          out.sent      = false
-          stateChange   = true
-        }
-
-        val chunk = math.min(inWinRem, out.remain)
-        if (chunk > 0) {
-          Util.copy(bufIn0.buf, inOff, out.buf.buf, out.off, chunk)
-          inOff      += chunk
-          inRemain   -= chunk
-          out.off    += chunk
-          out.remain -= chunk
-          winRemain  -= chunk
-          if (winRemain == 0) {
-            isNextWindow = true
-          }
-          stateChange = true
-        }
-      }
-
-      val flush = inRemain == 0 && isClosed(shape.in0) && !isAvailable(shape.in0)
-      var idx = 0
-      while (idx < numOutputs) {
-        val out = outputs(idx)
-        if (!out.sent && (out.remain == 0 || flush) && (isClosed(out.let) || isAvailable(out.let))) {
-          if (out.off > 0 && isAvailable(out.let)) {
-            out.buf.size = out.off
-            push(out.let, out.buf)
-          } else {
-            out.buf.release()
-          }
-          out.buf     = null
-          out.sent    = true
-          stateChange = true
-        }
-        idx += 1
-      }
-
-      if (flush && outputs.forall(_.sent)) {
-        logStream(s"completeStage() $this")
-        completeStage()
-      }
-      else if (stateChange) process()
+      res
     }
 
-    setHandler(shape.in0, new InHandler {
-      def onPush(): Unit = {
-        logStream(s"onPush(${shape.in0})")
-        updateCanRead()
+    protected def outDone: Boolean = {
+      val a   = hOuts
+      var ch  = 0
+      while (ch < numOutputs) {
+        val out = a(ch)
+        if (!out.isDone) return false
+        ch += 1
       }
+      true
+    }
 
-      override def onUpstreamFinish(): Unit = {
-        logStream(s"onUpstreamFinish(${shape.in0})")
-        process() // may lead to `flushOut`
-      }
-    })
+    override protected def onDone(outlet: Outlet[_]): Unit =
+      super.onDone(outlet)
 
-    setHandler(shape.in1, new InHandler {
-      def onPush(): Unit = {
-        logStream(s"onPush(${shape.in1})")
-        updateCanRead()
-      }
-
-      override def onUpstreamFinish(): Unit = {
-        logStream(s"onUpstreamFinish(${shape.in1})")
-        ()  // keep running
-      }
-    })
-
-    outputs.foreach(out => setHandler(out.let, out))
+    protected def processWindow(): Unit = ()
   }
 }

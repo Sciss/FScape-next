@@ -1,14 +1,17 @@
 package de.sciss.fscape.tests
 
 import de.sciss.file._
+import de.sciss.fscape.gui.SimpleGUI
 import de.sciss.fscape.stream.Control
 import de.sciss.fscape.{GE, Graph, graph}
+
+import scala.swing.Swing
 
 object ZipWindowNTest extends App {
   val baseDirInt: File = file("/") / "data" / "projects" / "Imperfect"
   val coverDir  : File = baseDirInt / "catalog" / "cover"
   val pngInTemp : File = coverDir / "front" / "front-%d.jpg"
-  val fOut      : File = coverDir / "assemblage.jpg"
+  val fOut      : File = file("/") / "data" / "temp" / "assemblage.jpg"
 
   val num   = 300
   val cols  = 12 // 15
@@ -20,6 +23,7 @@ object ZipWindowNTest extends App {
   val scale     = 1.0 / factor
   val widthOut  = widthIn  / factor
   val heightOut = heightIn / factor
+  println(s"widthOut $widthOut, heightOut $heightOut")
 
   if (fOut.exists() && fOut.length() > 0L) {
     println(s"File $fOut already exists. Not overwriting.")
@@ -29,7 +33,7 @@ object ZipWindowNTest extends App {
   val g = Graph {
     import graph._
 
-    val in      = ImageFileSeqIn(pngInTemp, numChannels = 3, indices = ArithmSeq(start = 1, length = 300))
+    val in      = ImageFileSeqIn(pngInTemp, numChannels = 3, indices = ArithmSeq(start = 1, length = num))
     val scaled  = AffineTransform2D.scale(in, widthIn, heightIn, widthOut, heightOut,
       sx = scale, sy = scale, zeroCrossings = 3)
 
@@ -39,10 +43,15 @@ object ZipWindowNTest extends App {
 
     val tr  = {
       val x = Vector.tabulate(3) { ch =>
-        val inC = ChannelProxy(scaled, ch)
+        val inC = scaled.out(ch)
+//        if (ch == 0) inC.take(10).poll(1, "inC")
+        if (ch == 0) Length(inC).poll("inC.length")
         val u   = UnzipWindowN(in = inC, size = sizeOut, numOutputs = cols)
-        val e   = u.elastic(heightOut)
-        val z   = ZipWindowN  (in = e  , size = widthOut)
+        if (ch == 0) Length(u.out(0)).poll("u(0).length")
+        val e   = BufferDisk(u) // .elastic(heightOut)
+        val z   = ZipWindowN(in = e  , size = widthOut)
+//        if (ch == 0) z.take(10).poll(0, "z")
+        if (ch == 0) Length(z).poll("z.length")
         z
       }
       x: GE
@@ -53,10 +62,10 @@ object ZipWindowNTest extends App {
     //      val tr  = TransposeMatrix(tr1   , rows    = heightOut, columns = widthOut  )
     val framesOut   = totalWidth.toLong * totalHeight
     val framesOutP  = framesOut / 100.0
-    (Frames(ChannelProxy(tr, 0)) / framesOutP).ceil.poll(Metro(framesOutP), "progress")
+    (Frames(tr.out(0)) / framesOutP).ceil.poll(Metro(framesOutP), "progress")
 
     val specOut = ImageFile.Spec(ImageFile.Type.JPG, width = totalWidth, height = totalHeight, numChannels = 3)
-    val sigOut = tr.max(0).min(1)
+    val sigOut = tr.clip(0.0, 1.0)
     ImageFileOut(file = fOut, spec = specOut, in = sigOut)
   }
 
@@ -64,4 +73,8 @@ object ZipWindowNTest extends App {
   cfg.blockSize = widthIn
   val ctrl = Control(cfg)
   ctrl.run(g)
+
+  Swing.onEDT {
+    SimpleGUI(ctrl)
+  }
 }

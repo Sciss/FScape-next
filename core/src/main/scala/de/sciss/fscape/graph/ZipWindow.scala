@@ -15,7 +15,7 @@ package de.sciss.fscape
 package graph
 
 import de.sciss.fscape.UGenSource.unwrap
-import de.sciss.fscape.stream.{StreamIn, StreamOut}
+import de.sciss.fscape.stream.{BufD, BufI, BufL, StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
@@ -28,7 +28,13 @@ final case class ZipWindow(a: GE, b: GE, size: GE = 1) extends UGenSource.Single
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit builder: stream.Builder): StreamOut = {
     val Vec(a, b, size) = args
-    stream.ZipWindowN(in = a.toDouble :: b.toDouble :: Nil, size = size.toInt)
+    if (a.isDouble || b.isDouble) {
+      stream.ZipWindowN[Double, BufD](in = a.toDouble :: b.toDouble :: Nil, size = size.toInt)
+    } else if (a.isLong || b.isLong) {
+      stream.ZipWindowN[Long  , BufL](in = a.toLong   :: b.toLong   :: Nil, size = size.toInt)
+    } else {
+      stream.ZipWindowN[Int   , BufI](in = a.toInt    :: b.toInt    :: Nil, size = size.toInt)
+    }
   }
 }
 
@@ -41,6 +47,12 @@ final case class ZipWindowN(in: GE, size: GE = 1) extends UGenSource.SingleOut {
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit builder: stream.Builder): StreamOut = {
     val size +: in = args
-    stream.ZipWindowN(in = in.map(_.toDouble), size = size.toInt)
+    if (in.exists(_.isDouble)) {
+      stream.ZipWindowN[Double, BufD](in = in.map(_.toDouble), size = size.toInt)
+    } else if (in.exists(_.isLong)) {
+      stream.ZipWindowN[Long  , BufL](in = in.map(_.toLong  ), size = size.toInt)
+    } else {
+      stream.ZipWindowN[Int   , BufI](in = in.map(_.toInt   ), size = size.toInt)
+    }
   }
 }
