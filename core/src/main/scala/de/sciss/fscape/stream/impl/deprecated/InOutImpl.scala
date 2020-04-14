@@ -74,20 +74,3 @@ trait FullInOutImpl[S <: Shape] extends InOutImpl[S] {
 
   protected def freeInputBuffers(): Unit
 }
-
-@deprecated("Should move to using Handlers", since = "2.35.1")
-trait DemandInOutImpl[S <: Shape] extends InOutImpl[S] {
-  _: GraphStageLogic =>
-
-  protected def readAuxIns (): Int
-  protected def readMainIns(): Int
-
-  def auxInValid : Boolean
-  def mainInValid: Boolean
-
-  def auxCanRead : Boolean
-  def mainCanRead: Boolean
-
-  def updateAuxCanRead (): Unit
-  def updateMainCanRead(): Unit
-}

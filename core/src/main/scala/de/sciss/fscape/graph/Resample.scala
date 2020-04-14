@@ -30,7 +30,8 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   *
   * __Note:__ Unlike most other UGens, all parameters but `in` are read at "output rate".
   * That is particular important for `factor` modulation. For each frame output, one
-  * frame from `factor` is consumed.
+  * frame from `factor` is consumed. Currently, modulating `rollOff`, `kaiserBeta` or
+  * `zeroCrossings` is not advised, as this case is not properly handled internally.
   *
   * @param in             the signal to resample
   * @param factor         the resampling factor, where values greater than one
