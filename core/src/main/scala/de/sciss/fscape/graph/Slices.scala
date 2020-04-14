@@ -49,6 +49,8 @@ final case class Slices(in: GE, spans: GE) extends UGenSource.SingleOut {
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
     val Vec(in, spans) = args
-    stream.Slices(in = in.toDouble, spans = spans.toLong)
+    import in.tpe
+    val out = stream.Slices[in.A, in.Buf](in = in.toElem, spans = spans.toLong)
+    tpe.mkStreamOut(out)
   }
 }

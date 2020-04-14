@@ -15,15 +15,15 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.stage.{InHandler, OutHandler}
-import akka.stream.{Attributes, FlowShape}
+import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
 import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeHasInitImpl, NodeImpl}
 
 // XXX TODO --- we could use a "quasi-circular"
 // structure? this is, overwrite parts of the file
 // that were already read
 object BufferDisk {
-  def apply(in: OutD)(implicit b: Builder): OutD = {
-    val stage0  = new Stage(b.layer)
+  def apply[A, E <: BufElem[A]](in: Outlet[E])(implicit b: Builder, tpe: StreamType[A, E]): Outlet[E] = {
+    val stage0  = new Stage[A, E](b.layer)
     val stage   = b.add(stage0)
     b.connect(in, stage.in)
     stage.out
@@ -31,25 +31,26 @@ object BufferDisk {
 
   private final val name = "BufferDisk"
 
-  private type Shp = FlowShape[BufD, BufD]
+  private type Shp[E] = FlowShape[E, E]
 
-  private final class Stage(layer: Layer)(implicit protected val ctrl: Control)
-    extends BlockingGraphStage[Shp](name) {
+  private final class Stage[A, E <: BufElem[A]](layer: Layer)
+                                               (implicit ctrl: Control, tpe: StreamType[A, E])
+    extends BlockingGraphStage[Shp[E]](name) {
 
     val shape: Shape = new FlowShape(
-      in  = InD (s"$name.in" ),
-      out = OutD(s"$name.out")
+      in  = Inlet [E](s"$name.in" ),
+      out = Outlet[E](s"$name.out")
     )
 
-    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic[A, E](shape, layer)
   }
 
-  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
+  private final class Logic[A, E <: BufElem[A]](shape: Shp[E], layer: Layer)
+                                               (implicit ctrl: Control, tpe: StreamType[A, E])
     extends NodeImpl(name, layer, shape) with NodeHasInitImpl with InHandler with OutHandler {
 
-    private[this] var af: FileBuffer  = _
+    private[this] var af: FileBuffer[A]  = _
     private[this] val bufSize       = ctrl.blockSize
-    private[this] var buf           = new Array[Double](bufSize)
 
     private[this] var framesWritten = 0L
     private[this] var framesRead    = 0L
@@ -68,7 +69,6 @@ object BufferDisk {
 
     override protected def stopped(): Unit = {
       super.stopped()
-      buf = null
       if (af != null) {
         af.dispose()
         af = null
@@ -108,7 +108,7 @@ object BufferDisk {
 
       } else {
         if (af.position != framesRead) af.position = framesRead
-        val bufOut = ctrl.borrowBufD()
+        val bufOut = tpe.allocBuf() // ctrl.borrowBufD()
         af.read(bufOut.buf, 0, chunk)
         framesRead += chunk
         bufOut.size = chunk

@@ -69,6 +69,18 @@ object StreamIn {
     def clear(a: Array[Double], off: Int, len: Int): Unit =
       util.Arrays.fill(a, off, off + len, 0.0)
 
+    def reverse(a: Array[Double], off: Int, len: Int): Unit = {
+      var i = off
+      var j = i + len - 1
+      while (i < j) {
+        val tmp = a(i)
+        a(i) = a(j)
+        a(j) = tmp
+        i += 1
+        j -= 1
+      }
+    }
+
     def isInt   : Boolean = false
     def isLong  : Boolean = false
     def isDouble: Boolean = true
@@ -158,6 +170,18 @@ object StreamIn {
 
     def clear(a: Array[Int], off: Int, len: Int): Unit =
       util.Arrays.fill(a, off, off + len, 0)
+
+    def reverse(a: Array[Int], off: Int, len: Int): Unit = {
+      var i = off
+      var j = i + len - 1
+      while (i < j) {
+        val tmp = a(i)
+        a(i) = a(j)
+        a(j) = tmp
+        i += 1
+        j -= 1
+      }
+    }
 
     def isInt   : Boolean = true
     def isLong  : Boolean = false
@@ -249,17 +273,17 @@ object StreamIn {
     def clear(a: Array[Long], off: Int, len: Int): Unit =
       util.Arrays.fill(a, off, off + len, 0L)
 
-//    def reverse(a: Array[Long], off: Layer, len: Layer): Unit = {
-//      var i = off
-//      var j = off + len
-//      while (i < j) {
-//        val tmp = a(i)
-//        a(i) = a(j)
-//        a(j) = tmp
-//        i += 1
-//        j -= 1
-//      }
-//    }
+    def reverse(a: Array[Long], off: Int, len: Int): Unit = {
+      var i = off
+      var j = i + len - 1
+      while (i < j) {
+        val tmp = a(i)
+        a(i) = a(j)
+        a(j) = tmp
+        i += 1
+        j -= 1
+      }
+    }
 
     def isInt   : Boolean = false
     def isLong  : Boolean = true
@@ -418,6 +442,8 @@ trait StreamType[@specialized(Args) A, Buf <: BufElem[A]] {
   def fill(a: Array[A], off: Int, len: Int, elem: A): Unit
 
   def clear(a: Array[A], off: Int, len: Int): Unit
+
+  def reverse(a: Array[A], off: Int, len: Int): Unit
 
   def zero: A
 

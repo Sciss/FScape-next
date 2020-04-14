@@ -28,6 +28,8 @@ final case class BufferDisk(in: GE) extends UGenSource.SingleOut {
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
     val Vec(in) = args
-    stream.BufferDisk(in.toDouble)
+    import in.tpe
+    val out = stream.BufferDisk[in.A, in.Buf](in.toElem)
+    tpe.mkStreamOut(out)
   }
 }

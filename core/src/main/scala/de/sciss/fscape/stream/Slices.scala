@@ -15,14 +15,15 @@ package de.sciss.fscape
 package stream
 
 import akka.stream.stage.{InHandler, OutHandler}
-import akka.stream.{Attributes, FanInShape2}
+import akka.stream.{Attributes, FanInShape2, Inlet, Outlet}
 import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeHasInitImpl, NodeImpl}
 
 import scala.annotation.tailrec
 
 object Slices {
-  def apply(in: OutD, spans: OutL)(implicit b: Builder): OutD = {
-    val stage0  = new Stage(b.layer)
+  def apply[A, E <: BufElem[A]](in: Outlet[E], spans: OutL)
+                               (implicit b: Builder, tpe: StreamType[A, E]): Outlet[E] = {
+    val stage0  = new Stage[A, E](b.layer)
     val stage   = b.add(stage0)
     b.connect(in   , stage.in0)
     b.connect(spans, stage.in1)
@@ -31,25 +32,26 @@ object Slices {
 
   private final val name = "Slices"
 
-  private type Shp = FanInShape2[BufD, BufL, BufD]
+  private type Shp[E] = FanInShape2[E, BufL, E]
 
-  private final class Stage(layer: Layer)(implicit protected val ctrl: Control)
-    extends BlockingGraphStage[Shp](name) {
+  private final class Stage[A, E <: BufElem[A]](layer: Layer)(implicit ctrl: Control, tpe: StreamType[A, E])
+    extends BlockingGraphStage[Shp[E]](name) {
 
     val shape: Shape = new FanInShape2(
-      in0 = InD (s"$name.in"   ),
-      in1 = InL (s"$name.spans"),
-      out = OutD(s"$name.out"  )
+      in0 = Inlet [E] (s"$name.in"   ),
+      in1 = InL       (s"$name.spans"),
+      out = Outlet[E] (s"$name.out"  )
     )
 
-    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic[A, E](shape, layer)
   }
 
   // XXX TODO -- abstract over data type (BufD vs BufI)?
-  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
+  private final class Logic[A, E <: BufElem[A]](shape: Shp[E], layer: Layer)
+                                               (implicit ctrl: Control, tpe: StreamType[A, E])
     extends NodeImpl(name, layer, shape) with NodeHasInitImpl with OutHandler {
 
-    private[this] var af: FileBuffer  = _
+    private[this] var af: FileBuffer[A]  = _
 
     private[this] var framesRead    = 0L  // read from file-buffer and output
     private[this] var framesWritten = 0L  // input and written to file-buffer
@@ -80,7 +82,7 @@ object Slices {
 
     override protected def init(): Unit = {
       super.init()
-      af = FileBuffer()
+      af = FileBuffer[A, E]()
     }
 
     override protected def launch(): Unit = {
@@ -102,7 +104,7 @@ object Slices {
     private[this] var spansOff    = 0
     private[this] var spansRemain = 0
 
-    private[this] var bufOut: BufD = _
+    private[this] var bufOut: E = _
     private[this] var outOff      = 0
     private[this] var outRemain   = 0
 
@@ -119,7 +121,7 @@ object Slices {
     private def freeOutputBuffer(): Unit = {
       if (bufOut != null) {
         bufOut.release()
-        bufOut = null
+        bufOut = null.asInstanceOf[E]
       }
     }
 
@@ -163,7 +165,7 @@ object Slices {
 
       if (canFillOutBuf) {
         if (bufOut == null) {
-          bufOut        = ctrl.borrowBufD()
+          bufOut        = tpe.allocBuf() // ctrl.borrowBufD()
           // we set `outOff` to zero now after writing to out
           // outOff        = 0
           outRemain     = bufOut.size
@@ -181,7 +183,7 @@ object Slices {
             val pos0 = framesRead - chunk
             if (af.position != pos0) af.position = pos0
             af.read(bufOut.buf, outOff, chunk)
-            Util.reverse(bufOut.buf, outOff, chunk)
+            tpe.reverse(bufOut.buf, outOff, chunk)
             framesRead -= chunk
           }
           outOff      += chunk
@@ -196,7 +198,7 @@ object Slices {
           if (outOff > 0) {
             bufOut.size = outOff
             push(shape.out, bufOut)
-            bufOut = null
+            bufOut = null.asInstanceOf[E]
           } else {
             freeOutputBuffer()
           }

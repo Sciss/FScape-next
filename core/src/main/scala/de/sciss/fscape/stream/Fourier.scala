@@ -66,8 +66,8 @@ object Fourier {
     private[this] val hDir  : InDAux = InDAux   (this, shape.in3)()
     private[this] val hMem  : InIAux = InIAux   (this, shape.in4)(i => max(2, i).nextPowerOfTwo)
 
-    private[this] val fileBuffers   = new Array[FileBuffer](4)
-    private[this] val tempFiles     = new Array[File      ](4)
+    private[this] val fileBuffers   = new Array[FileBufferD](4)
+    private[this] val tempFiles     = new Array[File       ](4)
 
     private[this] var size      : Long    = _   // already multiplied by `fftInSizeFactor`
     private[this] var padding   : Long    = _   // already multiplied by `fftInSizeFactor`
@@ -125,7 +125,7 @@ object Fourier {
         freeFileBuffers()
         var i = 0
         while (i < 4) {
-          fileBuffers(i) = FileBuffer()
+          fileBuffers(i) = FileBuffer.double()
           tempFiles  (i) = ctrl.createTempFile()
           i += 1
         }
@@ -208,7 +208,7 @@ object Fourier {
     *	@param	dir			    1 = forward, -1 = inverse transform (multiply by freqShift for special effect!)
     *	@param	memAmount   internal buffer sizes (must be a power of two)
     */
-  private def storageFFT(audioFiles: Array[FileBuffer], tempFiles: Array[File], len: Long, dir: Double,
+  private def storageFFT(audioFiles: Array[FileBufferD], tempFiles: Array[File], len: Long, dir: Double,
                          memAmount: Int): Unit = {
     require(memAmount >= 2 && ri.isPowerOfTwo(memAmount))
     require(len       >= 2 && rl.isPowerOfTwo(len))
