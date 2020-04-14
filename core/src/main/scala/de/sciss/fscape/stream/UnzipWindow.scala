@@ -114,28 +114,23 @@ object UnzipWindowN {
     }
 
     protected def readWinSize : Long = sizeIn
-    protected def writeWinSize: Long = size
+    protected def writeWinSize: Long = readOff / numOutputs // size
 
     protected def readIntoWindow(n: Int): Unit = {
       hIn.nextN(winBuf, readOff.toInt, n)
     }
 
-    protected def writeFromWindow(n: Int): Unit = {
-      var offI  = writeOff.toInt
+    protected def writeFromWindow(chunk: Int): Unit = {
+      var chOff = writeOff.toInt
       val sz    = size
-      var ch    = offI / sz
-      var chOff = offI % sz
-      var rem   = n
       val a     = hOuts
       val b     = winBuf
-      while (rem > 0) {
-        val chunk = min(rem, sz - chOff)
+      var ch = 0
+      while (ch < numOutputs) {
         val out = a(ch)
-        if (!out.isDone) out.nextN(b, offI, chunk)
+        if (!out.isDone) out.nextN(b, chOff, chunk)
         ch   += 1
-        chOff = 0
-        offI += chunk
-        rem  -= chunk
+        chOff += sz
       }
     }
 

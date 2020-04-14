@@ -1,11 +1,8 @@
 package de.sciss.fscape.tests
 
 import de.sciss.file._
-import de.sciss.fscape.gui.SimpleGUI
 import de.sciss.fscape.stream.Control
 import de.sciss.fscape.{GE, Graph, graph}
-
-import scala.swing.Swing
 
 object ZipWindowNTest extends App {
   val baseDirInt: File = file("/") / "data" / "projects" / "Imperfect"
@@ -45,13 +42,13 @@ object ZipWindowNTest extends App {
       val x = Vector.tabulate(3) { ch =>
         val inC = scaled.out(ch)
 //        if (ch == 0) inC.take(10).poll(1, "inC")
-        if (ch == 0) Length(inC).poll("inC.length")
+//        if (ch == 0) Length(inC).poll("inC.length")
         val u   = UnzipWindowN(in = inC, size = sizeOut, numOutputs = cols)
-        if (ch == 0) Length(u.out(0)).poll("u(0).length")
-        val e   = BufferDisk(u) // .elastic(heightOut)
+//        if (ch == 0) Length(u.out(0)).poll("u(0).length")
+        val e   = u // BufferDisk(u) // .elastic(heightOut)
         val z   = ZipWindowN(in = e  , size = widthOut)
 //        if (ch == 0) z.take(10).poll(0, "z")
-        if (ch == 0) Length(z).poll("z.length")
+//        if (ch == 0) Length(z).poll("z.length")
         z
       }
       x: GE
@@ -74,7 +71,7 @@ object ZipWindowNTest extends App {
   val ctrl = Control(cfg)
   ctrl.run(g)
 
-  Swing.onEDT {
-    SimpleGUI(ctrl)
-  }
+//  Swing.onEDT {
+//    SimpleGUI(ctrl)
+//  }
 }

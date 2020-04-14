@@ -443,14 +443,16 @@ object Handlers {
     final def flush(): Boolean = {
       _flush    = true
       _hasNext  = false
-      buf == null || {
+      if (buf == null) {
+        _isDone = true
+      } else {
         val now = isAvailable(outlet)
         if (now) {
           write()
           _isDone = true
         }
-        now
       }
+      _isDone
     }
 
     final def array: Array[A] = {
