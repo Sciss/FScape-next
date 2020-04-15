@@ -309,7 +309,8 @@ final class GEOps2(val `this`: GE) extends AnyVal { me =>
   def *       (b: GE): GE = binOp(Times   , b)
   // def div(b: GE): GE = ...
   def /       (b: GE): GE = binOp(Div     , b)
-  def %       (b: GE): GE = binOp(Mod     , b)
+  def %       (b: GE): GE = binOp(ModJ    , b)
+  def mod     (b: GE): GE = binOp(Mod     , b)
   def sig_==  (b: GE): GE = binOp(Eq      , b)
   def sig_!=  (b: GE): GE = binOp(Neq     , b)
   def <       (b: GE): GE = binOp(Lt      , b)
