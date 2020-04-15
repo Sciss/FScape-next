@@ -82,7 +82,7 @@ object ReduceWindow {
       }
       while (i < stop) {
         val v   = in(i)
-        _value  = op(_value, v)
+        _value  = op.funDD(_value, v)
         i += 1
       }
       value  = _value

@@ -36,7 +36,7 @@ class ReduceWindowSpec extends UGenSpec {
     } {
       // println(s"inDataSq $inDataSq")
       val expected: Vector[Double] = inDataSq.iterator.map { w =>
-        w.reduce(op(_, _))
+        w.reduce(op.funDD(_, _))
       }.toVector
 
       val p = Promise[Vec[Double]]()

@@ -16,7 +16,7 @@ package graph
 
 import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.UGenSource.unwrap
-import de.sciss.fscape.stream.{StreamIn, StreamOut}
+import de.sciss.fscape.stream.{BufD, BufI, BufL, StreamIn, StreamOut}
 import de.sciss.numbers.{DoubleFunctions => rd, DoubleFunctions2 => rd2, LongFunctions => rl}
 
 import scala.annotation.switch
@@ -82,12 +82,13 @@ object BinaryOp {
 
     def id: Int
 
-    def apply(a: Double, b: Double): Double
+    def funDD: (Double, Double) => Double
 
     /** The default converts to `Double`, but specific operators
       * may better preserve semantics and precision for other types such as `Int` and `Long`.
       */
-    def apply(a: Constant, b: Constant): Constant = ConstantD(apply(a.doubleValue, b.doubleValue))
+    def apply(a: Constant, b: Constant): Constant =
+      ConstantD(funDD(a.doubleValue, b.doubleValue))
 
     def name: String = plainName.capitalize
 
@@ -106,6 +107,56 @@ object BinaryOp {
     }
   }
 
+  sealed trait OpII extends Op {
+    def funII: (Int, Int) => Int
+
+    override def apply(a: Constant, b: Constant): Constant = (a, b) match {
+      case (ConstantI(av), ConstantI(bv)) => ConstantI(funII(av, bv))
+      case _                              => ConstantD(funDD(a.doubleValue, b.doubleValue))
+    }
+  }
+
+  sealed trait OpLL extends Op {
+    def funLL: (Long, Long) => Long
+
+    override def apply(a: Constant, b: Constant): Constant = (a, b) match {
+      case (ConstantL(av), ConstantL(bv)) => ConstantL(funLL(av, bv))
+      case _                              => ConstantD(funDD(a.doubleValue, b.doubleValue))
+    }
+  }
+
+  sealed trait OpDI extends Op {
+    def funDI: (Double, Double) => Int
+  }
+
+  sealed trait OpDL extends Op {
+    def funDL: (Double, Double) => Long
+  }
+
+  sealed trait OpID extends Op {
+    def funID: (Int, Int) => Double
+  }
+
+  sealed trait OpLD extends Op {
+    def funLD: (Long, Long) => Double
+  }
+
+  sealed trait OpIL extends Op {
+    def funIL: (Int, Int) => Long
+  }
+
+  sealed trait OpLI extends Op {
+    def funLI: (Long, Long) => Int
+  }
+
+  sealed trait OpSame extends Op with OpII with OpLL {
+    override def apply(a: Constant, b: Constant): Constant = (a, b) match {
+      case (ConstantD(av), ConstantD(bv)) => ConstantD(funDD(av, bv))
+      case (ConstantI(av), ConstantI(bv)) => ConstantI(funII(av, bv))
+      case (ConstantL(av), ConstantL(bv)) => ConstantL(funLL(av, bv))
+    }
+  }
+
   private def mkIntOrLong(n: Long): Constant =
     if (n >= Int.MinValue && n <= Int.MaxValue)
       ConstantI(n.toInt)
@@ -114,6 +165,7 @@ object BinaryOp {
 
   case object Plus extends Op { // OpSame
     final val id = 0
+
     override val name = "+"
 
     override def make(a: GE, b: GE): GE =
@@ -123,7 +175,7 @@ object BinaryOp {
         case _                 => super.make(a, b)
       }
 
-    def apply(a: Double, b: Double): Double = rd.+(a, b)
+    val funDD: (Double, Double) => Double = (a, b) => rd.+(a, b)
 
     override def apply(a: Constant, b: Constant): Constant = (a, b) match {
       case (ConstantD(_), _)  => super.apply(a, b)
@@ -140,6 +192,7 @@ object BinaryOp {
 
   case object Minus extends Op {  // OpSame
     final val id = 1
+
     override val name = "-"
 
     override def make(a: GE, b: GE): GE =
@@ -149,7 +202,7 @@ object BinaryOp {
         case _                 => super.make(a, b)
       }
 
-    def apply(a: Double, b: Double): Double = rd.-(a, b)
+    val funDD: (Double, Double) => Double = (a, b) => rd.-(a, b)
 
     override def apply(a: Constant, b: Constant): Constant = (a, b) match {
       case (ConstantD(_), _)  => super.apply(a, b)
@@ -166,6 +219,7 @@ object BinaryOp {
 
   case object Times extends Op {  // OpSame
     final val id = 2
+
     override val name = "*"
 
     override def make(a: GE, b: GE): GE =
@@ -180,7 +234,7 @@ object BinaryOp {
       case _                 => super.make(a, b)
     }
 
-    def apply(a: Double, b: Double): Double = rd.*(a, b)
+    val funDD: (Double, Double) => Double = (a, b) => rd.*(a, b)
 
     override def apply(a: Constant, b: Constant): Constant = (a, b) match {
       case (ConstantD(_), _)  => super.apply(a, b)
@@ -198,9 +252,10 @@ object BinaryOp {
   // case object IDiv           extends Op(  3 )
   case object Div extends Op {  // OpSame
     final val id = 4
+
     override val name = "/"
 
-    def apply(a: Double, b: Double): Double = rd./(a, b)
+    val funDD: (Double, Double) => Double = (a, b) => rd./(a, b)
 
     override def apply(a: Constant, b: Constant): Constant = (a, b) match {
       case (ConstantD(_), _)  => super.apply(a, b)
@@ -225,9 +280,10 @@ object BinaryOp {
 
   case object Mod extends Op {  // OpSame
     final val id = 5
+
     override val name = "%"
 
-    def apply(a: Double, b: Double): Double = rd.%(a, b)
+    val funDD: (Double, Double) => Double = (a, b) => rd.%(a, b)
 
     override def apply(a: Constant, b: Constant): Constant = (a, b) match {
       case (ConstantD(_), _)  => super.apply(a, b)
@@ -245,25 +301,30 @@ object BinaryOp {
 
   case object Eq extends Op { // OpSame
     final val id = 6
+
     override val name = "sig_=="
 
-    def apply(a: Double, b: Double): Double = if (a == b) 1 else 0
+    val funDD: (Double, Double) => Double = (a, b) => if (a == b) 1 else 0
+
     override def apply(a: Constant, b: Constant): Constant = if (a.value == b.value) 1 else 0
   }
 
   case object Neq extends Op {  // OpSame
     final val id = 7
+
     override val name = "sig_!="
 
-    def apply(a: Double, b: Double): Double = if (a != b) 1 else 0
+    val funDD: (Double, Double) => Double = (a, b) => if (a != b) 1 else 0
+
     override def apply(a: Constant, b: Constant): Constant = if (a.value != b.value) 1 else 0
   }
 
   case object Lt extends Op { // DI, II, LI
     final val id = 8
+
     override val name = "<"
 
-    def apply(a: Double, b: Double): Double = if (a < b) 1 else 0 // NOT rd.< !
+    val funDD: (Double, Double) => Double = (a, b) => if (a < b) 1 else 0 // NOT rd.< !
 
     override def apply(a: Constant, b: Constant): Constant = {
       val res: Boolean = (a, b) match {
@@ -283,9 +344,10 @@ object BinaryOp {
 
   case object Gt extends Op { // DI, LI, II
     final val id = 9
+
     override val name = ">"
 
-    def apply(a: Double, b: Double): Double = if (a > b) 1 else 0 // NOT rd.> !
+    val funDD: (Double, Double) => Double = (a, b) => if (a > b) 1 else 0 // NOT rd.> !
 
     override def apply(a: Constant, b: Constant): Constant = {
       val res: Boolean = (a, b) match {
@@ -305,9 +367,10 @@ object BinaryOp {
 
   case object Leq extends Op {  // DI, LI, II
     final val id = 10
+
     override val name = "<="
 
-    def apply(a: Double, b: Double): Double = if (a <= b) 1 else 0 // NOT rd.<= !
+    val funDD: (Double, Double) => Double = (a, b) => if (a <= b) 1 else 0 // NOT rd.<= !
 
     override def apply(a: Constant, b: Constant): Constant = {
       val res: Boolean = (a, b) match {
@@ -327,9 +390,10 @@ object BinaryOp {
 
   case object Geq extends Op {  // DI, LI, II
     final val id = 11
+
     override val name = ">="
 
-    def apply(a: Double, b: Double): Double = if (a >= b) 1 else 0 // NOT rd.>= !
+    val funDD: (Double, Double) => Double = (a, b) => if (a >= b) 1 else 0 // NOT rd.>= !
 
     override def apply(a: Constant, b: Constant): Constant = {
       val res: Boolean = (a, b) match {
@@ -349,7 +413,8 @@ object BinaryOp {
 
   case object Min extends Op {  // OpSame
     final val id = 12
-    def apply(a: Double, b: Double): Double = rd.min(a, b)
+
+    val funDD: (Double, Double) => Double = (a, b) => rd.min(a, b)
 
     override def apply(a: Constant, b: Constant): Constant = (a, b) match {
       case (ConstantD(_), _)  => super.apply(a, b)
@@ -362,7 +427,8 @@ object BinaryOp {
 
   case object Max extends Op {  // OpSame
     final val id = 13
-    def apply(a: Double, b: Double): Double = rd.max(a, b)
+
+    val funDD: (Double, Double) => Double = (a, b) => rd.max(a, b)
 
     override def apply(a: Constant, b: Constant): Constant = (a, b) match {
       case (ConstantD(_), _)  => super.apply(a, b)
@@ -375,9 +441,10 @@ object BinaryOp {
 
   case object And extends Op { // OpSame
     final val id = 14
+
     override val name = "&"
 
-    def apply(a: Double, b: Double): Double = a.toLong & b.toLong
+    val funDD: (Double, Double) => Double = (a, b) => a.toLong & b.toLong
 
     override def apply(a: Constant, b: Constant): Constant = (a, b) match {
       case (ConstantD(_), _)  => super.apply(a, b)
@@ -390,9 +457,10 @@ object BinaryOp {
 
   case object Or extends Op {  // OpSame
     final val id = 15
+
     override val name = "|"
 
-    def apply(a: Double, b: Double): Double = a.toLong | b.toLong
+    val funDD: (Double, Double) => Double = (a, b) => a.toLong | b.toLong
 
     override def apply(a: Constant, b: Constant): Constant = (a, b) match {
       case (ConstantD(_), _)  => super.apply(a, b)
@@ -405,9 +473,10 @@ object BinaryOp {
 
   case object Xor extends Op { // OpSame
     final val id = 16
+
     override val name = "^"
 
-    def apply(a: Double, b: Double): Double = a.toLong ^ b.toLong
+    val funDD: (Double, Double) => Double = (a, b) => a.toLong ^ b.toLong
 
     override def apply(a: Constant, b: Constant): Constant = (a, b) match {
       case (ConstantD(_), _)  => super.apply(a, b)
@@ -420,42 +489,50 @@ object BinaryOp {
 
   case object Lcm extends Op {  // OpSame
     final val id = 17
-    def apply(a: Double, b: Double): Double = rl.lcm(a.toLong, b.toLong).toDouble
+
+    val funDD: (Double, Double) => Double = (a, b) => rl.lcm(a.toLong, b.toLong).toDouble
   }
 
   case object Gcd extends Op {  // OpSame
     final val id = 18
-    def apply(a: Double, b: Double): Double = rl.gcd(a.toLong, b.toLong).toDouble
+
+    val funDD: (Double, Double) => Double = (a, b) => rl.gcd(a.toLong, b.toLong).toDouble
   }
 
   case object RoundTo extends Op {  // OpSame
     final val id = 19
-    def apply(a: Double, b: Double): Double = rd.roundTo(a, b)
+
+    val funDD: (Double, Double) => Double = (a, b) => rd.roundTo(a, b)
   }
 
   case object RoundUpTo extends Op {  // OpSame
     final val id = 20
-    def apply(a: Double, b: Double): Double = rd.roundUpTo(a, b)
+
+    val funDD: (Double, Double) => Double = (a, b) => rd.roundUpTo(a, b)
   }
 
   case object Trunc extends Op {
     final val id = 21
-    def apply(a: Double, b: Double): Double = rd.trunc(a, b)
+
+    val funDD: (Double, Double) => Double = (a, b) => rd.trunc(a, b)
   }
 
   case object Atan2 extends Op {
     final val id = 22
-    def apply(a: Double, b: Double): Double = rd.atan2(a, b)
+
+    val funDD: (Double, Double) => Double = (a, b) => rd.atan2(a, b)
   }
 
   case object Hypot extends Op {
     final val id = 23
-    def apply(a: Double, b: Double): Double = rd.hypot(a, b)
+
+    val funDD: (Double, Double) => Double = (a, b) => rd.hypot(a, b)
   }
 
   case object Hypotx extends Op {
     final val id = 24
-    def apply(a: Double, b: Double): Double = rd.hypotApx(a, b)
+
+    val funDD: (Double, Double) => Double = (a, b) => rd.hypotApx(a, b)
   }
 
   /** '''Warning:''' Unlike a normal power operation, the signum of the
@@ -466,112 +543,129 @@ object BinaryOp {
     */
   case object Pow extends Op {
     final val id = 25
-    def apply(a: Double, b: Double): Double = rd.pow(a, b)
+
+    val funDD: (Double, Double) => Double = (a, b) => rd.pow(a, b)
   }
 
   case object LeftShift extends Op {  // OpSame
     final val id = 26
-    def apply(a: Double, b: Double): Double = (a.toLong << b.toLong).toDouble
+
+    val funDD: (Double, Double) => Double = (a, b) => (a.toLong << b.toLong).toDouble
   }
 
   case object RightShift extends Op {  // OpSame
     final val id = 27
-    def apply(a: Double, b: Double): Double = (a.toLong >> b.toLong).toDouble
+
+    val funDD: (Double, Double) => Double = (a, b) => (a.toLong >> b.toLong).toDouble
   }
 
   case object UnsignedRightShift extends Op {  // OpSame
     final val id = 28
-    def apply(a: Double, b: Double): Double = (a.toLong >>> b.toLong).toDouble
+
+    val funDD: (Double, Double) => Double = (a, b) => (a.toLong >>> b.toLong).toDouble
   }
 
   // case object Fill           extends Op( 29 )
   case object Ring1 extends Op {
     final val id = 30
-    def apply(a: Double, b: Double): Double = rd2.ring1(a, b)
+
+    val funDD: (Double, Double) => Double = (a, b) => rd2.ring1(a, b)
   }
 
   case object Ring2 extends Op {
     final val id = 31
-    def apply(a: Double, b: Double): Double = rd2.ring2(a, b)
+
+    val funDD: (Double, Double) => Double = (a, b) => rd2.ring2(a, b)
   }
 
   case object Ring3 extends Op {
     final val id = 32
-    def apply(a: Double, b: Double): Double = rd2.ring3(a, b)
+
+    val funDD: (Double, Double) => Double = (a, b) => rd2.ring3(a, b)
   }
 
   case object Ring4 extends Op {
     final val id = 33
-    def apply(a: Double, b: Double): Double = rd2.ring4(a, b)
+
+    val funDD: (Double, Double) => Double = (a, b) => rd2.ring4(a, b)
   }
 
   case object Difsqr extends Op { // IL, LL
     final val id = 34
-    def apply(a: Double, b: Double): Double = rd.difSqr(a, b)
+
+    val funDD: (Double, Double) => Double = (a, b) => rd.difSqr(a, b)
   }
 
   case object Sumsqr extends Op { // IL, LL
     final val id = 35
-    def apply(a: Double, b: Double): Double = rd.sumSqr(a, b)
+
+    val funDD: (Double, Double) => Double = (a, b) => rd.sumSqr(a, b)
   }
 
   case object Sqrsum extends Op { // IL, LL
     final val id = 36
-    def apply(a: Double, b: Double): Double = rd.sqrSum(a, b)
+
+    val funDD: (Double, Double) => Double = (a, b) => rd.sqrSum(a, b)
   }
 
   case object Sqrdif extends Op { // IL, LL
     final val id = 37
-    def apply(a: Double, b: Double): Double = rd.sqrDif(a, b)
+
+    val funDD: (Double, Double) => Double = (a, b) => rd.sqrDif(a, b)
   }
 
   case object Absdif extends Op { // OpSame
     final val id = 38
-    def apply(a: Double, b: Double): Double = rd.absDif(a, b)
+
+    val funDD: (Double, Double) => Double = (a, b) => rd.absDif(a, b)
   }
 
   case object Thresh extends Op {
     final val id = 39
-    def apply(a: Double, b: Double): Double = rd2.thresh(a, b)
+
+    val funDD: (Double, Double) => Double = (a, b) => rd2.thresh(a, b)
   }
 
   case object Amclip extends Op {
     final val id = 40
-    def apply(a: Double, b: Double): Double = rd2.amClip(a, b)
+
+    val funDD: (Double, Double) => Double = (a, b) => rd2.amClip(a, b)
   }
 
   case object Scaleneg extends Op {
     final val id = 41
-    def apply(a: Double, b: Double): Double = rd2.scaleNeg(a, b)
+
+    val funDD: (Double, Double) => Double = (a, b) => rd2.scaleNeg(a, b)
   }
 
-  // XXX TODO --- refined apply
   case object Clip2 extends Op {  // OpSame
     final val id = 42
-    def apply(a: Double, b: Double): Double = rd.clip2(a, b)
+
+    val funDD: (Double, Double) => Double = (a, b) => rd.clip2(a, b)
   }
 
   case object Excess extends Op { // OpSame
     final val id = 43
-    def apply(a: Double, b: Double): Double = rd.excess(a, b)
+
+    val funDD: (Double, Double) => Double = (a, b) => rd.excess(a, b)
   }
 
-  // XXX TODO --- refined apply
   case object Fold2 extends Op {  // OpSame
     final val id = 44
-    def apply(a: Double, b: Double): Double = rd.fold2(a, b)
+
+    val funDD: (Double, Double) => Double = (a, b) => rd.fold2(a, b)
   }
 
-  // XXX TODO --- refined apply
-  case object Wrap2 extends Op {
+  case object Wrap2 extends Op { // OpSame
     final val id = 45
-    def apply(a: Double, b: Double): Double = rd.wrap2(a, b)
+
+    val funDD: (Double, Double) => Double = (a, b) => rd.wrap2(a, b)
   }
 
     case object FirstArg extends Op { // OpSame
       final val id = 46
 
-      def apply(a: Double, b: Double) : Double = a
+      val funDD: (Double, Double) => Double = (a, _) => a
 
       override def apply(a: Constant, b: Constant): Constant = a
     }
@@ -581,7 +675,8 @@ object BinaryOp {
 
   case object SecondArg extends Op {  // OpSame
     final val id = 100
-    def apply(a: Double, b: Double): Double = b
+
+    val funDD: (Double, Double) => Double = (_, b) => b
 
     override def apply(a: Constant, b: Constant): Constant = b
   }
@@ -607,6 +702,48 @@ final case class BinaryOp(op: Int, a: GE, b: GE) extends UGenSource.SingleOut {
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
     val Vec(in1, in2) = args
     val op0 = BinaryOp.Op(op)
-    stream.BinaryOp(op = op0, in1 = in1.toDouble, in2 = in2.toDouble)
+
+    if (in1.isDouble || in2.isDouble) {
+      op0 match {
+        case opDI: BinaryOp.OpDI =>
+          stream.BinaryOp[Double , BufD, Int   , BufI](op0.name, opDI.funDI, in1 = in1.toDouble, in2 = in2.toDouble ): StreamOut
+
+        case opDL: BinaryOp.OpDL =>
+          stream.BinaryOp[Double , BufD, Long  , BufL](op0.name, opDL.funDL, in1 = in1.toDouble , in2 = in2.toDouble): StreamOut
+
+        case _ =>
+          stream.BinaryOp[Double , BufD, Double, BufD](op0.name, op0 .funDD, in1 = in1.toDouble , in2 = in2.toDouble): StreamOut
+      }
+    } else if (in1.isLong || in2.isLong) {
+      op0 match {
+        case opLI: BinaryOp.OpLI =>
+          stream.BinaryOp[Long   , BufL, Int   , BufI](op0.name, opLI.funLI, in1 = in1.toLong   , in2 = in2.toLong  ): StreamOut
+
+        case opLL: BinaryOp.OpLL =>
+          stream.BinaryOp[Long   , BufL, Long  , BufL](op0.name, opLL.funLL, in1 = in1.toLong   , in2 = in2.toLong  ): StreamOut
+
+        case opLD: BinaryOp.OpLD =>
+          stream.BinaryOp[Long   , BufL, Double, BufD](op0.name, opLD.funLD, in1 = in1.toLong   , in2 = in2.toLong  ): StreamOut
+
+        case _ =>
+          stream.BinaryOp[Double , BufD, Double, BufD](op0.name, op0 .funDD, in1 = in1.toDouble , in2 = in2.toDouble): StreamOut
+      }
+
+    } else {
+      assert (in1.isInt && in2.isInt)
+      op0 match {
+        case opII: BinaryOp.OpII =>
+          stream.BinaryOp[Int    , BufI, Int   , BufI](op0.name, opII.funII, in1 = in1.toInt    , in2 = in2.toInt   ): StreamOut
+
+        case opIL: BinaryOp.OpIL =>
+          stream.BinaryOp[Int    , BufI, Long  , BufL](op0.name, opIL.funIL, in1 = in1.toInt    , in2 = in2.toInt   ): StreamOut
+
+        case opID: BinaryOp.OpID =>
+          stream.BinaryOp[Int    , BufI, Double, BufD](op0.name, opID.funID, in1 = in1.toInt    , in2 = in2.toInt   ): StreamOut
+
+        case _ =>
+          stream.BinaryOp[Double , BufD, Double, BufD](op0.name, op0 .funDD, in1 = in1.toDouble , in2 = in2.toDouble): StreamOut
+      }
+    }  
   }
 }

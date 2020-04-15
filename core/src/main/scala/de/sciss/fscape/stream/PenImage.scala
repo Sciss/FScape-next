@@ -470,12 +470,12 @@ object PenImage {
         case Clear            => 0.0
         case Src    | SrcIn   => Cs * w
         case Dst    | DstOver => Cd
-        case SrcOver          => op(Cs * w, Cd*(1-(As * w)))
-        case SrcAcc           => op(Cs * w, Cd)
+        case SrcOver          => op.funDD(Cs * w, Cd*(1-(As * w)))
+        case SrcAcc           => op.funDD(Cs * w, Cd)
         case DstIn  | DstAtop => Cd*(As * w)
         case DstOut           => Cd*(1-(As * w))
-        case DstAcc           => op(Cd, Cs * w)
-        case SrcAtop          => op(Cd*(1-(As * w)), Cs * w)
+        case DstAcc           => op.funDD(Cd, Cs * w)
+        case SrcAtop          => op.funDD(Cd*(1-(As * w)), Cs * w)
       }
 
     private def process(x: Double, y: Double, Cs: Double, As: Double): Unit = {
