@@ -304,33 +304,33 @@ final class GEOps2(val `this`: GE) extends AnyVal { me =>
   // binary ops
   @inline private def binOp(op: BinaryOp.Op, b: GE): GE = op.make(g, b)
 
-  def +       (b: GE): GE = binOp(Plus    , b)
-  def -       (b: GE): GE = binOp(Minus   , b)
-  def *       (b: GE): GE = binOp(Times   , b)
+  def +         (b: GE): GE = binOp(Plus      , b)
+  def -         (b: GE): GE = binOp(Minus     , b)
+  def *         (b: GE): GE = binOp(Times     , b)
   // def div(b: GE): GE = ...
-  def /       (b: GE): GE = binOp(Div     , b)
-  def %       (b: GE): GE = binOp(ModJ    , b)
-  def mod     (b: GE): GE = binOp(Mod     , b)
-  def sig_==  (b: GE): GE = binOp(Eq      , b)
-  def sig_!=  (b: GE): GE = binOp(Neq     , b)
-  def <       (b: GE): GE = binOp(Lt      , b)
-  def >       (b: GE): GE = binOp(Gt      , b)
-  def <=      (b: GE): GE = binOp(Leq     , b)
-  def >=      (b: GE): GE = binOp(Geq     , b)
-  def min     (b: GE): GE = binOp(Min     , b)
-  def max     (b: GE): GE = binOp(Max     , b)
-  def &       (b: GE): GE = binOp(And  , b)
-  def |       (b: GE): GE = binOp(Or   , b)
-  def ^       (b: GE): GE = binOp(Xor  , b)
-  // def lcm(b: GE): GE = ...
-  // def gcd(b: GE): GE = ...
+  def /         (b: GE): GE = binOp(Div       , b)
+  def %         (b: GE): GE = binOp(ModJ      , b)
+  def mod       (b: GE): GE = binOp(Mod       , b)
+  def sig_==    (b: GE): GE = binOp(Eq        , b)
+  def sig_!=    (b: GE): GE = binOp(Neq       , b)
+  def <         (b: GE): GE = binOp(Lt        , b)
+  def >         (b: GE): GE = binOp(Gt        , b)
+  def <=        (b: GE): GE = binOp(Leq       , b)
+  def >=        (b: GE): GE = binOp(Geq       , b)
+  def min       (b: GE): GE = binOp(Min       , b)
+  def max       (b: GE): GE = binOp(Max       , b)
+  def &         (b: GE): GE = binOp(And       , b)
+  def |         (b: GE): GE = binOp(Or        , b)
+  def ^         (b: GE): GE = binOp(Xor       , b)
+  def lcm       (b: GE): GE = binOp(Lcm       , b)
+  def gcd       (b: GE): GE = binOp(Gcd       , b)
 
-  def roundTo (b: GE): GE = binOp(RoundTo , b)
-  def roundUpTo (b: GE): GE = binOp(RoundUpTo, b)
-  def trunc   (b: GE): GE = binOp(Trunc   , b)
-  def atan2   (b: GE): GE = binOp(Atan2   , b)
-  def hypot   (b: GE): GE = binOp(Hypot   , b)
-  def hypotApx(b: GE): GE = binOp(Hypotx  , b)
+  def roundTo   (b: GE): GE = binOp(RoundTo   , b)
+  def roundUpTo (b: GE): GE = binOp(RoundUpTo , b)
+  def trunc     (b: GE): GE = binOp(Trunc     , b)
+  def atan2     (b: GE): GE = binOp(Atan2     , b)
+  def hypot     (b: GE): GE = binOp(Hypot     , b)
+  def hypotApx  (b: GE): GE = binOp(Hypotx    , b)
 
   /** '''Warning:''' Unlike a normal power operation, the signum of the
     * left operand is always preserved. I.e. `DC.kr(-0.5).pow(2)` will
@@ -338,11 +338,12 @@ final class GEOps2(val `this`: GE) extends AnyVal { me =>
     * floating point noise and negative input numbers, so
     * `DC.kr(-0.5).pow(2.001)` does not result in a `NaN`, for example.
     */
-  def pow     (b: GE): GE = binOp(Pow     , b)
+  def pow       (b: GE): GE = binOp(Pow       , b)
 
-  // def <<(b: GE): GE = ...
-  // def >>(b: GE): GE = ...
-  // def unsgnRghtShift(b: GE): GE = ...
+  def <<        (b: GE): GE = binOp(LeftShift , b)
+  def >>        (b: GE): GE = binOp(RightShift, b)
+  def >>>       (b: GE): GE = binOp(UnsignedRightShift, b)
+
   // def fill(b: GE): GE = ...
 
   def ring1   (b: GE): GE = binOp(Ring1   , b)
