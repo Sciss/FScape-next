@@ -14,16 +14,15 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.{Attributes, FanInShape2}
-import de.sciss.fscape.stream.impl.Handlers.{InDMain, InIAux, OutDMain}
-import de.sciss.fscape.stream.impl.logic.WindowedInDOutD
-import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
+import akka.stream.{Attributes, FanInShape2, Inlet, Outlet}
+import de.sciss.fscape.stream.impl.Handlers.InIAux
+import de.sciss.fscape.stream.impl.logic.FilterWindowedInAOutA
+import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 
 object ReduceWindow {
-  import graph.BinaryOp.Op
-
-  def apply(in: OutD, size: OutI, op: Op)(implicit b: Builder): OutD = {
-    val stage0  = new Stage(b.layer, op)
+  def apply[A, E <: BufElem[A]](opName: String, op: (A, A) => A, in: Outlet[E], size: OutI)
+                               (implicit b: Builder, tpe: StreamType[A, E]): Outlet[E] = {
+    val stage0  = new Stage[A, E](b.layer, opName, op)
     val stage   = b.add(stage0)
     b.connect(in  , stage.in0)
     b.connect(size, stage.in1)
@@ -32,26 +31,39 @@ object ReduceWindow {
 
   private final val name = "ReduceWindow"
 
-  private type Shp = FanInShape2[BufD, BufI, BufD]
+  private type Shp[E] = FanInShape2[E, BufI, E]
 
-  private final class Stage(layer: Layer, op: Op)(implicit ctrl: Control) extends StageImpl[Shp](name) {
+  private final class Stage[A, E <: BufElem[A]](layer: Layer, opName: String, op: (A, A) => A)
+                                               (implicit ctrl: Control, tpe: StreamType[A, E])
+    extends StageImpl[Shp[E]](name) {
+
     val shape: Shape = new FanInShape2(
-      in0 = InD (s"$name.in"  ),
-      in1 = InI (s"$name.size"),
-      out = OutD(s"$name.out" )
+      in0 = Inlet [E] (s"$name.in"  ),
+      in1 = InI       (s"$name.size"),
+      out = Outlet[E] (s"$name.out" )
     )
 
-    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer, op)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = {
+      val res: Logic[_, _] = if (tpe.isDouble) {
+        new Logic[Double, BufD](shape.asInstanceOf[Shp[BufD]], layer, opName, op.asInstanceOf[(Double , Double) => Double ])
+      } else if (tpe.isInt) {
+        new Logic[Int   , BufI](shape.asInstanceOf[Shp[BufI]], layer, opName, op.asInstanceOf[(Int    , Int   ) => Int    ])
+      } else {
+        assert (tpe.isLong)
+        new Logic[Long  , BufL](shape.asInstanceOf[Shp[BufL]], layer, opName, op.asInstanceOf[(Long   , Long  ) => Long   ])
+      }
+      res.asInstanceOf[Logic[A, E]]
+    }
   }
 
-  private final class Logic(shape: Shp, layer: Layer, op: Op)(implicit ctrl: Control)
-    extends Handlers(name, layer, shape) with WindowedInDOutD {
+  private final class Logic[@specialized(Args) A, E <: BufElem[A]](shape: Shp[E], layer: Layer, opName: String,
+                                                                   op: (A, A) => A)
+                                               (implicit ctrl: Control, tpe: StreamType[A, E])
+    extends FilterWindowedInAOutA[A, E, Shp[E]](name, layer, shape)(shape.in0, shape.out) {
 
-    type A = Double
+    override def toString = s"$name($opName)@${hashCode.toHexString}"
 
-    override protected  val hIn   : InDMain  = InDMain  (this, shape.in0)
-    override protected  val hOut  : OutDMain = OutDMain (this, shape.out)
-    private[this]       val hSize : InIAux   = InIAux   (this, shape.in1)(math.max(0 , _))
+    private[this] val hSize = InIAux(this, shape.in1)(math.max(0 , _))
 
     private[this] var value: A = _
 
@@ -82,7 +94,7 @@ object ReduceWindow {
       }
       while (i < stop) {
         val v   = in(i)
-        _value  = op.funDD(_value, v)
+        _value  = op(_value, v)
         i += 1
       }
       value  = _value

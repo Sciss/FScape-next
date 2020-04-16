@@ -13,7 +13,7 @@
 
 package de.sciss.fscape.graph
 
-import de.sciss.fscape.stream.{StreamIn, StreamOut}
+import de.sciss.fscape.stream.{BufD, BufI, BufL, StreamIn, StreamOut}
 import de.sciss.fscape.{GE, UGen, UGenGraph, UGenIn, UGenInLike, UGenSource, stream}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -41,6 +41,15 @@ final case class ReduceWindow(in: GE, size: GE, op: Int) extends UGenSource.Sing
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
     val Vec(in, size) = args
-    stream.ReduceWindow(in = in.toDouble, size = size.toInt, op = BinaryOp.Op(op))
+    val op0 = BinaryOp.Op(op)
+
+    op0 match {
+      case opII: BinaryOp.OpII if in.isInt  =>
+        stream.ReduceWindow[Int   , BufI](op0.name, opII.funII, in = in.toInt   , size = size.toInt): StreamOut
+      case opLL: BinaryOp.OpLL if in.isLong || in.isInt =>
+        stream.ReduceWindow[Long  , BufL](op0.name, opLL.funLL, in = in.toLong  , size = size.toInt): StreamOut
+      case _ =>
+        stream.ReduceWindow[Double, BufD](op0.name, op0 .funDD, in = in.toDouble, size = size.toInt): StreamOut
+    }
   }
 }
