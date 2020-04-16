@@ -16,13 +16,13 @@ package stream
 
 import java.util
 
-import akka.stream.stage.OutHandler
-import akka.stream.{Attributes, Outlet}
-import de.sciss.fscape.stream.impl.deprecated.{AuxInHandlerImpl, FilterLogicImpl, FullInOutImpl, ProcessInHandlerImpl}
+import akka.stream.{Attributes, Inlet, Outlet}
+import de.sciss.fscape.stream.impl.Handlers.{InDAux, InDMain, InIAux, OutDMain, OutIMain}
 import de.sciss.fscape.stream.impl.shapes.In5Out4Shape
-import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
 
 import scala.annotation.{switch, tailrec}
+import scala.math.{max, min}
 
 object Blobs2D {
   def apply(in: OutD, width: OutI, height: OutI, thresh: OutD, pad: OutI)
@@ -77,9 +77,17 @@ object Blobs2D {
   }
 
   private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape)
-    with FullInOutImpl[Shp]
-    with FilterLogicImpl[BufD, Shp] {
+    extends Handlers(name, layer, shape) {
+
+    private[this] val hIn           : InDMain   = InDMain (this, shape.in0)
+    private[this] val hWidth        : InIAux    = InIAux  (this, shape.in1)(max(1, _))
+    private[this] val hHeight       : InIAux    = InIAux  (this, shape.in2)(max(1, _))
+    private[this] val hThresh       : InDAux    = InDAux  (this, shape.in3)()
+    private[this] val hPad          : InIAux    = InIAux  (this, shape.in4)(max(0, _))
+    private[this] val hOutNumBlobs  : OutIMain  = OutIMain(this, shape.out0)
+    private[this] val hOutBounds    : OutDMain  = OutDMain(this, shape.out1)
+    private[this] val hOutNumVert   : OutIMain  = OutIMain(this, shape.out2)
+    private[this] val hOutVertices  : OutDMain  = OutDMain(this, shape.out3)
 
     private[this] var winBuf    : Array[Double] = _
     private[this] var widthIn   : Int           = _
@@ -91,142 +99,30 @@ object Blobs2D {
     private[this] var winSizeIn : Int           = _
     private[this] var winSizePad: Int           = _
 
-    private[this] var writeToWinOff             = 0
-    private[this] var writeToWinRemain          = 0
-    private[this] var readNumBlobsRemain        = 0
-    private[this] var readBlobBoundsOff         = 0
-    private[this] var readBlobBoundsRemain      = 0
-    private[this] var readBlobNumVerticesOff    = 0
-    private[this] var readBlobNumVerticesRemain = 0
-    private[this] var readBlobVerticesRemain    = 0
-    private[this] var isNextWindow              = true
+    private[this] var readOff: Int = _
+    private[this] var readRem: Int = _
+    
+    private[this] var stage = 0
 
-    private[this] var readBlobVerticesBlobIdx   = 0   // sub-index during readBlobVerticesRemain > 0
-    private[this] var readBlobVerticesVertexIdx = 0   // sub-index during readBlobVerticesRemain > 0
+    private[this] var writeOffNumBlobs    : Int = _
+    private[this] var writeOffBounds      : Int = _
+    private[this] var writeOffNumVertices : Int = _
+    private[this] var writeOffVertices    : Int = _
 
-    protected     var bufIn0 : BufD  = _
-    private[this] var bufIn1 : BufI  = _
-    private[this] var bufIn2 : BufI  = _
-    private[this] var bufIn3 : BufD  = _
-    private[this] var bufIn4 : BufI  = _
-    private[this] var bufOut0: BufI = _
-    private[this] var bufOut1: BufD = _
-    private[this] var bufOut2: BufI = _
-    private[this] var bufOut3: BufD = _
+    private[this] var writeRem            : Int = 0 // sum of the below, for quick termination check
+    private[this] var writeRemNumBlobs    : Int = _
+    private[this] var writeRemBounds      : Int = _
+    private[this] var writeRemNumVertices : Int = _
+    private[this] var writeRemVertices    : Int = _
 
-    protected def in0: InD = shape.in0
-
-    private[this] var _canRead  = false
-    private[this] var _inValid  = false
-    private[this] var _canWrite = false
-
-    private[this] var inOff           = 0  // regarding `bufIn`
-    protected     var inRemain        = 0
-    private[this] var outOff0         = 0  // regarding `bufOut0`
-    private[this] var outOff1         = 0  // regarding `bufOut1`
-    private[this] var outOff2         = 0  // regarding `bufOut2`
-    private[this] var outOff3         = 0  // regarding `bufOut3`
-    private[this] var outRemain0      = 0
-    private[this] var outRemain1      = 0
-    private[this] var outRemain2      = 0
-    private[this] var outRemain3      = 0
-
-    private[this] var outSent0        = true
-    private[this] var outSent1        = true
-    private[this] var outSent2        = true
-    private[this] var outSent3        = true
+    private[this] var writeBlobVerticesBlobIdx   = 0   // sub-index during writeRemVertices > 0
+    private[this] var writeBlobVerticesVertexIdx = 0   // sub-index during writeRemVertices > 0
 
     // result of blob analysis
     private[this] var blobs: Array[Blob] = _
 
-    private final class OutHandlerImpl[A](out: Outlet[A])
-      extends OutHandler {
-
-      def onPull(): Unit = {
-        logStream(s"onPull($out)")
-        updateCanWrite()
-        if (canWrite) process()
-      }
-
-      override def onDownstreamFinish(cause: Throwable): Unit = {
-        logStream(s"onDownstreamFinish($out)")
-        val allClosed = shape.outlets.forall(isClosed(_))
-        if (allClosed) super.onDownstreamFinish(cause)
-      }
-
-      setOutHandler(out, this)
-    }
-
-    new ProcessInHandlerImpl (shape.in0, this)
-    new AuxInHandlerImpl     (shape.in1, this)
-    new AuxInHandlerImpl     (shape.in2, this)
-    new AuxInHandlerImpl     (shape.in3, this)
-    new AuxInHandlerImpl     (shape.in4, this)
-    new OutHandlerImpl       (shape.out0)
-    new OutHandlerImpl       (shape.out1)
-    new OutHandlerImpl       (shape.out2)
-    new OutHandlerImpl       (shape.out3)
-
-    def canRead : Boolean = _canRead
-    def inValid : Boolean = _inValid
-    def canWrite: Boolean = _canWrite
-
-    def updateCanWrite(): Unit = {
-      val sh = shape
-      _canWrite =
-        (isClosed(sh.out0) || isAvailable(sh.out0)) &&
-        (isClosed(sh.out1) || isAvailable(sh.out1)) &&
-        (isClosed(sh.out2) || isAvailable(sh.out2)) &&
-        (isClosed(sh.out3) || isAvailable(sh.out3))
-    }
-
-    protected def writeOuts(ignore: Int): Unit = throw new UnsupportedOperationException
-
-    private def writeOuts0(): Unit = {
-      if (outOff0 > 0 && isAvailable(shape.out0)) {
-        bufOut0.size = outOff0
-        push(shape.out0, bufOut0)
-      } else {
-        bufOut0.release()
-      }
-      bufOut0   = null
-      _canWrite = false
-    }
-
-    private def writeOuts1(): Unit = {
-      if (outOff1 > 0 && isAvailable(shape.out1)) {
-        bufOut1.size = outOff1
-        push(shape.out1, bufOut1)
-      } else {
-        bufOut1.release()
-      }
-      bufOut1 = null
-      _canWrite = false
-    }
-
-    private def writeOuts2(): Unit = {
-      if (outOff2 > 0 && isAvailable(shape.out2)) {
-        bufOut2.size = outOff2
-        push(shape.out2, bufOut2)
-      } else {
-        bufOut2.release()
-      }
-      bufOut2 = null
-      _canWrite = false
-    }
-
-    private def writeOuts3(): Unit = {
-      if (outOff3 > 0 && isAvailable(shape.out3)) {
-        bufOut3.size = outOff3
-        push(shape.out3, bufOut3)
-      } else {
-        bufOut3.release()
-      }
-      bufOut3 = null
-      _canWrite = false
-    }
-
     override protected def stopped(): Unit = {
+      super.stopped()
       winBuf      = null
       blobs       = null
       gridVisited = null
@@ -234,136 +130,85 @@ object Blobs2D {
 //      voxels      = null
       edgeVrtX    = null
       edgeVrtY    = null
-
-      freeInputBuffers()
-      freeOutputBuffers()
     }
 
-    protected def readIns(): Int = {
-      freeInputBuffers()
-      val sh    = shape
-      bufIn0    = grab(sh.in0)
-      bufIn0.assertAllocated()
-      tryPull(sh.in0)
+    private def tryObtainWinParams(): Boolean = {
+      val ok =
+        hWidth  .hasNext &&
+        hHeight .hasNext &&
+        hThresh .hasNext &&
+        hPad    .hasNext
 
-      if (isAvailable(sh.in1)) {
-        bufIn1 = grab(sh.in1)
-        tryPull(sh.in1)
-      }
-      if (isAvailable(sh.in2)) {
-        bufIn2 = grab(sh.in2)
-        tryPull(sh.in2)
-      }
-      if (isAvailable(sh.in3)) {
-        bufIn3 = grab(sh.in3)
-        tryPull(sh.in3)
-      }
-      if (isAvailable(sh.in4)) {
-        bufIn4 = grab(sh.in4)
-        tryPull(sh.in4)
-      }
+      if (ok) {
+        val oldSizeIn   = winSizeIn
+        val oldSizePad  = winSizePad
+        val oldThresh   = thresh
 
-      _inValid = true
-      _canRead = false
-      bufIn0.size
+        widthIn         = hWidth  .next()
+        heightIn        = hHeight .next()
+        thresh          = hThresh .next()
+        pad             = hPad    .next()
+
+        val pad2        = pad * 2
+        val _widthIn    = widthIn
+        val _heightIn   = heightIn
+
+        val _widthPad   = _widthIn  + pad2
+        val _heightPad  = _heightIn + pad2
+        val _winSizeIn  = _widthIn  * _heightIn
+        val _winSizePad = _widthPad * _heightPad
+
+        widthPad        = _widthPad
+        heightPad       = _heightPad
+        winSizeIn       = _winSizeIn
+        winSizePad      = _winSizePad
+
+        if (_winSizePad != oldSizePad || _winSizeIn != oldSizeIn) {
+          updateSize()
+          if (thresh != 0.0) fillThresh()
+        } else if (thresh != oldThresh) {
+          fillThresh()
+        }
+      }
+      ok
     }
 
-    protected def freeInputBuffers(): Unit = {
-      if (bufIn0 != null) {
-        bufIn0.release()
-        bufIn0 = null
-      }
-      if (bufIn1 != null) {
-        bufIn1.release()
-        bufIn1 = null
-      }
-      if (bufIn2 != null) {
-        bufIn2.release()
-        bufIn2 = null
-      }
-      if (bufIn3 != null) {
-        bufIn3.release()
-        bufIn3 = null
-      }
-      if (bufIn4 != null) {
-        bufIn4.release()
-        bufIn4 = null
-      }
-    }
+    private def winBufSize : Int = winSizeIn
+    private def readWinSize: Int = winSizeIn
 
-    protected def freeOutputBuffers(): Unit = {
-      if (bufOut0 != null) {
-        bufOut0.release()
-        bufOut0 = null
-      }
-      if (bufOut1 != null) {
-        bufOut1.release()
-        bufOut1 = null
-      }
-      if (bufOut2 != null) {
-        bufOut2.release()
-        bufOut2 = null
-      }
-      if (bufOut3 != null) {
-        bufOut3.release()
-        bufOut3 = null
+    private def clearWindowTail(): Unit = {
+      val chunk         = winSizeIn - readOff
+      val _pad          = pad
+      val _bufOut       = winBuf
+      val writeToWinOff = readOff // .toInt
+      val _thresh       = thresh
+
+      if (_pad == 0) {
+        Util.fill(_bufOut, writeToWinOff, chunk, _thresh)
+
+      } else {
+        var remain    = chunk
+        val _width    = widthIn
+        val _widthPad = widthPad
+        var x         = writeToWinOff % _width
+        val y         = writeToWinOff / _width
+        var _outOff   = (y + _pad) * _widthPad + _pad   // beginning of "inner line"
+        while (remain > 0) {
+          val num = math.min(_width - x, remain)
+          Util.fill(_bufOut, _outOff + x, num, _thresh)
+          remain  -= num
+          x        = 0
+          _outOff += _widthPad
+        }
       }
     }
 
-    def updateCanRead(): Unit = {
-      val sh = shape
-      _canRead = isAvailable(sh.in0) &&
-        ((isClosed(sh.in1) && _inValid) || isAvailable(sh.in1)) &&
-        ((isClosed(sh.in2) && _inValid) || isAvailable(sh.in2)) &&
-        ((isClosed(sh.in3) && _inValid) || isAvailable(sh.in3)) &&
-        ((isClosed(sh.in4) && _inValid) || isAvailable(sh.in4))
-    }
-
-    private def startNextWindow(inOff: Int): Int = {
-      val oldSizeIn   = winSizeIn
-      val oldSizePad  = winSizePad
-      val oldThresh   = thresh
-
-      if (bufIn1 != null && inOff < bufIn1.size) {
-        widthIn = math.max(1, bufIn1.buf(inOff))
-      }
-      if (bufIn2 != null && inOff < bufIn2.size) {
-        heightIn = math.max(1, bufIn2.buf(inOff))
-      }
-      if (bufIn3 != null && inOff < bufIn3.size) {
-        thresh = bufIn3.buf(inOff)
-      }
-      if (bufIn4 != null && inOff < bufIn4.size) {
-        pad = math.max(0, bufIn4.buf(inOff))
-      }
-      val pad2        = pad * 2
-      val _widthIn    = widthIn
-      val _heightIn   = heightIn
-
-      val _widthPad   = _widthIn  + pad2
-      val _heightPad  = _heightIn + pad2
-      val _winSizeIn  = _widthIn  * _heightIn
-      val _winSizePad = _widthPad * _heightPad
-
-      widthPad        = _widthPad
-      heightPad       = _heightPad
-      winSizeIn       = _winSizeIn
-      winSizePad      = _winSizePad
-
-      if (_winSizePad != oldSizePad || _winSizeIn != oldSizeIn) {
-        updateSize()
-        if (thresh != 0.0) fillThresh()
-      } else if (thresh != oldThresh) {
-        fillThresh()
-      }
-
-      _winSizeIn
-    }
-
-    private def copyInputToWindow(inOff: Int, writeToWinOff: Int, chunk: Int): Unit = {
-      val _pad    = pad
-      val _bufIn  = bufIn0.buf
-      val _bufOut = winBuf
+    private def readIntoWindow(chunk: Int): Unit = {
+      val _pad          = pad
+      val _bufIn        = hIn.array
+      val inOff         = hIn.offset
+      val _bufOut       = winBuf
+      val writeToWinOff = readOff // .toInt
 
       if (_pad == 0) {
         Util.copy(_bufIn, inOff, _bufOut, writeToWinOff, chunk)
@@ -385,28 +230,16 @@ object Blobs2D {
           _outOff += _widthPad
         }
       }
+
+      hIn.advance(chunk)
     }
 
-    private def processWindow(writeToWinOff: Int): Unit = {
-//      val a     = winBuf
-//      val size  = winSizeIn
-//      val _pad = pad
-//      if (_pad == 0) {
-//        if (writeToWinOff < size) {
-//          Util.fill(a, writeToWinOff, size - writeToWinOff, thresh)
-//        }
-//      } else {
-//        ...
-//      }
+    private def processWindow(): Unit = {
+      if (readOff < winSizeIn) clearWindowTail()
 
       detectBlobs()
-      val _numBlobs             = numBlobs
-      readNumBlobsRemain        = 1
-      readBlobBoundsRemain      = _numBlobs * 4
-      readBlobNumVerticesRemain = _numBlobs
+      val _numBlobs = numBlobs
 
-      readBlobVerticesBlobIdx   = 0
-      readBlobVerticesVertexIdx = 0
       var vertexCount = 0
       var i = 0
       while (i < _numBlobs) {
@@ -415,75 +248,31 @@ object Blobs2D {
         i += 1
       }
 
-      readBlobVerticesRemain    = vertexCount
-      outRemain1                = math.min(outRemain1, readBlobBoundsRemain)
-      outRemain2                = math.min(outRemain2, readBlobNumVerticesRemain)
-      outRemain3                = math.min(outRemain3, readBlobVerticesRemain)
-      readBlobBoundsOff         = 0
-      readBlobNumVerticesOff    = 0
+      writeRemNumBlobs    = if (hOutNumBlobs.isDone) 0 else 1
+      writeRemBounds      = if (hOutBounds  .isDone) 0 else _numBlobs * 4
+      writeRemNumVertices = if (hOutNumVert .isDone) 0 else _numBlobs
+      writeRemVertices    = if (hOutVertices.isDone) 0 else vertexCount
+      writeRem            = writeRemNumBlobs + writeRemBounds + writeRemNumVertices + writeRemVertices
     }
 
-    @inline
-    private[this] def canWriteToWindow =
-      inValid &&
-        readNumBlobsRemain        == 0 &&
-        readBlobBoundsRemain      == 0 &&
-        readBlobNumVerticesRemain == 0 &&
-        readBlobVerticesRemain    == 0
-
-    private def processChunk(): Boolean = {
-      var stateChange = false
-
-      if (canWriteToWindow) {
-        val flushIn0 = inputsEnded // inRemain == 0 && shouldComplete()
-        if (isNextWindow && !flushIn0) {
-          writeToWinRemain  = startNextWindow(inOff = inOff)
-          isNextWindow      = false
-          stateChange       = true
-          // logStream(s"startNextWindow(); writeToWinRemain = $writeToWinRemain")
-        }
-
-        val chunk     = math.min(writeToWinRemain, inRemain) // .toInt
-        val flushIn   = flushIn0 && writeToWinOff > 0
-        if (chunk > 0 || flushIn) {
-          // logStream(s"writeToWindow(); inOff = $inOff, writeToWinOff = $writeToWinOff, chunk = $chunk")
-          if (chunk > 0) {
-            copyInputToWindow(inOff = inOff, writeToWinOff = writeToWinOff, chunk = chunk)
-            inOff            += chunk
-            inRemain         -= chunk
-            writeToWinOff    += chunk
-            writeToWinRemain -= chunk
-            stateChange       = true
-          }
-
-          if (writeToWinRemain == 0 || flushIn) {
-            processWindow(writeToWinOff = writeToWinOff) // , flush = flushIn)
-            writeToWinOff         = 0
-            isNextWindow          = true
-            stateChange           = true
-            // logStream(s"processWindow(); readFromWinRemain = $readFromWinRemain")
-          }
-        }
-      }
-
+    private def processOutput(): Unit = {
       // ---- num-blobs ----
-      if (readNumBlobsRemain > 0 && outRemain0 > 0) {
-        bufOut0.buf(0)      = numBlobs
-        readNumBlobsRemain -= 1
-        outOff0            += 1
-        outRemain0         -= 1
+      if (writeRemNumBlobs > 0 && hOutNumBlobs.hasNext) {
+        assert (writeRemNumBlobs == 1)
+        hOutNumBlobs.next(numBlobs)
+        writeRemNumBlobs -= 1
+        writeRem         -= 1
       }
 
       // ---- blob bounds ----
-      if (readBlobBoundsRemain > 0 && outRemain1 > 0) {
-        val chunk     = math.min(readBlobBoundsRemain, outRemain1)
-        var _offIn    = readBlobBoundsOff
-        var _offOut   = outOff1
+      if (writeRemBounds > 0 && hOutBounds.hasNext) {
+        val chunk     = min(writeRemBounds, hOutBounds.available)
+        var _offIn    = writeOffBounds
+        val out       = hOutBounds
         val _blobs    = blobs
-        val _buf      = bufOut1.buf
-        val stop      = _offOut + chunk
+        val stop      = _offIn + chunk
         val _pad      = pad
-        while (_offOut < stop) {
+        while (_offIn < stop) {
           val blobIdx = _offIn / 4
           val blob    = _blobs(blobIdx)
           val coord   = (_offIn % 4: @switch) match {
@@ -492,65 +281,57 @@ object Blobs2D {
             case 2 => blob.yMin
             case 3 => blob.yMax
           }
-          _buf(_offOut) = coord - _pad
+          out.next(coord - _pad)
           _offIn  += 1
-          _offOut += 1
         }
         
-        readBlobBoundsOff     = _offIn
-        readBlobBoundsRemain -= chunk
-        outOff1               = _offOut
-        outRemain1           -= chunk
-        stateChange           = true
+        writeRemBounds -= chunk
+        writeRem       -= chunk
+        writeOffBounds += chunk
       }
 
       // ---- blob num-vertices ----
-      if (readBlobNumVerticesRemain > 0 && outRemain2 > 0) {
-        val chunk     = math.min(readBlobNumVerticesRemain, outRemain2)
-        var _offIn    = readBlobNumVerticesOff
-        var _offOut   = outOff2
+      if (writeRemNumVertices > 0 && hOutNumVert.hasNext) {
+        val chunk     = min(writeRemNumVertices, hOutNumVert.available)
+        var _offIn    = writeOffNumVertices
         val _blobs    = blobs
-        val _buf      = bufOut2.buf
-        val stop      = _offOut + chunk
-        while (_offOut < stop) {
-          val blob      = _blobs(_offIn)
-          _buf(_offOut) = blob.numLines
+        val out       = hOutNumVert
+        val stop      = _offIn + chunk
+        while (_offIn < stop) {
+          val blob = _blobs(_offIn)
+          out.next(blob.numLines)
           _offIn  += 1
-          _offOut += 1
         }
 
-        readBlobNumVerticesOff     = _offIn
-        readBlobNumVerticesRemain -= chunk
-        outOff2                    = _offOut
-        outRemain2                -= chunk
-        stateChange                = true
+        writeRemNumVertices -= chunk
+        writeRem            -= chunk
+        writeOffNumVertices += chunk
       }
 
       // ---- blob vertices ----
-      if (readBlobVerticesRemain > 0 && outRemain3 > 0) {
-        val chunk     = math.min(readBlobVerticesRemain, outRemain3)
-        var _offOut   = outOff3
+      if (writeRemVertices > 0 && hOutVertices.hasNext) {
+        val chunk     = min(writeRemVertices, hOutVertices.available)
         val _blobs    = blobs
-        val _buf      = bufOut3.buf
-        val stop      = _offOut + chunk
-        var _blobIdx  = readBlobVerticesBlobIdx
-        var _vIdx     = readBlobVerticesVertexIdx
+        val out       = hOutVertices
+        var _blobIdx  = writeBlobVerticesBlobIdx
+        var _vIdx     = writeBlobVerticesVertexIdx
         val _edgeX    = edgeVrtX
         val _edgeY    = edgeVrtY
         val _pad      = pad
-        while (_offOut < stop) {
+        var i = 0
+        while (i < chunk) {
           val blob      = _blobs(_blobIdx)
           val vCount    = blob.numLines * 2
-          val chunk2    = math.min(stop - _offOut, vCount - _vIdx)
+          val chunk2    = math.min(chunk - i, vCount - _vIdx)
           if (chunk2 > 0) {
             val stop2 = _vIdx + chunk2
             while (_vIdx < stop2) {
               val lineIdx = blob.line(_vIdx & ~1)
               val table   = if (_vIdx % 2 == 0) _edgeX else _edgeY
               val value   = table(lineIdx)
-              _buf(_offOut) = value - _pad
+              out.next(value - _pad)
+              i += 1
               _vIdx   += 1
-              _offOut += 1
             }
           } else {
             _blobIdx += 1
@@ -558,101 +339,115 @@ object Blobs2D {
           }
         }
 
-        readBlobVerticesBlobIdx   = _blobIdx
-        readBlobVerticesVertexIdx = _vIdx
-        readBlobVerticesRemain   -= chunk
-        outOff3                   = _offOut
-        outRemain3               -= chunk
-        stateChange               = true
+        writeBlobVerticesBlobIdx   = _blobIdx
+        writeBlobVerticesVertexIdx = _vIdx
+        writeRemVertices          -= chunk
+        writeRem                  -= chunk
       }
-
-      stateChange
     }
 
-    @inline
-    private[this] def shouldRead = inRemain == 0 && canRead
+    private def prepareStage2(): Unit = {
+      processWindow()
+      writeOffNumBlobs            = 0
+      writeOffBounds              = 0
+      writeOffNumVertices         = 0
+      writeOffVertices            = 0
+      writeBlobVerticesBlobIdx    = 0
+      writeBlobVerticesVertexIdx  = 0
+    }
 
     @tailrec
-    def process(): Unit = {
+    protected def process(): Unit = {
       logStream(s"process() $this")
-      var stateChange = false
 
-      if (shouldRead) {
-        inRemain    = readIns()
-        inOff       = 0
-        stateChange = true
-      }
+      if (stage == 0) {
+        if (!tryObtainWinParams()) return
 
-      if (outSent0) {
-        bufOut0       = ctrl.borrowBufI()
-        outRemain0    = 1
-        outOff0       = 0
-        outSent0      = false
-        stateChange   = true
+        val _winBufSz = winBufSize
+        if (winBuf == null || winBuf.length != _winBufSz) {
+          winBuf = if (_winBufSz == 0) null else new Array(_winBufSz)
+        }
+
+        readOff   = 0
+        readRem   = readWinSize
+        stage     = 1
       }
 
-      if (outSent1) {
-        bufOut1       = ctrl.borrowBufD()
-        outRemain1    = bufOut1.size
-        outOff1       = 0
-        outSent1      = false
-        stateChange   = true
-      }
-      
-      if (outSent2) {
-        bufOut2       = ctrl.borrowBufI()
-        outRemain2    = bufOut2.size
-        outOff2       = 0
-        outSent2      = false
-        stateChange   = true
+      while (stage == 1) {
+        val remIn = hIn.available
+        if (remIn == 0) return
+        val numIn = min(remIn, readRem)
+        if (numIn > 0) readIntoWindow(numIn)
+        readOff += numIn
+        readRem -= numIn
+        if (hIn.isDone || readRem == 0) {
+          prepareStage2()
+          stage = 2
+        }
       }
 
-      if (outSent3) {
-        bufOut3       = ctrl.borrowBufD()
-        outRemain3    = bufOut3.size
-        outOff3       = 0
-        outSent3      = false
-        stateChange   = true
+      while (stage == 2) {
+        val oldRem = writeRem
+        if (writeRem > 0) processOutput()
+        if (writeRem == 0) {
+          if (hIn.isDone) {
+            if (flushOut()) completeStage()
+            return
+          } else {
+            stage = 0
+          }
+        } else if (writeRem == oldRem) return
       }
 
-      if (inValid && processChunk()) stateChange = true
-
-      val flushOut  = shouldComplete()
-      val cw        = canWrite
-      if (!outSent0 && (outRemain0 == 0 || flushOut) && cw) {
-        writeOuts0()
-        outSent0    = true
-        stateChange = true
-      }
-      if (!outSent1 && (outRemain1 == 0 || flushOut) && cw) {
-        writeOuts1()
-        outSent1    = true
-        stateChange = true
-      }
-      if (!outSent2 && (outRemain2 == 0 || flushOut) && cw) {
-        writeOuts2()
-        outSent2    = true
-        stateChange = true
-      }
-      if (!outSent3 && (outRemain3 == 0 || flushOut) && cw) {
-        writeOuts3()
-        outSent3    = true
-        stateChange = true
-      }
-
-      if (flushOut && outSent0 && outSent1 && outSent2) {
-        logStream(s"completeStage() $this")
-        completeStage()
-      }
-      else if (stateChange) process()
+      process()
     }
 
-    private def shouldComplete(): Boolean =
-      inputsEnded && writeToWinOff == 0 &&
-        readNumBlobsRemain         == 0 &&
-        readBlobBoundsRemain       == 0 &&
-        readBlobNumVerticesRemain  == 0 &&
-        readBlobVerticesRemain     == 0
+    override protected def onDone(outlet: Outlet[_]): Unit = {
+      if (stage == 2) {
+        val oldRem = writeRem
+        if (outlet == hOutVertices.outlet) {
+          writeRem -= writeRemVertices
+          writeRemVertices = 0
+        } else if (outlet == hOutBounds.outlet) {
+          writeRem -= writeRemBounds
+          writeRemBounds = 0
+        } else if (outlet == hOutNumVert.outlet) {
+          writeRem -= writeRemNumVertices
+          writeRemNumVertices = 0
+        } else {
+          assert (outlet == hOutNumBlobs.outlet)
+          writeRem -= writeRemNumBlobs
+          writeRemNumBlobs = 0
+        }
+        // always call `process` in order to ensure `completeStage` may be invoked.
+        process()
+
+      } else {
+        if (hOutNumBlobs.isDone && hOutBounds.isDone && hOutNumVert.isDone && hOutVertices.isDone) {
+          // writeRem  = 0
+          // stage     = 2
+          if (flushOut()) completeStage()
+        }
+      }
+    }
+
+    protected def onDone(inlet: Inlet[_]): Unit = {
+      assert (inlet == hIn.inlet)
+      if (stage == 0 || (stage == 1 && readOff == 0L)) {
+        stage = 2
+        if (flushOut()) completeStage()
+      } else if (stage == 1) { // i.e. readOff > 0
+        prepareStage2()
+        stage = 2
+        process()
+      }
+    }
+
+    private def flushOut(): Boolean =
+      hOutNumBlobs.flush() &
+      hOutBounds  .flush() &
+      hOutNumVert .flush() &
+      hOutVertices.flush()
 
     // ---- the fun part ----
     // this is an adaptation of Gachadoat's algorithm

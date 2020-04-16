@@ -59,18 +59,3 @@ trait InOutImpl[S <: Shape] extends Node {
   /** Exposed from protected `GraphStageLogic` API. */
   final def setOutHandler[A](out: Outlet[A], h: OutHandler): Unit = setHandler(out, h)
 }
-
-@deprecated("Should move to using Handlers", since = "2.35.1")
-trait FullInOutImpl[S <: Shape] extends InOutImpl[S] {
-  _: GraphStageLogic =>
-
-  protected def readIns(): Int
-
-  /** Whether all inputs are available or have been closed and buffered. */
-  def canRead: Boolean
-
-  /** Requests the update of the `canRead` status. */
-  def updateCanRead(): Unit
-
-  protected def freeInputBuffers(): Unit
-}

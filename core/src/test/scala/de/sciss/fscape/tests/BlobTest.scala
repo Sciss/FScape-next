@@ -1,27 +1,27 @@
 package de.sciss.fscape.tests
 
 import de.sciss.file._
+import de.sciss.fscape.graph.ImageFile
 import de.sciss.fscape.gui.SimpleGUI
 import de.sciss.fscape.{GE, Graph, graph, stream}
 
 import scala.swing.Swing
 
 object BlobTest extends App {
-  val fIn     = userHome / "Documents" / "temp" / "blob_input.jpg"
-  val width   = 633
-  val height  = 526
+  val fIn     = file("/") / "data" / "temp" / "blob_input.png"
+  val specIn  = ImageFile.readSpec(fIn)
+  val width   = specIn.width  // 1920 // 633
+  val height  = specIn.height // 1080 // 526
 
   require (fIn.isFile)
 
   val g = Graph {
     import graph._
-    val in    = ImageFileIn(file = fIn, numChannels = 1)
+    val in    = 1.0 - ImageFileIn(file = fIn, numChannels = 1)
     val blobs = Blobs2D(in = in, width = width, height = height, thresh = 0.3)
 
-    def printAll(sig: GE, label: String): Unit = {
-      val dup = sig zip sig // ResizeWindow(sig, 1, 0, 1)
-      dup.poll(Metro(2), label)
-    }
+    def printAll(sig: GE, label: String): Unit =
+      sig.poll(1, label)
 
 //    def printOne(sig: GE, label: String): Unit = {
 //      sig.poll(0, label)
@@ -30,7 +30,7 @@ object BlobTest extends App {
     printAll(blobs.numBlobs   , "num-blobs   ")
     printAll(blobs.bounds     , "bounds      ")
     printAll(blobs.numVertices, "num-vertices")
-    printAll(blobs.vertices   , "vertices    ")
+//    printAll(blobs.vertices   , "vertices    ")
 
 //    printOne(blobs.xMin, "x-min[0]")
 //    printOne(blobs.xMax, "x-max[0]")

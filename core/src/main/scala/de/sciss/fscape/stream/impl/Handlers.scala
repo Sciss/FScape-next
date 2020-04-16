@@ -519,7 +519,7 @@ object Handlers {
           process()
         }
       } else {
-        process() // we always have to assume that the process has buffered things it wants to write
+        if (!_flush) process() // even with empty buffer, we have to assume that process has things it wants to write
       }
     }
 

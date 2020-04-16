@@ -48,8 +48,6 @@ trait ImageFileOutImpl[S <: Shape] extends NodeHasInitImpl with WindowedMultiInO
 
   private[this] var _imagesWritten = 0
 
-  private[this] var _specReady = false
-
   protected final def imagesWritten: Int = _imagesWritten
 
   //  private /* [this] */ val resultP = Promise[Long]()
@@ -93,7 +91,6 @@ trait ImageFileOutImpl[S <: Shape] extends NodeHasInitImpl with WindowedMultiInO
       if (!it.hasNext) throw new IllegalArgumentException(s"No image writer for $spec")
       it.next()
     }
-    _specReady = true
   }
 
   // holds one line of pixels
