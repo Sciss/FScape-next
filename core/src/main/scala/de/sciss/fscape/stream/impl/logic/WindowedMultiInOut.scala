@@ -22,7 +22,8 @@ import scala.annotation.tailrec
 import scala.math.min
 
 /** This is a building block for window processing UGens where there are
-  * multiple hot inlets or outlets.
+  * multiple hot inlets or outlets. It can also be used when there is only
+  * one hot inlet, but other inlets are needed for filling the window buffer.
   */
 trait WindowedMultiInOut extends Node {
   _: Handlers[_] =>

@@ -21,13 +21,12 @@ object AffineTest2 {
     }
     val dir       = dir0 / "scans" /"notebook2016"
     val fIn1      = dir / "universe-test1q.png"
-    val fOut      = userHome / "Documents" / "temp" /"test.png"
+    val fOut      = file("/") / "data" / "temp" /"test.png"
 
     require (fIn1.isFile)
 
     var gui: SimpleGUI = null
     val cfg = Control.Config()
-    cfg.useAsync = false
     cfg.progressReporter = p => Swing.onEDT(gui.progress = p.total)
 
     val g = Graph {
@@ -47,7 +46,7 @@ object AffineTest2 {
       gui = SimpleGUI(ctl)
     }
 
-    showStreamLog = true
+//    showStreamLog = true
 
     ctl.run(g)
   }

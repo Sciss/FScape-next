@@ -14,13 +14,13 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.stage.InHandler
-import akka.stream.{Attributes, FanInShape15}
-import de.sciss.fscape.stream.impl.deprecated.{DemandFilterLogic, Out1DoubleImpl, Out1LogicImpl, ProcessOutHandlerImpl}
-import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import akka.stream.{Attributes, FanInShape15, Inlet, Outlet}
+import de.sciss.fscape.stream.impl.Handlers.{InAux, InDAux, InDMain, InIAux, OutDMain}
+import de.sciss.fscape.stream.impl.logic.WindowedMultiInOut
+import de.sciss.fscape.stream.impl.{Handlers, StageImpl}
+import de.sciss.numbers.Implicits._
 import de.sciss.numbers.IntFunctions
 
-import scala.annotation.tailrec
 import scala.math.{abs, max, min, sqrt}
 
 // XXX TODO --- should use ScanImageImpl
@@ -50,7 +50,10 @@ object AffineTransform2D {
 
   private final val name = "AffineTransform2D"
 
-  private type Shape = FanInShape15[BufD, BufI, BufI, BufI, BufI, BufD, BufD, BufD, BufD, BufD, BufD, BufI, BufD, BufD, BufI, BufD]
+  private type Shape = FanInShape15[
+    BufD, BufI, BufI, BufI, BufI,
+    BufD, BufD, BufD, BufD, BufD, BufD,
+    BufI, BufD, BufD, BufI, BufD]
 
   private final class Stage(layer: Layer)(implicit ctrl: Control) extends StageImpl[Shape](name) {
     val shape = new FanInShape15(
@@ -76,10 +79,24 @@ object AffineTransform2D {
   }
 
   private final class Logic(shape: Shape, layer: Layer)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape)
-      with DemandFilterLogic[BufD, Shape]
-      with Out1LogicImpl[BufD, Shape]
-      with Out1DoubleImpl[Shape] {
+    extends Handlers(name, layer, shape) with WindowedMultiInOut {
+
+    private[this] val hIn       : InDMain   = InDMain  (this, shape.in0)
+    private[this] val hOut      : OutDMain  = OutDMain (this, shape.out)
+    private[this] val hWidthIn  : InIAux    = InIAux   (this, shape.in1)(max(1, _))
+    private[this] val hHeightIn : InIAux    = InIAux   (this, shape.in2)(max(1, _))
+    private[this] val hWidthOut : InIAux    = InIAux   (this, shape.in3)(max(0, _))
+    private[this] val hHeightOut: InIAux    = InIAux   (this, shape.in4)(max(0, _))
+    private[this] val hM00      : InDAux    = InDAux   (this, shape.in5)()
+    private[this] val hM10      : InDAux    = InDAux   (this, shape.in6)()
+    private[this] val hM01      : InDAux    = InDAux   (this, shape.in7)()
+    private[this] val hM11      : InDAux    = InDAux   (this, shape.in8)()
+    private[this] val hM02      : InDAux    = InDAux   (this, shape.in9)()
+    private[this] val hM12      : InDAux    = InDAux   (this, shape.in10)()
+    private[this] val hWrap     : InIAux    = InIAux   (this, shape.in11)()
+    private[this] val hRollOff  : InDAux    = InDAux   (this, shape.in12)(_.clip(0.0, 1.0))
+    private[this] val hKaiser   : InDAux    = InDAux   (this, shape.in13)(max(0.0, _))
+    private[this] val hZero     : InIAux    = InIAux   (this, shape.in14)(max(0, _))
 
     private[this] var winBuf    : Array[Double] = _
     private[this] var widthIn   : Int = _
@@ -87,565 +104,96 @@ object AffineTransform2D {
     private[this] var widthOut  : Int = _
     private[this] var heightOut : Int = _
 
-    /*
-
-      All window defining parameters (`widthIn`, `heightIn`, `widthOut`, `heightOut`)
-      are polled once per matrix. All matrix and filter parameters are polled one per
-      output pixel.
-
-     */
-
-    protected def in0 : InD   = shape.in0
-    protected def out0: OutD  = shape.out
-
-    private[this] var _mainInRemain = 0
-    private[this] var mainInOff     = 0
-
-    private[this] var aux1InRemain  = 0
-    private[this] var aux1InOff     = 0
-
-    private[this] var aux2InRemain  = 0
-    private[this] var aux2InOff     = 0
-
-    private[this] var outOff        = 0  // regarding `bufOut`
-    private[this] var outRemain     = 0
-
-    private[this] var outSent       = true
-
-    private[this] var writeToWinOff     = 0
-    private[this] var writeToWinRemain  = 0
-    private[this] var readFromWinOff    = 0
-    private[this] var readFromWinRemain = 0
-    private[this] var isNextWindow      = true
-
-    protected def mainInRemain: Int = _mainInRemain
-
-    protected     var bufIn0 : BufD = _   // in
-    
-    private[this] var bufIn1 : BufI = _   // widthIn
-    private[this] var bufIn2 : BufI = _   // heightIn
-    private[this] var bufIn3 : BufI = _   // widthOut
-    private[this] var bufIn4 : BufI = _   // heightOut
-    
-    private[this] var bufIn5 : BufD = _   // m00
-    private[this] var bufIn6 : BufD = _   // m10
-    private[this] var bufIn7 : BufD = _   // m01
-    private[this] var bufIn8 : BufD = _   // m11
-    private[this] var bufIn9 : BufD = _   // m02
-    private[this] var bufIn10: BufD = _   // m12
-    private[this] var bufIn11: BufI = _   // wrap
-    private[this] var bufIn12: BufD = _   // rollOff
-    private[this] var bufIn13: BufD = _   // kaiserBeta
-    private[this] var bufIn14: BufI = _   // zeroCrossings
-
-    protected     var bufOut0: BufD = _
-
-    private[this] var _inValid = false
-
-    def inValid: Boolean = _inValid
+    // -------- process ---------
 
     override protected def stopped(): Unit = {
       super.stopped()
-      freeInputBuffers()
-      freeOutputBuffers()
+      winBuf = null
     }
 
-    private def freeInputBuffers(): Unit = {
-      freeMainInBuffers()
-      freeAux1InBuffers()
-      freeAux2InBuffers()
+    protected def mainInAvailable: Int =
+      hIn.available
+
+    protected def outAvailable: Int = {
+      var res = hOut.available
+      if (res == 0) return 0
+
+      def add(i: InAux[_, _]): Unit = {
+        val sz = i.available
+        if (sz < res) res = sz
+      }
+
+      add(hM00); add(hM10); add(hM01); add(hM11); add(hM02); add(hM12)
+      add(hWrap); add(hRollOff); add(hKaiser); add(hZero)
+      res
     }
 
-    // -------- main input ---------
+    protected def isHotIn(inlet: Inlet[_]): Boolean = true
 
-    private[this] var _mainInValid  = false
-    private[this] var _mainCanRead  = false
+    protected def mainInDone: Boolean = hIn .isDone
+    protected def outDone   : Boolean = hOut.isDone
+    protected def flushOut(): Boolean = hOut.flush()
 
-    private def updateMainCanRead(): Unit =
-      _mainCanRead = isAvailable(in0)
+    override protected def onDone(outlet: Outlet[_]): Unit =
+      super.onDone(outlet)
 
-    private def freeMainInBuffers(): Unit =
-      if (bufIn0 != null) {
-        bufIn0.release()
-        bufIn0 = null
-      }
+    protected def tryObtainWinParams(): Boolean = {
+      val ok =
+        hWidthIn  .hasNext &&
+        hHeightIn .hasNext &&
+        hWidthOut .hasNext &&
+        hHeightOut.hasNext
+//        hM00      .hasNext &&
+//        hM10      .hasNext &&
+//        hM01      .hasNext &&
+//        hM11      .hasNext &&
+//        hM02      .hasNext &&
+//        hM12      .hasNext &&
+//        hWrap     .hasNext &&
+//        hRollOff  .hasNext &&
+//        hKaiser   .hasNext &&
+//        hZero     .hasNext
 
-    private def readMainIns(): Int = {
-      freeMainInBuffers()
-      val sh        = shape
-      bufIn0        = grab(sh.in0)
-      bufIn0.assertAllocated()
-      tryPull(sh.in0)
-
-      if (!_mainInValid) {
-        _mainInValid= true
-        _inValid    = _aux1InValid && _aux2InValid
-      }
-
-      _mainCanRead = false
-      bufIn0.size
-    }
-
-    // `in` is regular hot input
-    setHandler(shape.in0, new InHandler {
-      def onPush(): Unit = {
-        logStream(s"onPush(${shape.in0})")
-        updateMainCanRead()
-        if (_mainCanRead) process()
-      }
-
-      override def onUpstreamFinish(): Unit = {
-        logStream(s"onUpstreamFinish(${shape.in0})")
-        if (inValid) {
-          process()
-        } // may lead to `flushOut`
-        else {
-          if (!isAvailable(shape.in0)) {
-            logStream(s"Invalid process ${shape.in0}")
-            completeStage()
-          }
-        }
-      }
-    })
-
-    // -------- aux (per window) input ---------
-
-    private[this] var _aux1InValid  = false
-    private[this] var _aux1CanRead  = false
-//    private[this] var _aux1Ended    = false
-
-    private def updateAux1CanRead(): Unit = {
-      val sh = shape
-      _aux1CanRead =
-        ((isClosed(sh.in1) && _aux1InValid) || isAvailable(sh.in1)) &&
-        ((isClosed(sh.in2) && _aux1InValid) || isAvailable(sh.in2)) &&
-        ((isClosed(sh.in3) && _aux1InValid) || isAvailable(sh.in3)) &&
-        ((isClosed(sh.in4) && _aux1InValid) || isAvailable(sh.in4))
-    }
-
-//    private def updateAux1Ended(): Unit = {
-//      val sh = shape
-//      _aux1Ended = isClosed(sh.in1) && isClosed(sh.in2) && isClosed(sh.in3) && isClosed(sh.in4)
-//    }
-
-    private def freeAux1InBuffers(): Unit = {
-      if (bufIn1 != null) {
-        bufIn1.release()
-        bufIn1 = null
-      }
-      if (bufIn2 != null) {
-        bufIn2.release()
-        bufIn2 = null
-      }
-      if (bufIn3 != null) {
-        bufIn3.release()
-        bufIn3 = null
-      }
-      if (bufIn4 != null) {
-        bufIn4.release()
-        bufIn4 = null
-      }
-    }
-
-    private def readAux1Ins(): Int = {
-      freeAux1InBuffers()
-      val sh    = shape
-      var sz    = 0
-
-      if (isAvailable(sh.in1)) {
-        bufIn1  = grab(sh.in1)
-        sz      = bufIn1.size
-        tryPull(sh.in1)
-      }
-      if (isAvailable(sh.in2)) {
-        bufIn2  = grab(sh.in2)
-        sz      = max(sz, bufIn2.size)
-        tryPull(sh.in2)
-      }
-      if (isAvailable(sh.in3)) {
-        bufIn3  = grab(sh.in3)
-        sz      = max(sz, bufIn3.size)
-        tryPull(sh.in3)
-      }
-      if (isAvailable(sh.in4)) {
-        bufIn4  = grab(sh.in4)
-        sz      = max(sz, bufIn4.size)
-        tryPull(sh.in4)
-      }
-
-      if (!_aux1InValid) {
-        _aux1InValid  = true
-        _inValid      = _mainInValid && _aux2InValid 
-      }
-
-      _aux1CanRead = false
-      sz
-    }
-    
-    // `widthIn`, `heightIn`, `widthOut`, `heightOut` are per-window auxiliary inputs
-    (1 to 4).foreach { inIdx =>
-      val in = shape.inlets(inIdx)
-      setHandler(in, new InHandler {
-        def onPush(): Unit = {
-          logStream(s"onPush($in)")
-          updateAux1CanRead()
-          if (_aux1CanRead) process()
-        }
-
-        override def onUpstreamFinish(): Unit = {
-          logStream(s"onUpstreamFinish($in)")
-          if (_aux1InValid || isAvailable(in)) {
-            updateAux1CanRead()
-            // updateAux1Ended()
-            if (_aux1CanRead) process()
-          } else {
-            logStream(s"Invalid aux $in")
-            completeStage()
-          }
-        }
-      })
-    }
-
-    // -------- aux (ongoing output) input ---------
-
-    private[this] var _aux2InValid  = false
-    private[this] var _aux2CanRead  = false
-    private[this] var _aux2Ended    = false
-
-    private def updateAux2CanRead(): Unit = {
-      val sh = shape
-      _aux2CanRead =
-        ((isClosed(sh.in5 ) && _aux2InValid) || isAvailable(sh.in5 )) &&
-          ((isClosed(sh.in6 ) && _aux2InValid) || isAvailable(sh.in6 )) &&
-          ((isClosed(sh.in7 ) && _aux2InValid) || isAvailable(sh.in7 )) &&
-          ((isClosed(sh.in8 ) && _aux2InValid) || isAvailable(sh.in8 )) &&
-          ((isClosed(sh.in9 ) && _aux2InValid) || isAvailable(sh.in9 )) &&
-          ((isClosed(sh.in10) && _aux2InValid) || isAvailable(sh.in10)) &&
-          ((isClosed(sh.in11) && _aux2InValid) || isAvailable(sh.in11)) &&
-          ((isClosed(sh.in12) && _aux2InValid) || isAvailable(sh.in12)) &&
-          ((isClosed(sh.in13) && _aux2InValid) || isAvailable(sh.in13)) &&
-          ((isClosed(sh.in14) && _aux2InValid) || isAvailable(sh.in14))
-    }
-
-    private def updateAux2Ended(): Unit = {
-      val sh = shape
-      _aux2Ended =
-        isClosed(sh.in5 ) && isClosed(sh.in6 ) && isClosed(sh.in7 ) && isClosed(sh.in8 ) &&
-        isClosed(sh.in9 ) && isClosed(sh.in10) && isClosed(sh.in11) && isClosed(sh.in12) &&
-        isClosed(sh.in13) && isClosed(sh.in14)
-    }
-
-    private def freeAux2InBuffers(): Unit = {
-      if (bufIn5 != null) {
-        bufIn5.release()
-        bufIn5 = null
-      }
-      if (bufIn6 != null) {
-        bufIn6.release()
-        bufIn6 = null
-      }
-      if (bufIn7 != null) {
-        bufIn7.release()
-        bufIn7 = null
-      }
-      if (bufIn8 != null) {
-        bufIn8.release()
-        bufIn8 = null
-      }
-      if (bufIn9 != null) {
-        bufIn9.release()
-        bufIn9 = null
-      }
-      if (bufIn10 != null) {
-        bufIn10.release()
-        bufIn10 = null
-      }
-      if (bufIn11 != null) {
-        bufIn11.release()
-        bufIn11 = null
-      }
-      if (bufIn12 != null) {
-        bufIn12.release()
-        bufIn12 = null
-      }
-      if (bufIn13 != null) {
-        bufIn13.release()
-        bufIn13 = null
-      }
-      if (bufIn14 != null) {
-        bufIn14.release()
-        bufIn14 = null
-      }
-    }
-
-    private def readAux2Ins(): Int = {
-      freeAux2InBuffers()
-      val sh    = shape
-      var sz    = 0
-
-      if (isAvailable(sh.in5)) {
-        bufIn5  = grab(sh.in5)
-        sz      = bufIn5.size
-        tryPull(sh.in5)
-      }
-      if (isAvailable(sh.in6)) {
-        bufIn6  = grab(sh.in6)
-        sz      = max(sz, bufIn6.size)
-        tryPull(sh.in6)
-      }
-      if (isAvailable(sh.in7)) {
-        bufIn7  = grab(sh.in7)
-        sz      = max(sz, bufIn7.size)
-        tryPull(sh.in7)
-      }
-      if (isAvailable(sh.in8)) {
-        bufIn8  = grab(sh.in8)
-        sz      = max(sz, bufIn8.size)
-        tryPull(sh.in8)
-      }
-      if (isAvailable(sh.in9)) {
-        bufIn9  = grab(sh.in9)
-        sz      = max(sz, bufIn9.size)
-        tryPull(sh.in9)
-      }
-      if (isAvailable(sh.in10)) {
-        bufIn10 = grab(sh.in10)
-        sz      = max(sz, bufIn10.size)
-        tryPull(sh.in10)
-      }
-      if (isAvailable(sh.in11)) {
-        bufIn11 = grab(sh.in11)
-        sz      = max(sz, bufIn11.size)
-        tryPull(sh.in11)
-      }
-      if (isAvailable(sh.in12)) {
-        bufIn12 = grab(sh.in12)
-        sz      = max(sz, bufIn12.size)
-        tryPull(sh.in12)
-      }
-      if (isAvailable(sh.in13)) {
-        bufIn13 = grab(sh.in13)
-        sz      = max(sz, bufIn13.size)
-        tryPull(sh.in13)
-      }
-      if (isAvailable(sh.in14)) {
-        bufIn14 = grab(sh.in14)
-        sz      = max(sz, bufIn14.size)
-        tryPull(sh.in14)
-      }
-
-      if (!_aux2InValid) {
-        _aux2InValid  = true
-        _inValid      = _mainInValid && _aux1InValid
-      }
-
-      _aux2CanRead = false
-      sz
-    }
-
-    // the matrix and filter inputs are output driven
-    (5 to 14).foreach { inIdx =>
-      val in = shape.inlets(inIdx)
-      setHandler(in, new InHandler {
-        def onPush(): Unit = {
-          logStream(s"onPush($in)")
-          updateAux2CanRead()
-          if (_aux2CanRead) process()
-        }
-
-        override def onUpstreamFinish(): Unit = {
-          logStream(s"onUpstreamFinish($in)")
-          if (_aux2InValid || isAvailable(in)) {
-            updateAux2CanRead()
-            updateAux2Ended()
-            if (_aux2CanRead) process()
-          } else {
-            logStream(s"Invalid aux $in")
-            completeStage()
-          }
-        }
-      })
-    }
-
-    // -------- output ---------
-
-    protected def freeOutputBuffers(): Unit =
-      if (bufOut0 != null) {
-        bufOut0.release()
-        bufOut0 = null
-      }
-
-    // -------- output ---------
-    new ProcessOutHandlerImpl(shape.out, this)
-
-    // -------- process ---------
-
-    @inline
-    private[this] def mainShouldRead = _mainInRemain == 0 && _mainCanRead
-
-    @inline
-    private[this] def aux1ShouldRead = aux1InRemain == 0 && _aux1CanRead
-
-    @inline
-    private[this] def aux2ShouldRead = aux2InRemain == 0 && _aux2CanRead
-
-    @inline
-    private[this] def shouldComplete = inputsEnded && writeToWinOff == 0 && readFromWinRemain == 0
-
-    @tailrec
-    def process(): Unit = {
-      logStream(s"process() $this")
-      var stateChange = false
-
-      if (mainShouldRead) {
-        _mainInRemain = readMainIns()
-        mainInOff     = 0
-        stateChange   = true
-      }
-
-      if (aux1ShouldRead) {
-        aux1InRemain  = readAux1Ins()
-        aux1InOff     = 0
-        stateChange   = true
-      }
-
-      if (aux2ShouldRead) {
-        aux2InRemain  = readAux2Ins()
-        aux2InOff     = 0
-        stateChange   = true
-      }
-
-      if (outSent) {
-        outRemain     = allocOutputBuffers()
-        outOff        = 0
-        outSent       = false
-        stateChange   = true
-      }
-
-      if (inValid && processChunk()) stateChange = true
-
-      val flushOut = shouldComplete
-      if (!outSent && (outRemain == 0 || flushOut) && canWrite) {
-        writeOuts(outOff)
-        outSent     = true
-        stateChange = true
-      }
-
-      if (flushOut && outSent) {
-        logStream(s"completeStage() $this")
-        completeStage()
-      }
-      else if (stateChange) process()
-    }
-
-    @inline
-    private[this] def canWriteToWindow  = readFromWinRemain == 0 && inValid
-
-    @inline
-    private[this] def canReadFromWindow = readFromWinRemain > 0
-
-    private def processChunk(): Boolean = {
-      var stateChange = false
-
-      if (canWriteToWindow) {
-        val flushIn0 = inputsEnded // inRemain == 0 && shouldComplete()
-        if (isNextWindow && !flushIn0) {
-          writeToWinRemain  = startNextWindow()
-          isNextWindow      = false
-          stateChange       = true
-          aux1InOff        += 1
-          aux1InRemain     -= 1
-          // logStream(s"startNextWindow(); writeToWinRemain = $writeToWinRemain")
-        }
-
-        val chunk     = min(writeToWinRemain, _mainInRemain)
-        val flushIn   = flushIn0 && writeToWinOff > 0
-        if (chunk > 0 || flushIn) {
-          // logStream(s"writeToWindow(); inOff = $inOff, writeToWinOff = $writeToWinOff, chunk = $chunk")
-          if (chunk > 0) {
-            copyInputToWindow(writeToWinOff = writeToWinOff, chunk = chunk, isFlush = flushIn)
-            mainInOff        += chunk
-            _mainInRemain    -= chunk
-            writeToWinOff    += chunk
-            writeToWinRemain -= chunk
-            stateChange       = true
-          }
-
-          if (writeToWinRemain == 0 || flushIn) {
-            // readFromWinRemain = processWindow(writeToWinOff = writeToWinOff)
-            readFromWinRemain = widthOut * heightOut
-            writeToWinOff     = 0
-            readFromWinOff    = 0
-            // isNextWindow      = true
-            stateChange       = true
-            // auxInOff         += 1
-            // auxInRemain      -= 1
-            // logStream(s"processWindow(); readFromWinRemain = $readFromWinRemain")
-          }
-        }
-      }
-
-      if (canReadFromWindow) {
-        val chunk0  = min(readFromWinRemain, outRemain)
-        val chunk1  = min(chunk0, aux2InRemain)
-        val chunk   = if (_aux2Ended) chunk0 else chunk1
-        if (chunk > 0) {
-          // logStream(s"readFromWindow(); readFromWinOff = $readFromWinOff, outOff = $outOff, chunk = $chunk")
-          processWindowToOutput(imgOutOff = readFromWinOff, outOff = outOff, chunk = chunk)
-          readFromWinOff    += chunk
-          readFromWinRemain -= chunk
-          outOff            += chunk
-          outRemain         -= chunk
-          aux2InOff         += chunk1
-          aux2InRemain      -= chunk1
-          if (readFromWinRemain == 0) {
-            isNextWindow     = true
-          }
-          stateChange        = true
-        }
-      }
-
-      stateChange
-    }
-
-    private def startNextWindow(): Int = {
-      var newImageIn  = false
-      val inOff       = aux1InOff
-      if (bufIn1 != null && inOff < bufIn1.size) {
-        val value = max(1, bufIn1.buf(inOff))
-        if (widthIn != value) {
-          widthIn     = value
+      if (ok) {
+        var newImageIn = false
+        val _widthIn = hWidthIn.next()
+        if (widthIn != _widthIn) {
+          widthIn     = _widthIn
           newImageIn  = true
         }
-      }
-      if (bufIn2 != null && inOff < bufIn2.size) {
-        val value = max(1, bufIn2.buf(inOff))
-        if (heightIn != value) {
-          heightIn    = value
+        val _heightIn = hHeightIn.next()
+        if (heightIn != _heightIn) {
+          heightIn    = _heightIn
           newImageIn  = true
         }
+        val _widthOut = hWidthOut.next()
+        widthOut  = if (_widthOut   == 0) _widthIn  else _widthOut
+        val _heightOut = hHeightOut.next()
+        heightOut = if (_heightOut  == 0) _heightIn else _heightOut
+        if (newImageIn) {
+          winBuf = new Array[Double](_widthIn * _heightIn)
+        }
+
+//        // the following are aux inputs that are polled during window
+//        // processing. by calling `peek` we ensure that ... NO
+//        hM00.peek
       }
-      if (bufIn3 != null && inOff < bufIn3.size) {
-        val _widthOut = max(0, bufIn3.buf(inOff))
-        widthOut = if (_widthOut == 0) widthIn else _widthOut
-      }
-      if (bufIn4 != null && inOff < bufIn4.size) {
-        val _heightOut = max(0, bufIn4.buf(inOff))
-        heightOut = if (_heightOut == 0) heightIn else _heightOut
-      }
-      if (newImageIn) {
-        winBuf = new Array[Double](widthIn * heightIn)
-      }
-      winBuf.length
+      ok
     }
 
-    private def copyInputToWindow(writeToWinOff: Int, chunk: Int, isFlush: Boolean): Unit = {
-      Util.copy(bufIn0.buf, mainInOff, winBuf, writeToWinOff, chunk)
-      if (isFlush) {
-        val off1 = writeToWinOff + chunk
-        Util.clear(winBuf, off1, winBuf.length - off1)
+    protected def readWinSize : Long = widthIn  * heightIn
+    protected def writeWinSize: Long = widthOut * heightOut
+
+    protected def processWindow(): Unit = {
+      val offI  = readOff.toInt
+      val chunk = winBuf.length - offI
+      if (chunk > 0) {
+        Util.clear(winBuf, offI, chunk)
       }
     }
+
+    protected def readIntoWindow(chunk: Int): Unit =
+      hIn.nextN(winBuf, readOff.toInt, chunk)
 
     private[this] var mi00   = 0.0
     private[this] var mi10   = 0.0
@@ -664,7 +212,6 @@ object AffineTransform2D {
     private[this] var rollOff       = -1.0  // must be negative for init detection
     private[this] var kaiserBeta    = -1.0
     private[this] var zeroCrossings = -1
-    private[this] var wrapBounds    = false
 
     private[this] var fltLenH     : Int           = _
     private[this] var fltBuf      : Array[Double] = _
@@ -699,19 +246,18 @@ object AffineTransform2D {
     private[this] var xFactor = 0.0
     private[this] var yFactor = 0.0
 
-    private def processWindowToOutput(imgOutOff: Int, outOff: Int, chunk: Int): Unit = {
-      var outOffI     = outOff
-      val outStop     = outOffI + chunk
-      val out         = bufOut0.buf
+    protected def writeFromWindow(chunk: Int): Unit = {
+      val out         = hOut.array
+      var outOff      = hOut.offset
+      val outStop     = outOff + chunk
       val _widthIn    = widthIn
       val _heightIn   = heightIn
       val _widthOut   = widthOut
-      var _aux2InOff  = aux2InOff
-      var _wrap       = wrapBounds
       val _winBuf     = winBuf
       var newTable    = false
       var newMatrix   = false
 
+      val imgOutOff   = writeOff.toInt
       var x           = imgOutOff % _widthOut
       var y           = imgOutOff / _widthOut
 
@@ -739,79 +285,63 @@ object AffineTransform2D {
 
       matrixChanged()
 
-      while (outOffI < outStop) {
-        if (bufIn5 != null && _aux2InOff < bufIn5.size) {
-          val value = bufIn5.buf(_aux2InOff)
-          if (mi00 != value) {
-            mi00      = value
-            newMatrix = true
-          }
-        }
-        if (bufIn6 != null && _aux2InOff < bufIn6.size) {
-          val value = bufIn6.buf(_aux2InOff)
-          if (mi10 != value) {
-            mi10      = value
-            newMatrix = true
-          }
-        }
-        if (bufIn7 != null && _aux2InOff < bufIn7.size) {
-          val value = bufIn7.buf(_aux2InOff)
-          if (mi01 != value) {
-            mi01      = value
-            newMatrix = true
-          }
-        }
-        if (bufIn8 != null && _aux2InOff < bufIn8.size) {
-          val value = bufIn8.buf(_aux2InOff)
-          if (mi11 != value) {
-            mi11      = value
-            newMatrix = true
-          }
-        }
-        if (bufIn9 != null && _aux2InOff < bufIn9.size) {
-          val value = bufIn9.buf(_aux2InOff)
-          if (mi02 != value) {
-            mi02      = value
-            newMatrix = true
-          }
-        }
-        if (bufIn10 != null && _aux2InOff < bufIn10.size) {
-          val value = bufIn10.buf(_aux2InOff)
-          if (mi12 != value) {
-            mi12      = value
-            newMatrix = true
-          }
+      while (outOff < outStop) {
+        val _mi00 = hM00.next()
+        if (mi00 != _mi00) {
+          mi00      = _mi00
+          newMatrix = true
         }
 
-        if (bufIn11 != null && _aux2InOff < bufIn11.size) {
-          wrapBounds  = bufIn11.buf(_aux2InOff) != 0
-          _wrap       = wrapBounds
+        val _mi10 = hM10.next()
+        if (mi10 != _mi10) {
+          mi10      = _mi10
+          newMatrix = true
         }
 
-        if (bufIn12 != null && _aux2InOff < bufIn12.size) {
-          val newRollOff = max(0.0, min(1.0, bufIn12.buf(_aux2InOff)))
-          if (rollOff != newRollOff) {
-            rollOff   = newRollOff
-            newTable  = true
-          }
+        val _mi01 = hM01.next()
+        if (mi01 != _mi01) {
+          mi01      = _mi01
+          newMatrix = true
         }
 
-        if (bufIn13 != null && _aux2InOff < bufIn13.size) {
-          val newKaiserBeta = max(0.0, bufIn13.buf(_aux2InOff))
-          if (kaiserBeta != newKaiserBeta) {
-            kaiserBeta  = newKaiserBeta
-            newTable    = true
-          }
+        val _mi11 = hM11.next()
+        if (mi11 != _mi11) {
+          mi11      = _mi11
+          newMatrix = true
         }
 
-        if (bufIn14 != null && _aux2InOff < bufIn14.size) {
-          // a value of zero indicates bicubic interpolation,
-          // a value greater than zero indicates band-limited sinc interpolation
-          val newZeroCrossings = max(0, bufIn14.buf(_aux2InOff))
-          if (zeroCrossings != newZeroCrossings) {
-            zeroCrossings = newZeroCrossings
-            newTable      = true
-          }
+        val _mi02 = hM02.next()
+        if (mi02 != _mi02) {
+          mi02      = _mi02
+          newMatrix = true
+        }
+
+        val _mi12 = hM12.next()
+        if (mi12 != _mi12) {
+          mi12      = _mi12
+          newMatrix = true
+        }
+
+        val _wrap = hWrap.next() > 0
+
+        val _rollOff = hRollOff.next()
+        if (rollOff != _rollOff) {
+          rollOff   = _rollOff
+          newTable  = true
+        }
+
+        val _kaiserBeta = hKaiser.next()
+        if (kaiserBeta != _kaiserBeta) {
+          kaiserBeta  = _kaiserBeta
+          newTable    = true
+        }
+
+        // a value of zero indicates bicubic interpolation,
+        // a value greater than zero indicates band-limited sinc interpolation
+        val _zeroCrossings = hZero.next()
+        if (zeroCrossings != _zeroCrossings) {
+          zeroCrossings = _zeroCrossings
+          newTable      = true
         }
 
         if (newMatrix) {
@@ -904,7 +434,7 @@ object AffineTransform2D {
             val b3 = bicubic(xq, f03, f13, f23, f33)
             bicubic(yq, b0, b1, b2, b3)
           }
-          out(outOffI) = value
+          out(outOff) = value
         }
         // ------------------------- sinc -------------------------
         else {
@@ -976,17 +506,18 @@ object AffineTransform2D {
           xIter(dir = true )  // left -hand side of window
           xIter(dir = false)  // right-hand side of window
 
-          out(outOffI) = value * xGain * yGain
+          out(outOff) = value * xGain * yGain
         }
 
-        outOffI    += 1
-        _aux2InOff += 1
+        outOff    += 1
         x          += 1
         if (x == _widthOut) {
           x  = 0
           y += 1
         }
       }
+      
+      hOut.advance(chunk)
     }
   }
 }

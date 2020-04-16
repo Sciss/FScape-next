@@ -75,7 +75,7 @@ object AffineDebug {
       val specOut         = ImageFile.Spec(width = kernel, height = kernel, numChannels = 3)
       val tempOutRangeGE0 = Frames(DC(0).take(kernelS * 100))
       val tempOutRangeGE  = if (skipFrames == 0) tempOutRangeGE0 else tempOutRangeGE0 + (skipFrames: GE)
-      val dirOut          = userHome / "Documents" / "temp" / "affine_debug"
+      val dirOut          = file("/") / "data" / "temp" / "affine_debug"
       dirOut.mkdirs()
       val tempOut2        = dirOut / "frame-%d.png"
       ImageFileSeqOut(template = tempOut2, spec = specOut, in = sig, indices = tempOutRangeGE)
