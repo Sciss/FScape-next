@@ -15,7 +15,7 @@ package de.sciss.fscape
 
 import de.sciss.fscape.graph.BinaryOp._
 import de.sciss.fscape.graph.UnaryOp._
-import de.sciss.fscape.graph.{BinaryOp, ChannelProxy, Clip, ComplexBinaryOp, ComplexUnaryOp, Concat, Constant, Differentiate, Distinct, Drop, DropRight, DropWhile, Elastic, FilterSeq, Fold, Indices, Length, MatchLen, Metro, Poll, RunningMax, RunningMin, RunningProduct, RunningSum, Take, TakeRight, TakeWhile, UnaryOp, UnzipWindow, Wrap, Zip}
+import de.sciss.fscape.graph.{BinaryOp, ChannelProxy, Clip, ComplexBinaryOp, ComplexUnaryOp, Concat, Constant, Differentiate, Distinct, Drop, DropRight, DropWhile, Elastic, ExpExp, ExpLin, FilterSeq, Fold, Indices, Length, LinExp, LinLin, MatchLen, Metro, Poll, RunningMax, RunningMin, RunningProduct, RunningSum, Take, TakeRight, TakeWhile, UnaryOp, UnzipWindow, Wrap, Zip}
 import de.sciss.optional.Optional
 
 /** `GEOps1` are operations for graph elements (`GE`). Instead of having these operations directly defined
@@ -377,28 +377,17 @@ final class GEOps2(val `this`: GE) extends AnyVal { me =>
   def fold(low: GE = 0.0, high: GE = 1.0): GE = Fold(g, low, high)
   def wrap(low: GE = 0.0, high: GE = 1.0): GE = Wrap(g, low, high)
 
-  def linLin(inLow: GE, inHigh: GE, outLow: GE, outHigh: GE): GE = {
-    // XXX TODO
-    // LinLin(/* rate, */ g, inLow, inHigh, outLow, outHigh)
-    (g - inLow) / (inHigh - inLow) * (outHigh - outLow) + outLow
-  }
+  def linLin(inLow: GE, inHigh: GE, outLow: GE, outHigh: GE): GE =
+    LinLin(g, inLow, inHigh, outLow, outHigh)
 
-  def linExp(inLow: GE, inHigh: GE, outLow: GE, outHigh: GE): GE = {
-    // XXX TODO
-    // LinExp(g.rate, g, inLow, inHigh, outLow, outHigh) // should be highest rate of all inputs? XXX
-    val outRatio  = outHigh / outLow
-    val outRatioP = BinaryOp.SecondArg.make(g, outRatio)
-    outRatioP.pow((g - inLow) / (inHigh - inLow)) * outLow
-  }
+  def linExp(inLow: GE, inHigh: GE, outLow: GE, outHigh: GE): GE =
+    LinExp(g, inLow, inHigh, outLow, outHigh)
 
   def expLin(inLow: GE, inHigh: GE, outLow: GE, outHigh: GE): GE =
-    (g / inLow).log / (inHigh / inLow).log * (outHigh - outLow) + outLow
+    ExpLin(g, inLow, inHigh, outLow, outHigh)
 
-  def expExp(inLow: GE, inHigh: GE, outLow: GE, outHigh: GE): GE = {
-    val outRatio  = outHigh / outLow
-    val outRatioP = BinaryOp.SecondArg.make(g, outRatio)
-    outRatioP.pow((g / inLow).log / (inHigh / inLow).log) * outLow
-  }
+  def expExp(inLow: GE, inHigh: GE, outLow: GE, outHigh: GE): GE =
+    ExpExp(g, inLow, inHigh, outLow, outHigh)
 
   /** Enables operators for an assumed complex signal. */
   def complex: GEComplexOps = new GEComplexOps(g)

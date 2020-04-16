@@ -153,7 +153,7 @@ object MatrixInMatrix {
       var rowIdx      = rowStart + rowOff
 
       val chunk1      = _colsIn - colOff + (_rowsIn - rowOff - 1) * _colsIn
-      val chunk2      = math.min(chunk, chunk1)
+      val chunk2      = min(chunk, chunk1)
       var rem         = chunk2
       while (rem > 0) {
         // XXX TODO --- implement modes. We wrap around here
