@@ -14,13 +14,14 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.Attributes
+import akka.stream.{Attributes, Outlet}
 import de.sciss.file._
 import de.sciss.fscape.graph.ImageFile.Spec
+import de.sciss.fscape.stream.impl.Handlers.InDMain
 import de.sciss.fscape.stream.impl.shapes.UniformSinkShape
-import de.sciss.fscape.stream.impl.{BlockingGraphStage, ImageFileSingleOutImpl, NodeHasInitImpl, NodeImpl}
+import de.sciss.fscape.stream.impl.{BlockingGraphStage, Handlers, ImageFileSingleOutImpl, NodeImpl}
 
-import scala.collection.immutable.{IndexedSeq => Vec, Seq => ISeq}
+import scala.collection.immutable.{Seq => ISeq}
 
 object ImageFileOut {
   def apply(file: File, spec: Spec, in: ISeq[OutD])(implicit b: Builder): Unit = {
@@ -45,26 +46,22 @@ object ImageFileOut {
   }
 
   private final class Logic(shape: Shp, layer: Layer, f: File, protected val spec: Spec)(implicit ctrl: Control)
-    extends NodeImpl(s"$name(${f.name})", layer, shape)
-    with NodeHasInitImpl with ImageFileSingleOutImpl[Shp] {
+    extends Handlers(s"$name(${f.name})", layer, shape)
+    with ImageFileSingleOutImpl[Shp] {
 
-    protected val inletsImg: Vec[InD] = shape.inlets.toIndexedSeq
+    protected val hImg: Array[InDMain] = shape.inlets.iterator.map(InDMain(this, _)).toArray
 
-    setImageInHandlers()
-
-    protected def specReady: Boolean = true
+    protected def tryObtainSpec(): Boolean = true
 
     protected def numChannels: Int = spec.numChannels
+
+    override protected def onDone(outlet: Outlet[_]): Unit =
+      super.onDone(outlet)
 
     override protected def init(): Unit = {
       super.init()
       initSpec(spec)
       openImage(f)
-    }
-
-    override protected def launch(): Unit = {
-      super.launch()
-      checkImagePushed()
     }
   }
 }

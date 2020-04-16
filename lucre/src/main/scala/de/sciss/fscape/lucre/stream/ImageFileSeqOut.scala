@@ -13,13 +13,13 @@
 
 package de.sciss.fscape.lucre.stream
 
-import akka.stream.Attributes
+import akka.stream.{Attributes, Outlet}
 import de.sciss.file._
 import de.sciss.fscape.lucre.stream.impl.ImageFileOutReadsSpec
+import de.sciss.fscape.stream.impl.Handlers.{InDMain, InIAux, InIMain}
 import de.sciss.fscape.stream.impl.shapes.In6UniformSinkShape
-import de.sciss.fscape.stream.impl.{BlockingGraphStage, ImageFileSeqOutImpl, NodeImpl}
+import de.sciss.fscape.stream.impl.{BlockingGraphStage, Handlers, ImageFileSeqOutImpl, NodeImpl}
 import de.sciss.fscape.stream.{BufD, BufI, Builder, Control, InD, InI, Layer, OutD, OutI}
-import de.sciss.synth.UGenSource.Vec
 
 import scala.collection.immutable.{Seq => ISeq}
 
@@ -66,23 +66,21 @@ object ImageFileSeqOut {
 
   private final class Logic(shape: Shp, layer: Layer, protected val template: File, protected val numChannels: Int)
                            (implicit ctrl: Control)
-    extends NodeImpl(s"$name(${template.name})", layer, shape)
+    extends Handlers(s"$name(${template.name})", layer, shape)
       with ImageFileSeqOutImpl[Shp] with ImageFileOutReadsSpec[Shp] { self =>
 
-    protected val inletsImg   : Vec[InD]  = shape.inlets6.toIndexedSeq
-    protected val inletIndices:     InI   = shape.in5
+    protected val hImg: Array[InDMain] = shape.inlets6.iterator.map(InDMain(this, _)).toArray
 
-    override protected def launch(): Unit = {
-      super.launch()
-      checkImagePushed()
-      checkSpecPushed()
-      checkIndicesPushed()
-    }
+    protected val hWidth        : InIAux  = InIAux(this, shape.in0)()
+    protected val hHeight       : InIAux  = InIAux(this, shape.in1)()
+    protected val hFileType     : InIAux  = InIAux(this, shape.in2)()
+    protected val hSampleFormat : InIAux  = InIAux(this, shape.in3)()
+    protected val hQuality      : InIAux  = InIAux(this, shape.in4)()
+    protected val hIndices      : InIMain = InIMain(this, shape.in5)
 
-    setImageInHandlers()
-    setIndicesHandler()
-    setSpecHandlers(inWidth = shape.in0, inHeight = shape.in1, inType = shape.in2,
-      inFormat = shape.in3, inQuality = shape.in4, fileOrTemplate = template)
+    protected def fileOrTemplate: File = template
 
+    override protected def onDone(outlet: Outlet[_]): Unit =
+      super.onDone(outlet)
   }
 }

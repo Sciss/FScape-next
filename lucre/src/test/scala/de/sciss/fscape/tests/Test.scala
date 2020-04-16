@@ -1,8 +1,9 @@
-package de.sciss.fscape
+package de.sciss.fscape.tests
 
 import de.sciss.file._
 import de.sciss.fscape.lucre.FScape
 import de.sciss.fscape.stream.Cancelled
+import de.sciss.fscape.{Graph, graph, lucre}
 import de.sciss.lucre.artifact.{Artifact, ArtifactLocation}
 import de.sciss.lucre.expr.IntObj
 import de.sciss.lucre.synth.InMemory

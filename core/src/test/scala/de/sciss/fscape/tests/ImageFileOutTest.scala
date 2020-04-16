@@ -1,10 +1,7 @@
 package de.sciss.fscape.tests
 
 import de.sciss.file._
-import de.sciss.fscape.gui.SimpleGUI
 import de.sciss.fscape.{GE, Graph, graph, stream}
-
-import scala.swing.Swing
 
 object ImageFileOutTest extends App {
   val width   = 1024
@@ -30,9 +27,9 @@ object ImageFileOutTest extends App {
 
   ctrl.run(g)
 
-  Swing.onEDT {
-    SimpleGUI(ctrl)
-  }
+//  Swing.onEDT {
+//    SimpleGUI(ctrl)
+//  }
 
   println("Running.")
 }

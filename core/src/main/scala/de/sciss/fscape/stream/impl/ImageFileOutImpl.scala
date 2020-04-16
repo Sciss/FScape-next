@@ -17,51 +17,48 @@ import java.awt.Transparency
 import java.awt.color.ColorSpace
 import java.awt.image.{BandedSampleModel, BufferedImage, ComponentColorModel, DataBuffer, Raster}
 
-import akka.stream.Shape
-import akka.stream.stage.InHandler
+import akka.stream.{Inlet, Shape}
 import de.sciss.file.File
 import de.sciss.fscape.graph.ImageFile
 import de.sciss.fscape.graph.ImageFile.{SampleFormat, Type}
 import de.sciss.fscape.logStream
-import de.sciss.fscape.stream.{BufD, InD}
+import de.sciss.fscape.stream.impl.Handlers.InDMain
+import de.sciss.fscape.stream.impl.logic.WindowedMultiInOut
 import javax.imageio.plugins.jpeg.JPEGImageWriteParam
 import javax.imageio.stream.FileImageOutputStream
 import javax.imageio.{IIOImage, ImageIO, ImageTypeSpecifier, ImageWriteParam, ImageWriter}
 
-import scala.collection.immutable.{IndexedSeq => Vec}
+import scala.math.min
 
 /** Common building block for `ImageFileOut` and `ImageFileSeqOut` */
-trait ImageFileOutImpl[S <: Shape] extends NodeHasInitImpl with InHandler {
-  logic: NodeImpl[S] =>
+trait ImageFileOutImpl[S <: Shape] extends NodeHasInitImpl with WindowedMultiInOut {
+  _: Handlers[S] =>
 
   // ---- abstract ----
 
-  protected def inletsImg: Vec[InD]
-
-  /** Called when all of `inletsImg` are ready. */
-  protected def processImg(): Unit
+  protected def hImg: Array[InDMain]
 
   protected def numChannels: Int
 
   // ---- impl ----
 
-  private[this] val bufImg = new Array[BufD](numChannels)
-
   protected final var numFrames     : Int             = _
   protected final var framesWritten : Int             = _
   protected final var gain          : Double          = _
 
-  private[this] var imagesWritten = 0
-  private[this] var pushed        = 0
+  private[this] var _imagesWritten = 0
 
-  protected final def setImageInHandlers(): Unit =
-    inletsImg.foreach(setHandler(_, this))
+  private[this] var _specReady = false
+
+  protected final def imagesWritten: Int = _imagesWritten
 
   //  private /* [this] */ val resultP = Promise[Long]()
 
+//  protected final def specReady: Boolean = _specReady
+
   protected def initSpec(spec: ImageFile.Spec): Unit = {
     require (numChannels == spec.numChannels)
-    numFrames   = spec.width * spec.height
+    numFrames = spec.width * spec.height
     val (dataType, _gain) = spec.sampleFormat match {
       case SampleFormat.Int8  => DataBuffer.TYPE_BYTE   ->   255.0
       case SampleFormat.Int16 => DataBuffer.TYPE_USHORT -> 65535.0
@@ -96,6 +93,7 @@ trait ImageFileOutImpl[S <: Shape] extends NodeHasInitImpl with InHandler {
       if (!it.hasNext) throw new IllegalArgumentException(s"No image writer for $spec")
       it.next()
     }
+    _specReady = true
   }
 
   // holds one line of pixels
@@ -106,23 +104,40 @@ trait ImageFileOutImpl[S <: Shape] extends NodeHasInitImpl with InHandler {
   private[this] var imgParam: ImageWriteParam = _
   private[this] var writer: ImageWriter = _
 
-  // ---- StageLogic and handlers
+  // ---- by default, assume we are a sink ----
 
-  override def onPush(): Unit = {
-    pushed += 1
-    checkImagePushed()
-  }
+  protected def outAvailable: Int     = Int.MaxValue
+  protected def outDone     : Boolean = throw new UnsupportedOperationException
+  protected def flushOut()  : Boolean = true
 
-  protected final def checkImagePushed(): Unit =
-    if (pushed == numChannels && isInitialized) {
-      pushed = 0
-      processImg()
+  protected def readWinSize : Long    = numFrames
+  protected def writeWinSize: Long    = 0L
+
+  protected def writeFromWindow(n: Int): Unit =
+    throw new UnsupportedOperationException
+
+  protected def mainInAvailable: Int = {
+    val a   = hImg
+    var res = Int.MaxValue
+    var ch  = 0
+    while (ch < a.length) {
+      res = min(res, a(ch).available)
+      ch += 1
     }
-
-  override def onUpstreamFinish(): Unit = {
-    logStream(s"$this - onUpstreamFinish()")
-    super.onUpstreamFinish()
+    res
   }
+
+  protected def mainInDone: Boolean = {
+    val a = hImg
+    var ch = 0
+    while (ch < a.length) {
+      if (a(ch).isDone) return true
+      ch += 1
+    }
+    false
+  }
+
+  protected def isHotIn(inlet: Inlet[_]): Boolean = true
 
   /** Resets `framesWritten`. */
   protected final def openImage(f: File): Unit = {
@@ -134,6 +149,7 @@ trait ImageFileOutImpl[S <: Shape] extends NodeHasInitImpl with InHandler {
   }
 
   override protected def stopped(): Unit = {
+    super.stopped()
     logStream(s"$this - postStop()")
     if (writer != null) {
       closeImage()
@@ -145,14 +161,13 @@ trait ImageFileOutImpl[S <: Shape] extends NodeHasInitImpl with InHandler {
       img.flush()
       img = null
     }
-    freeInputBuffers()
 //    resultP.trySuccess(numFrames.toLong * imagesWritten)
   }
 
   protected final def closeImage(): Unit = if (writer.getOutput != null) {
     try {
       writer.write(null /* meta */ , new IIOImage(img, null /* thumb */ , null /* meta */), imgParam)
-      imagesWritten += 1
+      _imagesWritten += 1
 //    } catch {
 //      case NonFatal(ex) =>
 //        resultP.tryFailure(ex)
@@ -162,31 +177,31 @@ trait ImageFileOutImpl[S <: Shape] extends NodeHasInitImpl with InHandler {
     }
   }
 
-  private def write(x: Int, y: Int, width: Int, offIn: Int): Int = {
+  private def write(x: Int, y: Int, width: Int): Unit = {
     //        println(s"setPixels($x, $y, $width, $height)")
     val r       = img.getRaster
-    val offOut  = offIn + width
     var ch      = 0
     val a       = pixBuf
     val nb      = numChannels
     val g       = gain
     while (ch < nb) {
-      val b = bufImg(ch).buf
-      var i = ch
-      var j = offIn
-      while (j < offOut) {
-        a(i) = b(j) * g
-        i   += nb
-        j   += 1
+      val in    = hImg(ch)
+      val b     = in.array
+      var i     = ch
+      var offIn = in.offset
+      val stop  = offIn + width
+      while (offIn < stop) {
+        a(i)    = b(offIn) * g
+        i      += nb
+        offIn  += 1
       }
+      in.advance(width)
       ch += 1
     }
     r.setPixels(x, y, width, 1, pixBuf)
-
-    offOut
   }
 
-  protected final def processChunk(inOff: Int, chunk: Int): Unit = {
+  protected final def readIntoWindow(chunk: Int): Unit = {
     //      println(s"process(): framesWritten = $framesWritten, numFrames = $numFrames, chunk = $chunk")
 
     val stop  = framesWritten + chunk
@@ -196,24 +211,22 @@ trait ImageFileOutImpl[S <: Shape] extends NodeHasInitImpl with InHandler {
     val x1    = stop          % w
     val y1    = stop          / w
 
-    //      println(s"IMAGE WRITE chunk = $chunk, x0 = $x0, y0 = $y0, x1 = $x1, y1 = $y1")
+    // println(s"IMAGE WRITE chunk = $chunk, x0 = $x0, y0 = $y0, x1 = $x1, y1 = $y1; readOff $readOff / $numFrames")
 
     // first (partial) line
-    var off0 = write(
+    write(
       x       = x0,
       y       = y0,
       width   = (if (y1 == y0) x1 else w) - x0,
-      offIn   = inOff
     )
 
     // middle lines
     var y2 = y0 + 1
     while (y2 < y1) {
-      off0 = write(
+      write(
         x       = 0,
         y       = y2,
         width   = w,
-        offIn   = off0
       )
       y2 += 1
     }
@@ -223,44 +236,8 @@ trait ImageFileOutImpl[S <: Shape] extends NodeHasInitImpl with InHandler {
       x       = 0,
       y       = y1,
       width   = x1,
-      offIn   = off0
     )
 
-    var ch = 0
-    val nb = numChannels
-    while (ch < nb) {
-      bufImg(ch).release()
-      bufImg(ch) = null
-      pull(inletsImg(ch))
-      ch += 1
-    }
-
     framesWritten += chunk
-//    if (framesWritten == numFrames) completeStage()
-  }
-
-  protected final def readImgInlets(): Int = {
-    var ch    = 0
-    var chunk = 0
-    val nb = numChannels
-    while (ch < nb) {
-      val bufIn = grab(inletsImg(ch))
-      bufImg(ch)  = bufIn
-      chunk       = if (ch == 0) bufIn.size else math.min(chunk, bufIn.size)
-      ch += 1
-    }
-    chunk = math.min(chunk, numFrames - framesWritten)
-    chunk
-  }
-
-  protected final def freeInputBuffers(): Unit = {
-    var i = 0
-    while (i < bufImg.length) {
-      if (bufImg(i) != null) {
-        bufImg(i).release()
-        bufImg(i) = null
-      }
-      i += 1
-    }
   }
 }

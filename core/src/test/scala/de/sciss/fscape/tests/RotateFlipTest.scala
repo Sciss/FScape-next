@@ -58,6 +58,7 @@ object RotateFlipTest extends App {
       mk("fy-r90cw"   , FlipY + Rot90CW )  // = transpose
     }
 
+//    mkDim(200, 200)
     mkDim(256, 256)
     mkDim(128, 256)
     mkDim(256, 128)

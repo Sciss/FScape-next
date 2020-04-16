@@ -14,13 +14,14 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.Attributes
+import akka.stream.{Attributes, Outlet}
 import de.sciss.file._
 import de.sciss.fscape.graph.ImageFile.Spec
+import de.sciss.fscape.stream.impl.Handlers.{InDMain, InIMain}
 import de.sciss.fscape.stream.impl.shapes.In1UniformSinkShape
-import de.sciss.fscape.stream.impl.{BlockingGraphStage, ImageFileSeqOutImpl, NodeHasInitImpl, NodeImpl}
+import de.sciss.fscape.stream.impl.{BlockingGraphStage, Handlers, ImageFileSeqOutImpl, NodeImpl}
 
-import scala.collection.immutable.{IndexedSeq => Vec, Seq => ISeq}
+import scala.collection.immutable.{Seq => ISeq}
 
 object ImageFileSeqOut {
   def apply(template: File, spec: Spec, indices: OutI, in: ISeq[OutD])(implicit b: Builder): Unit = {
@@ -50,28 +51,22 @@ object ImageFileSeqOut {
   }
 
   private final class Logic(shape: Shp, layer: Layer, protected val template: File, val spec: Spec)(implicit ctrl: Control)
-    extends NodeImpl(s"$name(${template.name})", layer, shape)
-    with NodeHasInitImpl with ImageFileSeqOutImpl[Shp] { logic =>
+    extends Handlers(s"$name(${template.name})", layer, shape)
+    with ImageFileSeqOutImpl[Shp] { logic =>
 
     protected def numChannels: Int = spec.numChannels
 
-    protected val inletsImg   : Vec[InD]  = shape.inlets1.toIndexedSeq
-    protected val inletIndices:     InI   = shape.in0
+    protected val hImg    : Array[InDMain]  = shape.inlets1.iterator.map(InDMain(this, _)).toArray
+    protected val hIndices: InIMain         = InIMain(this, shape.in0)
 
-    protected def specReady: Boolean = true
+    protected def tryObtainSpec(): Boolean = true
 
     override protected def init(): Unit = {
       super.init()
       initSpec(spec)
     }
 
-    override protected def launch(): Unit = {
-      super.launch()
-      checkImagePushed()
-      checkIndicesPushed()
-    }
-
-    setImageInHandlers()
-    setIndicesHandler()
+    override protected def onDone(outlet: Outlet[_]): Unit =
+      super.onDone(outlet)
   }
 }

@@ -1,4 +1,5 @@
 package de.sciss.fscape
+package tests
 
 import de.sciss.file._
 import de.sciss.filecache.Limit

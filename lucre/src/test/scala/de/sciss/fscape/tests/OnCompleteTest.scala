@@ -1,7 +1,8 @@
-package de.sciss.fscape
+package de.sciss.fscape.tests
 
 import de.sciss.fscape.lucre.FScape
 import de.sciss.fscape.stream.Cancelled
+import de.sciss.fscape.{Graph, graph, lucre}
 import de.sciss.lucre.expr.StringObj
 import de.sciss.lucre.synth.InMemory
 import de.sciss.synth.proc

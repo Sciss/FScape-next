@@ -94,7 +94,7 @@ trait WindowedMultiInOut extends Node {
       }
     }
 
-  protected def onDone(outlet : Outlet[_]): Unit =
+  protected def onDone(outlet: Outlet[_]): Unit =
     if (outDone) completeStage()
 
   private def enterStage2(): Unit = {

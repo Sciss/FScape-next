@@ -1,19 +1,20 @@
 package de.sciss.fscape
+package tests
 
 import de.sciss.file._
 import de.sciss.filecache.Limit
 import de.sciss.fscape.lucre.FScape.Output
 import de.sciss.fscape.lucre.{Cache, FScape}
-import de.sciss.lucre.expr.DoubleObj
+import de.sciss.lucre.expr.IntObj
 import de.sciss.lucre.synth.InMemory
-import de.sciss.synth.proc.{GenView, Universe}
+import de.sciss.synth.proc.{AudioCue, GenView, Universe}
 
 import scala.concurrent.stm.Ref
 import scala.util.{Failure, Success}
 
-object DoubleOutputTest extends App {
-  type S                  = InMemory
-  implicit val cursor: S  = InMemory()
+object AudioCueOutputTest extends App {
+  type                  S = InMemory
+  implicit val cursor:  S = InMemory()
 
   FScape.init()
   GenView.addFactory(FScape.genViewFactory())
@@ -27,12 +28,13 @@ object DoubleOutputTest extends App {
       import graph._
       import lucre.graph._
       1.poll(0, label = "rendering")
-      val value = WhiteNoise(100).take(100000000).last
-      MkDouble("out-1", value)
-      MkDouble("out-2", value + 1)
+      val value = WhiteNoise(100).take(44100L * 10)
+      val mx    = RunningMax(value).last
+      MkAudioCue("out-1", value)
+      MkInt     ("out-2", mx   )
     }
-    val out1 = f.outputs.add("out-1", DoubleObj)
-    val out2 = f.outputs.add("out-2", DoubleObj)
+    val out1 = f.outputs.add("out-1", AudioCue.Obj)
+    val out2 = f.outputs.add("out-2", IntObj)
     f.graph() = g
 
     val count = Ref(0)

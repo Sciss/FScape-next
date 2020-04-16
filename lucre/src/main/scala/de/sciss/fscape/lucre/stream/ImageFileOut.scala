@@ -13,14 +13,14 @@
 
 package de.sciss.fscape.lucre.stream
 
-import akka.stream.Attributes
+import akka.stream.{Attributes, Outlet}
 import de.sciss.file._
 import de.sciss.fscape.graph.ImageFile
 import de.sciss.fscape.lucre.stream.impl.ImageFileOutReadsSpec
+import de.sciss.fscape.stream.impl.Handlers.{InDMain, InIAux}
 import de.sciss.fscape.stream.impl.shapes.In5UniformSinkShape
-import de.sciss.fscape.stream.impl.{BlockingGraphStage, ImageFileSingleOutImpl, NodeImpl}
+import de.sciss.fscape.stream.impl.{BlockingGraphStage, Handlers, ImageFileSingleOutImpl, NodeImpl}
 import de.sciss.fscape.stream.{BufD, BufI, Builder, Control, InD, InI, Layer, OutD, OutI}
-import de.sciss.synth.UGenSource.Vec
 
 import scala.collection.immutable.{Seq => ISeq}
 
@@ -62,24 +62,25 @@ object ImageFileOut {
 
   private final class Logic(shape: Shp, layer: Layer, f: File, protected val numChannels: Int)
                            (implicit ctrl: Control)
-    extends NodeImpl(s"$name(${f.name})", layer, shape)
+    extends Handlers(s"$name(${f.name})", layer, shape)
       with ImageFileSingleOutImpl[Shp] with ImageFileOutReadsSpec[Shp] { self =>
 
-    protected val inletsImg: Vec[InD] = shape.inlets5.toIndexedSeq
+    protected val hImg: Array[InDMain] = shape.inlets5.iterator.map(InDMain(this, _)).toArray
 
-    setImageInHandlers()
-    setSpecHandlers(inWidth = shape.in0, inHeight = shape.in1, inType = shape.in2,
-      inFormat = shape.in3, inQuality = shape.in4, fileOrTemplate = f)
+    protected val hWidth        : InIAux = InIAux(this, shape.in0)()
+    protected val hHeight       : InIAux = InIAux(this, shape.in1)()
+    protected val hFileType     : InIAux = InIAux(this, shape.in2)()
+    protected val hSampleFormat : InIAux = InIAux(this, shape.in3)()
+    protected val hQuality      : InIAux = InIAux(this, shape.in4)()
+
+    protected def fileOrTemplate: File = f
 
     override protected def initSpec(spec: ImageFile.Spec): Unit = {
       super.initSpec(spec)
-      openImage(f)
+      openImage(fileOrTemplate)
     }
 
-    override protected def launch(): Unit = {
-      super.launch()
-      checkImagePushed()
-      checkSpecPushed()
-    }
+    override protected def onDone(outlet: Outlet[_]): Unit =
+      super.onDone(outlet)
   }
 }
