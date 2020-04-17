@@ -19,7 +19,7 @@ import de.sciss.fscape.stream.impl.Handlers.{InDAux, InDMain, InIAux, OutDMain}
 import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
 
 import scala.annotation.tailrec
-import scala.math.min
+import scala.math.{max, min}
 
 object Bleach {
   def apply(in: OutD, filterLen: OutI, feedback: OutD, filterClip: OutD)(implicit b: Builder): OutD = {
@@ -52,7 +52,7 @@ object Bleach {
     extends Handlers(name, layer, shape) {
 
     private[this] val hIn       = InDMain  (this, shape.in0)
-    private[this] val hFltLen   = InIAux   (this, shape.in1)(math.max(1, _))
+    private[this] val hFltLen   = InIAux   (this, shape.in1)(max(1, _))
     private[this] val hFeedback = InDAux   (this, shape.in2)()
     private[this] val hClip     = InDAux   (this, shape.in3)()
     private[this] val hOut      = OutDMain (this, shape.out)
@@ -60,7 +60,7 @@ object Bleach {
     private[this] var y1          = 0.0
 
     private[this] var kernel: Array[Double] = _
-    private[this] var filterLen   = 0
+    private[this] var filterLen   = -1
 
     private[this] var winBuf: Array[Double] = _   // circular
     private[this] var winIdx      = 0
@@ -95,6 +95,8 @@ object Bleach {
       var _winBuf   = winBuf
       var _winIdx   = winIdx
       var _y1       = y1
+      val out       = hOut.array
+      var outOff    = hOut.offset
 
       var k = 0
       while (k < rem) {
@@ -110,28 +112,26 @@ object Bleach {
 
         val _feedback = hFeedback .next()
         val _fltClip  = hClip     .next()
+        val _fltClipN = -_fltClip
 
         // grab last input sample
         val x0    = hIn.next()
-
-//        if (FRAMES_DONE >= START_FRAME && FRAMES_DONE < STOP_FRAME) {
-//          println(s"---- frame $FRAMES_DONE")
-//          val TMP_BUF = Vector.tabulate(8)(i => _winBuf((_winIdx + i) % _fltLen).toFloat)
-//          println(s"buf ${TMP_BUF.mkString(", ")}")
-//          println(s"flt ${_kernel.take(8).mkString(", ")}")
-//        }
+        // update window buffer (last element in the circular buffer)
+        _winBuf(if (_winIdx > 0) _winIdx - 1 else _fltLen - 1) = x0
 
         // calculate output sample
         var i       = 0
         var j       = _winIdx
         var y0      = 0.0
         while (i < _fltLen) {
+          if (j == _fltLen) j = 0
           y0     += _kernel(i) * _winBuf(j)
           i      += 1
-          j       = (j + 1) % _fltLen
+          j      += 1
         }
 
-        hOut.next(y0)
+        out(outOff) = y0
+        outOff += 1
 
         // update kernel
         i           = 0
@@ -139,28 +139,20 @@ object Bleach {
         val errNeg  = x0 - y0
         val weight  = errNeg * _feedback
         while (i < _fltLen) {
+          if (j == _fltLen) j = 0
           val f   = _kernel(i) + weight * _winBuf(j)
-          _kernel(i) = math.max(-_fltClip, math.min(_fltClip, f))
+          _kernel(i) = max(_fltClipN, min(_fltClip, f))
           i      += 1
-          j       = (j + 1) % _fltLen
+          j      += 1
         }
 
-//        if (FRAMES_DONE >= START_FRAME && FRAMES_DONE < STOP_FRAME) {
-//          println(s"in ${x0.toFloat}")
-//          println(s"out ${y0.toFloat}")
-//          println("w " + weight)
-//          println(s"upd ${_kernel.take(8).mkString(", ")}")
-//        }
-//        FRAMES_DONE += 1
+        _winIdx = (_winIdx + 1) % _fltLen
 
-        // update window buffer (last element in the circular buffer)
-        _winBuf(_winIdx) = x0
-        _winIdx   = (_winIdx + 1) % _fltLen
-
-        _y1       = y0
+        _y1 = y0
 
         k += 1
       }
+      hOut.advance(rem)
       winIdx      = _winIdx
       y1          = _y1
 

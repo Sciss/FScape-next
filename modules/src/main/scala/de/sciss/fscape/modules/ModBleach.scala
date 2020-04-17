@@ -20,6 +20,7 @@ import de.sciss.synth.proc.Widget
 
 import scala.Predef.{any2stringadd => _}
 
+// XXX TODO should flip order in two-way order (first backward then forward) to match FScape-classic behaviour
 object ModBleach extends Module {
   val name = "Bleach"
 

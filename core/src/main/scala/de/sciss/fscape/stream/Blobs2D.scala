@@ -404,7 +404,7 @@ object Blobs2D {
 
     override protected def onDone(outlet: Outlet[_]): Unit = {
       if (stage == 2) {
-        val oldRem = writeRem
+        // val oldRem = writeRem
         if (outlet == hOutVertices.outlet) {
           writeRem -= writeRemVertices
           writeRemVertices = 0
