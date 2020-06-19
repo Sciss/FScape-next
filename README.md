@@ -1,7 +1,7 @@
 # FScape-next
 
 [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/Sciss/FScape?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-[![Build Status](https://travis-ci.org/Sciss/FScape-next.svg?branch=master)](https://travis-ci.org/Sciss/FScape-next)
+[![Build Status](https://travis-ci.org/Sciss/FScape-next.svg?branch=main)](https://travis-ci.org/Sciss/FScape-next)
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/de.sciss/fscape_2.13/badge.svg)](https://maven-badges.herokuapp.com/maven-central/de.sciss/fscape_2.13)
 <a href="https://liberapay.com/sciss"><img alt="Donate using Liberapay" src="https://liberapay.com/assets/widgets/donate.svg" height="24"></a>
 
@@ -17,7 +17,7 @@ on how to generate these "standard modules".
 
 FScape(-next) is (C)opyright 2001&ndash;2020 by Hanns Holger Rutz. All rights reserved.
 This program is free software; you can redistribute it and/or modify it under the terms 
-of the [GNU Affero General Public License](https://git.iem.at/sciss/FScape-next/raw/master/LICENSE) v3+.
+of the [GNU Affero General Public License](https://git.iem.at/sciss/FScape-next/raw/main/LICENSE) v3+.
 To contact the author, send an email to `contact at sciss.de`.
 
 FScape contains code adapted from Praat by Paul Boersma and David Weenink, published under the 
@@ -91,7 +91,7 @@ the window size, a dynamic signal could be used instead of the constant.
 
 ## example
 
-The following [program](https://git.iem.at/sciss/FScape-next/blob/master/core/src/test/scala/de/sciss/fscape/ConstQTest.scala)
+The following [program](https://git.iem.at/sciss/FScape-next/blob/main/core/src/test/scala/de/sciss/fscape/ConstQTest.scala)
 reads in a monophonic sound file and outputs a logarithmic gray scale sonogram PNG image:
 
 ```scala
