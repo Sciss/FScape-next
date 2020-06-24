@@ -5,4 +5,4 @@ project/boot/
 .idea/
 .idea_modules/
 /*.mllt
-/FScape-modules.zip
+/FScape-modules*.zip
