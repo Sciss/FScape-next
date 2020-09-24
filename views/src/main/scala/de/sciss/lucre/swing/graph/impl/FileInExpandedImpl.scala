@@ -16,9 +16,9 @@ package de.sciss.lucre.swing.graph.impl
 import de.sciss.desktop
 import de.sciss.desktop.TextFieldWithPaint
 import de.sciss.file.File
+import de.sciss.lucre.Txn
 import de.sciss.lucre.expr.Context
 import de.sciss.lucre.expr.graph.Ex
-import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.swing.LucreSwing.deferTx
 import de.sciss.lucre.swing.graph.{AudioFileIn, PathField}
 import de.sciss.lucre.swing.impl.ComponentHolder
@@ -28,20 +28,20 @@ import scala.swing.event.ValueChanged
 import scala.swing.{Orientation, SequentialContainer, Swing}
 import scala.util.control.NonFatal
 
-trait FileInExpandedImpl[S <: Sys[S]]
-  extends View[S] with ComponentHolder[PanelWithPathField] with ComponentExpandedImpl[S] {
+trait FileInExpandedImpl[T <: Txn[T]]
+  extends View[T] with ComponentHolder[PanelWithPathField] with ComponentExpandedImpl[T] {
 
   type C = PanelWithPathField
 
   protected def mkFormat(f: File): String
 
-  override def initComponent()(implicit tx: S#Tx, ctx: Context[S]): this.type = {
-    val valueOpt  = ctx.getProperty[Ex[File   ]](peer, PathField.keyValue).map(_.expand[S].value)
-    val titleOpt  = ctx.getProperty[Ex[String ]](peer, PathField.keyTitle).map(_.expand[S].value)
+  override def initComponent()(implicit tx: T, ctx: Context[T]): this.type = {
+    val valueOpt  = ctx.getProperty[Ex[File   ]](peer, PathField.keyValue).map(_.expand[T].value)
+    val titleOpt  = ctx.getProperty[Ex[String ]](peer, PathField.keyTitle).map(_.expand[T].value)
     val pathVis   = ctx.getProperty[Ex[Boolean]](peer, AudioFileIn.keyPathFieldVisible).fold(
-      AudioFileIn.defaultPathFieldVisible)(_.expand[S].value)
+      AudioFileIn.defaultPathFieldVisible)(_.expand[T].value)
     val fmtVis    = ctx.getProperty[Ex[Boolean]](peer, AudioFileIn.keyFormatVisible).fold(
-      AudioFileIn.defaultFormatVisible)(_.expand[S].value)
+      AudioFileIn.defaultFormatVisible)(_.expand[T].value)
 
     deferTx {
       val c: C = new PanelWithPathField with SequentialContainer.Wrapper  {

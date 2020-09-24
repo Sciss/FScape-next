@@ -14,7 +14,7 @@
 package de.sciss.fscape.modules
 
 import de.sciss.fscape.lucre.FScape
-import de.sciss.lucre.stm.Sys
+import de.sciss.lucre.Txn
 import de.sciss.synth.proc.Widget
 
 trait Module {
@@ -22,7 +22,7 @@ trait Module {
 
   def name: String
 
-  def apply[S <: Sys[S]]()(implicit tx: S#Tx): FScape[S]
+  def apply[T <: Txn[T]]()(implicit tx: T): FScape[T]
 
-  def ui[S <: Sys[S]]()(implicit tx: S#Tx): Widget[S]
+  def ui[T <: Txn[T]]()(implicit tx: T): Widget[T]
 }

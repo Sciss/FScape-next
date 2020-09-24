@@ -101,7 +101,7 @@ final case class WPE_Dereverberate(in: GE, fftSize: GE = 512, winStep: GE = 128,
 //    Plot1D(psd1, bins * T, "psd1")
     val psd3    = TransposeMatrix(psd2, columns = bins, rows = T)
 //    Plot1D(psd2, bins * T, "psd")
-    val psd4    = ReduceWindow.+(psd3, size = T) / (T  * numCh)
+    val psd4    = ReduceWindow.plus(psd3, size = T) / (T  * numCh)
     val psd = DC(0.0).take(bins * (taps + delay)) ++ psd4
 //    Sheet1D(psd3, bins) // OK
 //    Plot1D(psd3, bins)

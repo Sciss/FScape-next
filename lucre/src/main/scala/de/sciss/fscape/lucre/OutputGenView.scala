@@ -17,14 +17,14 @@ package lucre
 import de.sciss.fscape.lucre.FScape.{Output, Rendering}
 import de.sciss.fscape.lucre.impl.{OutputGenViewImpl => Impl}
 import de.sciss.fscape.stream.Control
-import de.sciss.lucre.stm.Sys
+import de.sciss.lucre.Txn
 import de.sciss.synth.proc.{GenContext, GenView}
 
 object OutputGenView {
-  def apply[S <: Sys[S]](config: Control.Config, output: Output[S], rendering: Rendering[S])
-                        (implicit tx: S#Tx, context: GenContext[S]): OutputGenView[S] =
+  def apply[T <: Txn[T]](config: Control.Config, output: Output[T], rendering: Rendering[T])
+                        (implicit tx: T, context: GenContext[T]): OutputGenView[T] =
     Impl(config, output, rendering)
 }
-trait OutputGenView[S <: Sys[S]] extends GenView[S] {
-  def output(implicit tx: S#Tx): Output[S]
+trait OutputGenView[T <: Txn[T]] extends GenView[T] {
+  def output(implicit tx: T): Output[T]
 }

@@ -17,7 +17,7 @@ package graph
 import java.io.{FileNotFoundException, IOException}
 
 import de.sciss.file.File
-import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer}
+import de.sciss.serial.{DataInput, DataOutput, ConstFormat}
 import javax.imageio.ImageIO
 
 import scala.annotation.switch
@@ -112,7 +112,7 @@ object ImageFile {
   }
 
   object Spec {
-    implicit object Serializer extends ImmutableSerializer[Spec] {
+    implicit object format extends ConstFormat[Spec] {
       def write(v: Spec, out: DataOutput): Unit = {
         import v._
         out.writeInt(fileType    .id)

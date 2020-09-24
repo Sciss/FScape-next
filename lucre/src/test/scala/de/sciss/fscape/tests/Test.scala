@@ -4,8 +4,8 @@ import de.sciss.file._
 import de.sciss.fscape.lucre.FScape
 import de.sciss.fscape.stream.Cancelled
 import de.sciss.fscape.{Graph, graph, lucre}
-import de.sciss.lucre.artifact.{Artifact, ArtifactLocation}
-import de.sciss.lucre.expr.IntObj
+import de.sciss.lucre.{Artifact, ArtifactLocation}
+import de.sciss.lucre.IntObj
 import de.sciss.lucre.synth.InMemory
 import de.sciss.synth.io.AudioFile
 import de.sciss.synth.proc.Universe
@@ -14,6 +14,7 @@ import scala.util.{Failure, Success}
 
 object Test extends App {
   type S                  = InMemory
+  type T                  = InMemory.Txn
   implicit val cursor: S  = InMemory()
 
 //  val tmp = File.createTemp()
@@ -22,7 +23,7 @@ object Test extends App {
   val tmpF    = tmpDir / "test.aif"
 
   val fH = cursor.step { implicit tx =>
-    val f = FScape[S]
+    val f = FScape[T]
     val g = Graph {
       import graph.{AudioFileOut => _, _}
       import lucre.graph._
@@ -37,7 +38,7 @@ object Test extends App {
       // AudioFileOut(file = tmpF, spec = AudioFileSpec(numChannels = 1, sampleRate = sr), in = sig)
       AudioFileOut("file", in = sig, sampleRate = sr)
     }
-    val loc = ArtifactLocation.newConst[S](tmpDir)
+    val loc = ArtifactLocation.newConst[T](tmpDir)
     f.attr.put("file", Artifact(loc, tmpF))
     f.attr.put("freq", IntObj.newConst(441))
     f.graph() = g
@@ -46,7 +47,7 @@ object Test extends App {
 
   cursor.step { implicit tx =>
     val f = fH()
-    implicit val universe: Universe[S] = Universe.dummy
+    implicit val universe: Universe[T] = Universe.dummy
     val r = f.run()
     r.reactNow { implicit tx => state =>
       println(s"Rendering: $state")

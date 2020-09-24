@@ -16,19 +16,20 @@ import scala.util.{Failure, Success}
   */
 object ActionTest extends App {
   type S                  = InMemory
+  type T                  = InMemory.Txn
   implicit val cursor: S  = InMemory()
 
-  var r: FScape.Rendering[S] = _
+  var r: FScape.Rendering[T] = _
 
   val fH = cursor.step { implicit tx =>
-    val a = proc.Action[S]()
+    val a = proc.Action[T]()
     a.graph() = proc.Action.Graph {
       import de.sciss.lucre.expr.graph._
       PrintLn("Bang!")
       // r.cancel()(stx)
     }
 
-    val f = FScape[S]()
+    val f = FScape[T]()
     val g = Graph {
       import graph.{AudioFileOut => _, _}
       import lucre.graph._
@@ -43,7 +44,7 @@ object ActionTest extends App {
 
   cursor.step { implicit tx =>
     val f = fH()
-    implicit val universe: Universe[S] = Universe.dummy
+    implicit val universe: Universe[T] = Universe.dummy
     r = f.run()
     r.reactNow { implicit tx => state =>
       println(s"Rendering: $state")

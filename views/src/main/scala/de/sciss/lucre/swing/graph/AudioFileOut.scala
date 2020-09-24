@@ -14,9 +14,9 @@
 package de.sciss.lucre.swing.graph
 
 import de.sciss.file.File
+import de.sciss.lucre.{IExpr, Txn}
 import de.sciss.lucre.expr.graph.{Const, Ex}
-import de.sciss.lucre.expr.{Context, IControl, IExpr, Model}
-import de.sciss.lucre.stm.Sys
+import de.sciss.lucre.expr.{Context, IControl, Model}
 import de.sciss.lucre.swing.graph.impl.{AudioFileOutExpandedImpl, ComboBoxIndexExpandedImpl, ComboBoxValueExpandedImpl, ComponentImpl, PathFieldValueExpandedImpl}
 import de.sciss.lucre.swing.{Graph, PanelWithPathField, View}
 import de.sciss.swingplus.{ComboBox => _ComboBox}
@@ -27,113 +27,113 @@ object AudioFileOut {
   def apply(): AudioFileOut = Impl()
 
   final case class Value(w: AudioFileOut) extends Ex[File] {
-    type Repr[S <: Sys[S]] = IExpr[S, File]
+    type Repr[T <: Txn[T]] = IExpr[T, File]
 
     override def productPrefix: String = s"AudioFileOut$$Value" // serialization
 
-    protected def mkRepr[S <: Sys[S]](implicit ctx: Context[S], tx: S#Tx): Repr[S] = {
+    protected def mkRepr[T <: Txn[T]](implicit ctx: Context[T], tx: T): Repr[T] = {
       import ctx.{cursor, targets}
-      val ws        = w.expand[S]
+      val ws        = w.expand[T]
       val valueOpt  = ctx.getProperty[Ex[File]](w, PathField.keyValue)
-      val value0    = valueOpt.fold[File](PathField.defaultValue)(_.expand[S].value)
-      new PathFieldValueExpandedImpl[S](ws.component.pathField, value0).init()
+      val value0    = valueOpt.fold[File](PathField.defaultValue)(_.expand[T].value)
+      new PathFieldValueExpandedImpl[T](ws.component.pathField, value0).init()
     }
   }
 
   final case class FileType(w: AudioFileOut) extends Ex[Int] {
-    type Repr[S <: Sys[S]] = IExpr[S, Int]
+    type Repr[T <: Txn[T]] = IExpr[T, Int]
 
     override def productPrefix: String = s"AudioFileOut$$FileType" // serialization
 
-    protected def mkRepr[S <: Sys[S]](implicit ctx: Context[S], tx: S#Tx): Repr[S] = {
+    protected def mkRepr[T <: Txn[T]](implicit ctx: Context[T], tx: T): Repr[T] = {
       import ctx.{cursor, targets}
-      val ws        = w.expand[S]
+      val ws        = w.expand[T]
       val valueOpt  = ctx.getProperty[Ex[Int]](w, keyFileType)
-      val value0    = valueOpt.fold[Int](defaultFileType)(_.expand[S].value)
-      new ComboBoxIndexExpandedImpl[S, AudioFileType](ws.component.fileTypeComboBox, value0).init()
+      val value0    = valueOpt.fold[Int](defaultFileType)(_.expand[T].value)
+      new ComboBoxIndexExpandedImpl[T, AudioFileType](ws.component.fileTypeComboBox, value0).init()
     }
   }
 
   final case class SampleFormat(w: AudioFileOut) extends Ex[Int] {
-    type Repr[S <: Sys[S]] = IExpr[S, Int]
+    type Repr[T <: Txn[T]] = IExpr[T, Int]
 
     override def productPrefix: String = s"AudioFileOut$$SampleFormat" // serialization
 
-    protected def mkRepr[S <: Sys[S]](implicit ctx: Context[S], tx: S#Tx): Repr[S] = {
+    protected def mkRepr[T <: Txn[T]](implicit ctx: Context[T], tx: T): Repr[T] = {
       import ctx.{cursor, targets}
-      val ws        = w.expand[S]
+      val ws        = w.expand[T]
       val valueOpt  = ctx.getProperty[Ex[Int]](w, keySampleFormat)
-      val value0    = valueOpt.fold[Int](defaultSampleFormat)(_.expand[S].value)
-      new ComboBoxIndexExpandedImpl[S, io.SampleFormat](ws.component.sampleFormatComboBox, value0).init()
+      val value0    = valueOpt.fold[Int](defaultSampleFormat)(_.expand[T].value)
+      new ComboBoxIndexExpandedImpl[T, io.SampleFormat](ws.component.sampleFormatComboBox, value0).init()
     }
   }
 
   final case class SampleRate(w: AudioFileOut) extends Ex[Double] {
-    type Repr[S <: Sys[S]] = IExpr[S, Double]
+    type Repr[T <: Txn[T]] = IExpr[T, Double]
 
     override def productPrefix: String = s"AudioFileOut$$SampleRate" // serialization
 
-    protected def mkRepr[S <: Sys[S]](implicit ctx: Context[S], tx: S#Tx): Repr[S] = {
+    protected def mkRepr[T <: Txn[T]](implicit ctx: Context[T], tx: T): Repr[T] = {
       import ctx.{cursor, targets}
-      val ws        = w.expand[S]
+      val ws        = w.expand[T]
       val valueOpt  = ctx.getProperty[Ex[Double]](w, keySampleRate)
-      val value0    = valueOpt.fold[Double](defaultSampleRate)(_.expand[S].value)
-      new ComboBoxValueExpandedImpl[S, Double](ws.component.sampleRateComboBox, value0).init()
+      val value0    = valueOpt.fold[Double](defaultSampleRate)(_.expand[T].value)
+      new ComboBoxValueExpandedImpl[T, Double](ws.component.sampleRateComboBox, value0).init()
     }
   }
 
   final case class Title(w: AudioFileOut) extends Ex[String] {
-    type Repr[S <: Sys[S]] = IExpr[S, String]
+    type Repr[T <: Txn[T]] = IExpr[T, String]
 
     override def productPrefix: String = s"AudioFileOut$$Title" // serialization
 
-    protected def mkRepr[S <: Sys[S]](implicit ctx: Context[S], tx: S#Tx): Repr[S] = {
+    protected def mkRepr[T <: Txn[T]](implicit ctx: Context[T], tx: T): Repr[T] = {
       val valueOpt = ctx.getProperty[Ex[String]](w, PathField.keyTitle)
-      valueOpt.getOrElse(Const(defaultTitle)).expand[S]
+      valueOpt.getOrElse(Const(defaultTitle)).expand[T]
     }
   }
 
   final case class PathFieldVisible(w: AudioFileOut) extends Ex[Boolean] {
-    type Repr[S <: Sys[S]] = IExpr[S, Boolean]
+    type Repr[T <: Txn[T]] = IExpr[T, Boolean]
 
     override def productPrefix: String = s"AudioFileOut$$PathFieldVisible" // serialization
 
-    protected def mkRepr[S <: Sys[S]](implicit ctx: Context[S], tx: S#Tx): Repr[S] = {
+    protected def mkRepr[T <: Txn[T]](implicit ctx: Context[T], tx: T): Repr[T] = {
       val valueOpt = ctx.getProperty[Ex[Boolean]](w, keyPathFieldVisible)
-      valueOpt.getOrElse(Const(defaultPathFieldVisible)).expand[S]
+      valueOpt.getOrElse(Const(defaultPathFieldVisible)).expand[T]
     }
   }
 
   final case class FileTypeVisible(w: AudioFileOut) extends Ex[Boolean] {
-    type Repr[S <: Sys[S]] = IExpr[S, Boolean]
+    type Repr[T <: Txn[T]] = IExpr[T, Boolean]
 
     override def productPrefix: String = s"AudioFileOut$$FileTypeVisible" // serialization
 
-    protected def mkRepr[S <: Sys[S]](implicit ctx: Context[S], tx: S#Tx): Repr[S] = {
+    protected def mkRepr[T <: Txn[T]](implicit ctx: Context[T], tx: T): Repr[T] = {
       val valueOpt = ctx.getProperty[Ex[Boolean]](w, keyFileTypeVisible)
-      valueOpt.getOrElse(Const(defaultFileTypeVisible)).expand[S]
+      valueOpt.getOrElse(Const(defaultFileTypeVisible)).expand[T]
     }
   }
 
   final case class SampleFormatVisible(w: AudioFileOut) extends Ex[Boolean] {
-    type Repr[S <: Sys[S]] = IExpr[S, Boolean]
+    type Repr[T <: Txn[T]] = IExpr[T, Boolean]
 
     override def productPrefix: String = s"AudioFileOut$$SampleFormatVisible" // serialization
 
-    protected def mkRepr[S <: Sys[S]](implicit ctx: Context[S], tx: S#Tx): Repr[S] = {
+    protected def mkRepr[T <: Txn[T]](implicit ctx: Context[T], tx: T): Repr[T] = {
       val valueOpt = ctx.getProperty[Ex[Boolean]](w, keySampleFormatVisible)
-      valueOpt.getOrElse(Const(defaultSampleFormatVisible)).expand[S]
+      valueOpt.getOrElse(Const(defaultSampleFormatVisible)).expand[T]
     }
   }
 
   final case class SampleRateVisible(w: AudioFileOut) extends Ex[Boolean] {
-    type Repr[S <: Sys[S]] = IExpr[S, Boolean]
+    type Repr[T <: Txn[T]] = IExpr[T, Boolean]
 
     override def productPrefix: String = s"AudioFileOut$$SampleRateVisible" // serialization
 
-    protected def mkRepr[S <: Sys[S]](implicit ctx: Context[S], tx: S#Tx): Repr[S] = {
+    protected def mkRepr[T <: Txn[T]](implicit ctx: Context[T], tx: T): Repr[T] = {
       val valueOpt = ctx.getProperty[Ex[Boolean]](w, keySampleRateVisible)
-      valueOpt.getOrElse(Const(defaultSampleRateVisible)).expand[S]
+      valueOpt.getOrElse(Const(defaultSampleRateVisible)).expand[T]
     }
   }
 
@@ -142,8 +142,8 @@ object AudioFileOut {
 
     override def productPrefix: String = "AudioFileOut" // serialization
 
-    protected def mkRepr[S <: Sys[S]](implicit ctx: Context[S], tx: S#Tx): Repr[S] =
-      new AudioFileOutExpandedImpl[S](this).initComponent()
+    protected def mkRepr[T <: Txn[T]](implicit ctx: Context[T], tx: T): Repr[T] =
+      new AudioFileOutExpandedImpl[T](this).initComponent()
 
     object value extends Model[File] {
       def apply(): Ex[File] = Value(w)
@@ -245,7 +245,7 @@ object AudioFileOut {
 trait AudioFileOut extends Component {
   type C = AudioFileOut.Peer
 
-  type Repr[S <: Sys[S]] = View.T[S, C] with IControl[S]
+  type Repr[T <: Txn[T]] = View.T[T, C] with IControl[T]
 
   var title       : Ex[String]
   def value       : Model[File]

@@ -72,7 +72,7 @@ object MkAudioCue {
         }
 
         def write(out: DataOutput): Unit =
-          AudioCue.serializer.write(outputValue, out)
+          AudioCue.format.write(outputValue, out)
       })
     }
   }

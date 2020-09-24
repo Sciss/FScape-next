@@ -182,14 +182,14 @@ object UGen {
     final case class AudioFileSpec(peer: de.sciss.synth.io.AudioFileSpec) extends Adjunct {
       def write(out: DataOutput): Unit = {
         out.writeByte(10)
-        de.sciss.synth.io.AudioFileSpec.Serializer.write(peer, out)
+        de.sciss.synth.io.AudioFileSpec.format.write(peer, out)
       }
     }
 
     final case class ImageFileSpec(peer: ImageFile.Spec) extends Adjunct {
       def write(out: DataOutput): Unit = {
         out.writeByte(11)
-        ImageFile.Spec.Serializer.write(peer, out)
+        ImageFile.Spec.format.write(peer, out)
       }
     }
   }

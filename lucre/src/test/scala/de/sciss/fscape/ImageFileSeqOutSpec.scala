@@ -3,8 +3,8 @@ package de.sciss.fscape
 import de.sciss.file._
 import de.sciss.fscape.graph.{ImageFile, ImageFileSeqIn}
 import de.sciss.fscape.lucre.FScape
-import de.sciss.lucre.artifact.{Artifact, ArtifactLocation}
-import de.sciss.lucre.stm.store.BerkeleyDB
+import de.sciss.lucre.{Artifact, ArtifactLocation}
+import de.sciss.lucre.store.BerkeleyDB
 import de.sciss.synth.proc.{Durable, SoundProcesses, Universe}
 import org.scalatest.Outcome
 import org.scalatest.flatspec.FixtureAnyFlatSpec
@@ -15,6 +15,7 @@ import scala.concurrent.duration.Duration
 
 class ImageFileSeqOutSpec extends FixtureAnyFlatSpec with Matchers {
   type S = Durable
+  type T = Durable.Txn
   type FixtureParam = S
 
   SoundProcesses.init()
@@ -45,7 +46,7 @@ class ImageFileSeqOutSpec extends FixtureAnyFlatSpec with Matchers {
     val idxSq       = List(1, 2)
 
     val rendering = cursor.step { implicit tx =>
-      val f = FScape[S]
+      val f = FScape[T]
       val g = Graph {
         import graph.{ImageFileOut => _, ImageFileSeqOut => _, _}
         import lucre.graph._
@@ -61,9 +62,9 @@ class ImageFileSeqOutSpec extends FixtureAnyFlatSpec with Matchers {
         // Length(out).poll(0, s"Length should be $fileLen")
       }
       f.graph() = g
-      val art = Artifact[S](ArtifactLocation.newConst(dirOut), tempOut)
+      val art = Artifact[T](ArtifactLocation.newConst(dirOut), tempOut)
       f.attr.put("out", art)
-      implicit val universe: Universe[S] = Universe.dummy
+      implicit val universe: Universe[T] = Universe.dummy
       f.run()
     }
 

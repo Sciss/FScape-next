@@ -3,9 +3,9 @@ package de.sciss.fscape.tests
 import de.sciss.file._
 import de.sciss.fscape.gui.SimpleGUI
 import de.sciss.fscape.stream.Control
-import de.sciss.fscape.{Graph, graph, showStreamLog}
+import de.sciss.fscape.{Graph, graph}
 
-import scala.Predef.{any2stringadd => _, _}
+import scala.Predef.{any2stringadd => _, require}
 import scala.swing.Swing
 
 object AffineTest2 {

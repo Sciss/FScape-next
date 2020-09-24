@@ -15,7 +15,7 @@ package de.sciss.fscape.modules
 
 import de.sciss.fscape.graph.{AudioFileIn => _, AudioFileOut => _, _}
 import de.sciss.fscape.lucre.FScape
-import de.sciss.lucre.stm.Sys
+import de.sciss.lucre.Txn
 import de.sciss.synth.proc.Widget
 
 import scala.Predef.{any2stringadd => _}
@@ -36,10 +36,10 @@ object ModLimiter extends Module {
     * - `"rls-ms"`: limiter release time in milliseconds, with respect to -60 dB point
     * - `"sync-chans"`: whether to synchronise limiter gain control across input channels (1) or not (0)
     */
-  def apply[S <: Sys[S]]()(implicit tx: S#Tx): FScape[S] = {
+  def apply[T <: Txn[T]]()(implicit tx: T): FScape[T] = {
     import de.sciss.fscape.lucre.graph.Ops._
     import de.sciss.fscape.lucre.graph._
-    val f = FScape[S]()
+    val f = FScape[T]()
     import de.sciss.fscape.lucre.MacroImplicits._
     f.setGraph {
       // version: 03-Apr-2019
@@ -73,11 +73,11 @@ object ModLimiter extends Module {
     f
   }
 
-  def ui[S <: Sys[S]]()(implicit tx: S#Tx): Widget[S] = {
+  def ui[T <: Txn[T]]()(implicit tx: T): Widget[T] = {
     import de.sciss.lucre.expr.ExImport._
     import de.sciss.lucre.expr.graph._
     import de.sciss.lucre.swing.graph._
-    val w = Widget[S]()
+    val w = Widget[T]()
     import de.sciss.synth.proc.MacroImplicits._
     w.setGraph {
       // version: 02-Apr-2019

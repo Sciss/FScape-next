@@ -20,7 +20,7 @@ import de.sciss.fscape.lucre.UGenGraphBuilder.OutputRef
 import de.sciss.fscape.stream.impl.Handlers.InIMain
 import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
 import de.sciss.fscape.stream.{Builder, Control, _}
-import de.sciss.lucre.expr.IntVector
+import de.sciss.lucre.IntVector
 import de.sciss.serial.DataOutput
 
 import scala.annotation.tailrec
@@ -62,7 +62,7 @@ object MkIntVector {
         override val outputValue: Vec[A] = v
 
         def write(out: DataOutput): Unit =
-          IntVector.valueSerializer.write(outputValue, out)
+          IntVector.valueFormat.write(outputValue, out)
       })
       completeStage()
     }

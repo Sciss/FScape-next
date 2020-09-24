@@ -21,27 +21,27 @@ import de.sciss.fscape.graph.{ConstantD, ConstantI, ConstantL}
 import de.sciss.fscape.lucre.FScape.Output
 import de.sciss.fscape.lucre.UGenGraphBuilder.{Complete, Context, IO, Incomplete, Input, Key, MissingIn, OutputRef, OutputResult, State}
 import de.sciss.fscape.stream.Control
-import de.sciss.lucre.stm.Sys
+import de.sciss.lucre.Txn
 import de.sciss.serial.DataOutput
 
-trait AbstractUGenGraphBuilder[S <: Sys[S]]
-  extends UGenGraph.Basic with UGenGraphBuilder with IO[S] { builder =>
+trait AbstractUGenGraphBuilder[T <: Txn[T]]
+  extends UGenGraph.Basic with UGenGraphBuilder with IO[T] { builder =>
 
   // ---- abstract ----
 
-  protected def context: Context[S]
+  protected def context: Context[T]
 
-  protected def requestOutputImpl(reader: Output.Reader): Option[OutputResult[S]]
+  protected def requestOutputImpl(reader: Output.Reader): Option[OutputResult[T]]
 
   // ---- impl ----
 
   private[this] var _acceptedInputs   = Map.empty[Key, Map[Input, Input#Value]]
-  private[this] var _outputs          = List.empty[OutputResult[S]] // in reverse order here
+  private[this] var _outputs          = List.empty[OutputResult[T]] // in reverse order here
 
   final def acceptedInputs: Map[Key, Map[Input, Input#Value]] = _acceptedInputs
-  final def outputs       : List[OutputResult[S]]             = _outputs
+  final def outputs       : List[OutputResult[T]]             = _outputs
 
-  private[this] var tx: S#Tx = _
+  private[this] var tx: T = _
 
   final def requestInput(req: Input): req.Value = {
     // we pass in `this` and not `in`, because that way the context
@@ -63,18 +63,18 @@ trait AbstractUGenGraphBuilder[S <: Sys[S]]
     res
   }
 
-  final def tryBuild(g: Graph)(implicit tx: S#Tx, ctrl: Control): State[S] = {
+  final def tryBuild(g: Graph)(implicit tx: T, ctrl: Control): State[T] = {
     this.tx = tx
     expandNested(g)
     tryBuild()
   }
 
-  private def tryBuild()(implicit ctrl: Control): State[S] =
+  private def tryBuild()(implicit ctrl: Control): State[T] =
     try {
       val iUGens = indexUGens()
-      new Complete[S] {
+      new Complete[T] {
         private def calcStructure(): Long = {
-          // val t1 = System.currentTimeMillis()
+          // val t1 = Txntem.currentTimeMillis()
           var idx = 0
           val out = DataOutput()
           out.writeInt(iUGens.size)
@@ -121,7 +121,7 @@ trait AbstractUGenGraphBuilder[S <: Sys[S]]
 
           val bytes = out.toByteArray
           val res = util.Arrays.hashCode(bytes) & 0x00000000FFFFFFFFL // XXX TODO use real 64-bit or 128-bit hash
-          // val t2 = System.currentTimeMillis()
+          // val t2 = Txntem.currentTimeMillis()
           // println(s"calcStructure took ${t2 - t1}ms")
           res
         }
@@ -134,14 +134,14 @@ trait AbstractUGenGraphBuilder[S <: Sys[S]]
         lazy val structure  : Long                              = calcStructure()
         lazy val graph      : UGenGraph                         = calcStream()
         val acceptedInputs  : Map[Key, Map[Input, Input#Value]] = builder._acceptedInputs
-        val outputs         : List[OutputResult[S]]             = builder._outputs.reverse
+        val outputs         : List[OutputResult[T]]             = builder._outputs.reverse
       }
     } catch {
       case MissingIn(key) =>
-        new Incomplete[S] {
+        new Incomplete[T] {
           val rejectedInputs: Set[String]                       = Set(key)
           val acceptedInputs: Map[Key, Map[Input, Input#Value]] = builder._acceptedInputs
-          val outputs       : List[OutputResult[S]]             = builder._outputs.reverse
+          val outputs       : List[OutputResult[T]]             = builder._outputs.reverse
         }
     }
 }

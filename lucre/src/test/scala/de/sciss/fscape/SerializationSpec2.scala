@@ -26,11 +26,11 @@ class SerializationSpec2 extends AnyFlatSpec with Matchers {
 
   dfs.foreach { case (n, g) =>
     s"Example $n" should "be serializable" in {
-      import GraphObj.{valueSerializer => ser}
+      import GraphObj.{valueFormat => fmt}
       val out = DataOutput()
-      ser.write(g, out)
+      fmt.write(g, out)
       val in = DataInput(out.toByteArray)
-      val gT = ser.read(in)
+      val gT = fmt.read(in)
       assert (g == gT)
     }
   }

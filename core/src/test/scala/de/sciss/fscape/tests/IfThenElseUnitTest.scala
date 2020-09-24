@@ -13,13 +13,13 @@ object IfThenElseUnitTest extends App {
     val p2: GE = 0
     val p3: GE = 0
     If (p1) Then {
-      DC(1).take(20000)poll(0, "one")
+      DC(1).take(20000).poll(0, "one")
       If (p2) Then {
-        DC(2).take(30000)poll(0, "two")
+        DC(2).take(30000).poll(0, "two")
       } ElseIf (p3) Then {
-        DC(3).take(40000)poll(0, "three")
+        DC(3).take(40000).poll(0, "three")
       } Else {
-        DC(4).take(50000)poll(0, "four")
+        DC(4).take(50000).poll(0, "four")
       }
     }
   }

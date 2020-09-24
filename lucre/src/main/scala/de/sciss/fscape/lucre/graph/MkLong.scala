@@ -21,9 +21,9 @@ import de.sciss.fscape.lucre.FScape.Output
 import de.sciss.fscape.lucre.UGenGraphBuilder.OutputRef
 import de.sciss.fscape.stream
 import de.sciss.fscape.stream.StreamIn
-import de.sciss.lucre.expr.LongObj
-import de.sciss.lucre.stm.{Obj, Sys, Workspace}
-import de.sciss.serial.{DataInput, Serializer}
+import de.sciss.lucre.LongObj
+import de.sciss.lucre.{Obj, Txn, Workspace}
+import de.sciss.serial.{DataInput, Format, TFormat}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
@@ -49,9 +49,9 @@ final case class MkLong(key: String, in: GE) extends Lazy.Expander[Unit] with Ou
   def tpe: Obj.Type = LongObj
 
   override def readOutputValue(in: DataInput): Long =
-    Serializer.Long.read(in)
+    TFormat.Long.read(in)
 
-  def readOutput[S <: Sys[S]](in: DataInput)(implicit tx: S#Tx, workspace: Workspace[S]): Obj[S] = {
+  def readOutput[T <: Txn[T]](in: DataInput)(implicit tx: T, workspace: Workspace[T]): Obj[T] = {
     val flat = readOutputValue(in)
     LongObj.newConst(flat)
   }

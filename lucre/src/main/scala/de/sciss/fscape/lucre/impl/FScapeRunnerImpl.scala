@@ -18,10 +18,9 @@ import java.awt.event.{ActionEvent, ActionListener}
 
 import de.sciss.fscape.lucre.FScape.Rendering
 import de.sciss.fscape.stream.Control
-import de.sciss.lucre.event.impl.ObservableImpl
-import de.sciss.lucre.stm.TxnLike.peer
-import de.sciss.lucre.stm.{Disposable, Obj, Sys}
-import de.sciss.lucre.{stm, synth}
+import de.sciss.lucre.impl.ObservableImpl
+import de.sciss.lucre.Txn.peer
+import de.sciss.lucre.{Disposable, Obj, Source, Txn, synth}
 import de.sciss.synth.proc.Runner.{Done, Failed, Stopped}
 import de.sciss.synth.proc.impl.BasicRunnerImpl
 import de.sciss.synth.proc.{Runner, SoundProcesses, Universe}
@@ -37,7 +36,7 @@ object FScapeRunnerImpl extends Runner.Factory {
   def humanName : String    = prefix
   def tpe       : Obj.Type  = FScape
 
-  type Repr[~ <: Sys[~]] = FScape[~]
+  type Repr[~ <: Txn[~]] = FScape[~]
 
   def isSingleton: Boolean = false  // hmmm, this depends?
 
@@ -45,25 +44,25 @@ object FScapeRunnerImpl extends Runner.Factory {
 
   def init(): Unit = _init
 
-  def mkRunner[S <: synth.Sys[S]](obj: FScape[S])(implicit tx: S#Tx, universe: Universe[S]): Runner[S] =
+  def mkRunner[T <: synth.Txn[T]](obj: FScape[T])(implicit tx: T, universe: Universe[T]): Runner[T] =
     new Impl(tx.newHandle(obj))
 
-  private final class Impl[S <: synth.Sys[S]](val objH: stm.Source[S#Tx, FScape[S]])
-                                             (implicit val universe: Universe[S])
-    extends BasicRunnerImpl[S] /*with ObjViewBase[S, Unit]*/ {
+  private final class Impl[T <: synth.Txn[T]](val objH: Source[T, FScape[T]])
+                                             (implicit val universe: Universe[T])
+    extends BasicRunnerImpl[T] /*with ObjViewBase[T, Unit]*/ {
 
-    private[this] val renderRef = Ref(Option.empty[Rendering[S]])
-    private[this] val obsRef    = Ref(Disposable.empty[S#Tx])
-    private[this] val attrRef   = Ref(Runner.emptyAttr[S])(NoManifest)
+    private[this] val renderRef = Ref(Option.empty[Rendering[T]])
+    private[this] val obsRef    = Ref(Disposable.empty[T])
+    private[this] val attrRef   = Ref(Runner.emptyAttr[T])(NoManifest)
 
     def tpe: Obj.Type = FScape
 
-    object progress extends Runner.Progress[S#Tx] with ObservableImpl[S, Double] with ActionListener {
+    object progress extends Runner.Progress[T] with ObservableImpl[T, Double] with ActionListener {
       private[this] val ref = Ref(-1.0)
 
-      def current(implicit tx: S#Tx): Double = ref()
+      def current(implicit tx: T): Double = ref()
 
-      def current_=(value: Double)(implicit tx: S#Tx): Unit = {
+      def current_=(value: Double)(implicit tx: T): Unit = {
         val old = ref.swap(value)
         if (value != old) fire(value)
       }
@@ -93,29 +92,29 @@ object FScapeRunnerImpl extends Runner.Factory {
 
       def actionPerformed(e: ActionEvent): Unit = {
         lastReported = System.currentTimeMillis()
-        SoundProcesses.step[S]("FScape Runner progress") { implicit tx =>
+        SoundProcesses.step[T]("FScape Runner progress") { implicit tx =>
           current = guiValue
         }
       }
     }
 
-    protected def disposeData()(implicit tx: S#Tx): Unit = {
+    protected def disposeData()(implicit tx: T): Unit = {
       obsRef   .swap(Disposable.empty).dispose()
       disposeRender()
     }
 
-    private def disposeRender()(implicit tx: S#Tx): Unit = {
+    private def disposeRender()(implicit tx: T): Unit = {
       renderRef.swap(None).foreach  (_.dispose())
-//      attrRef.swap(Runner.emptyAttr[S]).dispose()
-      attrRef() = Runner.emptyAttr[S]
+//      attrRef.swap(Runner.emptyAttr[T]).dispose()
+      attrRef() = Runner.emptyAttr[T]
     }
 
-    def prepare(attr: Runner.Attr[S])(implicit tx: S#Tx): Unit = {
+    def prepare(attr: Runner.Attr[T])(implicit tx: T): Unit = {
       attrRef() = attr
       state     = Runner.Prepared
     }
 
-    def run()(implicit tx: S#Tx): Unit = {
+    def run()(implicit tx: T): Unit = {
       val obj = objH()
       messages.current = Nil
       state = Runner.Running
@@ -125,7 +124,7 @@ object FScapeRunnerImpl extends Runner.Factory {
       }
       cfg.useAsync  = DEBUG_USE_ASYNC
       val attr      = attrRef()
-      val r: Rendering[S] = obj.run(cfg, attr)
+      val r: Rendering[T] = obj.run(cfg, attr)
       renderRef.swap(Some(r)).foreach(_.dispose())
       obsRef   .swap(Disposable.empty) .dispose()
       val newObs = r.reactNow { implicit tx => {
@@ -155,7 +154,7 @@ object FScapeRunnerImpl extends Runner.Factory {
       obsRef() = newObs
     }
 
-    def stop()(implicit tx: S#Tx): Unit = {
+    def stop()(implicit tx: T): Unit = {
       disposeRender()
       state = Runner.Stopped
     }

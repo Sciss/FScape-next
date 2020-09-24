@@ -4,7 +4,7 @@ package tests
 import de.sciss.file._
 import de.sciss.filecache.Limit
 import de.sciss.fscape.lucre.{Cache, FScape}
-import de.sciss.lucre.expr.IntObj
+import de.sciss.lucre.IntObj
 import de.sciss.lucre.synth.InMemory
 import de.sciss.synth
 import de.sciss.synth.SynthGraph
@@ -12,6 +12,7 @@ import de.sciss.synth.proc.{AudioCue, GenView, Proc, Transport, Universe}
 
 object FeedIntoAuralProcTest extends App {
   type S                  = InMemory
+  type T                  = InMemory.Txn
   implicit val cursor: S  = InMemory()
 
   FScape.init()
@@ -20,8 +21,8 @@ object FeedIntoAuralProcTest extends App {
   folder.mkdir()
   Cache.init(folder = folder, capacity = Limit())
 
-  def run()(implicit tx: S#Tx, universe: Universe[S]): Unit = {
-    val f   = FScape[S]
+  def run()(implicit tx: T, universe: Universe[T]): Unit = {
+    val f   = FScape[T]
     val gF  = Graph {
       import graph._
       import lucre.graph._
@@ -35,7 +36,7 @@ object FeedIntoAuralProcTest extends App {
     val outMax    = f.outputs.add("max"  , IntObj)
     f.graph() = gF
 
-    val p = Proc[S]
+    val p = Proc[T]
     val gP = SynthGraph {
       import synth.{doubleNumberWrapper, proc, ugen}
       import proc.graph._
@@ -54,13 +55,13 @@ object FeedIntoAuralProcTest extends App {
     p.attr.put("noise", outNoise)
     p.attr.put("max"  , outMax  )
 
-    val t = Transport[S](universe)
+    val t = Transport[T](universe)
     t.addObject(p)
     t.play()
   }
 
   cursor.step { implicit tx =>
-    implicit val universe: Universe[S] = Universe.dummy
+    implicit val universe: Universe[T] = Universe.dummy
     val as = universe.auralSystem
     as.whenStarted { _ =>
       cursor.step { implicit tx =>

@@ -17,13 +17,11 @@ package impl
 
 import de.sciss.fscape.lucre.FScape.{Output, Rendering}
 import de.sciss.fscape.stream.Control
+import de.sciss.lucre.Event.Targets
 import de.sciss.lucre.data.SkipList
-import de.sciss.lucre.event.Targets
-import de.sciss.lucre.stm.impl.ObjSerializer
-import de.sciss.lucre.stm.{Copy, Elem, NoSys, Obj, Sys}
-import de.sciss.lucre.synth.{Sys => SSys}
-import de.sciss.lucre.{event => evt}
-import de.sciss.serial.{DataInput, DataOutput, Serializer}
+import de.sciss.lucre.impl.{GeneratorEvent, ObjFormat, SingleEventNode}
+import de.sciss.lucre.{AnyTxn, Copy, Elem, Obj, Pull, Txn, synth}
+import de.sciss.serial.{DataInput, DataOutput, TFormat}
 import de.sciss.synth.proc.{GenView, Runner, Universe}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -32,26 +30,26 @@ object FScapeImpl {
   private final val SER_VERSION_OLD = 0x4673  // "Fs"
   private final val SER_VERSION     = 0x4674
 
-  def apply[S <: Sys[S]](implicit tx: S#Tx): FScape[S] = new New[S]
+  def apply[T <: Txn[T]](implicit tx: T): FScape[T] = new New[T]
 
-  def read[S <: Sys[S]](in: DataInput, access: S#Acc)(implicit tx: S#Tx): FScape[S] =
-    serializer[S].read(in, access)
+  def read[T <: Txn[T]](in: DataInput)(implicit tx: T): FScape[T] =
+    format[T].readT(in)
 
-  def serializer[S <: Sys[S]]: Serializer[S#Tx, S#Acc, FScape[S]] = anySer.asInstanceOf[Ser[S]]
+  def format[T <: Txn[T]]: TFormat[T, FScape[T]] = anyFmt.asInstanceOf[Fmt[T]]
 
-  private val anySer = new Ser[NoSys]
+  private val anyFmt = new Fmt[AnyTxn]
 
-  private class Ser[S <: Sys[S]] extends ObjSerializer[S, FScape[S]] {
+  private class Fmt[T <: Txn[T]] extends ObjFormat[T, FScape[T]] {
     def tpe: Obj.Type = FScape
   }
 
-  def readIdentifiedObj[S <: Sys[S]](in: DataInput, access: S#Acc)(implicit tx: S#Tx): FScape[S] = {
-    val targets = Targets.read(in, access)
+  def readIdentifiedObj[T <: Txn[T]](in: DataInput)(implicit tx: T): FScape[T] = {
+    val targets = Targets.read(in)
     val serVer  = in.readShort()
     if (serVer == SER_VERSION) {
-      new Read(in, access, targets)
+      new Read(in, targets)
     } else if (serVer == SER_VERSION_OLD) {
-      new ReadOLD(in, access, targets)
+      new ReadOLD(in, targets)
     } else {
       sys.error(s"Incompatible serialized (found $serVer, required $SER_VERSION)")
     }
@@ -75,20 +73,20 @@ object FScapeImpl {
   private final class OutputGenViewFactory(config: Control.Config) extends GenView.Factory {
     def typeId: Int = Output.typeId
 
-    type Repr[~ <: Sys[~]] = Output[~]
+    type Repr[~ <: Txn[~]] = Output[~]
 
-    def apply[S <: SSys[S]](output: Output[S])(implicit tx: S#Tx, universe: Universe[S]): GenView[S] = {
+    def apply[T <: synth.Txn[T]](output: Output[T])(implicit tx: T, universe: Universe[T]): GenView[T] = {
       val _fscape = output.fscape
       import universe.genContext
-      val fscView = genContext.acquire[Rendering[S]](_fscape) {
-        RenderingImpl(_fscape, config, attr = Runner.emptyAttr[S], force = false)
+      val fscView = genContext.acquire[Rendering[T]](_fscape) {
+        RenderingImpl(_fscape, config, attr = Runner.emptyAttr[T], force = false)
       }
       OutputGenView(config, output, fscView)
     }
   }
 
-  private sealed trait Base[S <: Sys[S]] {
-    _: FScape[S] =>
+  private sealed trait Base[T <: Txn[T]] {
+    _: FScape[T] =>
 
     final def tpe: Obj.Type = FScape
 
@@ -96,15 +94,15 @@ object FScapeImpl {
 
     // --- rendering ---
 
-    final def run(config: Control.Config, attr: Runner.Attr[S])(implicit tx: S#Tx, universe: Universe[S]): Rendering[S] =
+    final def run(config: Control.Config, attr: Runner.Attr[T])(implicit tx: T, universe: Universe[T]): Rendering[T] =
       Rendering(this, config, attr = attr)
   }
 
-  private sealed trait ImplOLD[S <: Sys[S]]
-    extends FScape[S] with Base[S] with evt.impl.SingleNode[S, FScape.Update[S]] {
+  private sealed trait ImplOLD[T <: Txn[T]]
+    extends FScape[T] with Base[T] with SingleEventNode[T, FScape.Update[T]] {
     proc =>
 
-    def copy[Out <: Sys[Out]]()(implicit tx: S#Tx, txOut: Out#Tx, context: Copy[S, Out]): Elem[Out] =
+    def copy[Out <: Txn[Out]]()(implicit tx: T, txOut: Out, context: Copy[T, Out]): Elem[Out] =
       new Impl[Out] { out =>
         protected val targets: Targets[Out] = Targets[Out]
         val graph     : GraphObj.Var[Out]                       = context(proc.graph)
@@ -116,25 +114,25 @@ object FScapeImpl {
 
     // ---- key maps ----
 
-    def isConnected(implicit tx: S#Tx): Boolean = targets.nonEmpty
+    def isConnected(implicit tx: T): Boolean = targets.nonEmpty
 
-    final def connect()(implicit tx: S#Tx): this.type = {
+    final def connect()(implicit tx: T): this.type = {
       graph.changed ---> changed
       this
     }
 
-    private def disconnect()(implicit tx: S#Tx): Unit = {
+    private def disconnect()(implicit tx: T): Unit = {
       graph.changed -/-> changed
     }
 
     object changed extends Changed
-      with evt.impl.Generator[S, FScape.Update[S]] {
-      def pullUpdate(pull: evt.Pull[S])(implicit tx: S#Tx): Option[FScape.Update[S]] = {
+      with GeneratorEvent[T, FScape.Update[T]] {
+      def pullUpdate(pull: Pull[T])(implicit tx: T): Option[FScape.Update[T]] = {
         val graphCh     = graph.changed
         val graphOpt    = if (pull.contains(graphCh)) pull(graphCh) else None
-        val stateOpt    = Option.empty[FScape.Update[S]] // if (pull.isOrigin(this)) Some(pull.resolve[FScape.Update[S]]) else None
+        val stateOpt    = Option.empty[FScape.Update[T]] // if (pull.isOrigin(this)) Some(pull.resolve[FScape.Update[T]]) else None
 
-        val seq0 = graphOpt.fold(Vec.empty[Change[S]]) { u =>
+        val seq0 = graphOpt.fold(Vec.empty[Change[T]]) { u =>
           Vector(GraphChange(u))
         }
 
@@ -150,44 +148,44 @@ object FScapeImpl {
       graph.write(out)
     }
 
-    final protected def disposeData()(implicit tx: S#Tx): Unit = {
+    final protected def disposeData()(implicit tx: T): Unit = {
       disconnect()
       graph.dispose()
     }
 
     // dummy
-    object outputs extends Outputs[S] {
-      def get(key: String)(implicit tx: S#Tx): Option[Output[S]] = None
+    object outputs extends Outputs[T] {
+      def get(key: String)(implicit tx: T): Option[Output[T]] = None
 
-      def keys(implicit tx: S#Tx): Set[String] = Set.empty
+      def keys(implicit tx: T): Set[String] = Set.empty
 
-      def iterator(implicit tx: S#Tx): Iterator[Output[S]] = Iterator.empty
+      def iterator(implicit tx: T): Iterator[Output[T]] = Iterator.empty
 
-      def add(key: String, tpe: Obj.Type)(implicit tx: S#Tx): Output[S] =
+      def add(key: String, tpe: Obj.Type)(implicit tx: T): Output[T] =
         throw new UnsupportedOperationException(s"Old FScape object without actual outputs, cannot call `add`")
 
-      def remove(key: String)(implicit tx: S#Tx): Boolean = false
+      def remove(key: String)(implicit tx: T): Boolean = false
     }
   }
 
-  private sealed trait Impl[S <: Sys[S]]
-    extends FScape[S] with Base[S] with evt.impl.SingleNode[S, FScape.Update[S]] {
+  private sealed trait Impl[T <: Txn[T]]
+    extends FScape[T] with Base[T] with SingleEventNode[T, FScape.Update[T]] {
     proc =>
 
     // --- abstract ----
 
-    protected def outputsMap: SkipList.Map[S, String, Output[S]]
+    protected def outputsMap: SkipList.Map[T, String, Output[T]]
 
     // --- impl ----
 
-    def copy[Out <: Sys[Out]]()(implicit tx: S#Tx, txOut: Out#Tx, context: Copy[S, Out]): Elem[Out] =
+    def copy[Out <: Txn[Out]]()(implicit tx: T, txOut: Out, context: Copy[T, Out]): Elem[Out] =
       new Impl[Out] { out =>
         protected val targets: Targets[Out]                     = Targets[Out]
         val graph     : GraphObj.Var[Out]                       = context(proc.graph)
         val outputsMap: SkipList.Map[Out, String, Output[Out]]  = SkipList.Map.empty
 
         context.defer(proc, out) {
-          def copyMap(in : SkipList.Map[S  , String, Output[S  ]],
+          def copyMap(in : SkipList.Map[T  , String, Output[T  ]],
                       out: SkipList.Map[Out, String, Output[Out]]): Unit =
             in.iterator.foreach { case (key, eIn) =>
               val eOut = context(eIn)
@@ -204,25 +202,25 @@ object FScapeImpl {
 
     // ---- key maps ----
 
-    def isConnected(implicit tx: S#Tx): Boolean = targets.nonEmpty
+    def isConnected(implicit tx: T): Boolean = targets.nonEmpty
 
-    final def connect()(implicit tx: S#Tx): this.type = {
+    final def connect()(implicit tx: T): this.type = {
       graph.changed ---> changed
       this
     }
 
-    private def disconnect()(implicit tx: S#Tx): Unit = {
+    private def disconnect()(implicit tx: T): Unit = {
       graph.changed -/-> changed
     }
 
     object changed extends Changed
-      with evt.impl.Generator[S, FScape.Update[S]] {
-      def pullUpdate(pull: evt.Pull[S])(implicit tx: S#Tx): Option[FScape.Update[S]] = {
+      with GeneratorEvent[T, FScape.Update[T]] {
+      def pullUpdate(pull: Pull[T])(implicit tx: T): Option[FScape.Update[T]] = {
         val graphCh     = graph.changed
         val graphOpt    = if (pull.contains(graphCh)) pull(graphCh) else None
-        val stateOpt    = if (pull.isOrigin(this)) Some(pull.resolve[FScape.Update[S]]) else None
+        val stateOpt    = if (pull.isOrigin(this)) Some(pull.resolve[FScape.Update[T]]) else None
 
-        val seq0 = graphOpt.fold(Vec.empty[Change[S]]) { u =>
+        val seq0 = graphOpt.fold(Vec.empty[Change[T]]) { u =>
           Vector(GraphChange(u))
         }
 
@@ -239,74 +237,74 @@ object FScapeImpl {
       outputsMap.write(out)
     }
 
-    final protected def disposeData()(implicit tx: S#Tx): Unit = {
+    final protected def disposeData()(implicit tx: T): Unit = {
       disconnect()
       graph     .dispose()
       outputsMap.dispose()
     }
 
-    object outputs extends Outputs[S] {
-      protected def fire(added: Option[Output[S]], removed: Option[Output[S]])
-                        (implicit tx: S#Tx): Unit = {
-        val b = Vector.newBuilder[FScape.OutputsChange[S]]
+    object outputs extends Outputs[T] {
+      protected def fire(added: Option[Output[T]], removed: Option[Output[T]])
+                        (implicit tx: T): Unit = {
+        val b = Vector.newBuilder[FScape.OutputsChange[T]]
         b.sizeHint(2)
         // convention: first the removals, then the additions. thus, overwriting a key yields
         // successive removal and addition of the same key.
         removed.foreach { output =>
-          b += FScape.OutputRemoved[S](output)
+          b += FScape.OutputRemoved[T](output)
         }
         added.foreach { output =>
-          b += FScape.OutputAdded  [S](output)
+          b += FScape.OutputAdded  [T](output)
         }
 
         proc.changed.fire(FScape.Update(proc, b.result()))
       }
 
-      private def add(key: String, value: Output[S])(implicit tx: S#Tx): Unit = {
+      private def add(key: String, value: Output[T])(implicit tx: T): Unit = {
         val optRemoved = outputsMap.put(key, value)
         fire(added = Some(value), removed = optRemoved)
       }
 
-      def remove(key: String)(implicit tx: S#Tx): Boolean =
+      def remove(key: String)(implicit tx: T): Boolean =
         outputsMap.remove(key).exists { output =>
           fire(added = None, removed = Some(output))
           true
         }
 
-      def add(key: String, tpe: Obj.Type)(implicit tx: S#Tx): Output[S] =
+      def add(key: String, tpe: Obj.Type)(implicit tx: T): Output[T] =
         get(key).getOrElse {
-          val res = OutputImpl[S](proc, key, tpe)
+          val res = OutputImpl[T](proc, key, tpe)
           add(key, res)
           res
         }
 
-      def get(key: String)(implicit tx: S#Tx): Option[Output[S]] = outputsMap.get(key)
+      def get(key: String)(implicit tx: T): Option[Output[T]] = outputsMap.get(key)
 
-      def keys(implicit tx: S#Tx): Set[String] = outputsMap.keysIterator.toSet
+      def keys(implicit tx: T): Set[String] = outputsMap.keysIterator.toSet
 
-      def iterator(implicit tx: S#Tx): Iterator[Output[S]] = outputsMap.iterator.map(_._2)
+      def iterator(implicit tx: T): Iterator[Output[T]] = outputsMap.iterator.map(_._2)
     }
   }
 
-  private final class New[S <: Sys[S]](implicit tx0: S#Tx) extends Impl[S] {
-    protected val targets: Targets[S] = Targets(tx0)
-    val graph     : GraphObj.Var[S]                     = GraphObj.newVar(GraphObj.empty)
-    val outputsMap: SkipList.Map[S, String, Output[S]]  = SkipList.Map.empty
+  private final class New[T <: Txn[T]](implicit tx0: T) extends Impl[T] {
+    protected val targets: Targets[T] = Targets()(tx0)
+    val graph     : GraphObj.Var[T]                     = GraphObj.newVar(GraphObj.empty)
+    val outputsMap: SkipList.Map[T, String, Output[T]]  = SkipList.Map.empty
     connect()(tx0)
   }
 
-  private final class ReadOLD[S <: Sys[S]](in: DataInput, access: S#Acc, protected val targets: Targets[S])
-                                          (implicit tx0: S#Tx)
-    extends ImplOLD[S] {
+  private final class ReadOLD[T <: Txn[T]](in: DataInput, protected val targets: Targets[T])
+                                          (implicit tx0: T)
+    extends ImplOLD[T] {
 
-    val graph: GraphObj.Var[S] = GraphObj.readVar(in, access)
+    val graph: GraphObj.Var[T] = GraphObj.readVar(in)
   }
 
-  private final class Read[S <: Sys[S]](in: DataInput, access: S#Acc, protected val targets: Targets[S])
-                                       (implicit tx0: S#Tx)
-    extends Impl[S] {
+  private final class Read[T <: Txn[T]](in: DataInput, protected val targets: Targets[T])
+                                       (implicit tx0: T)
+    extends Impl[T] {
 
-    val graph     : GraphObj.Var[S]                     = GraphObj    .readVar(in, access)
-    val outputsMap: SkipList.Map[S, String, Output[S]]  = SkipList.Map.read   (in, access)
+    val graph     : GraphObj.Var[T]                     = GraphObj    .readVar(in)
+    val outputsMap: SkipList.Map[T, String, Output[T]]  = SkipList.Map.read   (in)
   }
 }

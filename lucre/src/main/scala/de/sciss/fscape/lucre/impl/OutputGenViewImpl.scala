@@ -17,55 +17,54 @@ package impl
 
 import de.sciss.fscape.lucre.FScape.{Output, Rendering}
 import de.sciss.fscape.stream.Control
-import de.sciss.lucre.event.impl.ObservableImpl
-import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{Disposable, Obj, Sys}
+import de.sciss.lucre.impl.ObservableImpl
+import de.sciss.lucre.{Disposable, Obj, Source, Txn}
 import de.sciss.synth.proc.{GenContext, GenView}
 
 import scala.util.Try
 
 object OutputGenViewImpl {
-  def apply[S <: Sys[S]](config: Control.Config, output: Output[S], rendering: Rendering[S])
-                        (implicit tx: S#Tx, context: GenContext[S]): OutputGenView[S] = {
+  def apply[T <: Txn[T]](config: Control.Config, output: Output[T], rendering: Rendering[T])
+                        (implicit tx: T, context: GenContext[T]): OutputGenView[T] = {
     new Impl(config, tx.newHandle(output), key = output.key, valueType = output.valueType,
       rendering = rendering).init()
   }
 
-  private final class Impl[S <: Sys[S]](config: Control.Config,
-                                        outputH: stm.Source[S#Tx, Output[S]],
+  private final class Impl[T <: Txn[T]](config: Control.Config,
+                                        outputH: Source[T, Output[T]],
                                         val key: String,
                                         val valueType: Obj.Type,
-                                        rendering: Rendering[S])
-                                       (implicit context: GenContext[S])
-    extends OutputGenView[S] with ObservableImpl[S, GenView.State] {
+                                        rendering: Rendering[T])
+                                       (implicit context: GenContext[T])
+    extends OutputGenView[T] with ObservableImpl[T, GenView.State] {
     view =>
 
-    private[this] var observer: Disposable[S#Tx] = _
+    private[this] var observer: Disposable[T] = _
 
     def typeId: Int = Output.typeId
 
-    def state(implicit tx: S#Tx): GenView.State = rendering.state
+    def state(implicit tx: T): GenView.State = rendering.state
 
-    def output(implicit tx: S#Tx): Output[S] = outputH()
+    def output(implicit tx: T): Output[T] = outputH()
 
-    def reactNow(fun: S#Tx => GenView.State => Unit)(implicit tx: S#Tx): Disposable[S#Tx] = {
+    def reactNow(fun: T => GenView.State => Unit)(implicit tx: T): Disposable[T] = {
       val res = react(fun)
       fun(tx)(state)
       res
     }
 
-    def value(implicit tx: S#Tx): Option[Try[Obj[S]]] = rendering.outputResult(this)
+    def value(implicit tx: T): Option[Try[Obj[T]]] = rendering.outputResult(this)
 
-    private def fscape(implicit tx: S#Tx): FScape[S] = outputH().fscape
+    private def fscape(implicit tx: T): FScape[T] = outputH().fscape
 
-    def init()(implicit tx: S#Tx): this.type = {
+    def init()(implicit tx: T): this.type = {
       observer = rendering.react { implicit tx => upd =>
         fire(upd)
       }
       this
     }
 
-    def dispose()(implicit tx: S#Tx): Unit = {
+    def dispose()(implicit tx: T): Unit = {
       observer.dispose()
       val _fscape = fscape
       context.release(_fscape)

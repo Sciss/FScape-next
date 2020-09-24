@@ -18,13 +18,13 @@ package impl
 import de.sciss.file.File
 import de.sciss.fscape.lucre.FScape.Output
 import de.sciss.fscape.lucre.UGenGraphBuilder.OutputResult
-import de.sciss.lucre.stm.Sys
+import de.sciss.lucre.Txn
 
 import scala.concurrent.stm.Ref
 
 /** Building block that implements all methods but `updateValue`. */
-trait AbstractOutputRef[S <: Sys[S]]
-  extends OutputResult[S] {
+trait AbstractOutputRef[T <: Txn[T]]
+  extends OutputResult[T] {
 
   @volatile private[this] var _writer: Output.Writer = _
   private[this] val cacheFilesRef = Ref(List.empty[File]) // TMap.empty[String, File] // Ref(List.empty[File])
@@ -42,8 +42,8 @@ trait AbstractOutputRef[S <: Sys[S]]
     _writer
   }
 
-//  def updateValue(in: DataInput)(implicit tx: S#Tx): scala.Unit = {
-//    val value     = reader.readOutput[S](in)
+//  def updateValue(in: DataInput)(implicit tx: T): scala.Unit = {
+//    val value     = reader.readOutput[T](in)
 //    val output    = outputH()
 //    output.value_=(Some(value))
 //  }

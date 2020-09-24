@@ -21,7 +21,7 @@ import de.sciss.fscape.graph.Constant
 import de.sciss.fscape.lucre.FScape.Output
 import de.sciss.fscape.lucre.UGenGraphBuilder.OutputRef
 import de.sciss.fscape.stream.{StreamIn, StreamOut, Builder => SBuilder}
-import de.sciss.lucre.stm.{Obj, Sys, Workspace}
+import de.sciss.lucre.{Obj, Txn, Workspace}
 import de.sciss.serial.DataInput
 import de.sciss.synth.io.{AudioFileSpec, AudioFileType, SampleFormat}
 import de.sciss.synth.proc.AudioCue
@@ -91,9 +91,9 @@ final case class MkAudioCue(key: String, in: GE, fileType: GE = 0, sampleFormat:
   def tpe: Obj.Type = AudioCue.Obj
 
   override def readOutputValue(in: DataInput): AudioCue =
-    AudioCue.serializer.read(in)
+    AudioCue.format.read(in)
 
-  def readOutput[S <: Sys[S]](in: DataInput)(implicit tx: S#Tx, workspace: Workspace[S]): Obj[S] = {
+  def readOutput[T <: Txn[T]](in: DataInput)(implicit tx: T, workspace: Workspace[T]): Obj[T] = {
     val flat = readOutputValue(in)
     AudioCue.Obj.newConst(flat)
   }

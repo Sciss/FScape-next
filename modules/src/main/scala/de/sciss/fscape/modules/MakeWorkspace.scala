@@ -15,9 +15,8 @@ package de.sciss.fscape.modules
 
 import de.sciss.file._
 import de.sciss.fscape.lucre.FScape
-import de.sciss.lucre.expr.BooleanObj
-import de.sciss.lucre.stm.store.BerkeleyDB
-import de.sciss.lucre.stm.{Folder, Sys}
+import de.sciss.lucre.{BooleanObj, Folder, Sys, Txn}
+import de.sciss.lucre.store.BerkeleyDB
 import de.sciss.synth.proc.Implicits._
 import de.sciss.synth.proc.{Markdown, SoundProcesses, Widget, Workspace}
 import org.rogach.scallop.{ScallopConf, ScallopOption => Opt}
@@ -57,7 +56,7 @@ object MakeWorkspace {
       ModSlewRateLimiter,
     ).sortBy(_.name)
 
-  def help[S <: Sys[S]](m: Module)(implicit tx: S#Tx): Option[Markdown[S]] = {
+  def help[T <: Txn[T]](m: Module)(implicit tx: T): Option[Markdown[T]] = {
     val clz = m.getClass
     val n0  = clz.getName
     val n1  = if (n0.endsWith("$")) n0.dropRight(1) else n0
@@ -65,17 +64,17 @@ object MakeWorkspace {
     val nm  = s"$n.md"
     Option(clz.getResourceAsStream(nm)).map { is =>
       val text  = Source.fromInputStream(is, "UTF-8").mkString
-      val res   = Markdown.newVar[S](text)
+      val res   = Markdown.newVar[T](text)
       res.name  = s"${m.name} Help"
-      res.attr.put(Markdown.attrEditMode, BooleanObj.newVar[S](false))
+      res.attr.put(Markdown.attrEditMode, BooleanObj.newVar[T](false))
       res
     }
   }
 
-  def add[S <: Sys[S]](f: Folder[S], m: Module)(implicit tx: S#Tx): Unit = {
-    val fsc   = m.apply[S]()
+  def add[T <: Txn[T]](f: Folder[T], m: Module)(implicit tx: T): Unit = {
+    val fsc   = m.apply[T]()
     fsc.name  = m.name
-    val w     = m.ui[S]()
+    val w     = m.ui[T]()
     w.name    = m.name
     w.attr.put("run"       , fsc)
     w.attr.put("edit-mode" , BooleanObj.newVar(false))

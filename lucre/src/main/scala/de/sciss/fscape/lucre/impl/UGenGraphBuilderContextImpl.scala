@@ -17,31 +17,31 @@ package impl
 
 import de.sciss.fscape.lucre.UGenGraphBuilder.MissingIn
 import de.sciss.fscape.lucre.{UGenGraphBuilder => UGB}
-import de.sciss.lucre.expr.ExprLike
-import de.sciss.lucre.stm.Sys
+import de.sciss.lucre.ExprLike
+import de.sciss.lucre.Txn
 import de.sciss.synth.proc.{Runner, Universe}
 
 object UGenGraphBuilderContextImpl {
-  final class Default[S <: Sys[S]](protected val fscape: FScape[S],
-                                   val attr: Runner.Attr[S])(implicit val universe: Universe[S])
-    extends UGenGraphBuilderContextImpl[S]
+  final class Default[T <: Txn[T]](protected val fscape: FScape[T],
+                                   val attr: Runner.Attr[T])(implicit val universe: Universe[T])
+    extends UGenGraphBuilderContextImpl[T]
 }
-trait UGenGraphBuilderContextImpl[S <: Sys[S]] extends UGenGraphBuilder.Context[S] {
-  protected def fscape: FScape[S] // XXX TODO --- why not transactional? I think all UGB runs in one go
+trait UGenGraphBuilderContextImpl[T <: Txn[T]] extends UGenGraphBuilder.Context[T] {
+  protected def fscape: FScape[T] // XXX TODO --- why not transactional? I think all UGB runs in one go
 
-  protected implicit def universe: Universe[S]
+  protected implicit def universe: Universe[T]
 
-  def requestInput[Res](in: UGB.Input { type Value = Res }, io: UGB.IO[S] with UGenGraphBuilder)
-                       (implicit tx: S#Tx): Res = in match {
+  def requestInput[Res](in: UGB.Input { type Value = Res }, io: UGB.IO[T] with UGenGraphBuilder)
+                       (implicit tx: T): Res = in match {
     case i: UGB.Input.Attribute =>
       val aKey  = i.name
       // XXX TODO --- at some point we should 'merge' the two maps
       // WARNING: Scala compiler bug, cannot use `collect` with
       // `PartialFunction` here, only total function works.
       val peer: Option[Any] = attr.get(aKey) match {
-        case Some(x: ExprLike[S, _])  => Some(x.value)
+        case Some(x: ExprLike[T, _])  => Some(x.value)
         case _                        => fscape.attr.get(aKey) match {
-          case Some(x: ExprLike[S, _])  => Some(x.value)
+          case Some(x: ExprLike[T, _])  => Some(x.value)
           case _                        => None
         }
       }
@@ -53,7 +53,7 @@ trait UGenGraphBuilderContextImpl[S <: Sys[S]] extends UGenGraphBuilder.Context[
       f.attr.get(aKey) match {
         case Some(obj) =>
           val objH = tx.newHandle(obj)
-          new ActionRefImpl[S](aKey, tx.newHandle(f), objH) // IntelliJ highlight bug
+          new ActionRefImpl[T](aKey, tx.newHandle(f), objH) // IntelliJ highlight bug
 
         case None =>
           throw MissingIn(aKey)

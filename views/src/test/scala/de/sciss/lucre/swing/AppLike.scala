@@ -1,18 +1,12 @@
 package de.sciss.lucre.swing
 
 import de.sciss.desktop.UndoManager
-import de.sciss.file.File
 import de.sciss.lucre.expr.LucreExpr
-import de.sciss.lucre.stm.Durable
-import de.sciss.lucre.stm.store.BerkeleyDB
 import de.sciss.submin.Submin
 
 import scala.swing.{Component, Frame, MainFrame, Menu, MenuBar, MenuItem, SimpleSwingApplication}
 
 trait AppLike extends SimpleSwingApplication {
-  type S = Durable
-  implicit val system: S = Durable(BerkeleyDB.factory(File.createTemp(directory = true)))
-
   implicit lazy val undo: UndoManager = UndoManager()
 
   override def main(args: Array[String]): Unit = {

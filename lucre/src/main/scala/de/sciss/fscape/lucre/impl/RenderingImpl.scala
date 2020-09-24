@@ -21,11 +21,10 @@ import de.sciss.fscape.lucre.FScape.Rendering.State
 import de.sciss.fscape.lucre.UGenGraphBuilder.{MissingIn, OutputResult}
 import de.sciss.fscape.lucre.{Cache, FScape, OutputGenView, UGenGraphBuilder}
 import de.sciss.fscape.stream.Control
-import de.sciss.lucre.event.impl.{DummyObservableImpl, ObservableImpl}
-import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{Disposable, Obj, Sys, TxnLike}
-import de.sciss.lucre.synth.{Sys => SSys}
-import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer}
+import de.sciss.lucre.impl.{DummyObservableImpl, ObservableImpl}
+import de.sciss.lucre.synth.{Txn => STxn}
+import de.sciss.lucre.{Cursor, Disposable, Obj, Txn}
+import de.sciss.serial.{ConstFormat, DataInput, DataOutput}
 import de.sciss.synth.proc.{GenView, Runner, SoundProcesses, Universe}
 
 import scala.concurrent.stm.{Ref, TMap, atomic}
@@ -43,8 +42,8 @@ object RenderingImpl {
     * @param force      if `true`, always renders even if there are no
     *                   outputs.
     */
-  def apply[S <: SSys[S]](fscape: FScape[S], config: Control.Config, attr: Runner.Attr[S], force: Boolean)
-                        (implicit tx: S#Tx, universe: Universe[S]): Rendering[S] = {
+  def apply[T <: STxn[T]](fscape: FScape[T], config: Control.Config, attr: Runner.Attr[T], force: Boolean)
+                         (implicit tx: T, universe: Universe[T]): Rendering[T] = {
     val ugbCtx = new UGenGraphBuilderContextImpl.Default(fscape, attr = attr)
     apply(fscape, ugbCtx, config, force = force)
   }
@@ -55,8 +54,8 @@ object RenderingImpl {
 //    * @param ugbContext the graph builder context that responds to input requests
 //    * @param config     configuration for the stream control
 //    */
-//  def apply[S <: Sys[S]](g: Graph, ugbContext: UGenGraphBuilder.Context[S], config: Control.Config)
-//                        (implicit tx: S#Tx, context: GenContext[S]): Rendering[S] = {
+//  def apply[T <: Txn[T]](g: Graph, ugbContext: UGenGraphBuilder.Context[T], config: Control.Config)
+//                        (implicit tx: T, context: GenContext[T]): Rendering[T] = {
 //    import context.{cursor, workspaceHandle}
 //    implicit val control: Control = Control(config)
 //    val uState = UGenGraphBuilder.build(ugbContext, g)
@@ -71,34 +70,35 @@ object RenderingImpl {
     * @param force      if `true`, always renders even if there are no
     *                   outputs.
     */
-  def apply[S <: Sys[S]](fscape: FScape[S], ugbContext: UGenGraphBuilder.Context[S], config: Control.Config,
+  def apply[T <: Txn[T]](fscape: FScape[T], ugbContext: UGenGraphBuilder.Context[T], config: Control.Config,
                          force: Boolean)
-                       (implicit tx: S#Tx, universe: Universe[S]): Rendering[S] = {
+                       (implicit tx: T, universe: Universe[T]): Rendering[T] = {
     implicit val control: Control = Control(config)
-    import universe.{cursor, workspace}
+    import universe.cursor
+    import universe.workspace
     val uState = UGenGraphBuilder.build(ugbContext, fscape)
     withState(uState, force = force)
   }
 
-  trait WithState[S <: Sys[S]] extends Rendering[S] { // Used by SysSon
-    def cacheResult(implicit tx: S#Tx): Option[Try[CacheValue]]
+  trait WithState[T <: Txn[T]] extends Rendering[T] { // Used by TxnSon
+    def cacheResult(implicit tx: T): Option[Try[CacheValue]]
   }
 
-  /** Turns a built UGen graph into a rendering instance. Used by SysSon.
+  /** Turns a built UGen graph into a rendering instance. Used by TxnSon.
     *
     * @param uState   the result of building, either complete or incomplete
     * @param force    if `true` forces rendering of graphs that do not produce outputs
     *
     * @return a rendering, either cached, or newly started, or directly aborted if the graph was incomplete
     */
-  def withState[S <: Sys[S]](uState: UGenGraphBuilder.State[S], force: Boolean)
-                            (implicit tx: S#Tx, control: Control, cursor: stm.Cursor[S]): WithState[S] =
+  def withState[T <: Txn[T]](uState: UGenGraphBuilder.State[T], force: Boolean)
+                            (implicit tx: T, control: Control, cursor: Cursor[T]): WithState[T] =
     uState match {
-      case res: UGenGraphBuilder.Complete[S] =>
+      case res: UGenGraphBuilder.Complete[T] =>
         val isEmpty = res.outputs.isEmpty
         // - if there are no outputs, we're done
         if (isEmpty && !force) {
-          new EmptyImpl[S](control)
+          new EmptyImpl[T](control)
         } else {
           // - otherwise check structure:
           val struct = res.structure
@@ -139,7 +139,7 @@ object RenderingImpl {
           val useCache = !isEmpty && !force // new variant: `force` has to be `false` to use cache
           val fut: Future[CacheValue] = if (useCache) {
             // - check file cache for structure
-            RenderingImpl.acquire[S](struct)(mkFuture())
+            RenderingImpl.acquire[T](struct)(mkFuture())
           } else {
             val p = Promise[CacheValue]()
             tx.afterCommit {
@@ -149,7 +149,7 @@ object RenderingImpl {
             p.future
           }
 
-          val impl = new Impl[S](struct, res.outputs, control, fut, useCache = useCache)
+          val impl = new Impl[T](struct, res.outputs, control, fut, useCache = useCache)
           fut.onComplete { cvt =>
             if (DEBUG) println(s"$impl completeWith $cvt")
             impl.completeWith(cvt)
@@ -158,7 +158,7 @@ object RenderingImpl {
         }
 
       case res =>
-        new FailedImpl[S](control, res.rejectedInputs)
+        new FailedImpl[T](control, res.rejectedInputs)
     }
 
   type CacheKey = Long
@@ -166,7 +166,7 @@ object RenderingImpl {
   object CacheValue {
     private[this] val COOKIE = 0x46734356   // "FsCV"
 
-    implicit object serializer extends ImmutableSerializer[CacheValue] {
+    implicit object format extends ConstFormat[CacheValue] {
       def read(in: DataInput): CacheValue = {
         val cookie = in.readInt()
         if (cookie != COOKIE) sys.error(s"Unexpected cookie (found $cookie, expected $COOKIE)")
@@ -231,9 +231,9 @@ object RenderingImpl {
   private[this] val map = TMap.empty[CacheKey, Entry[CacheValue]]
 
   // mostly same as filecache.impl.TxnConsumerImpl.acquire
-  def acquire[S <: Sys[S]](key: CacheKey)(source: => Future[CacheValue])
-                          (implicit tx: S#Tx)      : Future[CacheValue] = {
-    import TxnLike.peer
+  def acquire[T <: Txn[T]](key: CacheKey)(source: => Future[CacheValue])
+                          (implicit tx: T)      : Future[CacheValue] = {
+    import Txn.peer
     map.get(key).fold {
       val fut = producer.acquireWith(key)(source)
       val e = new Entry(future = fut)
@@ -253,8 +253,8 @@ object RenderingImpl {
   }
 
   // mostly same as filecache.impl.TxnConsumerImpl.release
-  def release[S <: Sys[S]](key: CacheKey)(implicit tx: S#Tx): Boolean = {
-    import TxnLike.peer
+  def release[T <: Txn[T]](key: CacheKey)(implicit tx: T): Boolean = {
+    import Txn.peer
     map.get(key) match {
       case Some(e0) =>
         val e1    = e0.dec
@@ -276,10 +276,10 @@ object RenderingImpl {
   }
 
   // FScape is rendering
-  private final class Impl[S <: Sys[S]](struct: CacheKey, outputs: List[OutputResult[S]],
+  private final class Impl[T <: Txn[T]](struct: CacheKey, outputs: List[OutputResult[T]],
                                         val control: Control, fut: Future[CacheValue],
-                                        useCache: Boolean)(implicit cursor: stm.Cursor[S])
-    extends Basic[S] with ObservableImpl[S, GenView.State] {
+                                        useCache: Boolean)(implicit cursor: Cursor[T])
+    extends Basic[T] with ObservableImpl[T, GenView.State] {
 
     override def toString = s"Impl@${hashCode.toHexString} - ${fut.value}"
 
@@ -287,16 +287,16 @@ object RenderingImpl {
     private[this] val _state    = Ref[GenView.State](if (fut.isCompleted) GenView.Completed else GenView.Running(0.0))
     private[this] val _result   = Ref[Option[Try[CacheValue]]](fut.value)
 
-    def result(implicit tx: S#Tx): Option[Try[Unit]] = _result.get(tx.peer).map(_.map(_ => ()))
+    def result(implicit tx: T): Option[Try[Unit]] = _result.get(tx.peer).map(_.map(_ => ()))
 
-    def cacheResult(implicit tx: S#Tx): Option[Try[CacheValue]] = _result.get(tx.peer)
+    def cacheResult(implicit tx: T): Option[Try[CacheValue]] = _result.get(tx.peer)
 
-    def outputResult(outputView: OutputGenView[S])(implicit tx: S#Tx): Option[Try[Obj[S]]] = {
+    def outputResult(outputView: OutputGenView[T])(implicit tx: T): Option[Try[Obj[T]]] = {
       _result.get(tx.peer) match {
         case Some(Success(cv)) =>
           outputView.output match {
-            case oi: OutputImpl[S] =>
-              val valOpt: Option[Obj[S]] = oi.value.orElse {
+            case oi: OutputImpl[T] =>
+              val valOpt: Option[Obj[T]] = oi.value.orElse {
                 val key = oi.key // outputView.key
                 outputs.find(_.key == key).flatMap { outRef =>
                   val in = DataInput(cv.data(key))
@@ -309,7 +309,7 @@ object RenderingImpl {
             case _ => None
           }
         case res @ Some(Failure(_)) =>
-          res.asInstanceOf[Option[Try[Obj[S]]]]
+          res.asInstanceOf[Option[Try[Obj[T]]]]
 
         case None => None
       }
@@ -317,8 +317,8 @@ object RenderingImpl {
 
     def completeWith(t: Try[CacheValue]): Unit =
       if (!_disposed.single.get)
-        SoundProcesses.step[S]("FScape completeWith") { implicit tx =>
-          import TxnLike.peer
+        SoundProcesses.step[T]("FScape completeWith") { implicit tx =>
+          import Txn.peer
           if (!_disposed()) {
             // update first...
             if (t.isSuccess && outputs.nonEmpty) t.foreach { cv =>
@@ -334,52 +334,52 @@ object RenderingImpl {
           }
         }
 
-    def state(implicit tx: S#Tx): GenView.State = _state.get(tx.peer)
+    def state(implicit tx: T): GenView.State = _state.get(tx.peer)
 
-    def dispose()(implicit tx: S#Tx): Unit =    // XXX TODO --- should cancel processor
+    def dispose()(implicit tx: T): Unit =    // XXX TODO --- should cancel processor
       if (!_disposed.swap(true)(tx.peer)) {
-        if (useCache) RenderingImpl.release[S](struct)
+        if (useCache) RenderingImpl.release[T](struct)
         cancel()
       }
   }
 
-  private sealed trait Basic[S <: Sys[S]] extends WithState[S] {
-    def reactNow(fun: S#Tx => State => Unit)(implicit tx: S#Tx): Disposable[S#Tx] = {
+  private sealed trait Basic[T <: Txn[T]] extends WithState[T] {
+    def reactNow(fun: T => State => Unit)(implicit tx: T): Disposable[T] = {
       val res = react(fun)
       fun(tx)(state)
       res
     }
 
-    def cancel()(implicit tx: S#Tx): Unit =
+    def cancel()(implicit tx: T): Unit =
       tx.afterCommit(control.cancel())
   }
 
-  private sealed trait DummyImpl[S <: Sys[S]] extends Basic[S]
-    with DummyObservableImpl[S] {
+  private sealed trait DummyImpl[T <: Txn[T]] extends Basic[T]
+    with DummyObservableImpl[T] {
 
-    final def state(implicit tx: S#Tx): GenView.State = GenView.Completed
+    final def state(implicit tx: T): GenView.State = GenView.Completed
 
-    final def dispose()(implicit tx: S#Tx): Unit = ()
+    final def dispose()(implicit tx: T): Unit = ()
   }
 
   // FScape does not provide outputs, nothing to do
-  private final class EmptyImpl[S <: Sys[S]](val control: Control) extends DummyImpl[S] {
-    def result(implicit tx: S#Tx): Option[Try[Unit]] = Some(Success(()))
+  private final class EmptyImpl[T <: Txn[T]](val control: Control) extends DummyImpl[T] {
+    def result(implicit tx: T): Option[Try[Unit]] = Some(Success(()))
 
-    def outputResult(output: OutputGenView[S])(implicit tx: S#Tx): Option[Try[Obj[S]]] = None
+    def outputResult(output: OutputGenView[T])(implicit tx: T): Option[Try[Obj[T]]] = None
 
-    def cacheResult(implicit tx: S#Tx): Option[Try[CacheValue]] =
+    def cacheResult(implicit tx: T): Option[Try[CacheValue]] =
       Some(Success(new CacheValue(Nil, Map.empty)))
   }
 
   // FScape failed early (e.g. graph inputs incomplete)
-  private final class FailedImpl[S <: Sys[S]](val control: Control, rejected: Set[String]) extends DummyImpl[S] {
-    def result(implicit tx: S#Tx): Option[Try[Unit]] = nada
+  private final class FailedImpl[T <: Txn[T]](val control: Control, rejected: Set[String]) extends DummyImpl[T] {
+    def result(implicit tx: T): Option[Try[Unit]] = nada
 
-    def outputResult(output: OutputGenView[S])(implicit tx: S#Tx): Option[Try[Obj[S]]] = nada
+    def outputResult(output: OutputGenView[T])(implicit tx: T): Option[Try[Obj[T]]] = nada
 
     private def nada: Option[Try[Nothing]] = Some(Failure(MissingIn(rejected.head)))
 
-    def cacheResult(implicit tx: S#Tx): Option[Try[CacheValue]] = nada
+    def cacheResult(implicit tx: T): Option[Try[CacheValue]] = nada
   }
 }

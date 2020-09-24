@@ -22,9 +22,8 @@ import de.sciss.fscape.lucre.UGenGraphBuilder.OutputRef
 import de.sciss.fscape.lucre.graph.Attribute
 import de.sciss.fscape.lucre.impl.{AbstractOutputRef, AbstractUGenGraphBuilder, OutputImpl}
 import de.sciss.fscape.stream.Control
-import de.sciss.lucre.expr.graph.{Var => ExVar, Const => ExConst}
-import de.sciss.lucre.stm
-import de.sciss.lucre.stm.{Sys, Workspace}
+import de.sciss.lucre.expr.graph.{Const => ExConst, Var => ExVar}
+import de.sciss.lucre.{Source, Txn, Workspace}
 import de.sciss.serial.DataInput
 import de.sciss.synth.UGenSource.Vec
 import de.sciss.synth.proc.Runner
@@ -38,22 +37,22 @@ object UGenGraphBuilder {
     case _ => sys.error("Out of context expansion")
   }
 
-  def build[S <: Sys[S]](context: Context[S], f: FScape[S])(implicit tx: S#Tx,
-                                                            workspace: Workspace[S],
-                                                            ctrl: Control): State[S] = {
+  def build[T <: Txn[T]](context: Context[T], f: FScape[T])(implicit tx: T,
+                                                            workspace: Workspace[T],
+                                                            ctrl: Control): State[T] = {
     val b = new BuilderImpl(context, f)
     val g = f.graph.value
     b.tryBuild(g)
   }
 
-//  def build[S <: Sys[S]](context: Context[S], g: Graph)(implicit tx: S#Tx, cursor: stm.Cursor[S],
-//                                                        workspace: Workspace[S],
-//                                                        ctrl: Control): State[S] =
-//    buildOpt[S](context, None, g)
+//  def build[T <: Txn[T]](context: Context[T], g: Graph)(implicit tx: T, cursor: stm.Cursor[T],
+//                                                        workspace: Workspace[T],
+//                                                        ctrl: Control): State[T] =
+//    buildOpt[T](context, None, g)
 //
-//  private def buildOpt[S <: Sys[S]](context: Context[S], fOpt: Option[FScape[S]], g: Graph)
-//                                   (implicit tx: S#Tx, workspace: Workspace[S],
-//                                    ctrl: Control): State[S] = {
+//  private def buildOpt[T <: Txn[T]](context: Context[T], fOpt: Option[FScape[T]], g: Graph)
+//                                   (implicit tx: T, workspace: Workspace[T],
+//                                    ctrl: Control): State[T] = {
 //    val b = new BuilderImpl(context, fOpt)
 //    b.tryBuild(g)
 //  }
@@ -123,25 +122,25 @@ object UGenGraphBuilder {
     def key: Key
   }
 
-  trait Context[S <: Sys[S]] {
+  trait Context[T <: Txn[T]] {
 
-    def attr: Runner.Attr[S]
+    def attr: Runner.Attr[T]
 
-    def requestInput[Res](req: UGenGraphBuilder.Input { type Value = Res }, io: IO[S] with UGenGraphBuilder)
-                         (implicit tx: S#Tx): Res
+    def requestInput[Res](req: UGenGraphBuilder.Input { type Value = Res }, io: IO[T] with UGenGraphBuilder)
+                         (implicit tx: T): Res
   }
 
-  trait IO[S <: Sys[S]] {
+  trait IO[T <: Txn[T]] {
     // def acceptedInputs: Set[String]
     def acceptedInputs: Map[Key, Map[Input, Input#Value]]
 
     /** Current set of used outputs (scan keys to number of channels).
       * This is guaranteed to only grow during incremental building, never shrink.
       */
-    def outputs: List[OutputResult[S]]
+    def outputs: List[OutputResult[T]]
   }
 
-  sealed trait State[S <: Sys[S]] extends IO[S] {
+  sealed trait State[T <: Txn[T]] extends IO[T] {
     def rejectedInputs: Set[String]
 
     def isComplete: Boolean
@@ -164,11 +163,11 @@ object UGenGraphBuilder {
     }
   }
 
-  trait Incomplete[S <: Sys[S]] extends State[S] {
+  trait Incomplete[T <: Txn[T]] extends State[T] {
     final def isComplete = false
   }
 
-  trait Complete[S <: Sys[S]] extends State[S] {
+  trait Complete[T <: Txn[T]] extends State[T] {
     final def isComplete = true
 
     /** Structural hash, lazily calculated from `Vec[UGen]` */
@@ -364,7 +363,7 @@ object UGenGraphBuilder {
     def complete(w: Output.Writer): scala.Unit
   }
   /** An extended references as returned by the completed UGB. */
-  trait OutputResult[S <: Sys[S]] extends OutputRef {
+  trait OutputResult[T <: Txn[T]] extends OutputRef {
     def reader: Output.Reader
 
     /** Returns `true` after `complete` has been called, or `false` before.
@@ -377,7 +376,7 @@ object UGenGraphBuilder {
     /** Issues the underlying `Output` implementation to replace its
       * value with the new updated value.
       */
-    def updateValue(in: DataInput)(implicit tx: S#Tx): scala.Unit
+    def updateValue(in: DataInput)(implicit tx: T): scala.Unit
 
     /** A list of cache files created during rendering for this key,
       * created via `createCacheFile()`, or `Nil` if this output did not
@@ -394,18 +393,18 @@ object UGenGraphBuilder {
 
   // -----------------
 
-  private final class BuilderImpl[S <: Sys[S]](protected val context: Context[S], fscape: FScape[S])
-                                              (implicit tx: S#Tx, // cursor: stm.Cursor[S],
-                                               workspace: Workspace[S])
-    extends AbstractUGenGraphBuilder[S] { builder =>
+  private final class BuilderImpl[T <: Txn[T]](protected val context: Context[T], fscape: FScape[T])
+                                              (implicit tx: T, // cursor: stm.Cursor[T],
+                                               workspace: Workspace[T])
+    extends AbstractUGenGraphBuilder[T] { builder =>
 
     // we first check for a named output, and then try to fallback to
     // an `expr.graph.Var` provided attr argument.
-    protected def requestOutputImpl(reader: Output.Reader): Option[OutputResult[S]] = {
+    protected def requestOutputImpl(reader: Output.Reader): Option[OutputResult[T]] = {
       val key = reader.key
       val outOpt = fscape.outputs.get(key)
       outOpt match {
-        case Some(out: OutputImpl[S]) =>
+        case Some(out: OutputImpl[T]) =>
           if (out.valueType.typeId == reader.tpe.typeId) {
             val res = new ObjOutputRefImpl(reader, tx.newHandle(out))
             Some(res)
@@ -415,7 +414,7 @@ object UGenGraphBuilder {
         case _ =>
           val attrOpt = context.attr.get(key)
           attrOpt match {
-            case Some(ex: ExVar.Expanded[S, _]) =>
+            case Some(ex: ExVar.Expanded[T, _]) =>
               val res = new CtxOutputRefImpl(reader, ex)
               Some(res)
             case _ =>
@@ -425,12 +424,12 @@ object UGenGraphBuilder {
     }
   }
 
-  private final class CtxOutputRefImpl[S <: Sys[S], A](val reader: Output.Reader,
-                                                       vr: ExVar.Expanded[S, A])
-                                                      (implicit workspace: Workspace[S])
-    extends AbstractOutputRef[S] {
+  private final class CtxOutputRefImpl[T <: Txn[T], A](val reader: Output.Reader,
+                                                       vr: ExVar.Expanded[T, A])
+                                                      (implicit workspace: Workspace[T])
+    extends AbstractOutputRef[T] {
 
-    def updateValue(in: DataInput)(implicit tx: S#Tx): scala.Unit = {
+    def updateValue(in: DataInput)(implicit tx: T): scala.Unit = {
       val value = reader.readOutputValue(in)
       vr.fromAny.fromAny(value).foreach { valueT =>
         vr.update(new ExConst.Expanded(valueT))
@@ -438,13 +437,13 @@ object UGenGraphBuilder {
     }
   }
 
-  private final class ObjOutputRefImpl[S <: Sys[S]](val reader: Output.Reader,
-                                                 outputH: stm.Source[S#Tx, OutputImpl[S]])
-                                                (implicit workspace: Workspace[S])
-    extends AbstractOutputRef[S] {
+  private final class ObjOutputRefImpl[T <: Txn[T]](val reader: Output.Reader,
+                                                 outputH: Source[T, OutputImpl[T]])
+                                                (implicit workspace: Workspace[T])
+    extends AbstractOutputRef[T] {
 
-    def updateValue(in: DataInput)(implicit tx: S#Tx): scala.Unit = {
-      val obj     = reader.readOutput[S](in)
+    def updateValue(in: DataInput)(implicit tx: T): scala.Unit = {
+      val obj     = reader.readOutput[T](in)
       val output  = outputH()
       output.value_=(Some(obj))
     }

@@ -20,7 +20,7 @@ import de.sciss.fscape.lucre.UGenGraphBuilder.OutputRef
 import de.sciss.fscape.stream.impl.Handlers.InDMain
 import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
 import de.sciss.fscape.stream.{Builder, Control, _}
-import de.sciss.lucre.expr.DoubleVector
+import de.sciss.lucre.DoubleVector
 import de.sciss.serial.DataOutput
 
 import scala.annotation.tailrec
@@ -62,7 +62,7 @@ object MkDoubleVector {
         override val outputValue: Vec[A] = v
 
         def write(out: DataOutput): Unit =
-          DoubleVector.valueSerializer.write(outputValue, out)
+          DoubleVector.valueFormat.write(outputValue, out)
       })
       completeStage()
     }

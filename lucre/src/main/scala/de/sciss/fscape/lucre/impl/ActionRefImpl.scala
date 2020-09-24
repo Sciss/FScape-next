@@ -18,26 +18,25 @@ package impl
 import de.sciss.fscape.lucre.UGenGraphBuilder.Input
 import de.sciss.lucre.expr.SourcesAsRunnerMap
 import de.sciss.lucre.expr.graph.Const
-import de.sciss.lucre.stm
-import de.sciss.lucre.stm.Sys
+import de.sciss.lucre.{Obj, Source, Txn}
 import de.sciss.synth.proc.{Runner, SoundProcesses, Universe}
 
-final class ActionRefImpl[S <: Sys[S]](val key: String,
-                                       fH: stm.Source[S#Tx, FScape[S]], aH: stm.Source[S#Tx, stm.Obj[S]])
-                                      (implicit universe: Universe[S])
+final class ActionRefImpl[T <: Txn[T]](val key: String,
+                                       fH: Source[T, FScape[T]], aH: Source[T, Obj[T]])
+                                      (implicit universe: Universe[T])
   extends Input.Action.Value {
 
   def execute(value: Option[Any]): Unit = {
     import universe.cursor
-    SoundProcesses.step[S](s"FScape Action($key)") { implicit tx: S#Tx =>
+    SoundProcesses.step[T](s"FScape Action($key)") { implicit tx: T =>
       val a   = aH()
       val r   = Runner(a)
-      val m0: SourcesAsRunnerMap.Map[S] = Map("invoker" -> Left(fH))
+      val m0: SourcesAsRunnerMap.Map[T] = Map("invoker" -> Left(fH))
       val m1  = value match {
-        case Some(v)  => m0 + ("value" -> Right(new Const.Expanded[S, Any](v)))
+        case Some(v)  => m0 + ("value" -> Right(new Const.Expanded[T, Any](v)))
         case None     => m0
       }
-      r.prepare(new SourcesAsRunnerMap[S](m1))
+      r.prepare(new SourcesAsRunnerMap[T](m1))
       r.runAndDispose()
     }
   }

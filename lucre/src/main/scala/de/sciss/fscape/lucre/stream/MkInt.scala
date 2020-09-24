@@ -20,7 +20,7 @@ import de.sciss.fscape.lucre.UGenGraphBuilder.OutputRef
 import de.sciss.fscape.stream.impl.Handlers.InIMain
 import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
 import de.sciss.fscape.stream.{BufI, Builder, Control, _}
-import de.sciss.serial.{DataOutput, Serializer}
+import de.sciss.serial.{DataOutput, Format, TFormat}
 
 object MkInt {
   def apply(in: OutI, ref: OutputRef)(implicit b: Builder): Unit = {
@@ -56,7 +56,7 @@ object MkInt {
           override val outputValue: Int = v
 
           def write(out: DataOutput): Unit =
-            Serializer.Int.write(outputValue, out)
+            TFormat.Int.write(outputValue, out)
         })
         completeStage()
       }

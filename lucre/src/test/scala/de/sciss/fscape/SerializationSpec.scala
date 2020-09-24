@@ -1,9 +1,9 @@
 package de.sciss.fscape
 
 import de.sciss.fscape.lucre.FScape
-import de.sciss.lucre.expr.DoubleObj
-import de.sciss.lucre.stm.Durable
-import de.sciss.lucre.stm.store.BerkeleyDB
+import de.sciss.lucre.DoubleObj
+import de.sciss.lucre.Durable
+import de.sciss.lucre.store.BerkeleyDB
 import de.sciss.synth.proc.SoundProcesses
 import org.scalatest.Outcome
 import org.scalatest.flatspec.FixtureAnyFlatSpec
@@ -11,6 +11,7 @@ import org.scalatest.matchers.should.Matchers
 
 class SerializationSpec extends FixtureAnyFlatSpec with Matchers {
   type S = Durable
+  type T = Durable.Txn
   type FixtureParam = S
 
   SoundProcesses.init()
@@ -28,7 +29,7 @@ class SerializationSpec extends FixtureAnyFlatSpec with Matchers {
 
   "An FScape object" should "be serializable" in { cursor =>
     val (fH, numSources) = cursor.step { implicit tx =>
-      val f = FScape[S]
+      val f = FScape[T]
       val g = Graph {
         import graph._
         import lucre.graph._

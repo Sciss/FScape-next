@@ -13,8 +13,8 @@
 
 package de.sciss.fscape.lucre
 
-import de.sciss.lucre.stm.Sys
 import de.sciss.fscape.lucre.impl.Macros
+import de.sciss.lucre.Txn
 
 import scala.language.experimental.macros
 
@@ -24,8 +24,8 @@ import scala.language.experimental.macros
   * and preserving the corresponding source code.
   */
 object MacroImplicits {
-  implicit final class FScapeMacroOps[S <: Sys[S]](/* private[lucre] */ val `this`: FScape[S]) extends AnyVal {
-    def setGraph(body: Unit)(implicit tx: S#Tx): Unit =
-      macro Macros.fscapeGraphWithSource[S]
+  implicit final class FScapeMacroOps[T <: Txn[T]](/* private[lucre] */ val `this`: FScape[T]) extends AnyVal {
+    def setGraph(body: Unit)(implicit tx: T): Unit =
+      macro Macros.fscapeGraphWithSource[T]
   }
 }

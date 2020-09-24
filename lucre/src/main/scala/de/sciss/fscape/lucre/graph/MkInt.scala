@@ -21,9 +21,9 @@ import de.sciss.fscape.lucre.FScape.Output
 import de.sciss.fscape.lucre.UGenGraphBuilder.OutputRef
 import de.sciss.fscape.stream
 import de.sciss.fscape.stream.StreamIn
-import de.sciss.lucre.expr.IntObj
-import de.sciss.lucre.stm.{Obj, Sys, Workspace}
-import de.sciss.serial.{DataInput, Serializer}
+import de.sciss.lucre.IntObj
+import de.sciss.lucre.{Obj, Txn, Workspace}
+import de.sciss.serial.{DataInput, Format, TFormat}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
@@ -49,9 +49,9 @@ final case class MkInt(key: String, in: GE) extends Lazy.Expander[Unit] with Out
   def tpe: Obj.Type = IntObj
 
   override def readOutputValue(in: DataInput): Int =
-    Serializer.Int.read(in)
+    TFormat.Int.read(in)
 
-  def readOutput[S <: Sys[S]](in: DataInput)(implicit tx: S#Tx, workspace: Workspace[S]): Obj[S] = {
+  def readOutput[T <: Txn[T]](in: DataInput)(implicit tx: T, workspace: Workspace[T]): Obj[T] = {
     val flat = readOutputValue(in)
     IntObj.newConst(flat)
   }

@@ -17,9 +17,9 @@ import de.sciss.desktop
 import de.sciss.desktop.{FileDialog, TextFieldWithPaint}
 import de.sciss.file._
 import de.sciss.fscape.lucre.graph.{AudioFileOut => UAudioFileOut}
+import de.sciss.lucre.Txn
 import de.sciss.lucre.expr.Context
 import de.sciss.lucre.expr.graph.Ex
-import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.swing.LucreSwing.deferTx
 import de.sciss.lucre.swing.View
 import de.sciss.lucre.swing.graph.{AudioFileIn, AudioFileOut, PathField}
@@ -33,20 +33,20 @@ import scala.swing.Reactions.Reaction
 import scala.swing.event.{SelectionChanged, ValueChanged}
 import scala.swing.{Orientation, SequentialContainer, Swing}
 
-final class AudioFileOutExpandedImpl[S <: Sys[S]](protected val peer: AudioFileOut)
-  extends View[S] with ComponentHolder[AudioFileOut.Peer] with ComponentExpandedImpl[S] {
+final class AudioFileOutExpandedImpl[T <: Txn[T]](protected val peer: AudioFileOut)
+  extends View[T] with ComponentHolder[AudioFileOut.Peer] with ComponentExpandedImpl[T] {
 
   type C = AudioFileOut.Peer
 
-  override def initComponent()(implicit tx: S#Tx, ctx: Context[S]): this.type = {
-    val pathOpt   = ctx.getProperty[Ex[File   ]](peer, PathField   .keyValue       ).map(_.expand[S].value)
-    val titleOpt  = ctx.getProperty[Ex[String ]](peer, PathField   .keyTitle       ).map(_.expand[S].value)
-    val fileTpeIdx= ctx.getProperty[Ex[Int    ]](peer, AudioFileOut.keyFileType    ).fold(AudioFileOut.defaultFileType     )(_.expand[S].value)
-    val smpFmtIdx = ctx.getProperty[Ex[Int    ]](peer, AudioFileOut.keySampleFormat).fold(AudioFileOut.defaultSampleFormat )(_.expand[S].value)
-    val smpRate   = ctx.getProperty[Ex[Double ]](peer, AudioFileOut.keySampleRate  ).fold(AudioFileOut.defaultSampleRate   )(_.expand[S].value)
+  override def initComponent()(implicit tx: T, ctx: Context[T]): this.type = {
+    val pathOpt   = ctx.getProperty[Ex[File   ]](peer, PathField   .keyValue       ).map(_.expand[T].value)
+    val titleOpt  = ctx.getProperty[Ex[String ]](peer, PathField   .keyTitle       ).map(_.expand[T].value)
+    val fileTpeIdx= ctx.getProperty[Ex[Int    ]](peer, AudioFileOut.keyFileType    ).fold(AudioFileOut.defaultFileType     )(_.expand[T].value)
+    val smpFmtIdx = ctx.getProperty[Ex[Int    ]](peer, AudioFileOut.keySampleFormat).fold(AudioFileOut.defaultSampleFormat )(_.expand[T].value)
+    val smpRate   = ctx.getProperty[Ex[Double ]](peer, AudioFileOut.keySampleRate  ).fold(AudioFileOut.defaultSampleRate   )(_.expand[T].value)
 
     def getBoolean(key: String, default: => Boolean): Boolean =
-      ctx.getProperty[Ex[Boolean]](peer, key).fold(default)(_.expand[S].value)
+      ctx.getProperty[Ex[Boolean]](peer, key).fold(default)(_.expand[T].value)
 
     val pathFieldVisible    = getBoolean(AudioFileOut.keyPathFieldVisible   , AudioFileOut.defaultPathFieldVisible    )
     val fileTypeVisible     = getBoolean(AudioFileOut.keyFileTypeVisible    , AudioFileOut.defaultFileTypeVisible     )

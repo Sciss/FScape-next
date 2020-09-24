@@ -5,7 +5,7 @@ import de.sciss.file._
 import de.sciss.filecache.Limit
 import de.sciss.fscape.lucre.FScape.Output
 import de.sciss.fscape.lucre.{Cache, FScape}
-import de.sciss.lucre.expr.IntObj
+import de.sciss.lucre.IntObj
 import de.sciss.lucre.synth.InMemory
 import de.sciss.synth.proc.{AudioCue, GenView, Universe}
 
@@ -14,6 +14,7 @@ import scala.util.{Failure, Success}
 
 object AudioCueOutputTest extends App {
   type                  S = InMemory
+  type                  T = InMemory.Txn
   implicit val cursor:  S = InMemory()
 
   FScape.init()
@@ -23,7 +24,7 @@ object AudioCueOutputTest extends App {
   Cache.init(folder = folder, capacity = Limit())
 
   cursor.step { implicit tx =>
-    val f = FScape[S]
+    val f = FScape[T]
     val g = Graph {
       import graph._
       import lucre.graph._
@@ -39,12 +40,12 @@ object AudioCueOutputTest extends App {
 
     val count = Ref(0)
 
-    implicit val universe: Universe[S] = Universe.dummy
+    implicit val universe: Universe[T] = Universe.dummy
 
-    def mkView(out: Output[S], idx: Int): GenView[S] = {
+    def mkView(out: Output[T], idx: Int): GenView[T] = {
       val view = GenView(out)
 
-      import de.sciss.lucre.stm.TxnLike.peer
+      import de.sciss.lucre.Txn.peer
       view.reactNow { implicit tx => upd =>
         if (upd.isComplete) {
           view.value.foreach { value =>

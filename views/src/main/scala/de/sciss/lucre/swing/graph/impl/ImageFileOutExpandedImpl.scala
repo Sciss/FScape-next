@@ -22,9 +22,9 @@ import de.sciss.file._
 import de.sciss.fscape.graph.ImageFile
 import de.sciss.fscape.graph.ImageFile.SampleFormat
 import de.sciss.fscape.lucre.graph.{ImageFileOut => UImageFileOut}
+import de.sciss.lucre.Txn
 import de.sciss.lucre.expr.Context
 import de.sciss.lucre.expr.graph.Ex
-import de.sciss.lucre.stm.Sys
 import de.sciss.lucre.swing.LucreSwing.deferTx
 import de.sciss.lucre.swing.graph.{ImageFileIn, ImageFileOut, PathField}
 import de.sciss.lucre.swing.impl.ComponentHolder
@@ -37,20 +37,20 @@ import scala.swing.Reactions.Reaction
 import scala.swing.event.{SelectionChanged, ValueChanged}
 import scala.swing.{Alignment, Label, Orientation, SequentialContainer, Swing}
 
-final class ImageFileOutExpandedImpl[S <: Sys[S]](protected val peer: ImageFileOut)
-  extends View[S] with ComponentHolder[ImageFileOut.Peer] with ComponentExpandedImpl[S] {
+final class ImageFileOutExpandedImpl[T <: Txn[T]](protected val peer: ImageFileOut)
+  extends View[T] with ComponentHolder[ImageFileOut.Peer] with ComponentExpandedImpl[T] {
 
   type C = ImageFileOut.Peer
 
-  override def initComponent()(implicit tx: S#Tx, ctx: Context[S]): this.type = {
-    val pathOpt   = ctx.getProperty[Ex[File   ]](peer, PathField   .keyValue       ).map(_.expand[S].value)
-    val titleOpt  = ctx.getProperty[Ex[String ]](peer, PathField   .keyTitle       ).map(_.expand[S].value)
-    val fileTpeIdx= ctx.getProperty[Ex[Int    ]](peer, ImageFileOut.keyFileType    ).fold(ImageFileOut.defaultFileType     )(_.expand[S].value)
-    val smpFmtIdx = ctx.getProperty[Ex[Int    ]](peer, ImageFileOut.keySampleFormat).fold(ImageFileOut.defaultSampleFormat )(_.expand[S].value)
-    val quality   = ctx.getProperty[Ex[Int    ]](peer, ImageFileOut.keyQuality     ).fold(ImageFileOut.defaultQuality      )(_.expand[S].value)
+  override def initComponent()(implicit tx: T, ctx: Context[T]): this.type = {
+    val pathOpt   = ctx.getProperty[Ex[File   ]](peer, PathField   .keyValue       ).map(_.expand[T].value)
+    val titleOpt  = ctx.getProperty[Ex[String ]](peer, PathField   .keyTitle       ).map(_.expand[T].value)
+    val fileTpeIdx= ctx.getProperty[Ex[Int    ]](peer, ImageFileOut.keyFileType    ).fold(ImageFileOut.defaultFileType     )(_.expand[T].value)
+    val smpFmtIdx = ctx.getProperty[Ex[Int    ]](peer, ImageFileOut.keySampleFormat).fold(ImageFileOut.defaultSampleFormat )(_.expand[T].value)
+    val quality   = ctx.getProperty[Ex[Int    ]](peer, ImageFileOut.keyQuality     ).fold(ImageFileOut.defaultQuality      )(_.expand[T].value)
 
     def getBoolean(key: String, default: => Boolean): Boolean =
-      ctx.getProperty[Ex[Boolean]](peer, key).fold(default)(_.expand[S].value)
+      ctx.getProperty[Ex[Boolean]](peer, key).fold(default)(_.expand[T].value)
 
     val pathFieldVisible    = getBoolean(ImageFileOut.keyPathFieldVisible   , ImageFileOut.defaultPathFieldVisible    )
     val fileTypeVisible     = getBoolean(ImageFileOut.keyFileTypeVisible    , ImageFileOut.defaultFileTypeVisible     )

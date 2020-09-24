@@ -1,7 +1,7 @@
 package de.sciss.lucre.swing
 
 import de.sciss.lucre.expr.Context
-import de.sciss.lucre.stm.UndoManager
+import de.sciss.lucre.edit.UndoManager
 import de.sciss.lucre.synth.InMemory
 import de.sciss.synth.proc.{ExprContext, Universe}
 
@@ -18,13 +18,14 @@ object AudioFileInOutTest extends AppLike {
     }
 
     type              S = InMemory
+    type              T = InMemory.Txn
     implicit val sys: S = InMemory()
 
     val view = sys.step { implicit tx =>
-      implicit val u    : Universe    [S] = Universe.dummy
-      implicit val undo : UndoManager [S] = UndoManager()
-      implicit val ctx  : Context     [S] = ExprContext[S]()
-      g.expand[S]
+      implicit val u    : Universe    [T] = Universe.dummy
+      implicit val undo : UndoManager [T] = UndoManager()
+      implicit val ctx  : Context     [T] = ExprContext[T]()
+      g.expand[T]
     }
     view.component
   }

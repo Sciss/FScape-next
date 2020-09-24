@@ -21,8 +21,8 @@ import de.sciss.fscape.lucre.FScape.Output
 import de.sciss.fscape.lucre.UGenGraphBuilder.OutputRef
 import de.sciss.fscape.stream
 import de.sciss.fscape.stream.StreamIn
-import de.sciss.lucre.expr.IntVector
-import de.sciss.lucre.stm.{Obj, Sys, Workspace}
+import de.sciss.lucre.IntVector
+import de.sciss.lucre.{Obj, Txn, Workspace}
 import de.sciss.serial.DataInput
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -49,9 +49,9 @@ final case class MkIntVector(key: String, in: GE) extends Lazy.Expander[Unit] wi
   def tpe: Obj.Type = IntVector
 
   override def readOutputValue(in: DataInput): Vec[Int] =
-    IntVector.valueSerializer.read(in)
+    IntVector.valueFormat.read(in)
 
-  def readOutput[S <: Sys[S]](in: DataInput)(implicit tx: S#Tx, workspace: Workspace[S]): Obj[S] = {
+  def readOutput[T <: Txn[T]](in: DataInput)(implicit tx: T, workspace: Workspace[T]): Obj[T] = {
     val flat = readOutputValue(in)
     IntVector.newConst(flat)
   }

@@ -16,9 +16,8 @@ package lucre
 
 import de.sciss.fscape.lucre.impl.{FScapeRunnerImpl, OutputImpl, UGenGraphBuilderContextImpl, FScapeImpl => Impl}
 import de.sciss.fscape.stream.Control
-import de.sciss.lucre.event.{Observable, Publisher}
-import de.sciss.lucre.stm.{Disposable, Obj, Sys, Workspace}
-import de.sciss.serial.{DataInput, Serializer}
+import de.sciss.lucre.{Disposable, Obj, Observable, Publisher, Txn, Workspace}
+import de.sciss.serial.{DataInput, TFormat}
 import de.sciss.synth.proc
 import de.sciss.synth.proc.Code.{Example, Import}
 import de.sciss.synth.proc.impl.CodeImpl
@@ -46,35 +45,35 @@ object FScape extends Obj.Type {
     FScapeRunnerImpl.init()
   }
 
-  def apply[S <: Sys[S]]()(implicit tx: S#Tx): FScape[S] = Impl[S]
+  def apply[T <: Txn[T]]()(implicit tx: T): FScape[T] = Impl[T]
 
-  def read[S <: Sys[S]](in: DataInput, access: S#Acc)(implicit tx: S#Tx): FScape[S] = Impl.read(in, access)
+  def read[T <: Txn[T]](in: DataInput)(implicit tx: T): FScape[T] = Impl.read(in)
 
-  implicit def serializer[S <: Sys[S]]: Serializer[S#Tx, S#Acc, FScape[S]] = Impl.serializer[S]
+  implicit def format[T <: Txn[T]]: TFormat[T, FScape[T]] = Impl.format[T]
 
   // ---- event types ----
 
   /** An update is a sequence of changes */
-  final case class Update[S <: Sys[S]](proc: FScape[S], changes: Vec[Change[S]])
+  final case class Update[T <: Txn[T]](proc: FScape[T], changes: Vec[Change[T]])
 
   /** A change is either a state change, or a scan or a grapheme change */
-  sealed trait Change[S <: Sys[S]]
+  sealed trait Change[T <: Txn[T]]
 
-  final case class GraphChange[S <: Sys[S]](change: model.Change[Graph]) extends Change[S]
+  final case class GraphChange[T <: Txn[T]](change: model.Change[Graph]) extends Change[T]
 
   /** An output change is either adding or removing an output */
-  sealed trait OutputsChange[S <: Sys[S]] extends Change[S] {
-    def output: Output[S]
+  sealed trait OutputsChange[T <: Txn[T]] extends Change[T] {
+    def output: Output[T]
   }
 
-  final case class OutputAdded  [S <: Sys[S]](output: Output[S]) extends OutputsChange[S]
-  final case class OutputRemoved[S <: Sys[S]](output: Output[S]) extends OutputsChange[S]
+  final case class OutputAdded  [T <: Txn[T]](output: Output[T]) extends OutputsChange[T]
+  final case class OutputRemoved[T <: Txn[T]](output: Output[T]) extends OutputsChange[T]
 
   /** Source code of the graph function. */
   final val attrSource = "graph-source"
 
-  override def readIdentifiedObj[S <: Sys[S]](in: DataInput, access: S#Acc)(implicit tx: S#Tx): Obj[S] =
-    Impl.readIdentifiedObj(in, access)
+  override def readIdentifiedObj[T <: Txn[T]](in: DataInput)(implicit tx: T): Obj[T] =
+    Impl.readIdentifiedObj(in)
 
   // ----
 
@@ -88,25 +87,25 @@ object FScape extends Obj.Type {
     type Cancelled                                = fscape.stream.Cancelled
 
     /** Creates a view with the default `UGenGraphBuilder.Context`. */
-    def apply[S <: Sys[S]](peer: FScape[S], config: Control.Config, attr: Runner.Attr[S] = Runner.emptyAttr[S])
-                          (implicit tx: S#Tx, universe: Universe[S]): Rendering[S] = {
+    def apply[T <: Txn[T]](peer: FScape[T], config: Control.Config, attr: Runner.Attr[T] = Runner.emptyAttr[T])
+                          (implicit tx: T, universe: Universe[T]): Rendering[T] = {
       val ugbCtx = new UGenGraphBuilderContextImpl.Default(peer, attr = attr)
       impl.RenderingImpl(peer, ugbCtx, config, force = true)
     }
   }
-  trait Rendering[S <: Sys[S]] extends Observable[S#Tx, Rendering.State] with Disposable[S#Tx] {
-    def state(implicit tx: S#Tx): Rendering.State
+  trait Rendering[T <: Txn[T]] extends Observable[T, Rendering.State] with Disposable[T] {
+    def state(implicit tx: T): Rendering.State
 
-    def result(implicit tx: S#Tx): Option[Try[Unit]]
+    def result(implicit tx: T): Option[Try[Unit]]
 
-    def outputResult(output: OutputGenView[S])(implicit tx: S#Tx): Option[Try[Obj[S]]]
+    def outputResult(output: OutputGenView[T])(implicit tx: T): Option[Try[Obj[T]]]
 
     def control: Control
 
     /** Like `react` but invokes the function immediately with the current state. */
-    def reactNow(fun: S#Tx => Rendering.State => Unit)(implicit tx: S#Tx): Disposable[S#Tx]
+    def reactNow(fun: T => Rendering.State => Unit)(implicit tx: T): Disposable[T]
 
-    def cancel()(implicit tx: S#Tx): Unit
+    def cancel()(implicit tx: T): Unit
   }
 
   // ---- Code ----
@@ -178,12 +177,12 @@ object FScape extends Obj.Type {
   object Output extends Obj.Type {
     final val typeId = 0x1000D
 
-    def read[S <: Sys[S]](in: DataInput, access: S#Acc)(implicit tx: S#Tx): Output[S] = OutputImpl.read (in, access)
+    def read[T <: Txn[T]](in: DataInput)(implicit tx: T): Output[T] = OutputImpl.read(in)
 
-    implicit def serializer[S <: Sys[S]]: Serializer[S#Tx, S#Acc, Output[S]] = OutputImpl.serializer
+    implicit def format[T <: Txn[T]]: TFormat[T, Output[T]] = OutputImpl.format
 
-    override def readIdentifiedObj[S <: Sys[S]](in: DataInput, access: S#Acc)(implicit tx: S#Tx): Obj[S] =
-      OutputImpl.readIdentifiedObj(in, access)
+    override def readIdentifiedObj[T <: Txn[T]](in: DataInput)(implicit tx: T): Obj[T] =
+      OutputImpl.readIdentifiedObj(in)
 
     trait Reader {
       def key: String
@@ -191,32 +190,32 @@ object FScape extends Obj.Type {
 
       def readOutputValue(in: DataInput): Any
 
-      def readOutput[S <: Sys[S]](in: DataInput)(implicit tx: S#Tx, workspace: Workspace[S]): Obj[S]
+      def readOutput[T <: Txn[T]](in: DataInput)(implicit tx: T, workspace: Workspace[T]): Obj[T]
     }
 
     trait Writer extends de.sciss.serial.Writable {
       def outputValue: Any
     }
   }
-  trait Output[S <: Sys[S]] extends Gen[S] /* with Publisher[S, Output.Update[S]] */ {
-    def fscape: FScape[S]
+  trait Output[T <: Txn[T]] extends Gen[T] /* with Publisher[T, Output.Update[T]] */ {
+    def fscape: FScape[T]
     def key   : String
   }
 
-  trait Outputs[S <: Sys[S]] {
-    def get(key: String)(implicit tx: S#Tx): Option[Output[S]]
+  trait Outputs[T <: Txn[T]] {
+    def get(key: String)(implicit tx: T): Option[Output[T]]
 
-    def keys(implicit tx: S#Tx): Set[String]
+    def keys(implicit tx: T): Set[String]
 
-    def iterator(implicit tx: S#Tx): Iterator[Output[S]]
+    def iterator(implicit tx: T): Iterator[Output[T]]
 
     /** Adds a new output by the given key and type.
       * If an output by that name and type already exists, the old output is returned.
       * If the type differs, removes the old output and creates a new one.
       */
-    def add   (key: String, tpe: Obj.Type)(implicit tx: S#Tx): Output[S]
+    def add   (key: String, tpe: Obj.Type)(implicit tx: T): Output[T]
 
-    def remove(key: String)(implicit tx: S#Tx): Boolean
+    def remove(key: String)(implicit tx: T): Boolean
   }
 
   def genViewFactory(config: Control.Config = defaultConfig): GenView.Factory = Impl.genViewFactory(config)
@@ -228,7 +227,7 @@ object FScape extends Obj.Type {
     val b             = Control.Config()
     b.useAsync        = false
     b.terminateActors = false
-    // b.actorSystem = b.actorSystem
+    // b.actorTxntem = b.actorTxntem
     b
   }
 
@@ -247,12 +246,12 @@ object FScape extends Obj.Type {
 }
 
 /** The `FScape` trait is the basic entity representing a sound process. */
-trait FScape[S <: Sys[S]] extends Obj[S] with Publisher[S, FScape.Update[S]] {
+trait FScape[T <: Txn[T]] extends Obj[T] with Publisher[T, FScape.Update[T]] {
   /** The variable synth graph function of the process. */
-  def graph: GraphObj.Var[S]
+  def graph: GraphObj.Var[T]
 
-  def outputs: FScape.Outputs[S]
+  def outputs: FScape.Outputs[T]
 
-  def run(config: Control.Config = FScape.defaultConfig, attr: Runner.Attr[S] = Runner.emptyAttr[S])
-         (implicit tx: S#Tx, universe: Universe[S]): FScape.Rendering[S]
+  def run(config: Control.Config = FScape.defaultConfig, attr: Runner.Attr[T] = Runner.emptyAttr[T])
+         (implicit tx: T, universe: Universe[T]): FScape.Rendering[T]
 }

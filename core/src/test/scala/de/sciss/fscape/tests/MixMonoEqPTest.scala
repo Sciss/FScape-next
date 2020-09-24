@@ -26,5 +26,5 @@ object MixMonoEqPTest extends App {
   println("Running.")
   Await.result(ctrl.status, Duration.Inf)
   println("Done.")
-  sys.exit
+  sys.exit()
 }

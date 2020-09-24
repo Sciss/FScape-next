@@ -18,17 +18,16 @@ import java.util
 
 import de.sciss.file.File
 import de.sciss.fscape.graph.{Constant, ConstantD, ConstantI, ConstantL}
-import de.sciss.lucre.event.{Dummy, Event, EventLike, Targets}
-import de.sciss.lucre.expr
-import de.sciss.lucre.expr.Expr
-import de.sciss.lucre.stm.{Copy, Elem, Obj, Sys}
+import de.sciss.lucre.Event.Targets
+import de.sciss.lucre.impl.{DummyEvent, ExprTypeImpl}
+import de.sciss.lucre.{Copy, Elem, Event, EventLike, Expr, Ident, Obj, Txn, Var => LVar}
 import de.sciss.model.Change
-import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer}
+import de.sciss.serial.{ConstFormat, DataInput, DataOutput}
 
 import scala.annotation.{switch, tailrec}
 import scala.util.control.NonFatal
 
-object GraphObj extends expr.impl.ExprTypeImpl[Graph, GraphObj] {
+object GraphObj extends ExprTypeImpl[Graph, GraphObj] {
   final val typeId = 100
 
   def tryParse(value: Any): Option[Graph] = value match {
@@ -36,24 +35,24 @@ object GraphObj extends expr.impl.ExprTypeImpl[Graph, GraphObj] {
     case _        => None
   }
 
-  protected def mkConst[S <: Sys[S]](id: S#Id, value: A)(implicit tx: S#Tx): Const[S] =
-    new _Const[S](id, value)
+  protected def mkConst[T <: Txn[T]](id: Ident[T], value: A)(implicit tx: T): Const[T] =
+    new _Const[T](id, value)
 
-  protected def mkVar[S <: Sys[S]](targets: Targets[S], vr: S#Var[_Ex[S]], connect: Boolean)
-                                  (implicit tx: S#Tx): Var[S] = {
-    val res = new _Var[S](targets, vr)
+  protected def mkVar[T <: Txn[T]](targets: Targets[T], vr: LVar[T, E[T]], connect: Boolean)
+                                  (implicit tx: T): Var[T] = {
+    val res = new _Var[T](targets, vr)
     if (connect) res.connect()
     res
   }
 
-  private final class _Const[S <: Sys[S]](val id: S#Id, val constValue: A)
-    extends ConstImpl[S] with GraphObj[S]
+  private final class _Const[T <: Txn[T]](val id: Ident[T], val constValue: A)
+    extends ConstImpl[T] with GraphObj[T]
 
-  private final class _Var[S <: Sys[S]](val targets: Targets[S], val ref: S#Var[_Ex[S]])
-    extends VarImpl[S] with GraphObj[S]
+  private final class _Var[T <: Txn[T]](val targets: Targets[T], val ref: LVar[T, E[T]])
+    extends VarImpl[T] with GraphObj[T]
 
-  /** A serializer for graphs. */
-  object valueSerializer extends ImmutableSerializer[Graph] {
+  /** A format for graphs. */
+  object valueFormat extends ConstFormat[Graph] {
     private final val SER_VERSION = 0x5347
 
     // we use an identity hash map, because we do _not_
@@ -270,32 +269,32 @@ object GraphObj extends expr.impl.ExprTypeImpl[Graph, GraphObj] {
 
   private final val emptyCookie = 4
 
-  override protected def readCookie[S <: Sys[S]](in: DataInput, access: S#Acc, cookie: Byte)
-                                                (implicit tx: S#Tx): _Ex[S] =
+  override protected def readCookie[T <: Txn[T]](in: DataInput, cookie: Byte)
+                                                (implicit tx: T): E[T] =
     cookie match {
       case `emptyCookie` =>
-        val id = tx.readId(in, access)
+        val id = tx.readId(in)
         new Predefined(id, cookie)
-      case _ => super.readCookie(in, access, cookie)
+      case _ => super.readCookie(in, cookie)
     }
 
   private val emptyGraph = Graph {}
 
-  def empty[S <: Sys[S]](implicit tx: S#Tx): _Ex[S] = apply(emptyCookie  )
+  def empty[T <: Txn[T]](implicit tx: T): E[T] = apply(emptyCookie  )
 
-  private def apply[S <: Sys[S]](cookie: Int)(implicit tx: S#Tx): _Ex[S] = {
+  private def apply[T <: Txn[T]](cookie: Int)(implicit tx: T): E[T] = {
     val id = tx.newId()
     new Predefined(id, cookie)
   }
 
-  private final class Predefined[S <: Sys[S]](val id: S#Id, cookie: Int)
-    extends GraphObj[S] with Expr.Const[S, Graph] {
+  private final class Predefined[T <: Txn[T]](val id: Ident[T], cookie: Int)
+    extends GraphObj[T] with Expr.Const[T, Graph] {
 
-    def event(slot: Int): Event[S, Any] = throw new UnsupportedOperationException
+    def event(slot: Int): Event[T, Any] = throw new UnsupportedOperationException
 
     def tpe: Obj.Type = GraphObj
 
-    def copy[Out <: Sys[Out]]()(implicit tx: S#Tx, txOut: Out#Tx, context: Copy[S, Out]): Elem[Out] =
+    def copy[Out <: Txn[Out]]()(implicit tx: T, txOut: Out, context: Copy[T, Out]): Elem[Out] =
       new Predefined(txOut.newId(), cookie) // .connect()
 
     def write(out: DataOutput): Unit = {
@@ -304,15 +303,15 @@ object GraphObj extends expr.impl.ExprTypeImpl[Graph, GraphObj] {
       id.write(out)
     }
 
-    def value(implicit tx: S#Tx): Graph = constValue
+    def value(implicit tx: T): Graph = constValue
 
-    def changed: EventLike[S, Change[Graph]] = Dummy[S, Change[Graph]]
+    def changed: EventLike[T, Change[Graph]] = DummyEvent[T, Change[Graph]]
 
-    def dispose()(implicit tx: S#Tx): Unit = ()
+    def dispose()(implicit tx: T): Unit = ()
 
     def constValue: Graph = cookie match {
       case `emptyCookie` => emptyGraph
     }
   }
 }
-trait GraphObj[S <: Sys[S]] extends Expr[S, Graph]
+trait GraphObj[T <: Txn[T]] extends Expr[T, Graph]

@@ -2,8 +2,8 @@ lazy val baseName   = "FScape"
 lazy val baseNameL  = baseName.toLowerCase
 lazy val gitRepo    = "FScape-next"
 
-lazy val projectVersion = "2.36.1"
-lazy val mimaVersion    = "2.36.0"
+lazy val projectVersion = "3.0.0-SNAPSHOT"
+lazy val mimaVersion    = "3.0.0"
 
 lazy val baseDescription = "An audio rendering library"
 
@@ -11,8 +11,8 @@ lazy val commonSettings = Seq(
   organization       := "de.sciss",
   description        := baseDescription,
   version            := projectVersion,
-  scalaVersion       := "2.13.1",
-  crossScalaVersions := Seq("2.13.1", "2.12.11"),
+  scalaVersion       := "2.13.3",
+  crossScalaVersions := Seq("2.13.3", "2.12.12"),
   licenses           := Seq("AGPL v3+" -> url("http://www.gnu.org/licenses/agpl-3.0.txt")),
   homepage           := Some(url(s"https://git.iem.at/sciss/$gitRepo")),
   scalacOptions ++= Seq(
@@ -27,30 +27,30 @@ lazy val commonSettings = Seq(
 
 lazy val deps = new {
   val main = new {
-    val akka            = "2.6.6"
-    val audioFile       = "1.5.4"
-    val dsp             = "1.3.2"
-    val fileUtil        = "1.1.4"
-    val linKernighan    = "0.1.2"
-    val numbers         = "0.2.0"
-    val optional        = "1.0.0"
+    val akka            = "2.6.9"
+    val audioFile       = "2.0.0-SNAPSHOT"
+    val dsp             = "2.0.0-SNAPSHOT"
+    val fileUtil        = "1.1.5"
+    val linKernighan    = "0.1.3"
+    val numbers         = "0.2.1"
+    val optional        = "1.0.1"
     val scalaChart      = "0.7.1"
     val swingPlus       = "0.4.2"
   }
   val lucre = new {
-    val fileCache       = "0.5.1"
-    val lucre           = "3.17.1"
-    val soundProcesses  = "3.35.5"
+    val fileCache       = "1.0.0-SNAPSHOT"
+    val lucre           = "4.0.0-SNAPSHOT"
+    val soundProcesses  = "4.0.0-SNAPSHOT"
   }
   val views = new {
-    val lucreSwing      = "1.21.0"
+    val lucreSwing      = "2.0.0-SNAPSHOT"
   }
   val modules = new {
-    val scallop         = "3.4.0"
+    val scallop         = "3.5.1"
   }
   val test = new {
-    val kollFlitz       = "0.2.3"
-    val scalaTest       = "3.1.2"
+    val kollFlitz       = "0.2.4"
+    val scalaTest       = "3.2.2"
     val scallop: String = modules.scallop
     val submin          = "0.3.4"
   }

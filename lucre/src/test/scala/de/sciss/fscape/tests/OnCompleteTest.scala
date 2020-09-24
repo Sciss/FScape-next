@@ -3,7 +3,7 @@ package de.sciss.fscape.tests
 import de.sciss.fscape.lucre.FScape
 import de.sciss.fscape.stream.Cancelled
 import de.sciss.fscape.{Graph, graph, lucre}
-import de.sciss.lucre.expr.StringObj
+import de.sciss.lucre.StringObj
 import de.sciss.lucre.synth.InMemory
 import de.sciss.synth.proc
 import de.sciss.synth.proc.Universe
@@ -13,6 +13,7 @@ import scala.util.{Failure, Success}
 // XXX TODO --- should quit after action is executed
 object OnCompleteTest extends App {
   type S                  = InMemory
+  type T                  = InMemory.Txn
   implicit val cursor: S  = InMemory()
 
 //  new Thread {
@@ -23,7 +24,7 @@ object OnCompleteTest extends App {
 //  RenderingImpl.DEBUG = true
 
   val ctl = cursor.step { implicit tx =>
-    val f = FScape[S]
+    val f = FScape[T]
     val g = Graph {
       import graph.{AudioFileOut => _, _}
       import lucre.graph._
@@ -33,7 +34,7 @@ object OnCompleteTest extends App {
       OnComplete("action")
 //      Action(0, "action")
     }
-    val a = proc.Action[S]()
+    val a = proc.Action[T]()
     a.graph() = proc.Action.Graph {
       import de.sciss.lucre.expr.ExImport._
       import de.sciss.lucre.expr.graph._
@@ -42,14 +43,20 @@ object OnCompleteTest extends App {
         fsc   <- "invoker".attr[Obj]
         name  <- fsc.attr[String]("name")
       } yield {
-        PrintLn("Completed '" ++ name ++ "' with value " ++ v.toStr)
+        Act(
+          PrintLn("Completed '" ++ name ++ "' with value " ++ v.toStr),
+          Sys.Exit(),
+        )
       }
-      actDone.orElse(PrintLn("Missing data in done action"))
+      actDone.orElse(Act(
+        PrintLn("Missing data in done action"),
+        Sys.Exit(1),
+      ))
     }
     f.attr.put("action" , a)
-    f.attr.put("name"   , StringObj.newConst[S]("line-poll"))
+    f.attr.put("name"   , StringObj.newConst[T]("line-poll"))
     f.graph() = g
-    implicit val universe: Universe[S] = Universe.dummy
+    implicit val universe: Universe[T] = Universe.dummy
     val r = f.run()
     r.reactNow { implicit tx => state =>
       println(s"Rendering: $state")
