@@ -24,7 +24,7 @@ object OnCompleteTest extends App {
 //  RenderingImpl.DEBUG = true
 
   val ctl = cursor.step { implicit tx =>
-    val f = FScape[T]
+    val f = FScape[T]()
     val g = Graph {
       import graph.{AudioFileOut => _, _}
       import lucre.graph._

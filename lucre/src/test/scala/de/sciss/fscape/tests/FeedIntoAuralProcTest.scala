@@ -22,7 +22,7 @@ object FeedIntoAuralProcTest extends App {
   Cache.init(folder = folder, capacity = Limit())
 
   def run()(implicit tx: T, universe: Universe[T]): Unit = {
-    val f   = FScape[T]
+    val f   = FScape[T]()
     val gF  = Graph {
       import graph._
       import lucre.graph._
@@ -36,7 +36,7 @@ object FeedIntoAuralProcTest extends App {
     val outMax    = f.outputs.add("max"  , IntObj)
     f.graph() = gF
 
-    val p = Proc[T]
+    val p = Proc[T]()
     val gP = SynthGraph {
       import synth.{doubleNumberWrapper, proc, ugen}
       import proc.graph._

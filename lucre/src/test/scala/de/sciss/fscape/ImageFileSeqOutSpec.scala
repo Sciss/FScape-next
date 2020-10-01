@@ -46,7 +46,7 @@ class ImageFileSeqOutSpec extends FixtureAnyFlatSpec with Matchers {
     val idxSq       = List(1, 2)
 
     val rendering = cursor.step { implicit tx =>
-      val f = FScape[T]
+      val f = FScape[T]()
       val g = Graph {
         import graph.{ImageFileOut => _, ImageFileSeqOut => _, _}
         import lucre.graph._

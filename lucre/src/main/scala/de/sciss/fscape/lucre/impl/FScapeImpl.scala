@@ -104,7 +104,7 @@ object FScapeImpl {
 
     def copy[Out <: Txn[Out]]()(implicit tx: T, txOut: Out, context: Copy[T, Out]): Elem[Out] =
       new Impl[Out] { out =>
-        protected val targets: Targets[Out] = Targets[Out]
+        protected val targets: Targets[Out] = Targets[Out]()
         val graph     : GraphObj.Var[Out]                       = context(proc.graph)
         val outputsMap: SkipList.Map[Out, String, Output[Out]]  = SkipList.Map.empty
         connect()
@@ -180,7 +180,7 @@ object FScapeImpl {
 
     def copy[Out <: Txn[Out]]()(implicit tx: T, txOut: Out, context: Copy[T, Out]): Elem[Out] =
       new Impl[Out] { out =>
-        protected val targets: Targets[Out]                     = Targets[Out]
+        protected val targets: Targets[Out]                     = Targets[Out]()
         val graph     : GraphObj.Var[Out]                       = context(proc.graph)
         val outputsMap: SkipList.Map[Out, String, Output[Out]]  = SkipList.Map.empty
 

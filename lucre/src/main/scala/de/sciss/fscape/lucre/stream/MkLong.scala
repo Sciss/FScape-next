@@ -20,7 +20,7 @@ import de.sciss.fscape.lucre.UGenGraphBuilder.OutputRef
 import de.sciss.fscape.stream.impl.Handlers.InLMain
 import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
 import de.sciss.fscape.stream.{BufL, Builder, Control, _}
-import de.sciss.serial.{DataOutput, Format, TFormat}
+import de.sciss.serial.{DataOutput, TFormat}
 
 object MkLong {
   def apply(in: OutL, ref: OutputRef)(implicit b: Builder): Unit = {

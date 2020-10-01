@@ -40,7 +40,7 @@ class AudioFileOutSpec extends FixtureAnyFlatSpec with Matchers {
     val fileLen     = metroPeriod * 10
 
     val rendering = cursor.step { implicit tx =>
-      val f = FScape[T]
+      val f = FScape[T]()
       val g = Graph {
         import graph.{AudioFileOut => _, _}
         import lucre.graph._

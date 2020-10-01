@@ -24,7 +24,7 @@ object AudioCueOutputTest extends App {
   Cache.init(folder = folder, capacity = Limit())
 
   cursor.step { implicit tx =>
-    val f = FScape[T]
+    val f = FScape[T]()
     val g = Graph {
       import graph._
       import lucre.graph._

@@ -217,7 +217,7 @@ object RenderingImpl {
     cacheCfg.evict            = { (_ /* key */, value) => value.resources.foreach(_.delete())     }
     cacheCfg.capacity         = global.capacity
     cacheCfg.executionContext = global.executionContext
-    cacheCfg.extension        = global.extension
+    cacheCfg.fileExtension    = global.extension
     cacheCfg.folder           = global.folder
     atomic { implicit tx => TxnProducer(cacheCfg) }
   }

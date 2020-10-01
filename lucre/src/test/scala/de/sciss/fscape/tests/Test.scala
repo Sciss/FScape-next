@@ -23,7 +23,7 @@ object Test extends App {
   val tmpF    = tmpDir / "test.aif"
 
   val fH = cursor.step { implicit tx =>
-    val f = FScape[T]
+    val f = FScape[T]()
     val g = Graph {
       import graph.{AudioFileOut => _, _}
       import lucre.graph._

@@ -44,7 +44,7 @@ class ImageFileOutSpec extends FixtureAnyFlatSpec with Matchers {
     val fileLen     = widthIn * heightIn
 
     val rendering = cursor.step { implicit tx =>
-      val f = FScape[T]
+      val f = FScape[T]()
       val g = Graph {
         import graph.{ImageFileOut => _, _}
         import lucre.graph._

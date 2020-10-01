@@ -426,7 +426,7 @@ object UGenGraphBuilder {
 
   private final class CtxOutputRefImpl[T <: Txn[T], A](val reader: Output.Reader,
                                                        vr: ExVar.Expanded[T, A])
-                                                      (implicit workspace: Workspace[T])
+//                                                      (implicit workspace: Workspace[T])
     extends AbstractOutputRef[T] {
 
     def updateValue(in: DataInput)(implicit tx: T): scala.Unit = {

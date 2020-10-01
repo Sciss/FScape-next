@@ -29,7 +29,7 @@ class SerializationSpec extends FixtureAnyFlatSpec with Matchers {
 
   "An FScape object" should "be serializable" in { cursor =>
     val (fH, numSources) = cursor.step { implicit tx =>
-      val f = FScape[T]
+      val f = FScape[T]()
       val g = Graph {
         import graph._
         import lucre.graph._
