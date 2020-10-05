@@ -54,6 +54,7 @@ object MakeWorkspace {
       ModBleach,
       ModSpectralShadow,
       ModSlewRateLimiter,
+      ModCheckChannelBalance,
     ).sortBy(_.name)
 
   def help[T <: Txn[T]](m: Module)(implicit tx: T): Option[Markdown[T]] = {
