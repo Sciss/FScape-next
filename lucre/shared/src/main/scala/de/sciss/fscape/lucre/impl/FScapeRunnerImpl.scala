@@ -14,19 +14,20 @@
 package de.sciss.fscape.lucre
 package impl
 
-import java.awt.event.{ActionEvent, ActionListener}
+import java.util.concurrent.TimeUnit
 
 import de.sciss.fscape.lucre.FScape.Rendering
 import de.sciss.fscape.stream.Control
-import de.sciss.lucre.impl.ObservableImpl
 import de.sciss.lucre.Txn.peer
+import de.sciss.lucre.impl.ObservableImpl
+import de.sciss.lucre.synth.Executor
 import de.sciss.lucre.{Disposable, Obj, Source, Txn, synth}
 import de.sciss.synth.proc.Runner.{Done, Failed, Stopped}
 import de.sciss.synth.proc.impl.BasicRunnerImpl
 import de.sciss.synth.proc.{Runner, SoundProcesses, Universe}
 
 import scala.concurrent.ExecutionException
-import scala.concurrent.stm.Ref
+import scala.concurrent.stm.{Ref, TxnExecutor}
 import scala.util.{Failure, Success}
 
 object FScapeRunnerImpl extends Runner.Factory {
@@ -57,8 +58,9 @@ object FScapeRunnerImpl extends Runner.Factory {
 
     def tpe: Obj.Type = FScape
 
-    object progress extends Runner.Progress[T] with ObservableImpl[T, Double] with ActionListener {
+    object progress extends Runner.Progress[T] with ObservableImpl[T, Double] {
       private[this] val ref = Ref(-1.0)
+      private[this] val timerRef = Ref(Option.empty[Executor.Cancelable])
 
       def current(implicit tx: T): Double = ref()
 
@@ -71,31 +73,47 @@ object FScapeRunnerImpl extends Runner.Factory {
 
       private[this] var guiValue = -1.0
 
-      private[this] lazy val timer = {
-        val t = new javax.swing.Timer(200, this)
-        t.setRepeats(false)
-        t
-      }
-
       private[this] var lastReported = 0L
 
+      // called by Control
       def push(value: Double): Unit = {
         guiValue = value
         val now = System.currentTimeMillis()
-        if (now - lastReported > 250) {
-          timer.stop()
-          actionPerformed(null)
-        } else if (!timer.isRunning) {
-          timer.restart()
+        if (now - lastReported > 150) {
+          timerRef.single.swap(None).foreach(_.cancel())
+          report()
+        } else {
+          TxnExecutor.defaultAtomic { implicit tx =>
+            if (timerRef().isEmpty) {
+              lazy val cancel: Executor.Cancelable = Executor.scheduleWithCancel(100, TimeUnit.MILLISECONDS) {
+                val ok = TxnExecutor.defaultAtomic { implicit tx =>
+                  timerRef.transformAndExtract {
+                    case Some(`cancel`) => (None  , true  )
+                    case other          => (other , false )
+                  }
+                }
+                if (ok) report()
+              }
+              timerRef() = Some(cancel)
+            }
+          }
         }
       }
 
-      def actionPerformed(e: ActionEvent): Unit = {
+      private def report(): Unit = {
         lastReported = System.currentTimeMillis()
         SoundProcesses.step[T]("FScape Runner progress") { implicit tx =>
-          current = guiValue
+          setCurrent()
         }
       }
+
+      def stop()(implicit tx: T): Unit = {
+        timerRef.swap(None) // don't call 'cancel' in a transaction, just let it finish
+        setCurrent()
+      }
+
+      private def setCurrent()(implicit tx: T): Unit =
+        current = guiValue
     }
 
     protected def disposeData()(implicit tx: T): Unit = {
@@ -130,6 +148,7 @@ object FScapeRunnerImpl extends Runner.Factory {
       val newObs = r.reactNow { implicit tx => {
         case Rendering.Completed =>
           val res = r.result
+          progress.stop()
           disposeRender()
           state = res match {
             case Some(Failure(ex0)) =>
