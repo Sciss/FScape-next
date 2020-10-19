@@ -2,17 +2,20 @@ lazy val baseName   = "FScape"
 lazy val baseNameL  = baseName.toLowerCase
 lazy val gitRepo    = "FScape-next"
 
-lazy val projectVersion = "3.0.1-SNAPSHOT"
-lazy val mimaVersion    = "3.0.0"
+lazy val projectVersion = "3.1.0-SNAPSHOT"
+lazy val mimaVersion    = "3.1.0"
 
 lazy val baseDescription = "An audio rendering library"
+
+lazy val commonJvmSettings = Seq(
+  crossScalaVersions := Seq("2.13.3", "2.12.12"),
+)
 
 lazy val commonSettings = Seq(
   organization       := "de.sciss",
   description        := baseDescription,
   version            := projectVersion,
   scalaVersion       := "2.13.3",
-  crossScalaVersions := Seq("2.13.3", "2.12.12"),
   licenses           := Seq("AGPL v3+" -> url("http://www.gnu.org/licenses/agpl-3.0.txt")),
   homepage           := Some(url(s"https://git.iem.at/sciss/$gitRepo")),
   scalacOptions ++= Seq(
@@ -28,7 +31,8 @@ lazy val commonSettings = Seq(
 lazy val deps = new {
   val main = new {
     val akka            = "2.6.9"
-    val audioFile       = "2.0.0"
+    val akkaJs          = "2.2.6.9"
+    val audioFile       = "2.1.0-SNAPSHOT"
     val dsp             = "2.0.0"
     val fileUtil        = "1.1.5"
     val linKernighan    = "0.1.3"
@@ -39,8 +43,8 @@ lazy val deps = new {
   }
   val lucre = new {
     val fileCache       = "1.0.0"
-    val lucre           = "4.0.1"
-    val soundProcesses  = "4.0.0"
+    val lucre           = "4.1.0-SNAPSHOT"
+    val soundProcesses  = "4.1.0-SNAPSHOT"
   }
   val views = new {
     val lucreSwing      = "2.0.0"
@@ -60,17 +64,21 @@ def commonJavaOptions = Seq("-source", "1.8")
 
 lazy val testSettings = Seq(
   libraryDependencies += {
-    "org.scalatest" %% "scalatest" % deps.test.scalaTest % Test
+    "org.scalatest" %%% "scalatest" % deps.test.scalaTest % Test
   }
 )
 
 // ---- projects ----
 
 lazy val root = project.withId(baseNameL).in(file("."))
-  // .aggregate(core.jvm, core.js, lucre.jvm, macros.jvm, cdp.jvm, modules.jvm, views.jvm)
-  .aggregate(core, lucre, macros, cdp, modules, views)
+  .aggregate(
+    core .jvm, core .js, 
+    lucre.jvm, lucre.js,
+    macros, cdp, modules, views,
+  )
 //  .dependsOn(core, lucre, macros, cdp, modules, views)
   .settings(commonSettings)
+  .settings(commonJvmSettings)
   .settings(
     name := baseName,
     publishArtifact in(Compile, packageBin) := false, // there are no binaries
@@ -81,11 +89,10 @@ lazy val root = project.withId(baseNameL).in(file("."))
     mimaFailOnNoPrevious := false
   )
 
-lazy val core = project
-  .withId(s"$baseNameL-core")
-  .in(file("core"))
+lazy val core = crossProject(JVMPlatform, JSPlatform).in(file("core"))
   .enablePlugins(BuildInfoPlugin)
   .settings(commonSettings)
+  .jvmSettings(commonJvmSettings)
   .settings(testSettings)
   .settings(
     name := s"$baseName-Core",
@@ -95,49 +102,60 @@ lazy val core = project
     ),
     buildInfoPackage := "de.sciss.fscape",
     libraryDependencies ++= Seq(
-      "com.typesafe.akka" %%  "akka-stream"         % deps.main.akka,
-      "com.typesafe.akka" %%  "akka-stream-testkit" % deps.main.akka,
-      "de.sciss"          %%  "audiofile"           % deps.main.audioFile,
-      "de.sciss"          %%  "fileutil"            % deps.main.fileUtil,
-      "de.sciss"          %%  "linkernighantsp"     % deps.main.linKernighan,
-      "de.sciss"          %%  "numbers"             % deps.main.numbers,
-      "de.sciss"          %%  "optional"            % deps.main.optional,
-      "de.sciss"          %%  "scissdsp"            % deps.main.dsp,
-      "de.sciss"          %%  "swingplus"           % deps.main.swingPlus,
-      "de.sciss"          %%  "scala-chart"         % deps.main.scalaChart,
-      "de.sciss"          %%  "kollflitz"           % deps.test.kollFlitz % Test
+      "de.sciss"          %%%  "audiofile"            % deps.main.audioFile,
+      "de.sciss"          %%%  "linkernighantsp"      % deps.main.linKernighan,
+      "de.sciss"          %%%  "numbers"              % deps.main.numbers,
+      "de.sciss"          %%%  "optional"             % deps.main.optional,
+      "de.sciss"          %%%  "kollflitz"            % deps.test.kollFlitz  % Test,
+      "org.rogach"        %%%  "scallop"              % deps.test.scallop    % Test,
     ),
-    libraryDependencies += {
-      "org.rogach" %% "scallop" % deps.test.scallop % Test
-    },
     mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-core" % mimaVersion),
     mainClass in Test := Some("de.sciss.fscape.FramesTest")
   )
+  .jvmSettings(
+    libraryDependencies ++= Seq(
+      "com.typesafe.akka" %%%  "akka-stream"          % deps.main.akka,
+      "com.typesafe.akka" %%%  "akka-stream-testkit"  % deps.main.akka,
+      "de.sciss"          %%%  "fileutil"             % deps.main.fileUtil,
+      "de.sciss"          %%%  "scala-chart"          % deps.main.scalaChart,
+      "de.sciss"          %%%  "scissdsp"             % deps.main.dsp,      // XXX TODO -- need replacement for Java dep
+      "de.sciss"          %%%  "swingplus"            % deps.main.swingPlus,
+    ),
+  )
+  .jsSettings(
+    libraryDependencies ++= Seq(
+      "org.akka-js"       %%% "akkajsactorstream"     % deps.main.akkaJs,
+      "org.akka-js"       %%% "akkajsstreamtestkit"   % deps.main.akkaJs,
+    )
+  )
 
-lazy val lucre = project
-  .withId(s"$baseNameL-lucre")
-  .in(file("lucre"))
+lazy val lucre = crossProject(JVMPlatform, JSPlatform).in(file("lucre"))
   .dependsOn(core)
   .settings(commonSettings)
+  .jvmSettings(commonJvmSettings)
   .settings(testSettings)
   .settings(
     name := s"$baseName-Lucre",
     description := s"Bridge from $baseName to SoundProcesses",
     libraryDependencies ++= Seq(
-      "de.sciss"        %% "lucre-core"          % deps.lucre.lucre,
-      "de.sciss"        %% "lucre-expr"          % deps.lucre.lucre,
-      "de.sciss"        %% "soundprocesses-core" % deps.lucre.soundProcesses,
-      "de.sciss"        %% "filecache-txn"       % deps.lucre.fileCache,
-      "org.scala-lang"  %  "scala-reflect"       % scalaVersion.value,
-      "de.sciss"        %% "lucre-bdb"           % deps.lucre.lucre % Test
+      "de.sciss"        %%% "lucre-core"          % deps.lucre.lucre,
+      "de.sciss"        %%% "lucre-expr"          % deps.lucre.lucre,
+      "de.sciss"        %%% "soundprocesses-core" % deps.lucre.soundProcesses,
     ),
     mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-lucre" % mimaVersion)
+  )
+  .jvmSettings(
+    libraryDependencies ++= Seq(
+      "de.sciss"        %%% "filecache-txn"       % deps.lucre.fileCache,
+      "org.scala-lang"  %   "scala-reflect"       % scalaVersion.value,
+      "de.sciss"        %%% "lucre-bdb"           % deps.lucre.lucre % Test,
+    )
   )
 
 lazy val macros = project
   .withId(s"$baseNameL-macros")
   .in(file("macros"))
-  .dependsOn(lucre)
+  .dependsOn(lucre.jvm)
   .settings(commonSettings)
   .settings(
     name := s"$baseName-Macros",
@@ -152,7 +170,7 @@ lazy val macros = project
 lazy val views = project
   .withId(s"$baseNameL-views")
   .in(file("views"))
-  .dependsOn(lucre)
+  .dependsOn(lucre.jvm)
   .settings(commonSettings)
   .settings(
     name := s"$baseName-Views",
@@ -189,7 +207,7 @@ lazy val modules = project
 lazy val cdp = project
   .withId(s"$baseNameL-cdp")
   .in(file("cdp"))
-  .dependsOn(core)
+  .dependsOn(core.jvm)
   .settings(commonSettings)
   .settings(testSettings)
   .settings(
