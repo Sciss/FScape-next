@@ -33,6 +33,7 @@ lazy val deps = new {
     val akka            = "2.6.9"
     val akkaJs          = "2.2.6.9"
     val audioFile       = "2.1.0-SNAPSHOT"
+    val dom             = "1.1.0"
     val dsp             = "2.0.0"
     val fileUtil        = "1.1.5"
     val linKernighan    = "0.1.3"
@@ -126,6 +127,7 @@ lazy val core = crossProject(JVMPlatform, JSPlatform).in(file("core"))
     libraryDependencies ++= Seq(
       "org.akka-js"       %%% "akkajsactorstream"     % deps.main.akkaJs,
       "org.akka-js"       %%% "akkajsstreamtestkit"   % deps.main.akkaJs,
+      "org.scala-js"      %%% "scalajs-dom"           % deps.main.dom,
     )
   )
 
