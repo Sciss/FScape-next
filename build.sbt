@@ -32,7 +32,7 @@ lazy val deps = new {
   val main = new {
     val akka            = "2.6.9"
     val akkaJs          = "2.2.6.9"
-    val audioFile       = "2.1.0-SNAPSHOT"
+    val audioFile       = "2.1.0"
     val dom             = "1.1.0"
     val dsp             = "2.0.0"
     val fileUtil        = "1.1.5"
@@ -43,12 +43,12 @@ lazy val deps = new {
     val swingPlus       = "0.4.2"
   }
   val lucre = new {
-    val fileCache       = "1.0.0"
-    val lucre           = "4.1.0-SNAPSHOT"
-    val soundProcesses  = "4.1.0-SNAPSHOT"
+    val fileCache       = "1.1.0"
+    val lucre           = "4.1.0"
+    val soundProcesses  = "4.1.0"
   }
   val views = new {
-    val lucreSwing      = "2.0.0"
+    val lucreSwing      = "2.1.0"
   }
   val modules = new {
     val scallop         = "3.5.1"
