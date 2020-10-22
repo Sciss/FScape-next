@@ -1,5 +1,5 @@
 /*
- *  DelayN.scala
+ *  CombN.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2020 Hanns Holger Rutz. All rights reserved.
@@ -14,49 +14,56 @@
 package de.sciss.fscape
 package stream
 
-import akka.stream.{Attributes, FanInShape3, Inlet, Outlet}
+import akka.stream.{Attributes, FanInShape4, Inlet}
 import de.sciss.fscape.stream.impl.Handlers._
 import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
 
-import scala.math.{max, min}
+import scala.math.{max, min, exp, abs, signum}
 
-object DelayN {
-  def apply[A, E <: BufElem[A]](in: Outlet[E], maxLength: OutI, length: OutI)
-                               (implicit b: Builder, tpe: StreamType[A, E]): Outlet[E] = {
-    val stage0  = new Stage[A, E](b.layer)
+// XXX TODO: DRY with DelayN
+object CombN {
+  def apply(in: OutD, maxLength: OutI, length: OutI, decay: OutD)(implicit b: Builder): OutD = {
+    val stage0  = new Stage(b.layer)
     val stage   = b.add(stage0)
     b.connect(in        , stage.in0)
     b.connect(maxLength , stage.in1)
     b.connect(length    , stage.in2)
+    b.connect(decay     , stage.in3)
     stage.out
   }
 
-  private final val name = "DelayN"
+  private final val name = "CombN"
 
-  private type Shp[E] = FanInShape3[E, BufI, BufI, E]
+  private type Shp = FanInShape4[BufD, BufI, BufI, BufD, BufD]
 
-  private final class Stage[A, E <: BufElem[A]](layer: Layer)(implicit ctrl: Control, tpe: StreamType[A, E])
-    extends StageImpl[Shp[E]](name) {
+  private final class Stage(layer: Layer)(implicit ctrl: Control)
+    extends StageImpl[Shp](name) {
 
-    val shape: Shape = new FanInShape3(
-      in0 = Inlet[E]  (s"$name.in"        ),
-      in1 = InI       (s"$name.maxLength" ),
-      in2 = InI       (s"$name.length"    ),
-      out = Outlet[E] (s"$name.out"       )
+    val shape: Shape = new FanInShape4(
+      in0 = InD (s"$name.in"        ),
+      in1 = InI (s"$name.maxLength" ),
+      in2 = InI (s"$name.length"    ),
+      in3 = InD (s"$name.length"    ),
+      out = OutD(s"$name.out"       )
     )
 
     def createLogic(attr: Attributes): NodeImpl[Shape] =
-      new Logic[A, E](shape, layer)
+      new Logic(shape, layer)
   }
 
-  private final class Logic[/*@specialized(Int, Long, Double)*/ A, E <: BufElem[A]](shape: Shp[E], layer: Layer)
-                                                       (implicit ctrl: Control, tpe: StreamType[A, E])
-    extends Handlers[Shp[E]](name, layer, shape) {
+  private final val Log0_001 = math.log(0.001)
 
-    private[this] val hIn       : InMain[A, E]  = InMain [A, E](this, shape.in0)
-    private[this] val hMaxDlyLen: InIAux        = InIAux       (this, shape.in1)(max(0, _))
-    private[this] val hDlyLen   : InIAux        = InIAux       (this, shape.in2)(max(0, _))
-    private[this] val hOut      : OutMain[A, E] = OutMain[A, E](this, shape.out)
+  private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
+    extends Handlers[Shp](name, layer, shape) {
+
+    type A = Double
+    private val tpe = StreamType.double
+
+    private[this] val hIn       : InDMain   = InDMain (this, shape.in0)
+    private[this] val hMaxDlyLen: InIAux    = InIAux  (this, shape.in1)(max(0, _))
+    private[this] val hDlyLen   : InIAux    = InIAux  (this, shape.in2)(max(0, _))
+    private[this] val hDecayLen : InDAux    = InDAux  (this, shape.in3)()
+    private[this] val hOut      : OutDMain  = OutDMain(this, shape.out)
     private[this] var needsLen    = true
     private[this] var buf: Array[A] = _   // circular
     private[this] var maxDlyLen   = 0
@@ -64,6 +71,9 @@ object DelayN {
     private[this] var bufPosIn    = 0   // the base position before adding delay
     private[this] var bufPosOut   = 0
     private[this] var advance     = 0   // in-pointer ahead of out-pointer
+    private[this] var dlyLen      = -1
+    private[this] var dcyLen      = Double.PositiveInfinity
+    private[this] var fbCoef      = 1.0
 
     protected def onDone(inlet: Inlet[_]): Unit = {
       assert (inlet == shape.in0)
@@ -100,17 +110,18 @@ object DelayN {
       // always enter here -- `needsLen` must be `false` now
       while (true) {
         val remIn   = hIn.available
-        val remOut  = min(hOut.available, hDlyLen.available)
+        val remOut  = min(hOut.available, min(hDlyLen.available, hDecayLen.available))
 
         // never be ahead more than `bufLen` frames
         val numIn = min(remIn, bufLen - advance)
+        val bufPosIn0 = bufPosIn
         if (numIn > 0) {
           val chunk = min(numIn, bufLen - bufPosIn)
-//          println(s"IN  $bufPosIn ... ${bufPosIn + chunk}")
+          //          println(s"IN  $bufPosIn ... ${bufPosIn + chunk}")
           hIn.nextN(buf, bufPosIn, chunk)
           val chunk2 = numIn - chunk
           if (chunk2 > 0) {
-//            println(s"IN  0 ... $chunk2")
+            //            println(s"IN  0 ... $chunk2")
             hIn.nextN(buf, 0, chunk2)
           }
           bufPosIn  = (bufPosIn + numIn) % bufLen
@@ -121,30 +132,27 @@ object DelayN {
         val maxOut = if (hIn.isDone) advance else advance - maxDlyLen
         val numOut = min(remOut, maxOut) // advance - maxDlyLen)
         if (numOut > 0) {
-          if (hDlyLen.isConstant) { // more efficient
-            val dlyLen  = min(maxDlyLen, hDlyLen.next())
-            val dlyPos  = (bufPosOut + maxDlyLen - dlyLen) % bufLen
-            val chunk   = min(numOut, bufLen - dlyPos)
-//            println(s"OUT $dlyPos ... ${dlyPos + chunk}")
-            hOut.nextN(buf, dlyPos, chunk)
-            val chunk2  = numOut - chunk
-            if (chunk2 > 0) {
-//              println(s"OUT 0 ... $chunk2")
-              hOut.nextN(buf, 0, chunk2)
+          var i = bufPosOut + maxDlyLen
+          var j = i % bufLen
+          val stop = i + numOut
+          while (i < stop) {
+            val _dlyLen = min(maxDlyLen, hDlyLen.next())
+            val _dcyLen = hDecayLen.next()
+            if (dlyLen != _dlyLen || dcyLen != _dcyLen) {
+              dlyLen  = _dlyLen
+              dcyLen  = _dcyLen
+              fbCoef  = if (_dlyLen == 0 || _dcyLen == 0d) 0d else
+                exp(Log0_001 * _dlyLen / abs(dcyLen)) * signum(dcyLen)
             }
-
-          } else {
-            var i = 0
-            while (i < numOut) {
-              val dlyLen  = min(maxDlyLen, hDlyLen.next())
-              val dlyPos  = (bufPosOut + maxDlyLen - dlyLen + i) % bufLen
-              val v       = buf(dlyPos)
-//              println(s"OUT $dlyPos")
-              hOut.next(v)
-              i += 1
-            }
+            val dlyPos  = (i - _dlyLen) % bufLen
+            val v       = buf(dlyPos)
+            buf(j)     += fbCoef * v
+            hOut.next(v)
+            i += 1
+            j += 1; if (j == bufLen) j = 0
           }
 
+/*
           // we always have to clear behind
           // to avoid dirty buffer when the input terminates
           {
@@ -155,6 +163,7 @@ object DelayN {
               tpe.clear(buf, 0, chunk2)
             }
           }
+*/
 
           bufPosOut = (bufPosOut + numOut) % bufLen
           advance  -= numOut

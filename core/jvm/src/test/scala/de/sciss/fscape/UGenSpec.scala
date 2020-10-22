@@ -9,6 +9,7 @@ import org.scalatest.matchers.should.Matchers
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Promise}
 
+// XXX TODO: should avoid `Await` so it can be tested on Scala.js
 class UGenSpec extends AnyFlatSpec with Matchers {
   final val Pi  : Double = math.Pi
   final val Pi2 : Double = 2 * Pi

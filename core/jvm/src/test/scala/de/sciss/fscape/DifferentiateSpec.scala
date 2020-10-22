@@ -1,7 +1,7 @@
 package de.sciss.fscape
 
-import de.sciss.kollflitz.Vec
 import de.sciss.kollflitz
+import de.sciss.kollflitz.Vec
 
 import scala.concurrent.Promise
 

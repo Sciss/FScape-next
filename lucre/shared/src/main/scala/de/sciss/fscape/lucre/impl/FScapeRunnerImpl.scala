@@ -17,7 +17,6 @@ package impl
 import java.util.concurrent.TimeUnit
 
 import de.sciss.fscape.lucre.FScape.Rendering
-import de.sciss.fscape.stream.Control
 import de.sciss.lucre.Txn.peer
 import de.sciss.lucre.impl.ObservableImpl
 import de.sciss.lucre.synth.Executor
@@ -31,7 +30,7 @@ import scala.concurrent.stm.{Ref, TxnExecutor}
 import scala.util.{Failure, Success}
 
 object FScapeRunnerImpl extends Runner.Factory {
-  var DEBUG_USE_ASYNC = false // warning: Akka uses completely intrusive behaviour when in async
+//  var DEBUG_USE_ASYNC = false // warning: Akka uses completely intrusive behaviour when in async
 
   final val prefix          = "FScape"
   def humanName : String    = prefix
@@ -136,11 +135,11 @@ object FScapeRunnerImpl extends Runner.Factory {
       val obj = objH()
       messages.current = Nil
       state = Runner.Running
-      val cfg = Control.Config()
+      val cfg = FScape.defaultConfig.toBuilder // Control.Config()
       cfg.progressReporter = { p =>
         progress.push(p.total)
       }
-      cfg.useAsync  = DEBUG_USE_ASYNC
+//      cfg.useAsync  = DEBUG_USE_ASYNC
       val attr      = attrRef()
       val r: Rendering[T] = obj.run(cfg, attr)
       renderRef.swap(Some(r)).foreach(_.dispose())

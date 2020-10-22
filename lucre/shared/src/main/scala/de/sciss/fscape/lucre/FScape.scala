@@ -243,6 +243,9 @@ object FScape extends Obj.Type {
 
   def defaultConfig_=(value: Control.Config): Unit =
     _defaultConfig = value
+
+  type Config = Control.Config
+  val  Config = Control.Config
 }
 
 /** The `FScape` trait is the basic entity representing a sound process. */

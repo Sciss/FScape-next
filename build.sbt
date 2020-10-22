@@ -45,7 +45,7 @@ lazy val deps = new {
   val lucre = new {
     val fileCache       = "1.1.0"
     val lucre           = "4.1.0"
-    val soundProcesses  = "4.1.0"
+    val soundProcesses  = "4.1.1"
   }
   val views = new {
     val lucreSwing      = "2.1.0"
@@ -79,13 +79,11 @@ lazy val root = project.withId(baseNameL).in(file("."))
   )
 //  .dependsOn(core, lucre, macros, cdp, modules, views)
   .settings(commonSettings)
-  .settings(commonJvmSettings)
+//  .settings(commonJvmSettings)
   .settings(
     name := baseName,
-    publishArtifact in(Compile, packageBin) := false, // there are no binaries
-    publishArtifact in(Compile, packageDoc) := false, // there are no javadocs
-    publishArtifact in(Compile, packageSrc) := false, // there are no sources
-    // packagedArtifacts := Map.empty
+    publish := {},
+    publishArtifact := false,
     autoScalaLibrary := false,
     mimaFailOnNoPrevious := false
   )
