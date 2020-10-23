@@ -45,7 +45,7 @@ object Control {
     def nodeBufferSize: Int
 
     /** Random number generator seed. */
-    def seed: Long
+    def seed: Option[Long]
 
     def actorSystem: ActorSystem
 
@@ -76,7 +76,7 @@ object Control {
   final case class Config(blockSize         : Int,
                           nodeBufferSize    : Int,
                           useAsync          : Boolean,
-                          seed              : Long,
+                          seed              : Option[Long],
                           actorSystem       : ActorSystem,
                           materializer0     : Materializer,
                           executionContext0 : ExecutionContext,
@@ -127,14 +127,17 @@ object Control {
     var useAsync: Boolean = false // true
 
     private[this] var _seed = Option.empty[Long]
-    private[this] lazy val defaultSeed: Long = System.currentTimeMillis()
 
-    def seed: Long = _seed.getOrElse {
-      _seed = Some(defaultSeed)
-      defaultSeed
-    }
+//    private[this] lazy val defaultSeed: Long = System.currentTimeMillis()
 
-    def seed_=(value: Long): Unit = _seed = Some(value)
+    def seed: Option[Long] = _seed
+//      .getOrElse {
+//        _seed = Some(defaultSeed)
+//        defaultSeed
+//      }
+
+    def seed_=(value: Option[Long]): Unit =
+      _seed = value // Some(value)
 
     private[this] var _actor: ActorSystem = _
     private[this] var _actorSet           = false
@@ -239,7 +242,7 @@ object Control {
     private[this] val sync        = new AnyRef
     private[this] val statusP     = Promise[Unit]()
     private[this] var _actor      = null : ActorRef
-    private[this] val metaRand    = new Random(config.seed)
+    private[this] val metaRand    = config.seed.fold(new Random)(new Random(_))
     private[this] var _progLabels = Array.empty[String]
     private[this] var _progParts  = Array.empty[Double]
     private[this] val _progHasRep = config.progressReporter ne NoReport
