@@ -82,36 +82,39 @@ object WebAudioOut {
     private[this] var LAST_REP_IN_C   = 0
 
     private[this] val DEBUG = true
+    private[this] var okRT  = false
 
     private[this] val realtimeFun: js.Function1[AudioProcessingEvent, Unit] = { e =>
-      val b       = e.outputBuffer
-      val numCh   = b.numberOfChannels
-//      val len     = b.length
-      val rtBuf   = rtBufCircle(readCircleRT % circleSize)
-      val newRead = readCircleRT + 1
-      readCircleRT = newRead
+      if (okRT) { // there is a weird condition in which the realtime function is still called after `stopped`
+        val b       = e.outputBuffer
+        val numCh   = b.numberOfChannels
+  //      val len     = b.length
+        val rtBuf   = rtBufCircle(readCircleRT % circleSize)
+        val newRead = readCircleRT + 1
+        readCircleRT = newRead
 
-      if (DEBUG) {
-        val NOW = System.currentTimeMillis()
-        val DT  = NOW - LAST_REP_PROC
-        if (DT > 1000) {
-          val len  = rtBuf(0).length
-          val thru = ((newRead - LAST_REP_PROC_C) * len) * 1000.0 / DT
-          println(s"<AudioProcessingEvent> buffers read = $readCircle; through-put is $thru Hz")
-          LAST_REP_PROC   = NOW
-          LAST_REP_PROC_C = newRead
+        if (DEBUG) {
+          val NOW = System.currentTimeMillis()
+          val DT  = NOW - LAST_REP_PROC
+          if (DT > 1000) {
+            val len  = rtBuf(0).length
+            val thru = ((newRead - LAST_REP_PROC_C) * len) * 1000.0 / DT
+            println(s"<AudioProcessingEvent> buffers read = $readCircle; through-put is $thru Hz")
+            LAST_REP_PROC   = NOW
+            LAST_REP_PROC_C = newRead
+          }
         }
-      }
 
-      var ch = 0
-      while (ch < numCh) {
-        b.copyToChannel(rtBuf(ch), ch, 0)
-        ch += 1
-      }
+        var ch = 0
+        while (ch < numCh) {
+          b.copyToChannel(rtBuf(ch), ch, 0)
+          ch += 1
+        }
 
-      async {
-        readCircle = newRead
-        if (canProcess) process()
+        async {
+          readCircle = newRead
+          if (canProcess) process()
+        }
       }
     }
 
@@ -172,6 +175,7 @@ object WebAudioOut {
         }
         ch += 1
       }
+      okRT = true
       scriptProcessor.onaudioprocess = realtimeFun
       scriptProcessor.connect(audioContext.destination)
 //      audioContext.resume()
@@ -179,6 +183,7 @@ object WebAudioOut {
 
     override protected def stopped(): Unit = {
       logStream(s"$this - postStop()")
+      okRT = false
       if (scriptProcessor != null) {
         scriptProcessor.disconnect(audioContext.destination)
         scriptProcessor = null
