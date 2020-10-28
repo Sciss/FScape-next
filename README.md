@@ -18,7 +18,7 @@ on how to generate these "standard modules".
 FScape(-next) is (C)opyright 2001&ndash;2020 by Hanns Holger Rutz. All rights reserved.
 This program is free software; you can redistribute it and/or modify it under the terms 
 of the [GNU Affero General Public License](https://git.iem.at/sciss/FScape-next/raw/main/LICENSE) v3+.
-To contact the author, send an email to `contact at sciss.de`.
+To contact the author, send an e-mail to `contact at sciss.de`.
 
 FScape contains code adapted from Praat by Paul Boersma and David Weenink, published under the 
 GNU General Public License v2+.
@@ -27,7 +27,8 @@ Please consider supporting this project through Liberapay (see badge above) – 
 
 ## building
 
-FScape 2 builds with sbt and Scala 2.13, 2.12 (last version to support Scala 2.11 was 2.28.0). It requires Java 8.
+The project builds with sbt against Scala 2.13, 2.12 (JVM) and Scala 2.13 (JS).
+The last version to support Scala 2.11 was 2.28.0.
 
 ## linking
 
@@ -35,7 +36,7 @@ The following dependency is necessary:
 
     "de.sciss" %% "fscape" % v
 
-The current version `v` is `"3.0.1"`.
+The current version `v` is `"3.1.0"`.
 
 The following sub modules are available:
 

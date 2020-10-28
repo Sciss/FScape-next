@@ -18,7 +18,7 @@ import de.sciss.fscape.graph.ImageFile
 import de.sciss.lucre.{IExpr, Txn}
 import de.sciss.lucre.expr.graph.{Const, Ex}
 import de.sciss.lucre.expr.{Context, IControl, Model}
-import de.sciss.lucre.swing.graph.impl.{ComboBoxIndexExpandedImpl, ComponentImpl, ImageFileOutExpandedImpl, PathFieldValueExpandedImpl, SpinnerValueExpandedImpl}
+import de.sciss.lucre.swing.graph.impl.{ComboBoxValueExpandedImpl, ComponentImpl, ImageFileOutExpandedImpl, PathFieldValueExpandedImpl, SpinnerValueExpandedImpl, Tup2_1Expanded}
 import de.sciss.lucre.swing.{Graph, PanelWithPathField, View}
 import de.sciss.swingplus.{Spinner, ComboBox => _ComboBox}
 
@@ -49,7 +49,9 @@ object ImageFileOut {
       val ws        = w.expand[T]
       val valueOpt  = ctx.getProperty[Ex[Int]](w, keyFileType)
       val value0    = valueOpt.fold[Int](defaultFileType)(_.expand[T].value)
-      new ComboBoxIndexExpandedImpl[T, ImageFile.Type](ws.component.fileTypeComboBox, value0).init()
+      val tupVal0   = (value0, None)
+      val tup       = new ComboBoxValueExpandedImpl[T, ImageFile.Type](ws.component.fileTypeComboBox, tupVal0).init()
+      new Tup2_1Expanded(tup, tx)
     }
   }
 
@@ -63,7 +65,9 @@ object ImageFileOut {
       val ws        = w.expand[T]
       val valueOpt  = ctx.getProperty[Ex[Int]](w, keySampleFormat)
       val value0    = valueOpt.fold[Int](defaultSampleFormat)(_.expand[T].value)
-      new ComboBoxIndexExpandedImpl[T, ImageFile.SampleFormat](ws.component.sampleFormatComboBox, value0).init()
+      val tupVal0   = (value0, None)
+      val tup       = new ComboBoxValueExpandedImpl[T, ImageFile.SampleFormat](ws.component.sampleFormatComboBox, tupVal0).init()
+      new Tup2_1Expanded(tup, tx)
     }
   }
 

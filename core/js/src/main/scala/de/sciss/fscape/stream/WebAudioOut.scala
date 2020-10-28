@@ -81,7 +81,7 @@ object WebAudioOut {
     private[this] var LAST_REP_IN     = 0L
     private[this] var LAST_REP_IN_C   = 0
 
-    private[this] val DEBUG = true
+    private[this] val DEBUG = false
     private[this] var okRT  = false
 
     private[this] val realtimeFun: js.Function1[AudioProcessingEvent, Unit] = { e =>

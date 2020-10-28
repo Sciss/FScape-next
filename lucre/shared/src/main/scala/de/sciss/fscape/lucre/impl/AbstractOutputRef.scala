@@ -13,12 +13,9 @@
 
 package de.sciss.fscape.lucre.impl
 
-import de.sciss.file.File
 import de.sciss.fscape.lucre.FScape.Output
 import de.sciss.fscape.lucre.UGenGraphBuilder.OutputResult
 import de.sciss.lucre.Txn
-
-import scala.concurrent.stm.Ref
 
 /** Building block that implements all methods but `updateValue`. */
 trait AbstractOutputRef[T <: Txn[T]]

@@ -14,11 +14,11 @@
 package de.sciss.lucre.swing.graph
 
 import de.sciss.file.File
-import de.sciss.lucre.{IExpr, Txn}
 import de.sciss.lucre.expr.graph.{Const, Ex}
 import de.sciss.lucre.expr.{Context, IControl, Model}
-import de.sciss.lucre.swing.graph.impl.{AudioFileOutExpandedImpl, ComboBoxIndexExpandedImpl, ComboBoxValueExpandedImpl, ComponentImpl, PathFieldValueExpandedImpl}
+import de.sciss.lucre.swing.graph.impl.{AudioFileOutExpandedImpl, ComboBoxValueExpandedImpl, ComponentImpl, PathFieldValueExpandedImpl, Tup2_1Expanded, Tup2_2OptExpanded}
 import de.sciss.lucre.swing.{Graph, PanelWithPathField, View}
+import de.sciss.lucre.{IExpr, Txn}
 import de.sciss.swingplus.{ComboBox => _ComboBox}
 import de.sciss.synth.io
 import de.sciss.synth.io.AudioFileType
@@ -40,6 +40,18 @@ object AudioFileOut {
     }
   }
 
+//  private final class Tup2_2Expanded[T <: Txn[T], A, B](tup: IExpr[T, (A, B)], tx0: T)
+//                                                       (implicit targets: ITargets[T])
+//    extends MappedIExpr[T, (A, B), B](tup, tx0) {
+//
+//    protected def mapValue(tupVal: (A, B))(implicit tx: T): B = tupVal._2
+//
+//    override def dispose()(implicit tx: T): Unit = {
+//      super.dispose()
+//      tup.dispose()
+//    }
+//  }
+
   final case class FileType(w: AudioFileOut) extends Ex[Int] {
     type Repr[T <: Txn[T]] = IExpr[T, Int]
 
@@ -50,7 +62,9 @@ object AudioFileOut {
       val ws        = w.expand[T]
       val valueOpt  = ctx.getProperty[Ex[Int]](w, keyFileType)
       val value0    = valueOpt.fold[Int](defaultFileType)(_.expand[T].value)
-      new ComboBoxIndexExpandedImpl[T, AudioFileType](ws.component.fileTypeComboBox, value0).init()
+      val tupVal0   = (value0, None) // AudioFileType
+      val tup       = new ComboBoxValueExpandedImpl[T, AudioFileType](ws.component.fileTypeComboBox, tupVal0).init()
+      new Tup2_1Expanded(tup, tx)
     }
   }
 
@@ -64,7 +78,9 @@ object AudioFileOut {
       val ws        = w.expand[T]
       val valueOpt  = ctx.getProperty[Ex[Int]](w, keySampleFormat)
       val value0    = valueOpt.fold[Int](defaultSampleFormat)(_.expand[T].value)
-      new ComboBoxIndexExpandedImpl[T, io.SampleFormat](ws.component.sampleFormatComboBox, value0).init()
+      val tupVal0   = (value0, None)
+      val tup       = new ComboBoxValueExpandedImpl[T, io.SampleFormat](ws.component.sampleFormatComboBox, tupVal0).init()
+      new Tup2_1Expanded(tup, tx)
     }
   }
 
@@ -78,7 +94,9 @@ object AudioFileOut {
       val ws        = w.expand[T]
       val valueOpt  = ctx.getProperty[Ex[Double]](w, keySampleRate)
       val value0    = valueOpt.fold[Double](defaultSampleRate)(_.expand[T].value)
-      new ComboBoxValueExpandedImpl[T, Double](ws.component.sampleRateComboBox, value0).init()
+      val tupVal0   = (-1, Some(value0))
+      val tup       = new ComboBoxValueExpandedImpl[T, Double](ws.component.sampleRateComboBox, tupVal0).init()
+      new Tup2_2OptExpanded(tup, defaultSampleRate, tx)
     }
   }
 
