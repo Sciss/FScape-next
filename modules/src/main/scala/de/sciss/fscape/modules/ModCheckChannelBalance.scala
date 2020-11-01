@@ -60,6 +60,7 @@ object ModCheckChannelBalance extends Module {
       val rmsZip  = ZipWindowN(rmsDb)
       MkDoubleVector("out-peak", peakZip)
       MkDoubleVector("out-rms", rmsZip)
+      ()
     }
     f
   }

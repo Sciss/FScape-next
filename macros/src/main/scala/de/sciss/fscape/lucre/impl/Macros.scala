@@ -36,6 +36,7 @@ object Macros {
       val code          = FScape.Code(sourceExpr.splice)
       val codeObj       = Code.Obj.newVar[T](Code.Obj.newConst[T](code))
       p.attr.put(FScape.attrSource, codeObj)
+      ()
     }
   }
 }

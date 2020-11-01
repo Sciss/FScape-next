@@ -26,8 +26,10 @@ final case class Plot1D(in: GE, size: GE, label: String = "plot") extends UGenSo
   protected def makeUGens(implicit b: UGenGraph.Builder): Unit =
     unwrap(this, Vector(in.expand, size.expand))
 
-  protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit =
+  protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit = {
     UGen.ZeroOut(this, inputs = args, adjuncts = Adjunct.String(label) :: Nil)
+    ()
+  }
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit = {
     val Vec(in, size) = args

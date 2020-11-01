@@ -73,8 +73,10 @@ object ModTapeSpeed extends Module {
         )
       }
 
-      def mkProgress(x: GE, label: String): Unit =
+      def mkProgress(x: GE, label: String): Unit = {
         ProgressFrames(x, numFramesOut, label)
+        ()
+      }
 
       val sig0 = rsmp
       val sig = If (gainType sig_== 0) Then {

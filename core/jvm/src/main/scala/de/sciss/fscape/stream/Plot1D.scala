@@ -81,7 +81,7 @@ object Plot1D {
       ds.removeAllSeries()
       ds.addSeries(series)
       val n = series.getItemCount
-      chart.getXYPlot.getDomainAxis.setRange(pos, pos + n)
+      chart.getXYPlot.getDomainAxis.setRange(pos.toDouble, (pos + n).toDouble)
 
       if (!_hasGUI) {
 //        val plot      = chart.getPlot.asInstanceOf[XYPlot]
@@ -115,7 +115,7 @@ object Plot1D {
       var i = 0
       var f = framesRead
       while (i < num) {
-        series.add(f, data(i).asInstanceOf[Number])
+        series.add(f.toDouble, data(i).asInstanceOf[Number])
         i += 1
         f += 1
       }

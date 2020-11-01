@@ -28,8 +28,10 @@ case class DebugDoublePromise(in: GE, p: Promise[Vec[Double]]) extends UGenSourc
   protected def makeUGens(implicit b: UGenGraph.Builder): Unit =
     unwrap(this, Vector(in.expand))
 
-  protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit =
+  protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit = {
     UGen.ZeroOut(this, inputs = args)
+    ()
+  }
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit = {
     val Vec(in) = args

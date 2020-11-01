@@ -15,12 +15,13 @@ package de.sciss.fscape.lucre.stream
 
 import akka.stream.Attributes
 import akka.stream.stage.OutHandler
+import de.sciss.audiofile.AudioFile
+import de.sciss.audiofile.AudioFile.Frames
 import de.sciss.file._
 import de.sciss.fscape.stream.impl.shapes.UniformSourceShape
 import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeHasInitImpl, NodeImpl}
 import de.sciss.fscape.stream.{BufD, Control, Layer, OutD}
 import de.sciss.fscape.{Util, logStream, stream}
-import de.sciss.synth.io
 import de.sciss.synth.proc.AudioCue
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -57,9 +58,9 @@ object AudioFileIn {
                            (implicit ctrl: Control)
     extends NodeImpl(name, layer, shape) with NodeHasInitImpl with OutHandler {
 
-    private[this] var af        : io.AudioFile  = _
-    private[this] var buf       : io.Frames     = _
-    private[this] var bufSize   : Int           = _
+    private[this] var af        : AudioFile  = _
+    private[this] var buf       : Frames     = _
+    private[this] var bufSize   : Int        = _
 
     private[this] var framesRead  = 0L
     private[this] var gain        = 1.0
@@ -71,7 +72,7 @@ object AudioFileIn {
       logStream(s"init() $this")
       cueTr match {
         case Success(cue) =>
-          af          = io.AudioFile.openRead(cue.artifact)
+          af          = AudioFile.openRead(cue.artifact)
           if (af.numChannels != numChannels) {
             Console.err.println(s"Warning: DiskIn - channel mismatch (file has ${af.numChannels}, UGen has $numChannels)")
           }
@@ -81,6 +82,7 @@ object AudioFileIn {
           if (cue.offset > 0L) {
             framesRead = math.min(af.numFrames, cue.offset)
             af.seek(framesRead)
+            ()
           }
         case Failure(ex) =>
           notifyFail(ex)

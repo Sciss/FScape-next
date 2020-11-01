@@ -69,6 +69,7 @@ object ModLimiter extends Module {
       val written = AudioFileOut("out", sig, fileType = fileType,
         sampleFormat = smpFmt, sampleRate = sr)
       ProgressFrames(written, numFrames)
+      ()
     }
     f
   }

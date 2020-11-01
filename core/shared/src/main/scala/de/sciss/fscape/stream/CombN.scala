@@ -114,7 +114,7 @@ object CombN {
 
         // never be ahead more than `bufLen` frames
         val numIn = min(remIn, bufLen - advance)
-        val bufPosIn0 = bufPosIn
+        // val bufPosIn0 = bufPosIn
         if (numIn > 0) {
           val chunk = min(numIn, bufLen - bufPosIn)
           //          println(s"IN  $bufPosIn ... ${bufPosIn + chunk}")

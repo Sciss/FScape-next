@@ -43,6 +43,7 @@ final case class ImageFileSeqOut(in: GE, template: File, spec: ImageFile.Spec, i
     val t = Util.mkTemplate(template)
     UGen.ZeroOut(this, inputs = args,
       adjuncts = Adjunct.FileOut(t) :: Adjunct.ImageFileSpec(spec) :: Nil, isIndividual = true)
+    ()
   }
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit = {

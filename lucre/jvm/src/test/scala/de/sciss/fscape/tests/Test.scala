@@ -6,7 +6,7 @@ import de.sciss.fscape.stream.Cancelled
 import de.sciss.fscape.{Graph, graph, lucre}
 import de.sciss.lucre.synth.InMemory
 import de.sciss.lucre.{Artifact, ArtifactLocation, IntObj}
-import de.sciss.synth.io.AudioFile
+import de.sciss.audiofile.AudioFile
 import de.sciss.synth.proc.Universe
 
 import scala.util.{Failure, Success}

@@ -37,8 +37,10 @@ final case class Progress(in: GE, trig: GE, label: String = "render")
   protected def makeUGens(implicit b: UGenGraph.Builder): Unit =
     unwrap(this, Vector(in.expand, trig.expand))
 
-  protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit =
+  protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit = {
     UGen.ZeroOut(this, inputs = args, adjuncts = Adjunct.String(label) :: Nil)
+    ()
+  }
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit = {
     val Vec(in, trig) = args

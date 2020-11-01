@@ -20,8 +20,7 @@ import de.sciss.lucre.expr.{Context, IControl, Model}
 import de.sciss.lucre.swing.graph.impl.{ComponentImpl, FileInExpandedImpl, PathFieldValueExpandedImpl}
 import de.sciss.lucre.swing.{Graph, PanelWithPathField, View}
 import de.sciss.lucre.{IExpr, Txn}
-import de.sciss.synth.io
-import de.sciss.synth.io.{AudioFile, AudioFileSpec}
+import de.sciss.audiofile.{AudioFile, AudioFileSpec, SampleFormat}
 
 object AudioFileIn {
   def apply(): AudioFileIn = Impl()
@@ -42,11 +41,11 @@ object AudioFileIn {
     txt
   }
 
-  def formatToString(smp: io.SampleFormat): String = {
+  def formatToString(smp: SampleFormat): String = {
     val smpTpe = smp match {
-      case io.SampleFormat.Float | io.SampleFormat.Double => "float"
-      case io.SampleFormat.UInt8                          => "uint"
-      case _                                              => "int"
+      case SampleFormat.Float | SampleFormat.Double => "float"
+      case SampleFormat.UInt8                       => "uint"
+      case _                                        => "int"
     }
     val txt = s"${smp.bitsPerSample}-bit $smpTpe"
     txt

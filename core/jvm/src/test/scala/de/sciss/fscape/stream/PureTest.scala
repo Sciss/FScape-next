@@ -1,7 +1,7 @@
 package de.sciss.fscape.stream
 
 import de.sciss.file._
-import de.sciss.synth.io.{AudioFile, AudioFileSpec}
+import de.sciss.audiofile.{AudioFile, AudioFileSpec}
 import edu.emory.mathcs.jtransforms.fft.DoubleFFT_1D
 
 object PureTest extends App {

@@ -9,7 +9,7 @@ import de.sciss.file._
 import de.sciss.fscape.graph.BinaryOp.{Max, Times}
 import de.sciss.fscape.gui.SimpleGUI
 import de.sciss.fscape.tests.CepCoef
-import de.sciss.synth.io.AudioFileSpec
+import de.sciss.audiofile.AudioFileSpec
 
 import scala.swing.Swing
 

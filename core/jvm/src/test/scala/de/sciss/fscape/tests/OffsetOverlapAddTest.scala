@@ -1,8 +1,8 @@
 package de.sciss.fscape.tests
 
+import de.sciss.audiofile.AudioFileSpec
 import de.sciss.file._
 import de.sciss.fscape.{Graph, graph, stream}
-import de.sciss.synth.io.AudioFileSpec
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration

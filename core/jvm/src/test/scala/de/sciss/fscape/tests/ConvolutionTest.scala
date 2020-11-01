@@ -1,7 +1,7 @@
 package de.sciss.fscape
 package tests
 
-import de.sciss.synth.io.AudioFileSpec
+import de.sciss.audiofile.AudioFileSpec
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration

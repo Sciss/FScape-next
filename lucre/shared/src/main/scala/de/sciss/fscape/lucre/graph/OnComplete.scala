@@ -27,8 +27,10 @@ object OnComplete {
 
     protected def makeUGens(implicit b: UGenGraph.Builder): Unit = makeUGen(Vector.empty)
 
-    protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit =
+    protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit = {
       UGen.ZeroOut(this, args, adjuncts = Adjunct.String(ref.key) :: Nil)
+      ()
+    }
 
     private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit =
       lucre.stream.OnComplete(ref)
@@ -47,5 +49,6 @@ final case class OnComplete(key: String) extends Lazy.Expander[Unit] {
     val ub  = UGenGraphBuilder.get(b)
     val ref = ub.requestInput(Input.Action(key)) // .getOrElse(sys.error(s"Missing Attribute $key"))
     OnComplete.WithRef(ref)
+    ()
   }
 }

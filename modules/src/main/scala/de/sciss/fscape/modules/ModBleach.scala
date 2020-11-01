@@ -85,8 +85,10 @@ object ModBleach extends Module {
       val sig0 = bleach(in)
 
       // XXX TODO -- we need to solve the issue of multiple progress components
-      def mkProgress(x: GE, label: String) =
+      def mkProgress(x: GE, label: String): Unit = {
         ProgressFrames(x, numFrames, label)
+        ()
+      }
 
       val sig1 = sig0
 

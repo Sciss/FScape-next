@@ -63,6 +63,7 @@ object DropRight {
     protected def onDone(inlet: Inlet[_]): Unit = {
       assert (inlet == shape.in0)
       checkInDone()
+      ()
     }
 
     private def checkInDone(): Boolean = {

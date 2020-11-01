@@ -16,10 +16,10 @@ package stream
 
 import akka.stream.stage.{InHandler, OutHandler}
 import akka.stream.{Attributes, FlowShape}
+import de.sciss.audiofile.AudioFile.Frames
 import de.sciss.file._
 import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeHasInitImpl, NodeImpl}
-import de.sciss.synth.io
-import de.sciss.synth.io.{AudioFile, AudioFileSpec, AudioFileType, SampleFormat}
+import de.sciss.audiofile.{AudioFile, AudioFileSpec, AudioFileType, SampleFormat}
 
 import scala.util.control.NonFatal
 
@@ -49,9 +49,9 @@ object CdpModifyRadicalReverse {
   private final class Logic(shape: Shp, layer: Layer)(implicit ctrl: Control)
     extends NodeImpl(name, layer, shape) with NodeHasInitImpl with InHandler with OutHandler {
 
-    private[this] var afSource      : io.AudioFile  = _
-    private[this] var afSink        : io.AudioFile  = _
-    private[this] var buf           : io.Frames     = _
+    private[this] var afSource      : AudioFile     = _
+    private[this] var afSink        : AudioFile     = _
+    private[this] var buf           : Frames        = _
     private[this] var bufSize       : Int           = _
 
     private[this] var tmpFileSource : File          = _
@@ -84,7 +84,7 @@ object CdpModifyRadicalReverse {
 
       // note: sampling-rate is irrelevant for the process
       val specOut = AudioFileSpec(AudioFileType.AIFF, SampleFormat.Float, numChannels = 1, sampleRate = 44100)
-      afSink      = io.AudioFile.openWrite(tmpFileSink, specOut)
+      afSink      = AudioFile.openWrite(tmpFileSink, specOut)
       bufSize     = ctrl.blockSize
     }
 
@@ -186,6 +186,7 @@ object CdpModifyRadicalReverse {
       val res     = cmdArgs.!(swallow)
       if (res != 0) failStage(new Exception(s"CDP failed with exit code $res"))
       tmpFileSink.delete()
+      ()
     }
 
     private def processSource(): Unit = {

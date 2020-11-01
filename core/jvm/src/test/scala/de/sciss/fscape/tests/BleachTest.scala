@@ -4,7 +4,7 @@ import de.sciss.file._
 import de.sciss.fscape.stream.Control
 import de.sciss.fscape.{GE, Graph, graph}
 import de.sciss.numbers.Implicits._
-import de.sciss.synth.io.{AudioFile, AudioFileSpec}
+import de.sciss.audiofile.{AudioFile, AudioFileSpec}
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration

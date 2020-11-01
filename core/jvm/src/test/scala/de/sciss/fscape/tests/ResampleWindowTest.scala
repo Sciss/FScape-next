@@ -2,7 +2,7 @@ package de.sciss.fscape.tests
 
 import de.sciss.file._
 import de.sciss.fscape.{GE, Graph, graph, stream}
-import de.sciss.synth.io.AudioFileSpec
+import de.sciss.audiofile.AudioFileSpec
 
 object ResampleWindowTest extends App {
   lazy val g1 = Graph {

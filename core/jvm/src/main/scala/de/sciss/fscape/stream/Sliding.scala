@@ -93,6 +93,7 @@ object Sliding {
     final def dispose(): Unit = if (raf != null) {
       raf.close()
       f.delete()
+      ()
     }
 
     override def toString = s"Window(offIn = $offIn, offOut = $offOut, size = $size)"

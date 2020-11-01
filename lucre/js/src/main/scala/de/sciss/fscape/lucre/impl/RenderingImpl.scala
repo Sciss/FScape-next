@@ -24,7 +24,7 @@ import de.sciss.lucre.{Cursor, Disposable, Obj, Txn}
 import de.sciss.serial.{DataInput, DataOutput}
 import de.sciss.synth.proc.{GenView, Runner, SoundProcesses, Universe}
 
-import scala.concurrent.stm.{Ref, TMap}
+import scala.concurrent.stm.Ref
 import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
@@ -152,13 +152,13 @@ object RenderingImpl {
     override def toString: String = s"CacheValue@${hashCode().toHexString}"
   }
 
-  // same as filecache.impl.TxnConsumerImpl.Entry
-  private final class Entry[B](val useCount: Int = 1, val future: Future[B]) {
-    def inc = new Entry(useCount + 1, future)
-    def dec = new Entry(useCount - 1, future)
-  }
+//  // same as filecache.impl.TxnConsumerImpl.Entry
+//  private final class Entry[B](val useCount: Int = 1, val future: Future[B]) {
+//    def inc = new Entry(useCount + 1, future)
+//    def dec = new Entry(useCount - 1, future)
+//  }
 
-  private[this] val map = TMap.empty[CacheKey, Entry[CacheValue]]
+//  private[this] val map = TMap.empty[CacheKey, Entry[CacheValue]]
 
   // FScape is rendering
   private final class Impl[T <: Txn[T]](struct: CacheKey, outputs: List[OutputResult[T]],

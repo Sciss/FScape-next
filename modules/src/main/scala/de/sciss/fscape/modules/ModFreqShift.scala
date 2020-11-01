@@ -83,8 +83,10 @@ object ModFreqShift extends Module {
       // shift up or down
       val shifted = (convRe * modSCos + convIm * modSSin).drop(lpWinSzH).take(numFramesIn)
 
-      def mkProgress(x: GE, label: String): Unit =
+      def mkProgress(x: GE, label: String): Unit = {
         ProgressFrames(x, numFramesIn, label)
+        ()
+      }
 
       val sig0: GE = shifted
 

@@ -52,8 +52,10 @@ object ModChangeGain extends Module {
       val fileType  = "out-type"  .attr(0)
       val smpFmt    = "out-format".attr(2)
 
-      def mkProgress(x: GE, label: String): Unit =
+      def mkProgress(x: GE, label: String): Unit = {
         ProgressFrames(x, numFrames, label)
+        ()
+      }
 
       val mul       = If (gainType sig_== 0) Then {
         val in1       = mkIn()

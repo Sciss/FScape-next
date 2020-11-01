@@ -63,6 +63,7 @@ object Concat {
       } else {
         assert (inlet == hInB.inlet)
         checkDoneB()
+        ()
       }
 
     private def checkDoneB(): Boolean = {

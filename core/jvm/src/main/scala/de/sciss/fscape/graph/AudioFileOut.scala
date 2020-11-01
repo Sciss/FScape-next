@@ -18,7 +18,7 @@ import de.sciss.file.File
 import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
-import de.sciss.synth.io.AudioFileSpec
+import de.sciss.audiofile.AudioFileSpec
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 

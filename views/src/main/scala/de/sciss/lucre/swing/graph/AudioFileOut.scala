@@ -20,8 +20,7 @@ import de.sciss.lucre.swing.graph.impl.{AudioFileOutExpandedImpl, ComboBoxValueE
 import de.sciss.lucre.swing.{Graph, PanelWithPathField, View}
 import de.sciss.lucre.{IExpr, Txn}
 import de.sciss.swingplus.{ComboBox => _ComboBox}
-import de.sciss.synth.io
-import de.sciss.synth.io.AudioFileType
+import de.sciss.audiofile.{AudioFileType, SampleFormat => _SampleFormat}
 
 object AudioFileOut {
   def apply(): AudioFileOut = Impl()
@@ -79,7 +78,7 @@ object AudioFileOut {
       val valueOpt  = ctx.getProperty[Ex[Int]](w, keySampleFormat)
       val value0    = valueOpt.fold[Int](defaultSampleFormat)(_.expand[T].value)
       val tupVal0   = (value0, None)
-      val tup       = new ComboBoxValueExpandedImpl[T, io.SampleFormat](ws.component.sampleFormatComboBox, tupVal0).init()
+      val tup       = new ComboBoxValueExpandedImpl[T, _SampleFormat](ws.component.sampleFormatComboBox, tupVal0).init()
       new Tup2_1Expanded(tup, tx)
     }
   }
@@ -256,7 +255,7 @@ object AudioFileOut {
 
   abstract class Peer extends PanelWithPathField {
     def fileTypeComboBox    : _ComboBox[AudioFileType]
-    def sampleFormatComboBox: _ComboBox[io.SampleFormat]
+    def sampleFormatComboBox: _ComboBox[_SampleFormat]
     def sampleRateComboBox  : _ComboBox[Double]
   }
 }

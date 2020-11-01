@@ -45,6 +45,7 @@ final case class ProgressFrames(in: GE, numFrames: GE, label: String = "render")
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit = {
     val trunc = args.take(2)  // if the input was multi-channel, just use the first channel
     UGen.ZeroOut(this, inputs = trunc, adjuncts = Adjunct.String(label) :: Nil)
+    ()
   }
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit = {

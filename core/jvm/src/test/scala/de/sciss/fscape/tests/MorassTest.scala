@@ -5,7 +5,7 @@ import de.sciss.fscape.graph.GenWindow
 import de.sciss.fscape.gui.SimpleGUI
 import de.sciss.fscape.{GE, Graph, graph, showStreamLog, stream}
 import de.sciss.numbers
-import de.sciss.synth.io.{AudioFile, AudioFileSpec, AudioFileType, SampleFormat}
+import de.sciss.audiofile.{AudioFile, AudioFileSpec, AudioFileType, SampleFormat}
 
 import scala.swing.Swing
 

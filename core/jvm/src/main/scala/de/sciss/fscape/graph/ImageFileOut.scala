@@ -24,8 +24,10 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 final case class ImageFileOut(in: GE, file: File, spec: ImageFile.Spec) extends UGenSource.ZeroOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): Unit = unwrap(this, in.expand.outputs)
 
-  protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit =
+  protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit = {
     UGen.ZeroOut(this, inputs = args, adjuncts = Adjunct.FileOut(file) :: Adjunct.ImageFileSpec(spec) :: Nil, isIndividual = true)
+    ()
+  }
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit = {
     stream.ImageFileOut(file = file, spec = spec, in = args.map(_.toDouble))

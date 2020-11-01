@@ -2,8 +2,8 @@ lazy val baseName   = "FScape"
 lazy val baseNameL  = baseName.toLowerCase
 lazy val gitRepo    = "FScape-next"
 
-lazy val projectVersion = "3.1.0"
-lazy val mimaVersion    = "3.1.0"
+lazy val projectVersion = "3.2.0-SNAPSHOT"
+lazy val mimaVersion    = "3.2.0"
 
 lazy val baseDescription = "An audio rendering library"
 
@@ -21,7 +21,11 @@ lazy val commonSettings = Seq(
   scalacOptions ++= Seq(
     "-deprecation", "-unchecked", "-feature", "-encoding", "utf8", "-Xlint", "-Xsource:2.13"
   ),
-  scalacOptions in (Compile, compile) ++= (if (scala.util.Properties.isJavaAtLeast("9")) Seq("-release", "8") else Nil), // JDK >8 breaks API; skip scala-doc
+  scalacOptions in (Compile, compile) ++= {
+    val xs = (if (scala.util.Properties.isJavaAtLeast("9")) Seq("-release", "8") else Nil)  // JDK >8 breaks API; skip scala-doc
+    val sv = scalaVersion.value
+    if (sv.startsWith("2.13.")) xs :+ "-Wvalue-discard" else xs
+  },
   updateOptions      := updateOptions.value.withLatestSnapshots(false),
   javacOptions        := commonJavaOptions ++ Seq("-target", "1.8", "-g", "-Xlint:deprecation" /*, "-Xlint:unchecked" */),
   javacOptions in doc := commonJavaOptions,
@@ -32,7 +36,7 @@ lazy val deps = new {
   val main = new {
     val akka            = "2.6.10"  // on the JVM
     val akkaJs          = "2.2.6.9" // on JS
-    val audioFile       = "2.1.0"
+    val audioFile       = "2.2.0-SNAPSHOT"
     val dom             = "1.1.0"
     val dsp             = "2.0.0"
     val fileUtil        = "1.1.5"
@@ -45,7 +49,7 @@ lazy val deps = new {
   val lucre = new {
     val fileCache       = "1.1.0"
     val lucre           = "4.1.0"
-    val soundProcesses  = "4.2.0"
+    val soundProcesses  = "4.3.0-SNAPSHOT"
   }
   val views = new {
     val lucreSwing      = "2.2.0"

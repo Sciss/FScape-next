@@ -28,8 +28,10 @@ object Action {
     protected def makeUGens(implicit b: UGenGraph.Builder): Unit =
       unwrap(this, Vector(action.trig.expand))
 
-    protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit =
+    protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit = {
       UGen.ZeroOut(this, args, adjuncts = Adjunct.String(ref.key) :: Nil)
+      ()
+    }
 
     private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit = {
       val Vec(trig) = args
@@ -50,6 +52,7 @@ final case class Action(trig: GE, key: String) extends Lazy.Expander[Unit] {
     val ub  = UGenGraphBuilder.get(b)
     val ref = ub.requestInput(Input.Action(key)) // .getOrElse(sys.error(s"Missing Attribute $key"))
     Action.WithRef(this, ref)
+    ()
   }
 }
 

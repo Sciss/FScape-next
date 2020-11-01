@@ -86,8 +86,10 @@ object Then {
     protected def makeUGens(implicit b: UGenGraph.Builder): Unit =
       unwrap(this, cases.iterator.map(_.cond.expand).toIndexedSeq)
 
-    protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit =
+    protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit = {
       UGen.ZeroOut(this, args, adjuncts = cases.map(c => Adjunct.Int(c.branchLayer)))
+      ()
+    }
 
     private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit = {
       val cond = (args.iterator zip cases.iterator).map { case (cond0, UnitCase(_, bl)) =>
@@ -169,6 +171,7 @@ sealed trait IfThenLike[+A] extends IfOrElseIfThen[A] with Lazy.Expander[Unit] {
     val cases = Then.gatherUnit(this)
     // println(s"cases = $cases")
     Then.SourceUnit(cases)
+    ()
   }
 }
 
@@ -243,6 +246,7 @@ final case class ElseUnit(pred: IfOrElseIfThen[Any], branch: Graph)
     val cases = Then.gatherUnit(this)
     // println(s"cases = $cases")
     Then.SourceUnit(cases)
+    ()
   }
 }
 

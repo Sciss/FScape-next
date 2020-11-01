@@ -59,8 +59,10 @@ object ImageFileOut {
       unwrap(this, width.expand +: height.expand +: fileType.expand +: sampleFormat.expand +: quality.expand +:
         in.expand.outputs)
 
-    protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit =
+    protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit = {
       UGen.ZeroOut(this, args, adjuncts = Adjunct.FileOut(file) :: Nil, isIndividual = true)
+      ()
+    }
 
     private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit = {
       val width +: height +: fileType +: sampleFormat +: quality +: in = args
@@ -110,6 +112,7 @@ final case class ImageFileOut(key: String, in: GE, width: GE, height: GE, fileTy
       case f: File =>
         ImageFileOut.WithFile(file = f, in = in, width = width, height = height, fileType = fileType,
           sampleFormat = sampleFormat, quality = quality)
+        ()
 
       case other =>
         sys.error(s"$this - requires Artifact value, found $other")

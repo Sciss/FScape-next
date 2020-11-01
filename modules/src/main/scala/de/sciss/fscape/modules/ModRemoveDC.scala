@@ -69,8 +69,10 @@ object ModRemoveDC extends Module {
       val leak      = off - OnePole(off, coef)
       val sig0: GE  = leak
 
-      def mkProgress(x: GE, label: String): Unit =
+      def mkProgress(x: GE, label: String): Unit = {
         ProgressFrames(x, numFrames, label)
+        ()
+      }
 
       val sig = If (gainType sig_== 0) Then {
         val sig0Buf   = BufferDisk(sig0)
@@ -87,7 +89,7 @@ object ModRemoveDC extends Module {
 
       val written = AudioFileOut("out", sig, fileType = fileType,
         sampleFormat = smpFmt, sampleRate = sr)
-      ProgressFrames(written, numFrames)
+      mkProgress(written, "write")
     }
     f
   }

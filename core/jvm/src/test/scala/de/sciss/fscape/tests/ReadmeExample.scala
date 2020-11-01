@@ -2,7 +2,7 @@ package de.sciss.fscape.tests
 
 trait ReadmeExample {
   import de.sciss.fscape._
-  import de.sciss.synth.io.AudioFile
+  import de.sciss.audiofile.AudioFile
 
   {
     val fIn       = new java.io.File("input.aif")

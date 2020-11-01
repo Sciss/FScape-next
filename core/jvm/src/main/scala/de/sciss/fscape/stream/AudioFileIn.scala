@@ -16,10 +16,11 @@ package stream
 
 import akka.stream.Attributes
 import akka.stream.stage.OutHandler
+import de.sciss.audiofile.AudioFile
+import de.sciss.audiofile.AudioFile.Frames
 import de.sciss.file._
 import de.sciss.fscape.stream.impl.shapes.UniformSourceShape
 import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeHasInitImpl, NodeImpl}
-import de.sciss.synth.io
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
@@ -47,9 +48,9 @@ object AudioFileIn {
   private final class Logic(shape: Shp, layer: Layer, f: File, numChannels: Int)(implicit ctrl: Control)
     extends NodeImpl(s"$name(${f.name})", layer, shape) with NodeHasInitImpl with OutHandler {
 
-    private[this] var af        : io.AudioFile  = _
-    private[this] var buf       : io.Frames     = _
-    private[this] var bufSize   : Int           = _
+    private[this] var af        : AudioFile  = _
+    private[this] var buf       : Frames     = _
+    private[this] var bufSize   : Int        = _
 
     private[this] var framesRead  = 0L
 
@@ -58,7 +59,7 @@ object AudioFileIn {
     override protected def init(): Unit = {
       super.init()
       logStream(s"init() $this")
-      af          = io.AudioFile.openRead(f)
+      af          = AudioFile.openRead(f)
       if (af.numChannels != numChannels) {
         Console.err.println(s"Warning: DiskIn - channel mismatch (file has ${af.numChannels}, UGen has $numChannels)")
       }

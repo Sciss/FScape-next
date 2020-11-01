@@ -15,7 +15,7 @@ package de.sciss.fscape
 package stream
 
 import java.io.RandomAccessFile
-import java.nio.{ByteBuffer, DoubleBuffer, IntBuffer, LongBuffer}
+import java.nio.{Buffer, ByteBuffer, DoubleBuffer, IntBuffer, LongBuffer}
 
 import de.sciss.file.File
 
@@ -66,11 +66,17 @@ object FileBuffer {
     protected def dataShift: Int
 
     final def position        : Long        = ch.position() >> dataShift
-    final def position_=(value: Long): Unit = ch.position(value << dataShift)
+    final def position_=(value: Long): Unit = {
+      ch.position(value << dataShift)
+      ()
+    }
 
     final def dispose(): Unit = {
       ch.close()
-      if (deleteOnDispose) file.delete()
+      if (deleteOnDispose) {
+        file.delete()
+        ()
+      }
     }
 
     protected def newBuffer(bb: ByteBuffer): Unit
@@ -95,7 +101,7 @@ object FileBuffer {
         clearAndPut(buf, off0, chunk)
 //        db.clear()
 //        db.put(buf, off0, chunk)
-        bb.rewind().limit(chunk << dataShift)
+        (bb: Buffer).rewind().limit(chunk << dataShift)
         ch.write(bb)
         len0 -= chunk
         off0 += chunk
@@ -110,7 +116,7 @@ object FileBuffer {
       var len0 = len
       while (len0 > 0) {
         val chunk = min(8192, len0).toInt
-        bb.rewind().limit(chunk << dataShift)
+        (bb: Buffer).rewind().limit(chunk << dataShift)
         ch.write(bb)
         len0 -= chunk
       }
@@ -124,7 +130,7 @@ object FileBuffer {
       var len0 = len
       while (len0 > 0) {
         val chunk = math.min(8192, len0)
-        bb.rewind().limit(chunk << dataShift)
+        (bb: Buffer).rewind().limit(chunk << dataShift)
         ch.read(bb)
         clearAndGet(buf, off0, chunk)
 //        db.clear()
@@ -146,19 +152,21 @@ object FileBuffer {
       tb = bb.asDoubleBuffer()
 
     protected def clearAndPut(buf: Array[A], off: Int, len: Int): Unit = {
-      tb.clear()
+      (tb: Buffer).clear()
       tb.put(buf, off, len)
+      ()
     }
 
     protected def clearAndGet(buf: Array[A], off: Int, len: Int): Unit = {
-      tb.clear()
+      (tb: Buffer).clear()
       tb.get(buf, off, len)
+      ()
     }
 
     def writeValue(value: A, len: Long): Unit = {
       ensureBuf(len)
       val sz = min(len, tb.capacity()).toInt
-      tb.clear()
+      (tb: Buffer).clear()
       var i = 0
       while (i < sz) {
         tb.put(value)
@@ -179,19 +187,21 @@ object FileBuffer {
       tb = bb.asIntBuffer()
 
     protected def clearAndPut(buf: Array[A], off: Int, len: Int): Unit = {
-      tb.clear()
+      (tb: Buffer).clear()
       tb.put(buf, off, len)
+      ()
     }
 
     protected def clearAndGet(buf: Array[A], off: Int, len: Int): Unit = {
-      tb.clear()
+      (tb: Buffer).clear()
       tb.get(buf, off, len)
+      ()
     }
 
     def writeValue(value: A, len: Long): Unit = {
       ensureBuf(len)
       val sz = min(len, tb.capacity()).toInt
-      tb.clear()
+      (tb: Buffer).clear()
       var i = 0
       while (i < sz) {
         tb.put(value)
@@ -212,19 +222,21 @@ object FileBuffer {
       tb = bb.asLongBuffer()
 
     protected def clearAndPut(buf: Array[A], off: Int, len: Int): Unit = {
-      tb.clear()
+      (tb: Buffer).clear()
       tb.put(buf, off, len)
+      ()
     }
 
     protected def clearAndGet(buf: Array[A], off: Int, len: Int): Unit = {
-      tb.clear()
+      (tb: Buffer).clear()
       tb.get(buf, off, len)
+      ()
     }
 
     def writeValue(value: A, len: Long): Unit = {
       ensureBuf(len)
       val sz = min(len, tb.capacity()).toInt
-      tb.clear()
+      (tb: Buffer).clear()
       var i = 0
       while (i < sz) {
         tb.put(value)

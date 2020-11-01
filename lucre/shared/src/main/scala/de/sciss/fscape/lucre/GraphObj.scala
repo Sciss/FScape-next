@@ -82,6 +82,7 @@ object GraphObj extends ExprTypeImpl[Graph, GraphObj] {
 
       val id     = ref.size() // count
       ref.put(p, id)
+      ()
     }
 
     private def writeElemSeq(xs: Seq[Any], out: DataOutput, ref: RefMapOut): Unit = {

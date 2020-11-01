@@ -57,8 +57,10 @@ object ModSlewRateLimiter extends Module {
       val limVal      = "limit"     .attr(0.1)
       val leakDC      = "leak-dc"   .attr(1)
 
-      def mkProgress(x: GE, n: GE, label: String): Unit =
+      def mkProgress(x: GE, n: GE, label: String): Unit = {
         ProgressFrames(x, n, label)
+        ()
+      }
 
       val dif   = Differentiate(in0)
       val lim   = dif.clip2(limVal)

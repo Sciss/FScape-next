@@ -91,8 +91,10 @@ object ModMakeLoop extends Module {
         c1F + c2FC
       }
 
-      def mkProgress(x: GE, label: String): Unit =
+      def mkProgress(x: GE, label: String): Unit = {
         ProgressFrames(x, numFramesOut, label)
+        ()
+      }
 
       val sig0 = faded
       val sig = If (gainType sig_== 0) Then {

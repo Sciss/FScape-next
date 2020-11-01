@@ -16,10 +16,10 @@ package stream
 
 import akka.stream.stage.{InHandler, OutHandler}
 import akka.stream.{Attributes, UniformFanInShape}
+import de.sciss.audiofile.AudioFile.Frames
 import de.sciss.file._
 import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeHasInitImpl, NodeImpl}
-import de.sciss.synth.io
-import de.sciss.synth.io.AudioFileSpec
+import de.sciss.audiofile.{AudioFile, AudioFileSpec}
 
 import scala.collection.immutable.{Seq => ISeq}
 import scala.util.control.NonFatal
@@ -39,7 +39,7 @@ object AudioFileOut {
 
   private type Shp = UniformFanInShape[BufD, BufL]
 
-  private final class Stage(layer: Layer, f: File, spec: io.AudioFileSpec)(implicit protected val ctrl: Control)
+  private final class Stage(layer: Layer, f: File, spec: AudioFileSpec)(implicit protected val ctrl: Control)
     extends BlockingGraphStage[Shp](s"$name(${f.name})") {
 
     val shape: Shape = UniformFanInShape[BufD, BufL](
@@ -50,7 +50,7 @@ object AudioFileOut {
     def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer = layer, file = f, spec = spec)
   }
 
-  private final class Logic(shape: Shp, layer: Layer, protected val file: File, protected val spec: io.AudioFileSpec)
+  private final class Logic(shape: Shp, layer: Layer, protected val file: File, protected val spec: AudioFileSpec)
                            (implicit ctrl: Control)
     extends AbstractLogic(s"$name(${file.name})", layer, shape)
 
@@ -63,14 +63,14 @@ object AudioFileOut {
     // ---- abstract ----
 
     protected def file : File
-    protected def spec : io.AudioFileSpec
+    protected def spec : AudioFileSpec
 
 //    def shape: Shape
 
     // ---- impl ----
 
-    private[this] var af      : io.AudioFile = _
-    private[this] var buf     : io.Frames = _
+    private[this] var af      : AudioFile = _
+    private[this] var buf     : Frames = _
 
     private[this] var pushed        = 0
     private[this] val numChannels   = spec.numChannels
@@ -115,7 +115,7 @@ object AudioFileOut {
     override protected def init(): Unit = {
       // super.init()
       logStream(s"$this - init()")
-      af = io.AudioFile.openWrite(file, spec)
+      af = AudioFile.openWrite(file, spec)
     }
 
     override protected def launch(): Unit = {

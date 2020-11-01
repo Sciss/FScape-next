@@ -140,7 +140,10 @@ object Convolution {
 
         if (buf == null) {
           if      (isAvailable(in)) onPush()
-          else if (isClosed   (in)) processDone()
+          else if (isClosed   (in)) {
+            processDone()
+            ()
+          }
         } else if (bufRem > 0) {
           processFill()
         }
@@ -249,7 +252,10 @@ object Convolution {
         val really = !isAvailable(in)
         log(s"$this - onUpstreamFinish() !isAvailable(in) ? $really")
         if (really) {
-          if (_shouldFill) processDone()
+          if (_shouldFill) {
+            processDone()
+            ()
+          }
         }
       }
 

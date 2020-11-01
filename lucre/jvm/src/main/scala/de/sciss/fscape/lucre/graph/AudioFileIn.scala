@@ -20,7 +20,7 @@ import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.lucre.UGenGraphBuilder.Input
 import de.sciss.fscape.stream.{BufD, BufL, StreamIn, StreamOut, Builder => SBuilder}
 import de.sciss.synth.UGenSource.Vec
-import de.sciss.synth.io.AudioFile
+import de.sciss.audiofile.AudioFile
 import de.sciss.synth.proc.AudioCue
 
 import scala.util.{Failure, Success, Try}

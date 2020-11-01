@@ -3,7 +3,7 @@ package de.sciss.fscape.tests
 import de.sciss.file._
 import de.sciss.fscape.gui.SimpleGUI
 import de.sciss.fscape.{Graph, graph, stream}
-import de.sciss.synth.io.{AudioFile, AudioFileSpec}
+import de.sciss.audiofile.{AudioFile, AudioFileSpec}
 
 import scala.swing.Swing
 

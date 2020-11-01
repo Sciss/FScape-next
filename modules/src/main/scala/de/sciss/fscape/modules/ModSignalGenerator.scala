@@ -80,6 +80,7 @@ object ModSignalGenerator extends Module {
       val written = AudioFileOut("out", sig, fileType = fileType,
         sampleFormat = smpFmt, sampleRate = sampleRate)
       ProgressFrames(written, numFrames)
+      ()
     }
     f
   }

@@ -32,8 +32,10 @@ object MkDoubleVector {
     protected def makeUGens(implicit b: UGenGraph.Builder): Unit =
       unwrap(this, Vector(peer.in.expand))
 
-    protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit =
+    protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit = {
       UGen.ZeroOut(this, args, adjuncts = Adjunct.String(ref.key) :: Nil)
+      ()
+    }
 
     private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit = {
       val Vec(in) = args
@@ -60,5 +62,6 @@ final case class MkDoubleVector(key: String, in: GE) extends Lazy.Expander[Unit]
     val refOpt  = ub.requestOutput(this)
     val ref     = refOpt.getOrElse(sys.error(s"Missing output $key"))
     MkDoubleVector.WithRef(this, ref)
+    ()
   }
 }

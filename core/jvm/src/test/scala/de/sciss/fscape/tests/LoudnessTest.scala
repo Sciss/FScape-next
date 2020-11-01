@@ -4,7 +4,7 @@ import de.sciss.file._
 import de.sciss.fscape.gui.SimpleGUI
 import de.sciss.fscape.stream.Control
 import de.sciss.fscape.{Graph, graph}
-import de.sciss.synth.io.AudioFile
+import de.sciss.audiofile.AudioFile
 
 import scala.swing.Swing
 

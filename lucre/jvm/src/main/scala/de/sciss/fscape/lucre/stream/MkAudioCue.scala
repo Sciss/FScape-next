@@ -20,8 +20,7 @@ import de.sciss.fscape.lucre.UGenGraphBuilder.OutputRef
 import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeImpl}
 import de.sciss.fscape.stream.{BufD, BufL, Builder, Control, InD, Layer, OutD, OutL, AudioFileOut => _AudioFileOut}
 import de.sciss.serial.DataOutput
-import de.sciss.synth.io
-import de.sciss.synth.io.AudioFileSpec
+import de.sciss.audiofile.AudioFileSpec
 import de.sciss.synth.proc.AudioCue
 
 import scala.collection.immutable.{Seq => ISeq}
@@ -41,7 +40,7 @@ object MkAudioCue {
 
   private type Shp = UniformFanInShape[BufD, BufL]
 
-  private final class Stage(layer: Layer, ref: OutputRef, f: File, spec: io.AudioFileSpec)
+  private final class Stage(layer: Layer, ref: OutputRef, f: File, spec: AudioFileSpec)
                            (implicit protected val ctrl: Control)
     extends BlockingGraphStage[Shp](s"$name(${f.name})") {
 
@@ -54,7 +53,7 @@ object MkAudioCue {
   }
 
   private final class Logic(shape: Shp, layer: Layer, ref: OutputRef, protected val file: File,
-                            protected val spec: io.AudioFileSpec)
+                            protected val spec: AudioFileSpec)
                            (implicit ctrl: Control)
     extends _AudioFileOut.AbstractLogic(s"$name(${file.name})", layer, shape) {
 

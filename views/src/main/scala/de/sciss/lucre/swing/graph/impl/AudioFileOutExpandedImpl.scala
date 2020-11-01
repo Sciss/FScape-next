@@ -25,8 +25,7 @@ import de.sciss.lucre.swing.View
 import de.sciss.lucre.swing.graph.{AudioFileIn, AudioFileOut, PathField}
 import de.sciss.lucre.swing.impl.ComponentHolder
 import de.sciss.swingplus.{ComboBox, ListView}
-import de.sciss.synth.io
-import de.sciss.synth.io.AudioFileType
+import de.sciss.audiofile.{AudioFileType, SampleFormat}
 import javax.swing.{JList, ListCellRenderer}
 
 import scala.swing.Reactions.Reaction
@@ -127,11 +126,11 @@ final class AudioFileOutExpandedImpl[T <: Txn[T]](protected val peer: AudioFileO
           res
         }
 
-        lazy val sampleFormatComboBox: ComboBox[io.SampleFormat] = {
+        lazy val sampleFormatComboBox: ComboBox[SampleFormat] = {
           val items = List.tabulate(UAudioFileOut.maxSampleFormatId + 1)(UAudioFileOut.sampleFormat)
           val res = mkCombo(items) {
-            case x: io.SampleFormat => AudioFileIn.formatToString(x)
-            case x                  => x.toString
+            case x: SampleFormat => AudioFileIn.formatToString(x)
+            case x               => x.toString
           }
           res.selection.index = smpFmtIdx
           res

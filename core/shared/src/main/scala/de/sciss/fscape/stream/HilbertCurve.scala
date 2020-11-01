@@ -49,8 +49,10 @@ object HilbertCurve {
         false
       }
 
-    protected def onDone(inlet: Inlet[_]): Unit =
+    protected def onDone(inlet: Inlet[_]): Unit = {
       checkDone()
+      ()
+    }
 
     @tailrec
     protected def process(): Unit = {
@@ -145,8 +147,10 @@ object HilbertCurve {
         false
       }
 
-    protected def onDone(inlet: Inlet[_]): Unit =
+    protected def onDone(inlet: Inlet[_]): Unit = {
       checkDone()
+      ()
+    }
 
     override protected def onDone(outlet: Outlet[_]): Unit =
       if (hOutX.isDone && hOutY.isDone) {

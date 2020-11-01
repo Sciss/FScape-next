@@ -23,7 +23,7 @@ import de.sciss.fscape.lucre.UGenGraphBuilder.OutputRef
 import de.sciss.fscape.stream.{StreamIn, StreamOut, Builder => SBuilder}
 import de.sciss.lucre.{Obj, Txn, Workspace}
 import de.sciss.serial.DataInput
-import de.sciss.synth.io.{AudioFileSpec, AudioFileType, SampleFormat}
+import de.sciss.audiofile.{AudioFileSpec, AudioFileType, SampleFormat}
 import de.sciss.synth.proc.AudioCue
 
 import scala.collection.immutable.{IndexedSeq => Vec}

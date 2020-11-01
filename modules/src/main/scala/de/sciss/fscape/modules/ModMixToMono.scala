@@ -54,8 +54,10 @@ object ModMixToMono extends Module {
 
       def mkMono(x: GE) =  Reduce.+(x)
 
-      def mkProgress(x: GE, label: String): Unit =
+      def mkProgress(x: GE, label: String): Unit = {
         ProgressFrames(x, numFrames, label)
+        ()
+      }
 
       val mul       = If (gainType sig_== 0) Then {
         val in1       = mkMono(mkIn())

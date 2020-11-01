@@ -162,10 +162,10 @@ object UGen extends UGenPlatform {
       }
     }
 
-    final case class AudioFileSpec(peer: de.sciss.synth.io.AudioFileSpec) extends Adjunct {
+    final case class AudioFileSpec(peer: de.sciss.audiofile.AudioFileSpec) extends Adjunct {
       def write(out: DataOutput): Unit = {
         out.writeByte(10)
-        de.sciss.synth.io.AudioFileSpec.format.write(peer, out)
+        de.sciss.audiofile.AudioFileSpec.format.write(peer, out)
       }
     }
   }

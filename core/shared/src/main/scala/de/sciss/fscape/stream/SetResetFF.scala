@@ -54,7 +54,10 @@ object SetResetFF {
     private[this] var highR   = false
     private[this] var state   = false
 
-    protected def onDone(inlet: Inlet[_]): Unit = checkDone()
+    protected def onDone(inlet: Inlet[_]): Unit = {
+      checkDone()
+      ()
+    }
 
     private def checkDone(): Boolean = {
       val res = hSet.isDone && hReset.isDone

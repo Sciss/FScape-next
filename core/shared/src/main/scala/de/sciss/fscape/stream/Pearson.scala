@@ -86,9 +86,15 @@ object Pearson {
 
     protected def onDone(inlet: Inlet[_]): Unit =
       if (inlet == shape.in0) {
-        if (stage == 0 || (stage == 1 && xRem > 0)) hotInsDone()
+        if (stage == 0 || (stage == 1 && xRem > 0)) {
+          hotInsDone()
+          ()
+        }
       } else if (inlet == shape.in1) {
-        if (stage == 0 || (stage == 1 && yRem > 0)) hotInsDone()
+        if (stage == 0 || (stage == 1 && yRem > 0)) {
+          hotInsDone()
+          ()
+        }
       }
 
     private def calc(): Double = {

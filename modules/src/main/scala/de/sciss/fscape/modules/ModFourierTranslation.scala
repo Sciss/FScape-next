@@ -75,8 +75,10 @@ object ModFourierTranslation extends Module {
       val fft = Fourier(inC, size = numFramesInT,
         padding = numFramesOut - numFramesInT, dir = dirFFT)
 
-      def mkProgress(x: GE, label: String) =
+      def mkProgress(x: GE, label: String): Unit = {
         ProgressFrames(x, numFramesOut, label)
+        ()
+      }
 
       def applyGain(x: GE) =
         If (gainType sig_== 0) Then {
@@ -116,6 +118,7 @@ object ModFourierTranslation extends Module {
           sampleFormat = smpFmt, sampleRate = sr)
         mkProgress(written, "write")
       }
+      ()
     }
     f
   }

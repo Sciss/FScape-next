@@ -15,14 +15,14 @@ package de.sciss.fscape.lucre.stream
 
 import akka.stream.Attributes
 import akka.stream.stage.{GraphStageLogic, InHandler, OutHandler}
+import de.sciss.audiofile.AudioFile.Frames
 import de.sciss.file._
 import de.sciss.fscape.logStream
 import de.sciss.fscape.lucre.graph.{AudioFileOut => AF}
 import de.sciss.fscape.stream.impl.shapes.In3UniformFanInShape
 import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeHasInitImpl, NodeImpl}
 import de.sciss.fscape.stream.{BufD, BufI, BufL, Builder, Control, InD, InI, Layer, OutD, OutI, OutL}
-import de.sciss.synth.io
-import de.sciss.synth.io.AudioFileType
+import de.sciss.audiofile.{AudioFile, AudioFileSpec, AudioFileType}
 
 import scala.collection.immutable.{Seq => ISeq}
 import scala.util.control.NonFatal
@@ -74,9 +74,9 @@ object AudioFileOut {
 
     // ---- impl ----
 
-    private[this] var af      : io.AudioFile  = _
-    private[this] var buf     : io.Frames     = _
-    private[this] var file    : File          = _
+    private[this] var af      : AudioFile  = _
+    private[this] var buf     : Frames     = _
+    private[this] var file    : File       = _
 
     private[this] var pushed        = 0
     private[this] val bufIns        = new Array[BufD](numChannels)
@@ -109,9 +109,9 @@ object AudioFileOut {
 
     private def updateSpec(): Unit = {
       if (fileType >= 0 && sampleFormat >= 0 && sampleRate >= 0) {
-        val spec  = io.AudioFileSpec(AF.fileType(fileType), AF.sampleFormat(sampleFormat),
+        val spec  = AudioFileSpec(AF.fileType(fileType), AF.sampleFormat(sampleFormat),
           numChannels = numChannels, sampleRate = sampleRate)
-        af        = io.AudioFile.openWrite(file, spec)
+        af        = AudioFile.openWrite(file, spec)
         afValid   = true
       }
     }

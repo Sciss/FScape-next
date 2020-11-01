@@ -100,9 +100,15 @@ object LinKernighanTSP {
 
     protected def onDone(inlet: Inlet[_]): Unit =
       if (inlet == shape.in0) {
-        if (stage == 0 || (stage == 1 && tour0Rem > 0)) hotInsDone()
+        if (stage == 0 || (stage == 1 && tour0Rem > 0)) {
+          hotInsDone()
+          ()
+        }
       } else if (inlet == shape.in1) {
-        if (stage == 0 || (stage == 1 && outCostRem))   hotInsDone()
+        if (stage == 0 || (stage == 1 && outCostRem)) {
+          hotInsDone()
+          ()
+        }
       }
 
     override protected def onDone(outlet: Outlet[_]): Unit =

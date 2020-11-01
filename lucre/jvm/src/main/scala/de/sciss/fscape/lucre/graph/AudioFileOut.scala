@@ -20,7 +20,7 @@ import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.lucre.UGenGraphBuilder.{Input, MissingIn}
 import de.sciss.fscape.stream.{StreamIn, StreamOut, Builder}
-import de.sciss.synth.io.{AudioFileSpec, AudioFileType, SampleFormat}
+import de.sciss.audiofile.{AudioFileSpec, AudioFileType, SampleFormat}
 import de.sciss.synth.proc.AudioCue
 
 import scala.annotation.switch

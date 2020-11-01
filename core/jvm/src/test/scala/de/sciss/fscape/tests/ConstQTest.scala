@@ -2,7 +2,7 @@ package de.sciss.fscape.tests
 
 import de.sciss.file._
 import de.sciss.fscape.{Graph, graph, stream}
-import de.sciss.synth.io.AudioFile
+import de.sciss.audiofile.AudioFile
 
 object ConstQTest extends App {
   val fIn       = file("/data/temp/sweep_inputCut.aif")

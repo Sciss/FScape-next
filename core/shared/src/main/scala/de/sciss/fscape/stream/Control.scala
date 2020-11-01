@@ -307,7 +307,10 @@ object Control {
             context.stop(self)
             _actor = null
           }
-          if (config.terminateActors) config.actorSystem.terminate()
+          if (config.terminateActors) {
+            config.actorSystem.terminate()
+            ()
+          }
         }
       } else {
         Console.err.println(s"Warning: node $n was not registered with Control")
@@ -348,7 +351,7 @@ object Control {
         logControl(s"--- woppa ${inner.size}")
         Future.sequence(inner).map(_ => ())
       }
-      done.tryCompleteWith(futLaunch)
+      done.completeWith(futLaunch)
     }
 
     private def actComplete(layer: Layer, done: Promise[Unit]): Unit = {
@@ -359,7 +362,7 @@ object Control {
       }
       import config.executionContext
       val futUnit = Future.sequence(futComplete).map(_ => ())
-      done.tryCompleteWith(futUnit)
+      done.completeWith(futUnit)
     }
 
     private def actCancel(): Unit = {
@@ -443,6 +446,7 @@ object Control {
       require(buf.allocCount() == 0)
       // println(s"control: ${buf.hashCode.toHexString} - ${buf.buf.toVector.hashCode.toHexString}")
       queueD.offer(buf) // XXX TODO -- limit size?
+      ()
     }
 
     final def borrowBufI(): BufI = {
@@ -457,6 +461,7 @@ object Control {
     final def returnBufI(buf: BufI): Unit = {
       require(buf.allocCount() == 0)
       queueI.offer(buf) // XXX TODO -- limit size?
+      ()
     }
 
     final def borrowBufL(): BufL = {
@@ -471,6 +476,7 @@ object Control {
     final def returnBufL(buf: BufL): Unit = {
       require(buf.allocCount() == 0)
       queueL.offer(buf) // XXX TODO -- limit size?
+      ()
     }
 
     // called during materialization, no sync needed

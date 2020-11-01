@@ -128,8 +128,10 @@ object ModSpectralShadow extends Module {
 
       val numFramesOut = numFrames
 
-      def mkProgress(x: GE, label: String) =
+      def mkProgress(x: GE, label: String): Unit = {
         ProgressFrames(x, numFramesOut, label)
+        ()
+      }
 
       def applyGain(x: GE) =
         If (gainType sig_== 0) Then {
@@ -149,7 +151,7 @@ object ModSpectralShadow extends Module {
 
       val written = AudioFileOut(fOut, sig, fileType = fileType,
         sampleFormat = smpFmt, sampleRate = sr)
-      ProgressFrames(written, numFramesOut)
+      mkProgress(written, "write")
     }
     f
   }

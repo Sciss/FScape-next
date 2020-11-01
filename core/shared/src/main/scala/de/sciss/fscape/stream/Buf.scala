@@ -62,6 +62,7 @@ final class BufD private(val buf: Array[Double], var size: Int, borrowed: Boolea
   def acquire(): Unit = if (borrowed) {
     /* val oldCount = */ _allocCount.getAndIncrement()
     // require(oldCount >= 0)
+    ()
   }
 
   def release()(implicit ctrl: Control): Unit = if (borrowed) {
@@ -99,8 +100,10 @@ final class BufI private(val buf: Array[Int], var size: Int, borrowed: Boolean)
 //
 //  def ordering: Ordering[Int] = Ordering.Int
 
-  def acquire(): Unit = if (borrowed)
+  def acquire(): Unit = if (borrowed) {
     _allocCount.getAndIncrement()
+    ()
+  }
 
   def release()(implicit ctrl: Control): Unit = if (borrowed) {
     val newCount = _allocCount.decrementAndGet()
@@ -137,8 +140,10 @@ final class BufL private(val buf: Array[Long], var size: Int, borrowed: Boolean)
 //
 //  def ordering: Ordering[Long] = Ordering.Long
 
-  def acquire(): Unit = if (borrowed)
+  def acquire(): Unit = if (borrowed) {
     _allocCount.getAndIncrement()
+    ()
+  }
 
   def release()(implicit ctrl: Control): Unit = if (borrowed) {
     val newCount = _allocCount.decrementAndGet()
