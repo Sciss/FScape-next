@@ -32,7 +32,7 @@ object FourierTest extends App {
     }
 
     val in = mkIn()
-    AudioFileOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = sr), in = in)
+    AudioFileOut(file = fOut.toURI, spec = AudioFileSpec(numChannels = 1, sampleRate = sr), in = in)
   }
 
   lazy val gDebug = Graph {
@@ -96,13 +96,13 @@ object FourierTest extends App {
     val fftSizeOut = fftSizeIn.nextPowerOfTwo
     assert(fftSizeOut == fftSizeIn)
     val fwd       = Fourier(in = complex, size = fftSizeIn , dir = +1)
-    AudioFileOut(file = fOut2, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = fwd.complex.mag)
+    AudioFileOut(file = fOut2.toURI, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = fwd.complex.mag)
     val bwd       = Fourier(in = fwd    , size = fftSizeOut, dir = -1)
     val norm      = complexNormalize(bwd)
 //    val unzip     = UnzipWindow(in = norm)
     val re        = norm.complex.real // ChannelProxy(unzip, 0)
     // val im        = ChannelProxy(unzip, 1)
-    AudioFileOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = re)
+    AudioFileOut(file = fOut.toURI, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = re)
   }
 
   def complexNormalize(in: GE): GE = {

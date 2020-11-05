@@ -22,7 +22,7 @@ object AffineTest3 {
       import graph._
       val tempIn      = file("/data/projects/Maeanderungen/exposure/site-13/frame-%d.jpg")
       val indicesIn   = ArithmSeq(start = startFrame, length = numFrames)
-      val imgIn       = ImageFileSeqIn(tempIn, numChannels = 3, indices = indicesIn)
+      val imgIn       = ImageFileSeqIn(tempIn.toURI, numChannels = 3, indices = indicesIn)
       val hOut        = hIn / 16
       val wOut        = wIn / 16
       val sx          = 1.0 / 16
@@ -34,7 +34,7 @@ object AffineTest3 {
       val tempOut     = outDir / "frame-%d.png"
       val indicesOut  = ArithmSeq(start = 1, length = numFrames)
       val specOut     = ImageFile.Spec(width = wOut, height = hOut, numChannels = 3)
-      ImageFileSeqOut(small, tempOut, specOut, indices = indicesOut)
+      ImageFileSeqOut(small, tempOut.toURI, specOut, indices = indicesOut)
     }
 
     val config        = stream.Control.Config()

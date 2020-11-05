@@ -13,9 +13,10 @@
 
 package de.sciss.fscape.stream.impl
 
+import java.net.URI
+
 import akka.stream.Shape
-import de.sciss.file.File
-import de.sciss.fscape.graph.ImageFileSeqIn.formatTemplate
+import de.sciss.fscape.Util
 import de.sciss.fscape.stream.impl.Handlers.InIMain
 
 trait ImageFileSeqOutImpl[S <: Shape] extends ImageFileOutImpl[S] {
@@ -23,7 +24,7 @@ trait ImageFileSeqOutImpl[S <: Shape] extends ImageFileOutImpl[S] {
 
   // ---- abstract ----
 
-  protected def template: File
+  protected def template: URI
 
   protected def hIndices: InIMain
 
@@ -33,8 +34,8 @@ trait ImageFileSeqOutImpl[S <: Shape] extends ImageFileOutImpl[S] {
     val ok = hIndices.hasNext && tryObtainSpec()
     if (ok) {
       val idx = hIndices.next()
-      val f   = formatTemplate(template, idx)
-      openImage(f)
+      val uri = Util.formatTemplate(template, idx)
+      openImage(uri)
     }
     ok
   }

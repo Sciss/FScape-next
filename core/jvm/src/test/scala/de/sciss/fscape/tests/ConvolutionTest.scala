@@ -128,7 +128,7 @@ object ConvolutionTest extends App {
       kernelUpdate = Metro(updateLen, 1))
     Length(conv).poll(0, "length")
     import de.sciss.file._
-    AudioFileOut(conv, userHome / "Documents" / "test.aif", AudioFileSpec(numChannels = 1, sampleRate = sr))
+    AudioFileOut(conv, (userHome / "Documents" / "test.aif").toURI, AudioFileSpec(numChannels = 1, sampleRate = sr))
   }
 
   val cfg   = stream.Control.Config()

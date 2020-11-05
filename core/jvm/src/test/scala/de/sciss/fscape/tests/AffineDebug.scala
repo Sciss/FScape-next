@@ -55,7 +55,7 @@ object AffineDebug {
       val m1        = {
         val tempIn1 = userHome / "Documents" / "temp" / "notebook-test.png"
         require (tempIn1.isFile)
-        val img0 = ImageFileIn(tempIn1, numChannels = 3)
+        val img0 = ImageFileIn(tempIn1.toURI, numChannels = 3)
         RepeatWindow(img0, size = kernelS, num = 100)
       }
 
@@ -79,7 +79,7 @@ object AffineDebug {
       val dirOut          = file("/") / "data" / "temp" / "affine_debug"
       dirOut.mkdirs()
       val tempOut2        = dirOut / "frame-%d.png"
-      ImageFileSeqOut(template = tempOut2, spec = specOut, in = sig, indices = tempOutRangeGE)
+      ImageFileSeqOut(template = tempOut2.toURI, spec = specOut, in = sig, indices = tempOutRangeGE)
     }
 
     val ctl = Control(cfg)

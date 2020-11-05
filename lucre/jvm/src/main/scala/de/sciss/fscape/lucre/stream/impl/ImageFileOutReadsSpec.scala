@@ -13,12 +13,14 @@
 
 package de.sciss.fscape.lucre.stream.impl
 
+import java.net.URI
+
 import akka.stream.Shape
-import de.sciss.file._
 import de.sciss.fscape.graph.ImageFile
 import de.sciss.fscape.lucre.graph.{ImageFileOut => IF}
 import de.sciss.fscape.stream.impl.Handlers.InIAux
 import de.sciss.fscape.stream.impl.{Handlers, ImageFileOutImpl}
+import de.sciss.lucre.Artifact
 import de.sciss.numbers.Implicits._
 
 import scala.math.{max, min}
@@ -32,7 +34,7 @@ trait ImageFileOutReadsSpec[S <: Shape] extends ImageFileOutImpl[S] {
   protected def hSampleFormat : InIAux
   protected def hQuality      : InIAux
 
-  protected def fileOrTemplate: File
+  protected def fileOrTemplate: URI
 
   protected def tryObtainSpec(): Boolean = {
     val ok =
@@ -48,6 +50,7 @@ trait ImageFileOutReadsSpec[S <: Shape] extends ImageFileOutImpl[S] {
       val fileType  = {
         val i = hFileType.next()
         if (i < 0) {
+          import Artifact.Value.Ops
           val ext = fileOrTemplate.extL
           ImageFile.Type.writable.find(_.extensions.contains(ext)).getOrElse(ImageFile.Type.PNG)
         } else {

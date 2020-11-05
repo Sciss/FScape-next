@@ -21,12 +21,12 @@ object NormalizeTest extends App {
 
   lazy val gOLD = Graph {
     val trig  = Metro(44100)
-    val in    = AudioFileIn(file = fIn, numChannels = 1)
+    val in    = AudioFileIn(file = fIn.toURI, numChannels = 1)
     Poll(in = in, gate = trig, label = "test")
   }
 
   lazy val gFORK2 = Graph {
-    def mkIn() = AudioFileIn(file = fIn, numChannels = 1)
+    def mkIn() = AudioFileIn(file = fIn.toURI, numChannels = 1)
 
     val in        = mkIn()
     /* val max = */ RunningMax(in.abs) // .last
@@ -50,7 +50,7 @@ object NormalizeTest extends App {
   lazy val g = Graph {
     //    def mkIn() = ChannelProxy(DiskIn(file = fIn2, numChannels = 2), 0)
     //    def mkIn() = DiskIn(file = fIn, numChannels = 1)
-    def mkIn() = AudioFileIn(file = fIn3, numChannels = 1)
+    def mkIn() = AudioFileIn(file = fIn3.toURI, numChannels = 1)
 
     val in        = mkIn()
     val max       = RunningMax(in.abs).last
@@ -59,22 +59,22 @@ object NormalizeTest extends App {
     val gain      = max.reciprocal * headroom
     val buf       = mkIn() // BufferAll(in)
     val sig       = buf * gain
-    AudioFileOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig)
+    AudioFileOut(file = fOut.toURI, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig)
   }
 
   lazy val gBuf = Graph {
-    val in        = AudioFileIn(file = fIn3, numChannels = 1)
+    val in        = AudioFileIn(file = fIn3.toURI, numChannels = 1)
     val max       = RunningMax(in.abs).last
     max.ampDb.poll(0, "max [dB]")
     val headroom  = -0.2.dbAmp
     val gain      = max.reciprocal * headroom
     val buf       = BufferDisk(in)
     val sig       = buf * gain
-    AudioFileOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig)
+    AudioFileOut(file = fOut.toURI, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig)
   }
 
   lazy val gX = Graph {
-    def mkIn() = AudioFileIn(file = fIn, numChannels = 1)
+    def mkIn() = AudioFileIn(file = fIn.toURI, numChannels = 1)
 
     val in        = mkIn()
     val max       = RunningMax(in.abs).last
@@ -83,7 +83,7 @@ object NormalizeTest extends App {
     val gain      = max.reciprocal * headroom
     val buf       = mkIn() // BufferAll(in)
     val sig       = buf * gain
-    AudioFileOut(file = fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig)
+    AudioFileOut(file = fOut.toURI, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100), in = sig)
   }
 
   implicit val ctrl: stream.Control = stream.Control()

@@ -25,8 +25,8 @@ object MatrixInMatrixTest extends App {
     val fIn1    = baseDir / "projects" / "Imperfect" / "scans" / "notebook2016" / "universe-test1q.png"
     val fIn2    = baseDir / "projects" / "Imperfect" / "scans" / "notebook2016" / "universe-test2q.png"
     val fOut    = baseDir / "temp" / "test.png"
-    val i1      = ImageFileIn(fIn1, numChannels = 3)
-    val i2      = ImageFileIn(fIn2, numChannels = 3)
+    val i1      = ImageFileIn(fIn1.toURI, numChannels = 3)
+    val i2      = ImageFileIn(fIn2.toURI, numChannels = 3)
     val width   = 512
     val height  = 512
     val frameSize = width * height
@@ -67,7 +67,7 @@ object MatrixInMatrixTest extends App {
 
     val sig     = i4.clip(0.0, 1.0)
     val specOut = ImageFile.Spec(width = width, height = height, numChannels = 3)
-    ImageFileOut(file = fOut, spec = specOut, in = sig)
+    ImageFileOut(file = fOut.toURI, spec = specOut, in = sig)
   }
 
   val ctl = Control(cfg)

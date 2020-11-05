@@ -13,7 +13,8 @@
 
 package de.sciss.fscape.lucre.graph
 
-import de.sciss.file.File
+import java.net.URI
+
 import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.graph.ImageFile.{SampleFormat, Type}
@@ -51,7 +52,7 @@ object ImageFileOut {
 
   def maxSampleFormatId: Int = SampleFormat.Float.id
 
-  final case class WithFile(file: File, in: GE, width: GE, height: GE, fileType: GE,
+  final case class WithFile(file: URI, in: GE, width: GE, height: GE, fileType: GE,
                             sampleFormat: GE, quality: GE)
     extends UGenSource.ZeroOut {
 
@@ -66,7 +67,7 @@ object ImageFileOut {
 
     private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit = {
       val width +: height +: fileType +: sampleFormat +: quality +: in = args
-      lucre.stream.ImageFileOut(file = file, width = width.toInt, height = height.toInt,
+      lucre.stream.ImageFileOut(uri = file, width = width.toInt, height = height.toInt,
         fileType = fileType.toInt, sampleFormat = sampleFormat.toInt, quality = quality.toInt,
         in = in.map(_.toDouble))
     }
@@ -109,7 +110,7 @@ final case class ImageFileOut(key: String, in: GE, width: GE, height: GE, fileTy
 //        ImageFileOut.WithFile(file = a.artifact, in = in, fileType = ImageFileOut.id(spec.fileType),
 //          sampleFormat = ImageFileOut.id(spec.sampleFormat), sampleRate = spec.sampleRate)
 
-      case f: File =>
+      case f: URI =>
         ImageFileOut.WithFile(file = f, in = in, width = width, height = height, fileType = fileType,
           sampleFormat = sampleFormat, quality = quality)
         ()

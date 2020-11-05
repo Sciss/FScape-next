@@ -14,7 +14,7 @@ object TransposeTest extends App {
 
   val g = Graph {
     import graph._
-    val in    = ImageFileIn(file = fIn, numChannels = 3)
+    val in    = ImageFileIn(file = fIn.toURI, numChannels = 3)
 //    val xSin  = SinOsc(Seq[GE](0.5/width, 1.0/width, 1.5/width)).abs
 //    val ySin  = SinOsc(0.5/(height * width))
 //    val in    = xSin * ySin
@@ -24,7 +24,7 @@ object TransposeTest extends App {
     val spec  = ImageFile.Spec(width = height, height = width, numChannels = 3,
       fileType = ImageFile.Type.JPG, sampleFormat = ImageFile.SampleFormat.Int8,
       quality = 100)
-    ImageFileOut(file = fOut, spec = spec, in = sig)
+    ImageFileOut(file = fOut.toURI, spec = spec, in = sig)
   }
 
   val config  = stream.Control.Config()

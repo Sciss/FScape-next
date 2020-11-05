@@ -40,7 +40,7 @@ object NormalizeTest2 extends App {
     val sig    = normalize(in) // (lap)
 //    Length(sig.take(0)).poll("len")
 //    val sigLen = Length(lap)
-    /*val out    =*/ AudioFileOut(file = fOut, spec = AudioFileSpec(numChannels = 1 /* 2 */, sampleRate = 44100), in = sig)
+    /*val out    =*/ AudioFileOut(file = fOut.toURI, spec = AudioFileSpec(numChannels = 1 /* 2 */, sampleRate = 44100), in = sig)
 //    val out = AudioFileOut("file-out", in = sig)
 //    Progress(out / (2 * sigLen), Metro(44100), "normalize")
   }

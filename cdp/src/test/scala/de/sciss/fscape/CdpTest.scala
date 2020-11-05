@@ -16,7 +16,7 @@ object CdpTest extends App {
     val sig   = SinOsc(freq/sr).take(lenIn) * 0.5
     val rvs   = cdp.Modify.Radical.Reverse(sig)
     val fOut  = file("/data") / "audio_work" / "reverse.aif"
-    val aOut  = AudioFileOut(file = fOut, spec = AudioFileSpec(sampleRate = sr, numChannels = 1), in = rvs)
+    val aOut  = AudioFileOut(file = fOut.toURI, spec = AudioFileSpec(sampleRate = sr, numChannels = 1), in = rvs)
     aOut.last.poll(0, "frames-written")
   }
 

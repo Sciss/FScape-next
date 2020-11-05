@@ -13,7 +13,8 @@
 
 package de.sciss.lucre.swing.graph
 
-import de.sciss.file.File
+import java.net.URI
+
 import de.sciss.lucre.expr.graph.{Const, Ex}
 import de.sciss.lucre.expr.{Context, IControl, Model}
 import de.sciss.lucre.swing.graph.impl.{AudioFileOutExpandedImpl, ComboBoxValueExpandedImpl, ComponentImpl, PathFieldValueExpandedImpl, Tup2_1Expanded, Tup2_2OptExpanded}
@@ -25,16 +26,16 @@ import de.sciss.audiofile.{AudioFileType, SampleFormat => _SampleFormat}
 object AudioFileOut {
   def apply(): AudioFileOut = Impl()
 
-  final case class Value(w: AudioFileOut) extends Ex[File] {
-    type Repr[T <: Txn[T]] = IExpr[T, File]
+  final case class Value(w: AudioFileOut) extends Ex[URI] {
+    type Repr[T <: Txn[T]] = IExpr[T, URI]
 
     override def productPrefix: String = s"AudioFileOut$$Value" // serialization
 
     protected def mkRepr[T <: Txn[T]](implicit ctx: Context[T], tx: T): Repr[T] = {
       import ctx.{cursor, targets}
       val ws        = w.expand[T]
-      val valueOpt  = ctx.getProperty[Ex[File]](w, PathField.keyValue)
-      val value0    = valueOpt.fold[File](PathField.defaultValue)(_.expand[T].value)
+      val valueOpt  = ctx.getProperty[Ex[URI]](w, PathField.keyValue)
+      val value0    = valueOpt.fold[URI](PathField.defaultValue)(_.expand[T].value)
       new PathFieldValueExpandedImpl[T](ws.component.pathField, value0).init()
     }
   }
@@ -162,10 +163,10 @@ object AudioFileOut {
     protected def mkRepr[T <: Txn[T]](implicit ctx: Context[T], tx: T): Repr[T] =
       new AudioFileOutExpandedImpl[T](this).initComponent()
 
-    object value extends Model[File] {
-      def apply(): Ex[File] = Value(w)
+    object value extends Model[URI] {
+      def apply(): Ex[URI] = Value(w)
 
-      def update(value: Ex[File]): Unit = {
+      def update(value: Ex[URI]): Unit = {
         val b = Graph.builder
         b.putProperty(w, PathField.keyValue, value)
       }
@@ -265,7 +266,8 @@ trait AudioFileOut extends Component {
   type Repr[T <: Txn[T]] = View.T[T, C] with IControl[T]
 
   var title       : Ex[String]
-  def value       : Model[File]
+
+  def value       : Model[URI]
 
   def fileType    : Model[Int]
   def sampleFormat: Model[Int]

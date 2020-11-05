@@ -106,7 +106,7 @@ out: 5
     // numEdges: 528
     // numChunks: 8038.0
 
-    def mkIn() = AudioFileIn(file("/data/audio_work/beyond-s1-living-room.aif"), numChannels = 1)
+    def mkIn() = AudioFileIn(file("/data/audio_work/beyond-s1-living-room.aif").toURI, numChannels = 1)
     val in        = mkIn()
     val fftSize   = 64
     val numMag    = fftSize/2 + 1

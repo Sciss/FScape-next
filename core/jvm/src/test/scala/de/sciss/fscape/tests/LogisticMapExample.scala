@@ -92,7 +92,7 @@ object LogisticMapExample {
       )
 
       val spec = ImageFile.Spec(width = w, height = h, numChannels = 1)
-      ImageFileOut(sig, fOut, spec)
+      ImageFileOut(sig, fOut.toURI, spec)
     }
 
     val ctl = Control()

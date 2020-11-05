@@ -16,7 +16,7 @@ object TestACIntensity extends App {
 
   lazy val g = Graph {
     import de.sciss.fscape.graph._
-    val in            = AudioFileIn(file = fIn, numChannels = 1)
+    val in            = AudioFileIn(file = fIn.toURI, numChannels = 1)
     val winSize       = 1500 // 2000
     val winPadded     = (winSize * 1.5).ceil.toInt
     val fftSize       = winPadded.nextPowerOfTwo

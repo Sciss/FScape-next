@@ -14,7 +14,8 @@
 package de.sciss.fscape.lucre
 package graph
 
-import de.sciss.file.File
+import java.net.URI
+
 import de.sciss.fscape
 import de.sciss.fscape.{GE, UGenGraph, UGenInLike}
 import de.sciss.fscape.graph.ImageFile
@@ -39,11 +40,11 @@ object ImageFileIn {
     }
   }
 
-  private def getSpec(key: String)(implicit b: UGenGraph.Builder): (File, ImageFile.Spec) = {
+  private def getSpec(key: String)(implicit b: UGenGraph.Builder): (URI, ImageFile.Spec) = {
     val ub  = UGenGraphBuilder.get(b)
     val res = ub.requestInput(Input.Attribute(key)).peer
-      .fold[(File, ImageFile.Spec)](sys.error(s"ImageFileIn missing attribute $key")) {
-      case f: File =>
+      .fold[(URI, ImageFile.Spec)](sys.error(s"ImageFileIn missing attribute $key")) {
+      case f: URI =>
         f -> ImageFile.readSpec(f)
       case other =>
         sys.error(s"ImageFileIn - requires Artifact value, found $other")

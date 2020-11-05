@@ -18,7 +18,7 @@ trait ReadmeExample {
 
     val g = Graph {
       import graph._
-      val in        = AudioFileIn(file = fIn, numChannels = 1)
+      val in        = AudioFileIn(file = fIn.toURI, numChannels = 1)
       val slid      = Sliding(in, fftSize, winStep)
       val winFun    = GenWindow(size = fftSize, shape = GenWindow.Hann)
       val windowed  = slid * winFun
@@ -28,7 +28,7 @@ trait ReadmeExample {
       val norm      = constQ.ampDb.linLin(dbMin * 2, dbMax * 2, 0.0, 1.0).clip()
       val rotImg    = RotateFlipMatrix(norm, rows = numWin, columns = numBands, mode = RotateFlipMatrix.Rot90CCW)
       val specOut   = ImageFile.Spec(width = numWin, height = numBands, numChannels = 1)
-      ImageFileOut(file = fOut, spec = specOut, in = rotImg)
+      ImageFileOut(file = fOut.toURI, spec = specOut, in = rotImg)
     }
 
     val ctrl  = stream.Control()

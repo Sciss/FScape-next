@@ -37,8 +37,8 @@ object Test extends App {
       // AudioFileOut(file = tmpF, spec = AudioFileSpec(numChannels = 1, sampleRate = sr), in = sig)
       AudioFileOut("file", in = sig, sampleRate = sr)
     }
-    val loc = ArtifactLocation.newConst[T](tmpDir)
-    f.attr.put("file", Artifact(loc, tmpF))
+    val loc = ArtifactLocation.newConst[T](tmpDir.toURI)
+    f.attr.put("file", Artifact(loc, tmpF.toURI))
     f.attr.put("freq", IntObj.newConst(441))
     f.graph() = g
     tx.newHandle(f)

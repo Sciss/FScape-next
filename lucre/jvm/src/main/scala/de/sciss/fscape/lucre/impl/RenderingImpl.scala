@@ -13,6 +13,8 @@
 
 package de.sciss.fscape.lucre.impl
 
+import java.net.URI
+
 import de.sciss.file._
 import de.sciss.filecache
 import de.sciss.filecache.TxnProducer
@@ -23,7 +25,7 @@ import de.sciss.fscape.lucre.{Cache, FScape, OutputGenView, UGenGraphBuilder}
 import de.sciss.fscape.stream.Control
 import de.sciss.lucre.impl.{DummyObservableImpl, ObservableImpl}
 import de.sciss.lucre.synth.{Txn => STxn}
-import de.sciss.lucre.{Cursor, Disposable, Obj, Txn}
+import de.sciss.lucre.{Artifact, Cursor, Disposable, Obj, Txn}
 import de.sciss.serial.{ConstFormat, DataInput, DataOutput}
 import de.sciss.synth.proc.{GenView, Runner, SoundProcesses, Universe}
 
@@ -109,7 +111,7 @@ object RenderingImpl {
               control.runExpanded(res.graph)
               val fut = control.status
               fut.map { _ =>
-                val resourcesB  = List.newBuilder[File]
+                val resourcesB  = List.newBuilder[Artifact.Value]
                 val dataB       = Map .newBuilder[String, Array[Byte]]
 
                 res.outputs.foreach { outRes =>
@@ -171,7 +173,7 @@ object RenderingImpl {
         val cookie = in.readInt()
         if (cookie != COOKIE) sys.error(s"Unexpected cookie (found $cookie, expected $COOKIE)")
         val numFiles  = in.readUnsignedShort()
-        val resources = if (numFiles == 0) Nil else List.fill(numFiles)(new File(in.readUTF()))
+        val resources = if (numFiles == 0) Nil else List.fill(numFiles)(new URI(in.readUTF()))
         val numData   = in.readShort()
         val data: Map[String, Array[Byte]] = if (numData == 0) Map.empty else {
           val b     = Map.newBuilder[String, Array[Byte]]
@@ -194,7 +196,7 @@ object RenderingImpl {
         out.writeInt(COOKIE)
         val numFiles = v.resources.size
         out.writeShort(numFiles)
-        if (numFiles > 0) v.resources.foreach(f => out.writeUTF(f.path))
+        if (numFiles > 0) v.resources.foreach(uri => out.writeUTF(uri.toString))
         val numData = v.data.size
         out.writeShort(numData)
         if (numData > 0) v.data.foreach { case (key, bytes) =>
@@ -205,7 +207,7 @@ object RenderingImpl {
       }
     }
   }
-  final class CacheValue(val resources: List[File], val data: Map[String, Array[Byte]]) {
+  final class CacheValue(val resources: List[Artifact.Value], val data: Map[String, Array[Byte]]) {
     override def toString: String = s"CacheValue@${hashCode().toHexString}"
   }
 
@@ -213,8 +215,14 @@ object RenderingImpl {
     val cacheCfg = filecache.Config[CacheKey, CacheValue]()
     val global   = Cache.instance
     cacheCfg.accept           = { (_ /* key */, _ /* value */) => true }
-    cacheCfg.space            = { (_ /* key */, value) => value.resources.map    (_.length()).sum }
-    cacheCfg.evict            = { (_ /* key */, value) => value.resources.foreach(_.delete())     }
+    cacheCfg.space            = { (_ /* key */, value) => value.resources.map { uri =>
+      val f = new File(uri) // XXX TODO
+      f.length()
+    } .sum }
+    cacheCfg.evict            = { (_ /* key */, value) => value.resources.foreach { uri =>
+      val f = new File(uri) // XXX TODO
+      f.delete()
+    }}
     cacheCfg.capacity         = global.capacity
     cacheCfg.executionContext = global.executionContext
     cacheCfg.fileExtension    = global.extension

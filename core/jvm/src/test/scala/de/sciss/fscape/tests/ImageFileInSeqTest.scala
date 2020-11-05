@@ -21,7 +21,7 @@ object ImageFileInSeqTest extends App {
     import graph._
 //    val idxSeq  = Dseq(indices)
     val idxSeq  = indices.reduce(_ ++ _)
-    val in      = ImageFileSeqIn(template = fIn, numChannels = 3, indices = idxSeq)
+    val in      = ImageFileSeqIn(template = fIn.toURI, numChannels = 3, indices = idxSeq)
     val sig     = in
 //    {
 //      val in1 = in.take(width * height)
@@ -31,7 +31,7 @@ object ImageFileInSeqTest extends App {
 //    }
     val spec    = ImageFile.Spec(width = width, height = height * indices.size, numChannels = 3 /* 1 */,
       fileType = ImageFile.Type.JPG, sampleFormat = ImageFile.SampleFormat.Int8)
-    ImageFileOut(file = fOut, spec = spec, in = sig)
+    ImageFileOut(file = fOut.toURI, spec = spec, in = sig)
   }
 
   val config = stream.Control.Config()

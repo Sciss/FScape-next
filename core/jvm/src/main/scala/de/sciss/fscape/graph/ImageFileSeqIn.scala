@@ -14,20 +14,21 @@
 package de.sciss.fscape
 package graph
 
-import de.sciss.file._
+import java.net.URI
+
 import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-object ImageFileSeqIn {
-  def formatTemplate(template: File, index: Int): File = {
-    val name      = template.name.format(index)
-    val f         = template.parentOption.fold(file(name))(_ / name)
-    f
-  }
-}
+//object ImageFileSeqIn {
+//  def formatTemplate(template: File, index: Int): File = {
+//    val name      = template.name.format(index)
+//    val f         = template.parentOption.fold(file(name))(_ / name)
+//    f
+//  }
+//}
 
 /** Reads a sequence of images, outputting them directly one after the other, determining
   * their file names by formatting a `template` with a numeric argument given through `indices`.
@@ -40,7 +41,7 @@ object ImageFileSeqIn {
   *                   then the UGen will read the images `foo-4` and `foo-5` (the placeholder `123` is
   *                   irrelevant).
   */
-final case class ImageFileSeqIn(template: File, numChannels: Int, indices: GE) extends UGenSource.MultiOut {
+final case class ImageFileSeqIn(template: URI, numChannels: Int, indices: GE) extends UGenSource.MultiOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
     unwrap(this, Vector(indices.expand))
 

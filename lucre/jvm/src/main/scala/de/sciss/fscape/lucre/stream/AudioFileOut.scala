@@ -13,11 +13,14 @@
 
 package de.sciss.fscape.lucre.stream
 
+import java.net.URI
+
 import akka.stream.Attributes
 import akka.stream.stage.{GraphStageLogic, InHandler, OutHandler}
 import de.sciss.audiofile.AudioFile.Frames
 import de.sciss.file._
 import de.sciss.fscape.logStream
+import de.sciss.lucre.Artifact
 import de.sciss.fscape.lucre.graph.{AudioFileOut => AF}
 import de.sciss.fscape.stream.impl.shapes.In3UniformFanInShape
 import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeHasInitImpl, NodeImpl}
@@ -29,8 +32,9 @@ import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
 object AudioFileOut {
-  def apply(fileTr: Try[File], fileType: OutI, sampleFormat: OutI, sampleRate: OutD, in: ISeq[OutD])
+  def apply(fileTr: Try[URI], fileType: OutI, sampleFormat: OutI, sampleRate: OutD, in: ISeq[OutD])
            (implicit b: Builder): OutL = {
+    import Artifact.Value.Ops
     val name0   = fileTr match {
       case Success(f)   => f.name
       case Failure(ex)  => s"${ex.getClass}(${ex.getMessage})"
@@ -51,7 +55,7 @@ object AudioFileOut {
 
   private type Shp = In3UniformFanInShape[BufI, BufI, BufD, BufD, BufL]
 
-  private final class Stage(layer: Layer, fileTr: Try[File], name: String, numChannels: Int)
+  private final class Stage(layer: Layer, fileTr: Try[URI], name: String, numChannels: Int)
                            (implicit protected val ctrl: Control)
     extends BlockingGraphStage[Shp](name) {
 
@@ -67,16 +71,16 @@ object AudioFileOut {
       new Logic(shape, layer, fileTr, name = name, numChannels = numChannels)
   }
 
-  private final class Logic(shape: Shp, layer: Layer, fileTr: Try[File], name: String, numChannels: Int)
+  private final class Logic(shape: Shp, layer: Layer, fileTr: Try[URI], name: String, numChannels: Int)
                            (implicit ctrl: Control)
     extends NodeImpl(name, layer, shape) with NodeHasInitImpl
       with OutHandler { logic: GraphStageLogic =>
 
     // ---- impl ----
 
-    private[this] var af      : AudioFile  = _
-    private[this] var buf     : Frames     = _
-    private[this] var file    : File       = _
+    private[this] var af      : AudioFile   = _
+    private[this] var buf     : Frames      = _
+    private[this] var uri     : URI         = _
 
     private[this] var pushed        = 0
     private[this] val bufIns        = new Array[BufD](numChannels)
@@ -96,7 +100,7 @@ object AudioFileOut {
       super.init()
       logStream(s"init() $this")
       fileTr match {
-        case Success(f) => file = f
+        case Success(f) => uri = f
         case Failure(ex) =>
           notifyFail(ex)
       }
@@ -109,9 +113,10 @@ object AudioFileOut {
 
     private def updateSpec(): Unit = {
       if (fileType >= 0 && sampleFormat >= 0 && sampleRate >= 0) {
+        val f = new File(uri)
         val spec  = AudioFileSpec(AF.fileType(fileType), AF.sampleFormat(sampleFormat),
           numChannels = numChannels, sampleRate = sampleRate)
-        af        = AudioFile.openWrite(file, spec)
+        af        = AudioFile.openWrite(f, spec)
         afValid   = true
       }
     }
@@ -126,7 +131,8 @@ object AudioFileOut {
           logStream("AudioFileOut: fileType")
           val _fileType = math.min(AF.maxFileTypeId, buf.buf(0))
           fileType = if (_fileType >= 0) _fileType else {
-            val ext   = file.extL
+            import Artifact.Value.Ops
+            val ext   = uri.extL
             val tpe   = AudioFileType.writable.find(_.extensions.contains(ext)).getOrElse(AudioFileType.AIFF)
             AF.id(tpe)
           }

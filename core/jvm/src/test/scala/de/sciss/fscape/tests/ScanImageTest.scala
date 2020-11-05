@@ -16,7 +16,7 @@ object ScanImageTest extends App {
 
   val g = Graph {
     import graph._
-    val in          = ImageFileIn(file = fIn, numChannels = 3)
+    val in          = ImageFileIn(file = fIn.toURI, numChannels = 3)
 //    val period      = width
 //    val numPeriods  = height
 //    val freqN       = 1.0/period
@@ -33,7 +33,7 @@ object ScanImageTest extends App {
     val sig         = ScanImage(in, width = width, height = height, x = x, y = y, zeroCrossings = 0).max(0).min(1)
     val spec        = ImageFile.Spec(width = width, height = height, numChannels = 3,
       fileType = ImageFile.Type.PNG, sampleFormat = ImageFile.SampleFormat.Int8)
-    ImageFileOut(file = fOut, spec = spec, in = sig)
+    ImageFileOut(file = fOut.toURI, spec = spec, in = sig)
   }
 
   val config = stream.Control.Config()

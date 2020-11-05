@@ -19,7 +19,7 @@ object PercussionTest extends App {
 
   lazy val g = Graph {
     // 'analysis'
-    val in          = AudioFileIn(file = fIn, numChannels = 1)
+    val in          = AudioFileIn(file = fIn.toURI, numChannels = 1)
     val fftSize     = 131072
     val winStep     = fftSize / 4
     val inW         = Sliding         (in = in , size = fftSize, step = winStep)
@@ -45,7 +45,7 @@ object PercussionTest extends App {
     val lap         = OverlapAdd(in = winOut, size = fftSize, step = winStep).take(specIn.numFrames)
 
     val sig = normalize(lap)
-    AudioFileOut(file = fOut, spec = AudioFileSpec(numChannels = coefs.size, sampleRate = 44100), in = sig)
+    AudioFileOut(file = fOut.toURI, spec = AudioFileSpec(numChannels = coefs.size, sampleRate = 44100), in = sig)
   }
 
   def normalize(in: GE): GE = {

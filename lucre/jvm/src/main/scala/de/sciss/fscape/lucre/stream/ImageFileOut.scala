@@ -13,9 +13,11 @@
 
 package de.sciss.fscape.lucre.stream
 
+import java.net.URI
+
 import akka.stream.{Attributes, Outlet}
-import de.sciss.file._
 import de.sciss.fscape.graph.ImageFile
+import de.sciss.lucre.Artifact
 import de.sciss.fscape.lucre.stream.impl.ImageFileOutReadsSpec
 import de.sciss.fscape.stream.impl.Handlers.{InDMain, InIAux}
 import de.sciss.fscape.stream.impl.shapes.In5UniformSinkShape
@@ -25,9 +27,9 @@ import de.sciss.fscape.stream.{BufD, BufI, Builder, Control, InD, InI, Layer, Ou
 import scala.collection.immutable.{Seq => ISeq}
 
 object ImageFileOut {
-  def apply(file: File, width: OutI, height: OutI, fileType: OutI, sampleFormat: OutI, quality: OutI, in: ISeq[OutD])
+  def apply(uri: URI, width: OutI, height: OutI, fileType: OutI, sampleFormat: OutI, quality: OutI, in: ISeq[OutD])
            (implicit b: Builder): Unit = {
-    val stage0  = new Stage(layer = b.layer, f = file, numChannels = in.size)
+    val stage0  = new Stage(layer = b.layer, uri = uri, numChannels = in.size)
     val stage   = b.add(stage0)
     b.connect(width       , stage.in0)
     b.connect(height      , stage.in1)
@@ -44,8 +46,11 @@ object ImageFileOut {
 
   private type Shp = In5UniformSinkShape[BufI, BufI, BufI, BufI, BufI, BufD]
 
-  private final class Stage(layer: Layer, f: File, numChannels: Int)(implicit protected val ctrl: Control)
-    extends BlockingGraphStage[Shp](s"$name(${f.name})") {
+  private final class Stage(layer: Layer, uri: URI, numChannels: Int)(implicit protected val ctrl: Control)
+    extends BlockingGraphStage[Shp]({
+      import Artifact.Value.Ops
+      s"$name(${uri.name})"
+    }) {
 
     val shape: Shape = In5UniformSinkShape(
       InI (s"$name.width"       ),
@@ -57,12 +62,12 @@ object ImageFileOut {
     )
 
     def createLogic(attr: Attributes): NodeImpl[Shape] =
-      new Logic(shape, layer, f, numChannels = numChannels)
+      new Logic(name, shape, layer, uri, numChannels = numChannels)
   }
 
-  private final class Logic(shape: Shp, layer: Layer, f: File, protected val numChannels: Int)
+  private final class Logic(name: String, shape: Shp, layer: Layer, uri: URI, protected val numChannels: Int)
                            (implicit ctrl: Control)
-    extends Handlers(s"$name(${f.name})", layer, shape)
+    extends Handlers(name, layer, shape)
       with ImageFileSingleOutImpl[Shp] with ImageFileOutReadsSpec[Shp] { self =>
 
     protected val hImg: Array[InDMain] = shape.inlets5.iterator.map(InDMain(this, _)).toArray
@@ -73,7 +78,7 @@ object ImageFileOut {
     protected val hSampleFormat : InIAux = InIAux(this, shape.in3)()
     protected val hQuality      : InIAux = InIAux(this, shape.in4)()
 
-    protected def fileOrTemplate: File = f
+    protected def fileOrTemplate: URI = uri
 
     override protected def initSpec(spec: ImageFile.Spec): Unit = {
       super.initSpec(spec)

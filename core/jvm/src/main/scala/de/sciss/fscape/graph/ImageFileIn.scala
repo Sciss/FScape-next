@@ -14,13 +14,14 @@
 package de.sciss.fscape
 package graph
 
-import de.sciss.file.File
+import java.net.URI
+
 import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-final case class ImageFileIn(file: File, numChannels: Int) extends UGenSource.MultiOut {
+final case class ImageFileIn(file: URI, numChannels: Int) extends UGenSource.MultiOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = makeUGen(Vector.empty)
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =

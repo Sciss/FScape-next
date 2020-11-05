@@ -59,7 +59,7 @@ class ImageFileOutSpec extends FixtureAnyFlatSpec with Matchers {
         // Length(out).poll(0, s"Length should be $fileLen")
       }
       f.graph() = g
-      val art = Artifact[T](ArtifactLocation.newConst(fOut.parent), fOut)
+      val art = Artifact[T](ArtifactLocation.newConst(fOut.parent.toURI), fOut.toURI)
       f.attr.put("out", art)
       implicit val universe: Universe[T] = Universe.dummy
       f.run()
@@ -67,7 +67,7 @@ class ImageFileOutSpec extends FixtureAnyFlatSpec with Matchers {
 
     Await.result(rendering.control.status, Duration.Inf)
 
-    val specOut = ImageFile.readSpec(fOut)
+    val specOut = ImageFile.readSpec(fOut.toURI)
 
     assert(specOut.fileType     === specIn.fileType     )
     assert(specOut.width        === specIn.width        )

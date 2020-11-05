@@ -37,7 +37,7 @@ object SegModPhasorTest extends App {
     val sh      = SegModPhasor(freqN, phase0)
     val sig     = sh // ((sh + phase0) * (2 * math.Pi)).sin  // sine
 //    val sig     = (sh * (2 * math.Pi)).sin  // sine
-    /* val frames  = */ AudioFileOut(sig, file("/data/temp/foo.aif"), AudioFileSpec(numChannels = 1, sampleRate = 44100))
+    /* val frames  = */ AudioFileOut(sig, file("/data/temp/foo.aif").toURI, AudioFileSpec(numChannels = 1, sampleRate = 44100))
     // Progress(frames / periods.last, Metro(44100))
   }
   val ctl = stream.Control()

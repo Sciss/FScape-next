@@ -39,7 +39,7 @@ object MFCCTest extends App {
 
     val specIn  = AudioFile.readSpec(fIn)
     import specIn.{numChannels, numFrames, sampleRate}
-    def mkIn()      = AudioFileIn(fIn, numChannels = numChannels)
+    def mkIn()      = AudioFileIn(fIn.toURI, numChannels = numChannels)
     val in          = mkIn()
     val stepSize    = fftSize / stepDiv
     val sideFrames  = (sampleRate * sideDur ).toInt
@@ -93,7 +93,7 @@ object MFCCTest extends App {
     val slicesLap   = OverlapAdd(slicesWin, size = spanLenAsc, step = spanLenAsc - fadeFrames)
 
     val sig         = slicesLap
-    val out         = AudioFileOut(file = fOut, spec = AudioFileSpec(numChannels = numChannels, sampleRate = sampleRate), in = sig)
+    val out         = AudioFileOut(file = fOut.toURI, spec = AudioFileSpec(numChannels = numChannels, sampleRate = sampleRate), in = sig)
     Progress(out / (2 * numFrames), Metro(sampleRate), label = "write")
   }
 

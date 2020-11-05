@@ -16,6 +16,7 @@ package stream
 package impl
 
 import java.awt.image.{BufferedImage, DataBuffer}
+import java.net.URI
 
 import akka.stream.Shape
 import akka.stream.stage.OutHandler
@@ -48,19 +49,20 @@ trait ImageFileInImpl[S <: Shape] extends NodeHasInitImpl with OutHandler {
   protected final var img         : BufferedImage   = _
 
   /** Resets `framesRead`. */
-  protected final def openImage(f: File): Unit = {
+  protected final def openImage(uri: URI): Unit = {
     closeImage()
 //    println(s"openImage($f)")
     img         = try {
+      val f = new File(uri)
       ImageIO.read(f)
     } catch {
       case NonFatal(ex) =>
-        Console.err.println(s"$this - for file $f")
+        Console.err.println(s"$this - for file $uri")
         throw ex
     }
     numBands    = img.getSampleModel.getNumBands
     if (numBands != numChannels) {
-      Console.err.println(s"Warning: ImageFileIn - $f - channel mismatch (file has $numBands, UGen has $numChannels)")
+      Console.err.println(s"Warning: ImageFileIn - $uri - channel mismatch (file has $numBands, UGen has $numChannels)")
     }
     numFrames   = img.getWidth * img.getHeight
     val bufSize = numBands * img.getWidth

@@ -14,16 +14,12 @@
 package de.sciss.fscape
 package graph
 
-import java.io.{FileNotFoundException, IOException}
-
-import de.sciss.file.File
 import de.sciss.serial.{ConstFormat, DataInput, DataOutput}
-import javax.imageio.ImageIO
 
 import scala.annotation.switch
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-object ImageFile {
+object ImageFile extends ImageFilePlatform {
   object Type {
     case object PNG extends Type {
       override def productPrefix = s"ImageFile$$Type$$PNG$$"    // serialization
@@ -144,34 +140,5 @@ object ImageFile {
                         quality      : Int = 80) {
 
     override def productPrefix = s"ImageFile$$Spec"  // serialization
-  }
-
-  def readSpec(path: String): Spec = readSpec(new File(path))
-
-  /** Determines the spec of an image file.
-    * A bit of guess work is involved (not tested for float format).
-    * JPEG quality is currently _not_ determined.
-    */
-  def readSpec(f: File): Spec = {
-    val in      = ImageIO.createImageInputStream(f)
-    if (in == null) throw new FileNotFoundException(f.getPath)
-    val it      = ImageIO.getImageReaders(in)
-    val reader  = if (it.hasNext) it.next() else throw new IOException("Unrecognized image file format")
-    try {
-      reader.setInput(in)
-      val fmt = reader.getFormatName
-      val w   = reader.getWidth (0)
-      val h   = reader.getHeight(0)
-      val s   = reader.getImageTypes(0).next()
-      val nc  = s.getNumComponents
-      val nb  = s.getColorModel.getPixelSize / nc
-      // Ok, that's a guess, LOL
-      val st  = if (nb == 8) SampleFormat.Int8 else if (nb == 16) SampleFormat.Int16 else SampleFormat.Float
-      val tpe = if (fmt.toLowerCase == "png") Type.PNG else Type.JPG
-      Spec(fileType = tpe, sampleFormat = st, width = w, height = h, numChannels = nc)
-
-    } finally {
-      reader.dispose()    // XXX TODO --- do we also need to call `in.close()` ?
-    }
   }
 }

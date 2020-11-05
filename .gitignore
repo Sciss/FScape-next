@@ -6,3 +6,4 @@ project/boot/
 .idea_modules/
 /*.mllt
 /FScape-modules*.zip
+/.bsp/

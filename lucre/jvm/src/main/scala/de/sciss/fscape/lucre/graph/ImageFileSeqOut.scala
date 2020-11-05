@@ -13,7 +13,8 @@
 
 package de.sciss.fscape.lucre.graph
 
-import de.sciss.file.File
+import java.net.URI
+
 import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.graph.ImageFile.{SampleFormat, Type}
@@ -41,7 +42,7 @@ object ImageFileSeqOut {
 
   def maxSampleFormatId: Int = ImageFileOut.maxSampleFormatId
 
-  final case class WithFile(template: File, in: GE, width: GE, height: GE, fileType: GE,
+  final case class WithFile(template: URI, in: GE, width: GE, height: GE, fileType: GE,
                             sampleFormat: GE, quality: GE, indices: GE)
     extends UGenSource.ZeroOut {
 
@@ -108,7 +109,7 @@ final case class ImageFileSeqOut(key: String, in: GE, width: GE, height: GE, fil
       //        ImageFileSeqOut.WithFile(file = a.artifact, in = in, fileType = ImageFileSeqOut.id(spec.fileType),
       //          sampleFormat = ImageFileSeqOut.id(spec.sampleFormat), sampleRate = spec.sampleRate)
 
-      case f: File =>
+      case f: URI =>
         val t = Util.mkTemplate(f)
         ImageFileSeqOut.WithFile(template = t, in = in, width = width, height = height, fileType = fileType,
           sampleFormat = sampleFormat, quality = quality, indices = indices)

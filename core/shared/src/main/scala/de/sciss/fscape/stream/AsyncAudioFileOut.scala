@@ -1,5 +1,5 @@
 /*
- *  AudioFileOut.scala
+ *  AsyncAudioFileOut.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2020 Hanns Holger Rutz. All rights reserved.
@@ -19,14 +19,13 @@ import java.net.URI
 import akka.stream.stage.{InHandler, OutHandler}
 import akka.stream.{Attributes, UniformFanInShape}
 import de.sciss.audiofile.AudioFile.Frames
-import de.sciss.file._
-import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeHasInitImpl, NodeImpl}
-import de.sciss.audiofile.{AudioFile, AudioFileSpec}
+import de.sciss.audiofile.{AsyncAudioFile, AudioFile, AudioFileSpec}
+import de.sciss.fscape.stream.impl.{NodeHasInitImpl, NodeImpl, StageImpl}
 
 import scala.collection.immutable.{Seq => ISeq}
 import scala.util.control.NonFatal
 
-object AudioFileOut {
+object AsyncAudioFileOut {
   def apply(file: URI, spec: AudioFileSpec, in: ISeq[OutD])(implicit b: Builder): OutL = {
     require (spec.numChannels == in.size, s"Channel mismatch (spec has ${spec.numChannels}, in has ${in.size})")
     val sink = new Stage(layer = b.layer, f = file, spec = spec)
@@ -42,7 +41,7 @@ object AudioFileOut {
   private type Shp = UniformFanInShape[BufD, BufL]
 
   private final class Stage(layer: Layer, f: URI, spec: AudioFileSpec)(implicit protected val ctrl: Control)
-    extends BlockingGraphStage[Shp]({
+    extends StageImpl[Shp]({
       val p = f.normalize().getPath
       val i = p.lastIndexOf('/') + 1
       val n = p.substring(i)
@@ -54,29 +53,31 @@ object AudioFileOut {
       Vector.tabulate(spec.numChannels)(ch => InD(s"$name.in$ch")): _*
     )
 
-    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(name, shape, layer = layer, uri = f, spec = spec)
+    def createLogic(attr: Attributes): NodeImpl[Shape] =
+      new Logic(name, shape, layer = layer, file = f, spec = spec)
   }
 
-  private final class Logic(name: String, shape: Shp, layer: Layer, protected val uri: URI, protected val spec: AudioFileSpec)
+  private final class Logic(name: String, shape: Shp, layer: Layer, protected val file: URI,
+                            protected val spec: AudioFileSpec)
                            (implicit ctrl: Control)
     extends AbstractLogic(name, layer, shape)
 
-  abstract class AbstractLogic(name: String, layer: Layer, shape: Shp)(implicit control: Control)
+  abstract class AbstractLogic(name: String, layer: Layer, shape: Shp)(implicit _control: Control)
     extends NodeImpl[Shp](name, layer, shape)
-    with NodeHasInitImpl with OutHandler {
+      with NodeHasInitImpl with OutHandler {
 
     logic: NodeImpl[Shp] =>
 
     // ---- abstract ----
 
-    protected def uri : URI
-    protected def spec: AudioFileSpec
+    protected def file : URI
+    protected def spec : AudioFileSpec
 
-//    def shape: Shape
+    //    def shape: Shape
 
     // ---- impl ----
 
-    private[this] var af      : AudioFile = _
+    private[this] var af      : AsyncAudioFile = _
     private[this] var buf     : Frames = _
 
     private[this] var pushed        = 0
@@ -122,8 +123,13 @@ object AudioFileOut {
     override protected def init(): Unit = {
       // super.init()
       logStream(s"$this - init()")
-      val f = new File(uri)
-      af = AudioFile.openWrite(f, spec)
+      import control.config.executionContext
+      val afFut = AudioFile.openWriteAsync(file, spec)
+      afFut.foreach { _af =>
+        async {
+          af = _af
+        }
+      }
     }
 
     override protected def launch(): Unit = {
@@ -144,7 +150,7 @@ object AudioFileOut {
         af.close()
         af = null
       }
-        // resultP.trySuccess(af.numFrames)
+      // resultP.trySuccess(af.numFrames)
       // } catch {
       //   case NonFatal(ex) => resultP.tryFailure(ex)
       // }
@@ -161,7 +167,7 @@ object AudioFileOut {
       onPull()
 
     private def process(): Unit = {
-//      logStream(s"process() $this")
+      //      logStream(s"process() $this")
       logStream(s"process() $this")
       pushed = 0
 
@@ -195,7 +201,7 @@ object AudioFileOut {
         af.write(buf, 0, chunk)
       } catch {
         case NonFatal(ex) =>
-//          resultP.failure(ex)
+          //          resultP.failure(ex)
           notifyFail(ex)
       } finally {
         ch = 0
@@ -229,9 +235,9 @@ object AudioFileOut {
       }
     }
 
-//    override def onUpstreamFailure(ex: Throwable): Unit = {
-//      resultP.failure(ex)
-//      super.onUpstreamFailure(ex)
-//    }
+    //    override def onUpstreamFailure(ex: Throwable): Unit = {
+    //      resultP.failure(ex)
+    //      super.onUpstreamFailure(ex)
+    //    }
   }
 }

@@ -11,7 +11,7 @@ object IfThenElseGEMultiChannelTest extends App {
     val tempIn         = new java.io.File("/data/projects/Almat/events/data-to-process2017/lecture_perf/schwaermen-frames-in/frame-%d.jpg")
     val numFramesIn    = 10 // 500
     val resampleIn     = 2: GE // "resample-in" .attr(1)
-    val videoIn0  = ImageFileSeqIn(template = tempIn, numChannels = 3, indices =
+    val videoIn0  = ImageFileSeqIn(template = tempIn.toURI, numChannels = 3, indices =
       ArithmSeq(1, 1, numFramesIn)) // .out(0)
 
     val wIn       = 1920

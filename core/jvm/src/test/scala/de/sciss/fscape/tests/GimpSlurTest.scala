@@ -44,12 +44,12 @@ object GimpSlurTest {
   }
 
   def run(config: Config): Unit = {
-    val specIn  = ImageFile.readSpec(config.fIn)
+    val specIn  = ImageFile.readSpec(config.fIn.toURI)
     import specIn.{height, numChannels, width}
 
     val g = Graph {
       import graph._
-      val imgIn   = ImageFileIn(config.fIn, numChannels = numChannels)
+      val imgIn   = ImageFileIn(config.fIn.toURI, numChannels = numChannels)
       val pTL     = (1.0 - config.narrow) * 0.5 * config.randomization
       val pT      = config.narrow * config.randomization
       val pTR     = pTL
@@ -64,7 +64,7 @@ object GimpSlurTest {
         repeat = config.repeat)
       val tpeOut  = if (config.fOut.extL == "png") ImageFile.Type.PNG else ImageFile.Type.JPG
       val specOut = specIn.copy(fileType = tpeOut, sampleFormat = ImageFile.SampleFormat.Int8 /*, numChannels = 1*/)
-       ImageFileOut(file = config.fOut, spec = specOut, in = slur)
+       ImageFileOut(file = config.fOut.toURI, spec = specOut, in = slur)
 //      Length(slur).poll("lengths")
     }
 

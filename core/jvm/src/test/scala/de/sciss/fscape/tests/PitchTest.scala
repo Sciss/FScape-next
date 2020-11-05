@@ -32,7 +32,7 @@ object PitchTest extends App {
 //    val start       = 19932
 //    val numFrames   = 200L * 2000 // 242239 // 48000 * 87 // specIn.numFrames
 //    val in          = AudioFileIn(file = fIn, numChannels = 1).drop(start).take(numFrames)
-    val in0         = AudioFileIn(file = fIn, numChannels = 1)
+    val in0         = AudioFileIn(file = fIn.toURI, numChannels = 1)
 //    val in0         = AudioFileIn(file = fIn, numChannels = 1).take(numFrames)
     val in = in0 // * 0.00000000001 + SinOsc(200.0/44100)
     val numFrames   = specIn.numFrames

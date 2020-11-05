@@ -14,7 +14,8 @@
 package de.sciss.fscape
 package graph
 
-import de.sciss.file.File
+import java.net.URI
+
 import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.StreamIn
@@ -33,7 +34,7 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   *                   then the UGen will write the images `foo-4` and `foo-5` (the placeholder `123` is
   *                   irrelevant).
   */
-final case class ImageFileSeqOut(in: GE, template: File, spec: ImageFile.Spec, indices: GE)
+final case class ImageFileSeqOut(in: GE, template: URI, spec: ImageFile.Spec, indices: GE)
   extends UGenSource.ZeroOut {
 
   protected def makeUGens(implicit b: UGenGraph.Builder): Unit =

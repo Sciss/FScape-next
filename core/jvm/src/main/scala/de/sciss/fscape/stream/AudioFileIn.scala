@@ -14,18 +14,20 @@
 package de.sciss.fscape
 package stream
 
+import java.io.File
+import java.net.URI
+
 import akka.stream.Attributes
 import akka.stream.stage.OutHandler
 import de.sciss.audiofile.AudioFile
 import de.sciss.audiofile.AudioFile.Frames
-import de.sciss.file._
 import de.sciss.fscape.stream.impl.shapes.UniformSourceShape
 import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeHasInitImpl, NodeImpl}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
 object AudioFileIn {
-  def apply(file: File, numChannels: Int)(implicit b: Builder): Vec[OutD] = {
+  def apply(file: URI, numChannels: Int)(implicit b: Builder): Vec[OutD] = {
     val source  = new Stage(layer = b.layer, f = file, numChannels = numChannels)
     val stage   = b.add(source)
     stage.outlets.toIndexedSeq
@@ -36,17 +38,22 @@ object AudioFileIn {
   private type Shp = UniformSourceShape[BufD]
 
   // similar to internal `UnfoldResourceSource`
-  private final class Stage(layer: Layer, f: File, numChannels: Int)(implicit ctrl: Control)
-    extends BlockingGraphStage[Shp](s"$name(${f.name})") {
+  private final class Stage(layer: Layer, f: URI, numChannels: Int)(implicit ctrl: Control)
+    extends BlockingGraphStage[Shp]({
+      val p = f.normalize().getPath
+      val i = p.lastIndexOf('/') + 1
+      val n = p.substring(i)
+      s"$name($n)"
+    }) {
 
     val shape: Shape = UniformSourceShape(Vector.tabulate(numChannels)(ch => OutD(s"$name.out$ch")))
 
     def createLogic(attr: Attributes): NodeImpl[Shape] =
-      new Logic(shape, layer = layer, f = f, numChannels = numChannels)
+      new Logic(name, shape, layer = layer, uri = f, numChannels = numChannels)
   }
 
-  private final class Logic(shape: Shp, layer: Layer, f: File, numChannels: Int)(implicit ctrl: Control)
-    extends NodeImpl(s"$name(${f.name})", layer, shape) with NodeHasInitImpl with OutHandler {
+  private final class Logic(name: String, shape: Shp, layer: Layer, uri: URI, numChannels: Int)(implicit ctrl: Control)
+    extends NodeImpl(name, layer, shape) with NodeHasInitImpl with OutHandler {
 
     private[this] var af        : AudioFile  = _
     private[this] var buf       : Frames     = _
@@ -59,7 +66,8 @@ object AudioFileIn {
     override protected def init(): Unit = {
       super.init()
       logStream(s"init() $this")
-      af          = AudioFile.openRead(f)
+      val f = new File(uri)
+      af    = AudioFile.openRead(f)
       if (af.numChannels != numChannels) {
         Console.err.println(s"Warning: DiskIn - channel mismatch (file has ${af.numChannels}, UGen has $numChannels)")
       }

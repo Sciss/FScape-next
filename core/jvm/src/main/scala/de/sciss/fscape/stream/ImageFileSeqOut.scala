@@ -14,8 +14,9 @@
 package de.sciss.fscape
 package stream
 
+import java.net.URI
+
 import akka.stream.{Attributes, Outlet}
-import de.sciss.file._
 import de.sciss.fscape.graph.ImageFile.Spec
 import de.sciss.fscape.stream.impl.Handlers.{InDMain, InIMain}
 import de.sciss.fscape.stream.impl.shapes.In1UniformSinkShape
@@ -24,7 +25,7 @@ import de.sciss.fscape.stream.impl.{BlockingGraphStage, Handlers, ImageFileSeqOu
 import scala.collection.immutable.{Seq => ISeq}
 
 object ImageFileSeqOut {
-  def apply(template: File, spec: Spec, indices: OutI, in: ISeq[OutD])(implicit b: Builder): Unit = {
+  def apply(template: URI, spec: Spec, indices: OutI, in: ISeq[OutD])(implicit b: Builder): Unit = {
     require (spec.numChannels == in.size, s"Channel mismatch (spec has ${spec.numChannels}, in has ${in.size})")
     val sink = new Stage(layer = b.layer, template = template, spec = spec)
     val stage = b.add(sink)
@@ -38,8 +39,13 @@ object ImageFileSeqOut {
 
   private type Shp = In1UniformSinkShape[BufI, BufD]
 
-  private final class Stage(layer: Layer, template: File, spec: Spec)(implicit protected val ctrl: Control)
-    extends BlockingGraphStage[Shp](s"$name(${template.name})") {
+  private final class Stage(layer: Layer, template: URI, spec: Spec)(implicit protected val ctrl: Control)
+    extends BlockingGraphStage[Shp]({
+      val p = template.normalize().getPath
+      val i = p.lastIndexOf('/') + 1
+      val n = p.substring(i)
+      s"$name($n)"
+    }) {
 
     val shape: Shape = In1UniformSinkShape[BufI, BufD](
       InI(s"$name.indices"),
@@ -47,11 +53,12 @@ object ImageFileSeqOut {
     )
 
     def createLogic(attr: Attributes): NodeImpl[Shape] =
-      new Logic(shape, layer = layer, template = template, spec = spec)
+      new Logic(name, shape, layer = layer, template = template, spec = spec)
   }
 
-  private final class Logic(shape: Shp, layer: Layer, protected val template: File, val spec: Spec)(implicit ctrl: Control)
-    extends Handlers(s"$name(${template.name})", layer, shape)
+  private final class Logic(name: String, shape: Shp, layer: Layer, protected val template: URI, val spec: Spec)
+                           (implicit ctrl: Control)
+    extends Handlers(name, layer, shape)
     with ImageFileSeqOutImpl[Shp] { logic =>
 
     protected def numChannels: Int = spec.numChannels

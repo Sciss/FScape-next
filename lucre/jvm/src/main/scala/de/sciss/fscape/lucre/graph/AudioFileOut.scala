@@ -15,11 +15,12 @@ package de.sciss.fscape
 package lucre
 package graph
 
-import de.sciss.file.File
+import java.net.URI
+
 import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.lucre.UGenGraphBuilder.{Input, MissingIn}
-import de.sciss.fscape.stream.{StreamIn, StreamOut, Builder}
+import de.sciss.fscape.stream.{Builder, StreamIn, StreamOut}
 import de.sciss.audiofile.{AudioFileSpec, AudioFileType, SampleFormat}
 import de.sciss.synth.proc.AudioCue
 
@@ -78,7 +79,7 @@ object AudioFileOut {
 
   def maxSampleFormatId: Int = 6
 
-  final case class WithFile(fileTr: Try[File], in: GE, fileType: GE,
+  final case class WithFile(fileTr: Try[URI], in: GE, fileType: GE,
                             sampleFormat: GE, sampleRate: GE)
     extends UGenSource.SingleOut {
 
@@ -127,14 +128,14 @@ final case class AudioFileOut(key: String, in: GE, fileType: GE = -1, sampleForm
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = {
     val ub = UGenGraphBuilder.get(b)
     val (fileTr, specOpt) = {
-      ub.requestInput(Input.Attribute(key)).peer.fold[(Try[File], Option[AudioFileSpec])] {
+      ub.requestInput(Input.Attribute(key)).peer.fold[(Try[URI], Option[AudioFileSpec])] {
         Failure(MissingIn(s"Missing Attribute $key")) -> None
       } {
         case a: AudioCue =>
           val spec = a.spec
           Success(a.artifact) -> Some(spec)
 
-        case f: File =>
+        case f: URI =>
           Success(f) -> None
 
         case other =>

@@ -18,10 +18,10 @@ object DereverbTest extends App {
     import specIn.{numChannels, sampleRate}
 //    assert (numChannels == 4)
     val fOut        = file("/data/temp/wpe-test.aif")
-    val in          = AudioFileIn(fIn, numChannels = numChannels)
+    val in          = AudioFileIn(fIn.toURI, numChannels = numChannels)
     val wpe         = WPE_Dereverberate(in, taps = 10 /*20*/ /*40*/)
     val sig         = wpe // in - wpe
-    val out         = AudioFileOut(sig, fOut, AudioFileSpec(numChannels = numChannels, sampleRate = sampleRate))
+    val out         = AudioFileOut(sig, fOut.toURI, AudioFileSpec(numChannels = numChannels, sampleRate = sampleRate))
 //    Progress(out / specIn.numFrames.toDouble, Metro(sampleRate))
     ProgressFrames(out, specIn.numFrames)
   }

@@ -14,10 +14,10 @@
 package de.sciss.fscape
 package stream
 
+import java.net.URI
+
 import akka.stream.stage.InHandler
 import akka.stream.{Attributes, UniformFanOutShape}
-import de.sciss.file._
-import de.sciss.fscape.graph.ImageFileSeqIn.formatTemplate
 import de.sciss.fscape.stream.impl.{BlockingGraphStage, ImageFileInImpl, NodeImpl}
 
 import scala.annotation.tailrec
@@ -28,7 +28,7 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   http://imagej.net/ImgLib2_Examples#Example_1_-_Opening.2C_creating_and_displaying_images
  */
 object ImageFileSeqIn {
-  def apply(template: File, numChannels: Int, indices: OutI)(implicit b: Builder): Vec[OutD] = {
+  def apply(template: URI, numChannels: Int, indices: OutI)(implicit b: Builder): Vec[OutD] = {
     val source  = new Stage(layer = b.layer, template = template, numChannels = numChannels)
     val stage   = b.add(source)
     b.connect(indices, stage.in)
@@ -40,8 +40,13 @@ object ImageFileSeqIn {
   private type Shp = UniformFanOutShape[BufI, BufD]
 
   // similar to internal `UnfoldResourceSource`
-  private final class Stage(layer: Layer, template: File, numChannels: Int)(implicit ctrl: Control)
-    extends BlockingGraphStage[Shp](s"$name(${template.name})") {
+  private final class Stage(layer: Layer, template: URI, numChannels: Int)(implicit ctrl: Control)
+    extends BlockingGraphStage[Shp]({
+      val p = template.normalize().getPath
+      val i = p.lastIndexOf('/') + 1
+      val n = p.substring(i)
+      s"$name($n)"
+    }) {
 
     val shape: Shape = UniformFanOutShape(
       inlet   = InI(s"$name.indices"),
@@ -49,11 +54,12 @@ object ImageFileSeqIn {
     )
 
     def createLogic(attr: Attributes): NodeImpl[Shape] =
-      new Logic(shape, layer = layer, template = template, numChannels = numChannels)
+      new Logic(name, shape, layer = layer, template = template, numChannels = numChannels)
   }
 
-  private final class Logic(shape: Shp, layer: Layer, template: File, protected val numChannels: Int)(implicit ctrl: Control)
-    extends NodeImpl(s"$name(${template.name})", layer, shape)
+  private final class Logic(name: String, shape: Shp, layer: Layer, template: URI, protected val numChannels: Int)
+                           (implicit ctrl: Control)
+    extends NodeImpl(name, layer, shape)
     with ImageFileInImpl[Shp]
     with InHandler {
 
@@ -97,7 +103,7 @@ object ImageFileSeqIn {
       }
 
       if (framesRemain == 0 && inRemain > 0) {
-        val f = formatTemplate(template, bufIn0.buf(inOff))
+        val f = Util.formatTemplate(template, bufIn0.buf(inOff))
         openImage(f)
         framesRemain  = numFrames
         inOff        += 1

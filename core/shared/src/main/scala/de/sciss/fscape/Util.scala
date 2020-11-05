@@ -13,7 +13,9 @@
 
 package de.sciss.fscape
 
-object Util extends UtilPlatform {
+import java.net.URI
+
+object Util /*extends UtilPlatform*/ {
   final val log2  = math.log  (2.0)
   final val sqrt2 = math.sqrt (2.0)
 
@@ -204,5 +206,66 @@ object Util extends UtilPlatform {
       i += 1
     }
     res
+  }
+
+  // ---- files ----
+
+  private def uriName(v: URI): String = {
+    val p = v.normalize().getPath
+    val i = p.lastIndexOf('/') + 1
+    p.substring(i)
+  }
+
+  private def uriReplaceName(v: URI, name: String): URI = {
+    val p       = v.normalize().getPath
+    val i       = p.lastIndexOf('/') + 1
+    val pNew    = p.substring(0, i) + name
+    val scheme  = v.getScheme
+    new URI(scheme, pNew, null)
+  }
+
+  private def uriParentOption(v: URI): Option[URI] = {
+    val p = v.normalize().getPath
+    val j = if (p.endsWith("/")) p.length - 2 else p.length - 1
+    val i = p.lastIndexOf('/', j)
+    if (i < 0) None else {
+      val pp      = if (i == 0) "/" else p.substring(0, i)
+      val scheme  = v.getScheme
+      Some(new URI(scheme, pp, null))
+    }
+  }
+
+  private def uriAppend(parent: URI, sub: String): URI = {
+    val parent0 = parent.normalize().getPath
+    val parentS = if (parent0.isEmpty || parent0.endsWith("/")) parent0 else s"$parent0/"
+    val path    = s"$parentS$sub"
+    new URI("idb", path, null)
+  }
+
+  /** If the input contains placeholder `%`, returns it unchanged,
+    * otherwise determines an integer number in the name and replaces
+    * it by `%d`.
+    */
+  def mkTemplate(in: URI): URI = {
+    val n = uriName(in) // .name
+    if (n.contains("%")) in else {
+      val j = n.lastIndexWhere(_.isDigit)
+      if (j < 0) throw new IllegalArgumentException(
+        s"Cannot make template out of file name '$n'. Must contain '%d' or integer number.")
+
+      var i = j
+      while (i > 0 && n.charAt(i - 1).isDigit) i -= 1
+      val pre   = n.substring(0, i)
+      val post  = n.substring(j + 1)
+      val nn    = s"$pre%d$post"
+      uriReplaceName(in, nn)
+    }
+  }
+
+  def formatTemplate(template: URI, index: Int): URI = {
+    val name      = uriName(template).format(index)
+    val scheme    = template.getScheme
+    val f         = uriParentOption(template).fold(new URI(scheme, name, null))(p => uriAppend(p, name))
+    f
   }
 }

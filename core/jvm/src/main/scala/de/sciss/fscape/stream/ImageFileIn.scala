@@ -14,8 +14,9 @@
 package de.sciss.fscape
 package stream
 
+import java.net.URI
+
 import akka.stream.Attributes
-import de.sciss.file._
 import de.sciss.fscape.stream.impl.shapes.UniformSourceShape
 import de.sciss.fscape.stream.impl.{BlockingGraphStage, ImageFileInImpl, NodeHasInitImpl, NodeImpl}
 
@@ -26,7 +27,7 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   http://imagej.net/ImgLib2_Examples#Example_1_-_Opening.2C_creating_and_displaying_images
  */
 object ImageFileIn {
-  def apply(file: File, numChannels: Int)(implicit b: Builder): Vec[OutD] = {
+  def apply(file: URI, numChannels: Int)(implicit b: Builder): Vec[OutD] = {
     val source  = new Stage(layer = b.layer, f = file, numChannels = numChannels)
     val stage   = b.add(source)
     stage.outlets.toIndexedSeq
@@ -37,16 +38,23 @@ object ImageFileIn {
   private type Shp = UniformSourceShape[BufD]
 
   // similar to internal `UnfoldResourceSource`
-  private final class Stage(layer: Int, f: File, numChannels: Int)(implicit ctrl: Control)
-    extends BlockingGraphStage[Shp](s"$name(${f.name})") {
+  private final class Stage(layer: Int, f: URI, numChannels: Int)(implicit ctrl: Control)
+    extends BlockingGraphStage[Shp]({
+      val p = f.normalize().getPath
+      val i = p.lastIndexOf('/') + 1
+      val n = p.substring(i)
+      s"$name($n)"
+    }) {
 
     val shape: Shape = UniformSourceShape(Vector.tabulate(numChannels)(ch => OutD(s"$name.out$ch")))
 
-    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(shape, layer, f, numChannels = numChannels)
+    def createLogic(attr: Attributes): NodeImpl[Shape] =
+      new Logic(name, shape, layer, f, numChannels = numChannels)
   }
 
-  private final class Logic(shape: Shp, layer: Layer, f: File, protected val numChannels: Int)(implicit ctrl: Control)
-    extends NodeImpl(s"$name(${f.name})", layer, shape) with NodeHasInitImpl with ImageFileInImpl[Shp] {
+  private final class Logic(name: String, shape: Shp, layer: Layer, uri: URI, protected val numChannels: Int)
+                           (implicit ctrl: Control)
+    extends NodeImpl(name, layer, shape) with NodeHasInitImpl with ImageFileInImpl[Shp] {
 
     protected val outlets: Vec[OutD] = shape.outlets.toIndexedSeq
 
@@ -55,7 +63,7 @@ object ImageFileIn {
     override protected def init(): Unit = {
       super.init()
       logStream(s"init() $this")
-      openImage(f)
+      openImage(uri)
     }
 
     override protected def launch(): Unit = {

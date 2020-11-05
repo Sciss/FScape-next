@@ -13,7 +13,8 @@
 
 package de.sciss.lucre.swing.graph
 
-import de.sciss.file.File
+import java.net.URI
+
 import de.sciss.fscape.graph.ImageFile
 import de.sciss.lucre.{IExpr, Txn}
 import de.sciss.lucre.expr.graph.{Const, Ex}
@@ -25,16 +26,16 @@ import de.sciss.swingplus.{Spinner, ComboBox => _ComboBox}
 object ImageFileOut {
   def apply(): ImageFileOut = Impl()
 
-  final case class Value(w: ImageFileOut) extends Ex[File] {
-    type Repr[T <: Txn[T]] = IExpr[T, File]
+  final case class Value(w: ImageFileOut) extends Ex[URI] {
+    type Repr[T <: Txn[T]] = IExpr[T, URI]
 
     override def productPrefix: String = s"ImageFileOut$$Value" // serialization
 
     protected def mkRepr[T <: Txn[T]](implicit ctx: Context[T], tx: T): Repr[T] = {
       import ctx.{cursor, targets}
       val ws        = w.expand[T]
-      val valueOpt  = ctx.getProperty[Ex[File]](w, PathField.keyValue)
-      val value0    = valueOpt.fold[File](PathField.defaultValue)(_.expand[T].value)
+      val valueOpt  = ctx.getProperty[Ex[URI]](w, PathField.keyValue)
+      val value0    = valueOpt.fold[URI](PathField.defaultValue)(_.expand[T].value)
       new PathFieldValueExpandedImpl[T](ws.component.pathField, value0).init()
     }
   }
@@ -148,10 +149,10 @@ object ImageFileOut {
     protected def mkRepr[T <: Txn[T]](implicit ctx: Context[T], tx: T): Repr[T] =
       new ImageFileOutExpandedImpl[T](this).initComponent()
 
-    object value extends Model[File] {
-      def apply(): Ex[File] = Value(w)
+    object value extends Model[URI] {
+      def apply(): Ex[URI] = Value(w)
 
-      def update(value: Ex[File]): Unit = {
+      def update(value: Ex[URI]): Unit = {
         val b = Graph.builder
         b.putProperty(w, PathField.keyValue, value)
       }
@@ -251,7 +252,8 @@ trait ImageFileOut extends Component {
   type Repr[T <: Txn[T]] = View.T[T, C] with IControl[T]
 
   var title       : Ex[String]
-  def value       : Model[File]
+
+  def value       : Model[URI]
 
   def fileType    : Model[Int]
   def sampleFormat: Model[Int]

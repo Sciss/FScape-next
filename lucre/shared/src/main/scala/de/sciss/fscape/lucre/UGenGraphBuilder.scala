@@ -22,7 +22,7 @@ import de.sciss.fscape.lucre.graph.Attribute
 import de.sciss.fscape.lucre.impl.{AbstractOutputRef, AbstractUGenGraphBuilder, OutputImpl}
 import de.sciss.fscape.stream.Control
 import de.sciss.lucre.expr.graph.{Const => ExConst, Var => ExVar}
-import de.sciss.lucre.{Source, Txn, Workspace}
+import de.sciss.lucre.{Artifact, Source, Txn, Workspace}
 import de.sciss.serial.DataInput
 import de.sciss.synth.UGenSource.Vec
 import de.sciss.synth.proc.Runner
@@ -30,7 +30,7 @@ import de.sciss.synth.proc.Runner
 import scala.annotation.tailrec
 import scala.util.control.ControlThrowable
 
-object UGenGraphBuilder extends UGenGraphBuilderPlatform {
+object UGenGraphBuilder /*extends UGenGraphBuilderPlatform*/ {
   def get(b: UGenGraph.Builder): UGenGraphBuilder = b match {
     case ub: UGenGraphBuilder => ub
     case _ => sys.error("Out of context expansion")
@@ -345,7 +345,7 @@ object UGenGraphBuilder extends UGenGraphBuilderPlatform {
     }
 
     /** An "untyped" output-setter reference */
-  trait OutputRef extends OutputRefPlatform {
+  trait OutputRef /*extends OutputRefPlatform*/ {
     /** The key in the `FScape` objects `outputs` dictionary. */
     def key: String
 
@@ -354,9 +354,15 @@ object UGenGraphBuilder extends UGenGraphBuilderPlatform {
       * to receive the `mkValue` call.
       */
     def complete(w: Output.Writer): scala.Unit
+
+    /** Requests the stream control to create and memorize a
+      * file that will be written during the rendering and should
+      * be added as a resource associated with this key/reference.
+      */
+    def createCacheFile(): Artifact.Value
   }
   /** An extended references as returned by the completed UGB. */
-  trait OutputResult[T <: Txn[T]] extends OutputRef with OutputResultPlatform {
+  trait OutputResult[T <: Txn[T]] extends OutputRef /*with OutputResultPlatform*/ {
     def reader: Output.Reader
 
     /** Returns `true` after `complete` has been called, or `false` before.
@@ -370,6 +376,12 @@ object UGenGraphBuilder extends UGenGraphBuilderPlatform {
       * value with the new updated value.
       */
     def updateValue(in: DataInput)(implicit tx: T): scala.Unit
+
+    /** A list of cache files created during rendering for this key,
+      * created via `createCacheFile()`, or `Nil` if this output did not
+      * produce any additional resource files.
+      */
+    def cacheFiles: List[Artifact.Value]
   }
 
   final case class MissingIn(input: String) extends ControlThrowable {

@@ -16,6 +16,7 @@ package de.sciss.fscape.stream.impl
 import java.awt.Transparency
 import java.awt.color.ColorSpace
 import java.awt.image.{BandedSampleModel, BufferedImage, ComponentColorModel, DataBuffer, Raster}
+import java.net.URI
 
 import akka.stream.{Inlet, Shape}
 import de.sciss.file.File
@@ -137,8 +138,9 @@ trait ImageFileOutImpl[S <: Shape] extends NodeHasInitImpl with WindowedMultiInO
   protected def isHotIn(inlet: Inlet[_]): Boolean = true
 
   /** Resets `framesWritten`. */
-  protected final def openImage(f: File): Unit = {
+  protected final def openImage(uri: URI): Unit = {
     closeImage()
+    val f = new File(uri) // XXX TODO
     f.delete()
     val out = new FileImageOutputStream(f)
     writer.setOutput(out)

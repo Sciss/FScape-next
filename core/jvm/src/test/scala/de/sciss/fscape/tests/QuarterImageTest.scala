@@ -18,7 +18,7 @@ object QuarterImageTest extends App {
 //    val numInput  = idxRange.size
     val width     = 3280
     val height    = 2464
-    val img       = ImageFileIn(file = baseDir / template.format(idxRange.head), numChannels = 3)
+    val img       = ImageFileIn(file = (baseDir / template.format(idxRange.head)).toURI, numChannels = 3)
     val half1     = ResizeWindow(img  , size = width, start = width/2, stop = 0)
     val half2     = ResizeWindow(half1, size = width / 2 * height, start = width / 2 * height / 2, stop = 0)
     val sig       = half2
@@ -27,7 +27,7 @@ object QuarterImageTest extends App {
       fileType = ImageFile.Type.JPG, sampleFormat = ImageFile.SampleFormat.Int8,
       quality = 100)
     val f     = userHome / "Documents" / "temp" / "test.jpg"
-    ImageFileOut(file = f, spec = spec, in = sig)
+    ImageFileOut(file = f.toURI, spec = spec, in = sig)
   }
 
   val config = stream.Control.Config()

@@ -22,7 +22,7 @@ object ResampleTest extends App {
     )
     // val factorI = (factor * 100).toInt
     val fOut  = userHome / "Documents" / s"resample-test.aif"
-    AudioFileOut(file = fOut, spec = AudioFileSpec(sampleRate = sr, numChannels = 1), in = sig)
+    AudioFileOut(file = fOut.toURI, spec = AudioFileSpec(sampleRate = sr, numChannels = 1), in = sig)
   }
 
   lazy val g2 = Graph {
@@ -35,7 +35,7 @@ object ResampleTest extends App {
     val factor = SinOsc(1.0/period).linExp(-1.0, 1.0, 0.5, 2.0)
     val sig   = Resample(in = in, factor = factor, minFactor = 0.5)
     val fOut  = userHome / "Documents" / "resample_mod.aif"
-    AudioFileOut(file = fOut, spec = AudioFileSpec(sampleRate = sr, numChannels = 1), in = sig)
+    AudioFileOut(file = fOut.toURI, spec = AudioFileSpec(sampleRate = sr, numChannels = 1), in = sig)
   }
 
   lazy val g3 = Graph {
@@ -48,7 +48,7 @@ object ResampleTest extends App {
     val sig0    = Resample(in = in, factor = factor, minFactor = 0.1)
     val sig     = sig0.take(len)
     val fOut    = userHome / "Documents" / "resample_line.aif"
-    AudioFileOut(file = fOut, spec = AudioFileSpec(sampleRate = sr, numChannels = 1), in = sig)
+    AudioFileOut(file = fOut.toURI, spec = AudioFileSpec(sampleRate = sr, numChannels = 1), in = sig)
   }
 
   lazy val g4 = Graph {
@@ -56,7 +56,7 @@ object ResampleTest extends App {
     val fIn     = userHome / "Pictures" / "naya" / "13557722_10155088508818065_6474655863286963867_n.jpg"
     val w       = 960
     val h       = 960 - 1
-    val in      = ImageFileIn(fIn, numChannels = 3)
+    val in      = ImageFileIn(fIn.toURI, numChannels = 3)
 
     def resample(in: GE, x: Double): GE = {
       val sin     = SinOsc(freqN = 1.0/50, phase = Seq[GE](0.0, math.Pi * 1/3, math.Pi * 2/3))
@@ -71,7 +71,7 @@ object ResampleTest extends App {
     val sig0    = TransposeMatrix(r2, w, h)
     val sig     = sig0 // .take(w * h)
     val fOut    = userHome / "Documents" / "naya-freq-mode.jpg"
-    ImageFileOut(file = fOut, spec = ImageFile.Spec(ImageFile.Type.JPG, width = w, height = h, numChannels = 3), in = sig)
+    ImageFileOut(file = fOut.toURI, spec = ImageFile.Spec(ImageFile.Type.JPG, width = w, height = h, numChannels = 3), in = sig)
   }
 
   val ctrl: stream.Control = stream.Control()

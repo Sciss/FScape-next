@@ -24,7 +24,7 @@ object BleachTest extends App {
     val twoWays   = true
     val inverse   = false
 
-    val in        = AudioFileIn(fIn, numChannels = specIn.numChannels)
+    val in        = AudioFileIn(fIn.toURI, numChannels = specIn.numChannels)
 //    val in        = ChannelProxy(in0, 0)
 
     def mkBleach(in: GE): GE = {
@@ -48,7 +48,7 @@ object BleachTest extends App {
     }
 
     val sig = sig2
-    val out     = AudioFileOut(sig, fOut, spec = AudioFileSpec(numChannels = numChannels, sampleRate = sampleRate))
+    val out     = AudioFileOut(sig, fOut.toURI, spec = AudioFileSpec(numChannels = numChannels, sampleRate = sampleRate))
     Progress(out / specIn.numFrames.toDouble, Metro(44100))
   }
 

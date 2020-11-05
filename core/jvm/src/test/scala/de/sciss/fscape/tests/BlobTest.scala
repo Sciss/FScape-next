@@ -9,7 +9,7 @@ import scala.swing.Swing
 
 object BlobTest extends App {
   val fIn     = file("/") / "data" / "temp" / "blob_input.png"
-  val specIn  = ImageFile.readSpec(fIn)
+  val specIn  = ImageFile.readSpec(fIn.toURI)
   val width   = specIn.width  // 1920 // 633
   val height  = specIn.height // 1080 // 526
 
@@ -17,7 +17,7 @@ object BlobTest extends App {
 
   val g = Graph {
     import graph._
-    val in    = 1.0 - ImageFileIn(file = fIn, numChannels = 1)
+    val in    = 1.0 - ImageFileIn(file = fIn.toURI, numChannels = 1)
     val blobs = Blobs2D(in = in, width = width, height = height, thresh = 0.3)
 
     def printAll(sig: GE, label: String): Unit =

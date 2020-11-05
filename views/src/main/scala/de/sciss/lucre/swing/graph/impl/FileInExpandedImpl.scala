@@ -13,6 +13,8 @@
 
 package de.sciss.lucre.swing.graph.impl
 
+import java.net.URI
+
 import de.sciss.desktop
 import de.sciss.desktop.TextFieldWithPaint
 import de.sciss.file.File
@@ -33,7 +35,7 @@ trait FileInExpandedImpl[T <: Txn[T]]
 
   type C = PanelWithPathField
 
-  protected def mkFormat(f: File): String
+  protected def mkFormat(f: URI): String
 
   override def initComponent()(implicit tx: T, ctx: Context[T]): this.type = {
     val valueOpt  = ctx.getProperty[Ex[File   ]](peer, PathField.keyValue).map(_.expand[T].value)
@@ -62,7 +64,8 @@ trait FileInExpandedImpl[T <: Txn[T]]
           pathField.valueOption match {
             case Some(f) =>
               try {
-                val fmtS = mkFormat(f)
+                val uri   = f.toURI
+                val fmtS  = mkFormat(uri)
                 if (fmtVis) fmc.text = fmtS
                 pathField.paint = None
               } catch {

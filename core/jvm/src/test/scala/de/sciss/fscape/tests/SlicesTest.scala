@@ -24,7 +24,7 @@ object SlicesTest extends App {
   lazy val g0 = Graph {
     import graph._
     import specIn.{numChannels, numFrames, sampleRate}
-    val in        = AudioFileIn(fIn, numChannels = numChannels)
+    val in        = AudioFileIn(fIn.toURI, numChannels = numChannels)
 //    val numChannels = 1
 //    val numFrames   = 10000 // 8192
 //    val sampleRate  = 44100.0
@@ -37,8 +37,8 @@ object SlicesTest extends App {
     val reverse   = Slices(in, spans)
 
     val sig       = reverse
-    val out       = AudioFileOut(file = fOut , spec = AudioFileSpec(numChannels = numChannels, sampleRate = sampleRate), in = sig)
-    /* val out2 = */AudioFileOut(file = fOut2, spec = AudioFileSpec(numChannels = numChannels, sampleRate = sampleRate), in = in )
+    val out       = AudioFileOut(file = fOut .toURI, spec = AudioFileSpec(numChannels = numChannels, sampleRate = sampleRate), in = sig)
+    /* val out2 = */AudioFileOut(file = fOut2.toURI, spec = AudioFileSpec(numChannels = numChannels, sampleRate = sampleRate), in = in )
     Progress(out / numFrames.toDouble, Metro(44100))
   }
 

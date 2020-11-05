@@ -15,7 +15,7 @@ object ResampleWindowTest extends App {
     val sig0    = ResampleWindow(in = in, size = 1, factor = factor, minFactor = 0.1)
     val sig     = sig0.take(len)
     val fOut    = userHome / "Documents" / "resample_w_line.aif"
-    AudioFileOut(file = fOut, spec = AudioFileSpec(sampleRate = sr, numChannels = 1), in = sig)
+    AudioFileOut(file = fOut.toURI, spec = AudioFileSpec(sampleRate = sr, numChannels = 1), in = sig)
   }
 
   lazy val g2 = Graph {
@@ -27,7 +27,7 @@ object ResampleWindowTest extends App {
     val sig0    = ResampleWindow(in = in, size = 50, factor = factor)
     val sig     = sig0.take(len)
     val fOut    = userHome / "Documents" / "resample_w.aif"
-    AudioFileOut(file = fOut, spec = AudioFileSpec(sampleRate = sr, numChannels = 1), in = sig)
+    AudioFileOut(file = fOut.toURI, spec = AudioFileSpec(sampleRate = sr, numChannels = 1), in = sig)
   }
 
   lazy val g3 = Graph {
@@ -45,8 +45,8 @@ object ResampleWindowTest extends App {
     val sig2    = ChannelProxy(unzip, 1)
     val fOut1   = userHome / "Documents" / "resample_w_line1.aif"
     val fOut2   = userHome / "Documents" / "resample_w_line2.aif"
-    AudioFileOut(file = fOut1, spec = AudioFileSpec(sampleRate = sr, numChannels = 1), in = sig1)
-    AudioFileOut(file = fOut2, spec = AudioFileSpec(sampleRate = sr, numChannels = 1), in = sig2)
+    AudioFileOut(file = fOut1.toURI, spec = AudioFileSpec(sampleRate = sr, numChannels = 1), in = sig1)
+    AudioFileOut(file = fOut2.toURI, spec = AudioFileSpec(sampleRate = sr, numChannels = 1), in = sig2)
   }
 
   lazy val g4 = Graph {
@@ -64,14 +64,14 @@ object ResampleWindowTest extends App {
     val idxSeq  = indices.map(x => x: GE).reduce(_ ++ _)
 
     val frameSize = width * height
-    val in      = ImageFileSeqIn(template = fIn, numChannels = 3, indices = idxSeq)
+    val in      = ImageFileSeqIn(template = fIn.toURI, numChannels = 3, indices = idxSeq)
     val sig0    = ResampleWindow(in = in, size = frameSize, factor = factor)
     val sig     = sig0.max(0.0).min(1.0) // .take(len)
 
     val idxSeqOut = indicesOut.map(x => x: GE).reduce(_ ++ _)
     val spec    = ImageFile.Spec(width = width, height = height, numChannels = 3 /* 1 */,
       fileType = ImageFile.Type.JPG, sampleFormat = ImageFile.SampleFormat.Int8)
-    ImageFileSeqOut(template = fOut, spec = spec, indices = idxSeqOut, in = sig)
+    ImageFileSeqOut(template = fOut.toURI, spec = spec, indices = idxSeqOut, in = sig)
   }
 
   val ctrl: stream.Control = stream.Control()

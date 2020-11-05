@@ -32,14 +32,14 @@ object AffineTest2 {
 
     val g = Graph {
       import graph._
-      val i10       = ImageFileIn(fIn1, numChannels = 4)
+      val i10       = ImageFileIn(fIn1.toURI, numChannels = 4)
       val i1        = ChannelProxy(i10, 0)
       val m1        = MatrixInMatrix(i1, rowsOuter = height, columnsOuter = width, rowsInner = kernel, columnsInner = kernel)
       val m1a       = AffineTransform2D.scale(in = m1, widthIn = kernel, heightIn = kernel,
         sx = 0.9, sy = 1.0, zeroCrossings = 0)
       val sig = m1a
       val specOut   = ImageFile.Spec(width = width, height = height, numChannels = 1)
-      ImageFileOut(file = fOut, spec = specOut, in = sig)
+      ImageFileOut(file = fOut.toURI, spec = specOut, in = sig)
     }
 
     val ctl = Control(cfg)

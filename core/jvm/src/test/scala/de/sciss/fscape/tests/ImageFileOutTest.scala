@@ -17,7 +17,7 @@ object ImageFileOutTest extends App {
     val spec  = ImageFile.Spec(width = width, height = height, numChannels = 3 /* 1 */,
       fileType = ImageFile.Type.JPG, sampleFormat = ImageFile.SampleFormat.Int8,
       quality = 100)
-    ImageFileOut(file = fOut, spec = spec, in = amp)
+    ImageFileOut(file = fOut.toURI, spec = spec, in = amp)
   }
 
   val config = stream.Control.Config()

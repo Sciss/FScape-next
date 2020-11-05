@@ -91,7 +91,7 @@ object AffineTransformTest {
       require((tempIn.parent / tempIn.name.format(indexIn)).isFile)
 
       val indicesIn = ValueIntSeq(Seq.fill(seqLen)(indexIn):_ *)
-      val img       = ImageFileSeqIn(template = tempIn, numChannels = 3, indices = indicesIn)
+      val img       = ImageFileSeqIn(template = tempIn.toURI, numChannels = 3, indices = indicesIn)
 
   //    at.translate  (-cx, -cy)
   //    at.rotate     (rot)
@@ -152,7 +152,7 @@ object AffineTransformTest {
       val spec  = ImageFile.Spec(width = widthOut, height = heightOut, numChannels = 3, fileType = ImageFile.Type.JPG)
   //    ImageFileOut(file = fOut, spec = spec, in = sig)
       val indicesOut = ValueIntSeq(1 to seqLen: _*)
-      ImageFileSeqOut(template = tempOut, spec = spec, in = sig, indices = indicesOut)
+      ImageFileSeqOut(template = tempOut.toURI, spec = spec, in = sig, indices = indicesOut)
 
       Progress(in = Frames(ChannelProxy(sig, 0)) / (frameSizeOut * seqLen), Metro(widthOut /* frameSizeOut */))
     }

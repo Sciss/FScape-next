@@ -23,7 +23,7 @@ object LoudnessTest extends App {
 
     val specIn  = AudioFile.readSpec(fIn)
     import specIn.{numChannels, sampleRate}
-    val in      = AudioFileIn(fIn, numChannels = specIn.numChannels) * 6.724812881902514
+    val in      = AudioFileIn(fIn.toURI, numChannels = specIn.numChannels) * 6.724812881902514
     val inMono  = if (numChannels == 1) in else ChannelProxy(in, 0) + ChannelProxy(in, 1)
     val winSize = sampleRate.toInt
     val inSlid  = Sliding(inMono, size = winSize, step = winSize/2)

@@ -57,7 +57,7 @@ object MorassTest extends App {
 
   def mkFourierFwd(in: File, size: GE, gain: Gain): GE = {
     import graph._
-    val disk      = AudioFileIn(file = in, numChannels = 1).take(size)
+    val disk      = AudioFileIn(file = in.toURI, numChannels = 1).take(size)
     val complex   = ZipWindow(disk, DC(0.0))
     val fft       = Fourier(in = complex, size = size, dir = +1.0)
     val sig       =
@@ -75,7 +75,7 @@ object MorassTest extends App {
       if     (gain.isUnity   ) re
       else if(gain.normalized) realNormalize(re, headroom = gain.value)
       else                     re * gain.value
-    AudioFileOut(file = out, spec = spec, in = sig)
+    AudioFileOut(file = out.toURI, spec = spec, in = sig)
   }
 
   def mkMorass(config: MorassConfig): GE = {
@@ -276,7 +276,7 @@ object MorassTest extends App {
             if     (gain.isUnity   ) re
             else if(gain.normalized) realNormalize(re, headroom = gain.value)
             else                     re * gain.value
-          AudioFileOut(file = output, spec = OutputSpec.aiffInt, in = sig)
+          AudioFileOut(file = output.toURI, spec = OutputSpec.aiffInt, in = sig)
         } else {
           mkFourierInv(in = morassZ, size = numFrames, out = output, spec = OutputSpec.aiffInt, gain = Gain.normalized)
         }

@@ -18,18 +18,18 @@ object ImageFileInOutTest extends App {
 
   require (fIn.exists())
 
-  val specIn = ImageFile.readSpec(fIn)
+  val specIn = ImageFile.readSpec(fIn.toURI)
   import specIn.{height, width}
 
   val g = Graph {
     import graph._
-    val in    = ImageFileIn(file = fIn, numChannels = 3)
+    val in    = ImageFileIn(file = fIn.toURI, numChannels = 3)
     val sig   = in.pow(0.5) // 'gamma'
 //    val sig   = in.clip(0.0, 1.0)
     val spec  = ImageFile.Spec(width = width, height = height, numChannels = 3 /* 1 */,
       fileType = ImageFile.Type.JPG, sampleFormat = ImageFile.SampleFormat.Int8,
       quality = 100)
-    ImageFileOut(file = fOut, spec = spec, in = sig)
+    ImageFileOut(file = fOut.toURI, spec = spec, in = sig)
   }
 
   val config = stream.Control.Config()

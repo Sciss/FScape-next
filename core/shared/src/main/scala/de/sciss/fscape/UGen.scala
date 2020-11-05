@@ -13,8 +13,10 @@
 
 package de.sciss.fscape
 
+import java.net.URI
+
 import de.sciss.fscape.graph.impl.{MultiOutImpl, SingleOutImpl, ZeroOutImpl}
-import de.sciss.fscape.graph.{UGenInGroup, UGenOutProxy, UGenProxy}
+import de.sciss.fscape.graph.{ImageFile, UGenInGroup, UGenOutProxy, UGenProxy}
 import de.sciss.serial.{DataOutput, Writable}
 
 import scala.annotation.switch
@@ -72,7 +74,7 @@ sealed trait UGen extends Product {
   def hasSideEffect: Boolean
 }
 
-object UGen extends UGenPlatform {
+object UGen /*extends UGenPlatform*/ {
   object SingleOut {
     def apply(source: UGenSource.SingleOut, inputs: Vec[UGenIn], adjuncts: List[Adjunct] = Nil,
               isIndividual: Boolean = false,
@@ -133,7 +135,24 @@ object UGen extends UGenPlatform {
     private[fscape] final def unbubble: UGenInLike = if (numOutputs == 1) outputs(0) else this
   }
 
-  object Adjunct extends AdjunctPlatform {
+  object Adjunct /*extends AdjunctPlatform*/ {
+    final case class FileOut(peer: URI) extends Adjunct {
+      def write(out: DataOutput): Unit = {
+        out.writeByte(0)
+        out.writeUTF(peer.toString)
+      }
+    }
+
+    final case class FileIn(peer: URI) extends Adjunct {
+      def write(out: DataOutput): Unit = {
+        out.writeByte(1)
+        out.writeUTF( peer.toString)
+        // SJSXXX
+//        out.writeLong(peer.lastModified())
+//        out.writeLong(peer.length())
+      }
+    }
+
     final case class Int(peer: scala.Int) extends Adjunct {
       def write(out: DataOutput): Unit = {
         out.writeByte(2)
@@ -168,7 +187,15 @@ object UGen extends UGenPlatform {
         de.sciss.audiofile.AudioFileSpec.format.write(peer, out)
       }
     }
+
+    final case class ImageFileSpec(peer: ImageFile.Spec) extends Adjunct {
+      def write(out: DataOutput): Unit = {
+        out.writeByte(11)
+        ImageFile.Spec.format.write(peer, out)
+      }
+    }
   }
+  /** This is used for calculating caching values, but never de-serialized */
   trait Adjunct extends Writable
 }
 

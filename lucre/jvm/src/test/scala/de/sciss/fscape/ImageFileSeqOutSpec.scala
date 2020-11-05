@@ -1,7 +1,7 @@
 package de.sciss.fscape
 
 import de.sciss.file._
-import de.sciss.fscape.graph.{ImageFile, ImageFileSeqIn}
+import de.sciss.fscape.graph.ImageFile
 import de.sciss.fscape.lucre.FScape
 import de.sciss.lucre.store.BerkeleyDB
 import de.sciss.lucre.{Artifact, ArtifactLocation}
@@ -62,7 +62,7 @@ class ImageFileSeqOutSpec extends FixtureAnyFlatSpec with Matchers {
         // Length(out).poll(0, s"Length should be $fileLen")
       }
       f.graph() = g
-      val art = Artifact[T](ArtifactLocation.newConst(dirOut), tempOut)
+      val art = Artifact[T](ArtifactLocation.newConst(dirOut.toURI), tempOut.toURI)
       f.attr.put("out", art)
       implicit val universe: Universe[T] = Universe.dummy
       f.run()
@@ -73,7 +73,7 @@ class ImageFileSeqOutSpec extends FixtureAnyFlatSpec with Matchers {
     for {
       idx <- idxSq
     } {
-      val fOut    = ImageFileSeqIn.formatTemplate(tempOut, idx)
+      val fOut    = Util.formatTemplate(tempOut.toURI, idx)
       val specOut = ImageFile.readSpec(fOut)
 
       assert(specOut.fileType     === specIn.fileType     )

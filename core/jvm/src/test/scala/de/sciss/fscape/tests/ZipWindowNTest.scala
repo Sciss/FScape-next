@@ -30,7 +30,7 @@ object ZipWindowNTest extends App {
   val g = Graph {
     import graph._
 
-    val in      = ImageFileSeqIn(pngInTemp, numChannels = 3, indices = ArithmSeq(start = 1, length = num))
+    val in      = ImageFileSeqIn(pngInTemp.toURI, numChannels = 3, indices = ArithmSeq(start = 1, length = num))
     val scaled  = AffineTransform2D.scale(in, widthIn, heightIn, widthOut, heightOut,
       sx = scale, sy = scale, zeroCrossings = 3)
 
@@ -63,7 +63,7 @@ object ZipWindowNTest extends App {
 
     val specOut = ImageFile.Spec(ImageFile.Type.JPG, width = totalWidth, height = totalHeight, numChannels = 3)
     val sigOut = tr.clip(0.0, 1.0)
-    ImageFileOut(file = fOut, spec = specOut, in = sigOut)
+    ImageFileOut(file = fOut.toURI, spec = specOut, in = sigOut)
   }
 
   val cfg = Control.Config()

@@ -23,13 +23,13 @@ object LimiterTest extends App {
     val attackDur   = 0.02
     val releaseDur  = 0.2
 
-    val in0         = AudioFileIn(fIn, numChannels = specIn.numChannels)
+    val in0         = AudioFileIn(fIn.toURI, numChannels = specIn.numChannels)
     val in          = in0 * boost
     val attack      = (attackDur  * sampleRate).toInt
     val release     = (releaseDur * sampleRate).toInt
     val gain        = Limiter(in = in, attack = attack, release = release, ceiling = ceiling)
     val sig         = BufferMemory(in, attack + release) * gain
-    val out         = AudioFileOut(sig, fOut, AudioFileSpec(numChannels = numChannels, sampleRate = sampleRate))
+    val out         = AudioFileOut(sig, fOut.toURI, AudioFileSpec(numChannels = numChannels, sampleRate = sampleRate))
     Progress(out / specIn.numFrames.toDouble, Metro(sampleRate))
   }
 

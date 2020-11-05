@@ -15,9 +15,11 @@ package de.sciss.fscape
 package lucre
 package graph
 
+import java.net.URI
+
 import de.sciss.file._
 import de.sciss.fscape
-import de.sciss.fscape.graph.ImageFileSeqIn.formatTemplate
+import de.sciss.lucre.Artifact
 import de.sciss.fscape.graph.{ArithmSeq, Constant, DC, ImageFile}
 import de.sciss.fscape.lucre.UGenGraphBuilder.Input
 
@@ -54,29 +56,31 @@ object ImageFileSeqIn {
       case _ => None
     }
 
-  private def getSpec(key: String, indices: GE)(implicit b: UGenGraph.Builder): (File, ImageFile.Spec) = {
+  private def getSpec(key: String, indices: GE)(implicit b: UGenGraph.Builder): (URI, ImageFile.Spec) = {
     val ub  = UGenGraphBuilder.get(b)
     val res = ub.requestInput(Input.Attribute(key)).peer
-      .fold[(File, ImageFile.Spec)](sys.error(s"ImageFileSeqIn missing attribute $key")) {
-      case template: File =>
+      .fold[(URI, ImageFile.Spec)](sys.error(s"ImageFileSeqIn missing attribute $key")) {
+      case template: URI =>
         // XXX TODO this is a bit cheesy. We try to resolve
         // the start index using some tricks, and if we fail,
         // find a child that matches the template.
         val idx0Opt = tryResolveInt(indices)
         val idx0 = idx0Opt.getOrElse {
+          import Artifact.Value.Ops
           template.parentOption.fold(1) { dir =>
             val n     = template.name
             val i     = n.indexOf("%d")
             val pre   = if (i < 0) n  else n.substring(0, i)
             val post  = if (i < 0) "" else n.substring(i + 2)
-            dir.children.iterator.map(_.name).collectFirst {
+            val children = new File(dir).children
+            children.iterator.map(_.name).collectFirst {
               case n1 if n1.startsWith(pre) && n1.endsWith(post) =>
                 val idxS = n1.substring(i, n1.length - post.length)
                 idxS.toInt
             } .getOrElse(1)
           }
         }
-        val f = formatTemplate(template, idx0)
+        val f = Util.formatTemplate(template, idx0)
         template -> ImageFile.readSpec(f)
       case other =>
         sys.error(s"ImageFileSeqIn - requires Artifact value, found $other")

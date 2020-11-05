@@ -13,6 +13,8 @@
 
 package de.sciss.lucre.swing.graph
 
+import java.net.URI
+
 import de.sciss.audiowidgets.AxisFormat
 import de.sciss.file.File
 import de.sciss.lucre.expr.graph.{Const, Ex}
@@ -52,22 +54,23 @@ object AudioFileIn {
   }
 
   private final class Expanded[T <: Txn[T]](protected val peer: AudioFileIn) extends FileInExpandedImpl[T] {
-    protected def mkFormat(f: File): String = {
-      val spec = AudioFile.readSpec(f)
+    protected def mkFormat(uri: URI): String = {
+      val f     = new File(uri)   // XXX TODO
+      val spec  = AudioFile.readSpec(f)
       specToString(spec)
     }
   }
 
-  final case class Value(w: AudioFileIn) extends Ex[File] {
-    type Repr[T <: Txn[T]] = IExpr[T, File]
+  final case class Value(w: AudioFileIn) extends Ex[URI] {
+    type Repr[T <: Txn[T]] = IExpr[T, URI]
 
     override def productPrefix: String = s"AudioFileIn$$Value" // serialization
 
     protected def mkRepr[T <: Txn[T]](implicit ctx: Context[T], tx: T): Repr[T] = {
       import ctx.{cursor, targets}
       val ws        = w.expand[T]
-      val valueOpt  = ctx.getProperty[Ex[File]](w, PathField.keyValue)
-      val value0    = valueOpt.fold[File](PathField.defaultValue)(_.expand[T].value)
+      val valueOpt  = ctx.getProperty[Ex[URI]](w, PathField.keyValue)
+      val value0    = valueOpt.fold[URI](PathField.defaultValue)(_.expand[T].value)
       new PathFieldValueExpandedImpl[T](ws.component.pathField, value0).init()
     }
   }
@@ -111,10 +114,10 @@ object AudioFileIn {
     protected def mkRepr[T <: Txn[T]](implicit ctx: Context[T], tx: T): Repr[T] =
       new Expanded[T](this).initComponent()
 
-    object value extends Model[File] {
-      def apply(): Ex[File] = Value(w)
+    object value extends Model[URI] {
+      def apply(): Ex[URI] = Value(w)
 
-      def update(value: Ex[File]): Unit = {
+      def update(value: Ex[URI]): Unit = {
         val b = Graph.builder
         b.putProperty(w, PathField.keyValue, value)
       }
@@ -156,8 +159,9 @@ trait AudioFileIn extends Component {
 
   type Repr[T <: Txn[T]] = View.T[T, C] with IControl[T]
 
-  var title : Ex[String]
-  def value : Model[File]
+  var title: Ex[String]
+
+  def value: Model[URI]
   
   var pathFieldVisible: Ex[Boolean]
   var formatVisible   : Ex[Boolean]

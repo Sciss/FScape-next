@@ -32,7 +32,7 @@ object MkAudioCue {
   /** Converts an audio file type to a unique id that can be parsed by the UGen. */
   def id(in: AudioFileType): Int = AudioFileOut.id(in)
 
-  /** Converts a sample forat to a unique id that can be parsed by the UGen. */
+  /** Converts a sample format to a unique id that can be parsed by the UGen. */
   def id(in: SampleFormat): Int = AudioFileOut.id(in)
 
   /** Recovers an audio file type from an id. Throws an exception if the id is invalid. */

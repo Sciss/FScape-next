@@ -89,7 +89,7 @@ object EisenerzMedian {
       }
 
       def mkImgSeq() = {
-        val res = ImageFileSeqIn(template = templateIn, numChannels = 3, indices = indices)
+        val res = ImageFileSeqIn(template = templateIn.toURI, numChannels = 3, indices = indices)
         quarter(res)
       }
 
@@ -173,7 +173,7 @@ object EisenerzMedian {
           fileType = ImageFile.Type.JPG /* PNG */, sampleFormat = ImageFile.SampleFormat.Int8,
           quality = 100)
         val indicesOut = indices.drop(sideLen).take(idxRange.size - (medianLen - 1))
-        ImageFileSeqOut(template = templateOut, spec = spec, in = sig, indices = indicesOut)
+        ImageFileSeqOut(template = templateOut.toURI, spec = spec, in = sig, indices = indicesOut)
 
       } else {
         val last  = expose.take(frameSize * (numInput - (medianLen - 1))).takeRight(frameSize)
@@ -182,9 +182,9 @@ object EisenerzMedian {
         val spec  = ImageFile.Spec(width = width, height = height, numChannels = /* 1 */ 3,
           fileType = ImageFile.Type.JPG /* PNG */, sampleFormat = ImageFile.SampleFormat.Int8,
           quality = 100)
-        ImageFileOut(file = fOut, spec = spec, in = sig)
+        ImageFileOut(file = fOut.toURI, spec = spec, in = sig)
         // "full resolution copy"
-        AudioFileOut(file = fOut.replaceExt("aif"),
+        AudioFileOut(file = fOut.replaceExt("aif").toURI,
           spec = AudioFileSpec(numChannels = 3, sampleRate = 44100), in = sig)
       }
     }

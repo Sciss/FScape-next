@@ -13,6 +13,8 @@
 
 package de.sciss.lucre.swing.graph
 
+import java.net.URI
+
 import de.sciss.file.File
 import de.sciss.fscape.graph.ImageFile
 import de.sciss.fscape.graph.ImageFile.SampleFormat
@@ -51,22 +53,22 @@ object ImageFileIn {
 
 
   private final class Expanded[T <: Txn[T]](protected val peer: ImageFileIn) extends FileInExpandedImpl[T] {
-    protected def mkFormat(f: File): String = {
-      val spec = ImageFile.readSpec(f)
+    protected def mkFormat(uri: URI): String = {
+      val spec = ImageFile.readSpec(uri)
       specToString(spec)
     }
   }
 
-  final case class Value(w: ImageFileIn) extends Ex[File] {
-    type Repr[T <: Txn[T]] = IExpr[T, File]
+  final case class Value(w: ImageFileIn) extends Ex[URI] {
+    type Repr[T <: Txn[T]] = IExpr[T, URI]
 
     override def productPrefix: String = s"ImageFileIn$$Value" // serialization
 
     protected def mkRepr[T <: Txn[T]](implicit ctx: Context[T], tx: T): Repr[T] = {
       import ctx.{cursor, targets}
       val ws        = w.expand[T]
-      val valueOpt  = ctx.getProperty[Ex[File]](w, PathField.keyValue)
-      val value0    = valueOpt.fold[File](PathField.defaultValue)(_.expand[T].value)
+      val valueOpt  = ctx.getProperty[Ex[URI]](w, PathField.keyValue)
+      val value0    = valueOpt.fold[URI](PathField.defaultValue)(_.expand[T].value)
       new PathFieldValueExpandedImpl[T](ws.component.pathField, value0).init()
     }
   }
@@ -110,10 +112,11 @@ object ImageFileIn {
     protected def mkRepr[T <: Txn[T]](implicit ctx: Context[T], tx: T): Repr[T] =
       new Expanded[T](this).initComponent()
 
-    object value extends Model[File] {
-      def apply(): Ex[File] = Value(w)
+    object value extends Model[URI] {
 
-      def update(value: Ex[File]): Unit = {
+      def apply(): Ex[URI] = Value(w)
+
+      def update(value: Ex[URI]): Unit = {
         val b = Graph.builder
         b.putProperty(w, PathField.keyValue, value)
       }
@@ -154,8 +157,9 @@ trait ImageFileIn extends Component {
 
   type Repr[T <: Txn[T]] = View.T[T, C] with IControl[T]
 
-  var title : Ex[String]
-  def value : Model[File]
+  var title: Ex[String]
+
+  def value: Model[URI]
 
   var pathFieldVisible: Ex[Boolean]
   var formatVisible   : Ex[Boolean]

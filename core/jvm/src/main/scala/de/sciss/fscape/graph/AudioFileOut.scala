@@ -14,11 +14,12 @@
 package de.sciss.fscape
 package graph
 
-import de.sciss.file.File
+import java.net.URI
+
+import de.sciss.audiofile.AudioFileSpec
 import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
-import de.sciss.audiofile.AudioFileSpec
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
@@ -32,7 +33,7 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * @param file   the file to write to
   * @param spec   the spec for the audio file, including numbers of channels and sample-rate
   */
-final case class AudioFileOut(in: GE, file: File, spec: AudioFileSpec) extends UGenSource.SingleOut {
+final case class AudioFileOut(in: GE, file: URI, spec: AudioFileSpec) extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = unwrap(this, in.expand.outputs)
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =

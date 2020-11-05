@@ -49,7 +49,7 @@ object BinaryOpTest extends App {
     val spec  = ImageFile.Spec(width = width, height = height, numChannels = 1 /* 3 */,
       fileType = ImageFile.Type.JPG /* PNG */, sampleFormat = ImageFile.SampleFormat.Int8,
       quality = 100)
-    ImageFileOut(file = fOut, spec = spec, in = sig)
+    ImageFileOut(file = fOut.toURI, spec = spec, in = sig)
   }
 
   ctrl.run(g)

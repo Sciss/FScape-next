@@ -13,6 +13,8 @@
 
 package de.sciss.fscape.lucre.stream
 
+import java.net.URI
+
 import akka.stream.Attributes
 import akka.stream.stage.OutHandler
 import de.sciss.audiofile.AudioFile
@@ -22,19 +24,17 @@ import de.sciss.fscape.stream.impl.shapes.UniformSourceShape
 import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeHasInitImpl, NodeImpl}
 import de.sciss.fscape.stream.{BufD, Control, Layer, OutD}
 import de.sciss.fscape.{Util, logStream, stream}
-import de.sciss.synth.proc.AudioCue
+import de.sciss.lucre.Artifact
 
 import scala.collection.immutable.{IndexedSeq => Vec}
-import scala.util.{Failure, Success, Try}
 
 object AudioFileIn {
-  def apply(cueTr: Try[AudioCue], numChannels: Int)(implicit b: stream.Builder): Vec[OutD] = {
-    val name0   = cueTr match {
-      case Success(c)   => c.artifact.name
-      case Failure(ex)  => s"${ex.getClass}(${ex.getMessage})"
-    }
+  def apply(uri: URI, offset: Long, gain: Double, numChannels: Int)(implicit b: stream.Builder): Vec[OutD] = {
+    import Artifact.Value.Ops
+    val name0   = uri.name
     val name1   = s"$name($name0)"
-    val source  = new Stage(layer = b.layer, cueTr = cueTr, numChannels = numChannels, name = name1)
+    val source  = new Stage(layer = b.layer, uri = uri, offset = offset, gain = gain,
+      numChannels = numChannels, name = name1)
     val stage   = b.add(source)
     stage.outlets.toIndexedSeq
   }
@@ -44,17 +44,19 @@ object AudioFileIn {
   private type Shp = UniformSourceShape[BufD]
 
   // similar to internal `UnfoldResourceSource`
-  private final class Stage(layer: Layer, cueTr: Try[AudioCue], numChannels: Int, name: String)
+  private final class Stage(layer: Layer, uri: URI, offset: Long, gain: Double, numChannels: Int, name: String)
                            (implicit ctrl: Control)
     extends BlockingGraphStage[Shp](name) {
 
     val shape: Shape = UniformSourceShape(Vector.tabulate(numChannels)(ch => OutD(s"$name.out$ch")))
 
     def createLogic(attr: Attributes): NodeImpl[Shape] =
-      new Logic(shape, layer = layer, cueTr = cueTr, name = name, numChannels = numChannels)
+      new Logic(shape, layer = layer, uri = uri, offset = offset, gain = gain,
+        name = name, numChannels = numChannels)
   }
 
-  private final class Logic(shape: Shp, layer: Layer, cueTr: Try[AudioCue], name: String, numChannels: Int)
+  private final class Logic(shape: Shp, layer: Layer, uri: URI, offset: Long, gain: Double,
+                            name: String, numChannels: Int)
                            (implicit ctrl: Control)
     extends NodeImpl(name, layer, shape) with NodeHasInitImpl with OutHandler {
 
@@ -63,29 +65,23 @@ object AudioFileIn {
     private[this] var bufSize   : Int        = _
 
     private[this] var framesRead  = 0L
-    private[this] var gain        = 1.0
 
     shape.outlets.foreach(setHandler(_, this))
 
     override protected def init(): Unit = {
       super.init()
       logStream(s"init() $this")
-      cueTr match {
-        case Success(cue) =>
-          af          = AudioFile.openRead(cue.artifact)
-          if (af.numChannels != numChannels) {
-            Console.err.println(s"Warning: DiskIn - channel mismatch (file has ${af.numChannels}, UGen has $numChannels)")
-          }
-          bufSize     = ctrl.blockSize
-          buf         = af.buffer(bufSize)
-          gain        = cue.gain
-          if (cue.offset > 0L) {
-            framesRead = math.min(af.numFrames, cue.offset)
-            af.seek(framesRead)
-            ()
-          }
-        case Failure(ex) =>
-          notifyFail(ex)
+      val f = new File(uri)
+      af = AudioFile.openRead(f)
+      if (af.numChannels != numChannels) {
+        Console.err.println(s"Warning: DiskIn - channel mismatch (file has ${af.numChannels}, UGen has $numChannels)")
+      }
+      bufSize     = ctrl.blockSize
+      buf         = af.buffer(bufSize)
+      if (offset > 0L) {
+        framesRead = math.min(af.numFrames, offset)
+        af.seek(framesRead)
+        ()
       }
     }
 

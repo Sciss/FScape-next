@@ -22,7 +22,7 @@ object OverlapAddTest extends App {
 
   lazy val g = Graph {
     import graph._
-    val disk          = AudioFileIn(file = in, numChannels = 1)
+    val disk          = AudioFileIn(file = in.toURI, numChannels = 1)
     val numFrames     = numFrames0
     // val disk = SinOsc(10.0/44100).take(44100)
     // val disk = DC(0.5).take(2000)
@@ -55,7 +55,7 @@ object OverlapAddTest extends App {
      val sig           = sig0 - disk1
 //    val sig           = sig0
 //    val sig = slide
-    AudioFileOut(file = out, spec = AudioFileSpec(sampleRate = 44100.0, numChannels = 1), in = sig)
+    AudioFileOut(file = out.toURI, spec = AudioFileSpec(sampleRate = 44100.0, numChannels = 1), in = sig)
   }
 
   // showStreamLog = true

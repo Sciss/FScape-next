@@ -14,14 +14,15 @@
 package de.sciss.fscape
 package graph
 
-import de.sciss.file.File
+import java.net.URI
+
 import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.StreamIn
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-final case class ImageFileOut(in: GE, file: File, spec: ImageFile.Spec) extends UGenSource.ZeroOut {
+final case class ImageFileOut(in: GE, file: URI, spec: ImageFile.Spec) extends UGenSource.ZeroOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): Unit = unwrap(this, in.expand.outputs)
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit = {

@@ -13,7 +13,7 @@ object AudioOutTest extends App {
     val sr    = 44100.0
     val sig   = DC(0.5).take(2000)
     val fOut  = userHome / "Documents" / "temp" / "test.aif"
-    val aOut  = AudioFileOut(file = fOut, spec = AudioFileSpec(sampleRate = sr, numChannels = 1), in = sig)
+    val aOut  = AudioFileOut(file = fOut.toURI, spec = AudioFileSpec(sampleRate = sr, numChannels = 1), in = sig)
     aOut.last.poll(0, "frames-written")
   }
 
