@@ -17,16 +17,15 @@ package graph
 
 import java.net.URI
 
+import de.sciss.audiofile.{AudioFileType, SampleFormat}
 import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.lucre.UGenGraphBuilder.{Input, MissingIn}
 import de.sciss.fscape.stream.{Builder, StreamIn, StreamOut}
-import de.sciss.audiofile.{AudioFileSpec, AudioFileType, SampleFormat}
 import de.sciss.synth.proc.AudioCue
 
 import scala.annotation.switch
 import scala.collection.immutable.{IndexedSeq => Vec}
-import scala.util.{Failure, Success, Try}
 
 object AudioFileOut {
   /** Converts an audio file type to a unique id that can be parsed by the UGen. */
@@ -79,7 +78,7 @@ object AudioFileOut {
 
   def maxSampleFormatId: Int = 6
 
-  final case class WithFile(fileTr: Try[URI], in: GE, fileType: GE,
+  final case class WithFile(uri: URI, in: GE, fileType: GE,
                             sampleFormat: GE, sampleRate: GE)
     extends UGenSource.SingleOut {
 
@@ -87,13 +86,13 @@ object AudioFileOut {
       unwrap(this, sampleRate.expand +: sampleFormat.expand +: fileType.expand +: in.expand.outputs)
 
     protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike = {
-      val adjuncts = fileTr.toOption.fold(List.empty[Adjunct])(Adjunct.FileOut(_) :: Nil)  // Try#fold requires Scala 2.12
+      val adjuncts = Adjunct.FileOut(uri) :: Nil
       UGen.SingleOut(this, args, adjuncts = adjuncts, isIndividual = true, hasSideEffect = true)
     }
 
     private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: Builder): StreamOut = {
       val sampleRate +: sampleFormat +: fileType +: in = args
-      lucre.stream.AudioFileOut(fileTr = fileTr, in = in.map(_.toDouble),
+      lucre.stream.AudioFileOut(uri = uri, in = in.map(_.toDouble),
         fileType = fileType.toInt, sampleFormat = sampleFormat.toInt,
         sampleRate = sampleRate.toDouble)
     }
@@ -127,26 +126,26 @@ final case class AudioFileOut(key: String, in: GE, fileType: GE = -1, sampleForm
 
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = {
     val ub = UGenGraphBuilder.get(b)
-    val (fileTr, specOpt) = {
-      ub.requestInput(Input.Attribute(key)).peer.fold[(Try[URI], Option[AudioFileSpec])] {
-        Failure(MissingIn(s"Missing Attribute $key")) -> None
-      } {
+    val (uri, specOpt) = {
+      val opt = ub.requestInput(Input.Attribute(key)).peer
+      val req = opt.getOrElse(throw MissingIn(s"Missing Attribute $key"))
+      req match {
         case a: AudioCue =>
           val spec = a.spec
-          Success(a.artifact) -> Some(spec)
+          (a.artifact, Some(spec))
 
         case f: URI =>
-          Success(f) -> None
+          (f, None)
 
         case other =>
-          Failure(new IllegalArgumentException(s"$this - requires AudioCue or Artifact value, found $other")) -> None
+          throw new IllegalArgumentException(s"$this - requires AudioCue or Artifact value, found $other")
       }
     }
 
     val fileType0     = specOpt.fold(fileType     )(spec => AudioFileOut.id(spec.fileType     ))
     val sampleFormat0 = specOpt.fold(sampleFormat )(spec => AudioFileOut.id(spec.sampleFormat ))
     val sampleRate0   = specOpt.fold(sampleRate   )(spec => spec.sampleRate)
-    AudioFileOut.WithFile(fileTr = fileTr, in = in, fileType = fileType0,
+    AudioFileOut.WithFile(uri = uri, in = in, fileType = fileType0,
       sampleFormat = sampleFormat0, sampleRate = sampleRate0)
   }
 }

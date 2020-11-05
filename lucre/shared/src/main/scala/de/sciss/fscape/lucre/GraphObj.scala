@@ -14,13 +14,13 @@
 package de.sciss.fscape
 package lucre
 
+import java.net.URI
 import java.util
 
-import de.sciss.file.File
 import de.sciss.fscape.graph.{Constant, ConstantD, ConstantI, ConstantL}
 import de.sciss.lucre.Event.Targets
 import de.sciss.lucre.impl.{DummyEvent, ExprTypeImpl}
-import de.sciss.lucre.{Copy, Elem, Event, EventLike, Expr, Ident, Obj, Txn, Var => LVar}
+import de.sciss.lucre.{Artifact, Copy, Elem, Event, EventLike, Expr, Ident, Obj, Txn, Var => LVar}
 import de.sciss.model.Change
 import de.sciss.serial.{ConstFormat, DataInput, DataOutput}
 
@@ -141,9 +141,10 @@ object GraphObj extends ExprTypeImpl[Graph, GraphObj] {
           out.writeLong(n)
         case _: Unit =>
           out.writeByte('U')
-        case f: File =>
-          out.writeByte('f')
-          out.writeUTF(f.getPath)
+//        case f: File =>
+        case u: URI =>
+          out.writeByte('u')
+          Artifact.Value.write(u, out)
       }
 
     def write(v: Graph, out: DataOutput): Unit = {
@@ -237,7 +238,11 @@ object GraphObj extends ExprTypeImpl[Graph, GraphObj] {
         case 'D' => in.readDouble()
         case 'L' => in.readLong()
         case 'U' => ()
-        case 'f' => new File(in.readUTF())
+        case 'u' =>
+          Artifact.Value.read(in)
+        case 'f' =>   // backwards compatible
+          val path = in.readUTF()
+          new URI("file", path, null)
       }
     }
 

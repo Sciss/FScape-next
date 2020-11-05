@@ -18,17 +18,18 @@ import java.net.URI
 import akka.stream.Attributes
 import akka.stream.stage.{GraphStageLogic, InHandler, OutHandler}
 import de.sciss.audiofile.AudioFile.Frames
-import de.sciss.audiofile.{AudioFile, AudioFileSpec, AudioFileType}
-import de.sciss.file._
+import de.sciss.audiofile.{AsyncAudioFile, AudioFile, AudioFileSpec, AudioFileType}
 import de.sciss.fscape.logStream
 import de.sciss.fscape.lucre.graph.{AudioFileOut => AF}
 import de.sciss.fscape.stream.impl.shapes.In3UniformFanInShape
-import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeHasInitImpl, NodeImpl}
+import de.sciss.fscape.stream.impl.{NodeHasInitImpl, NodeImpl, StageImpl}
 import de.sciss.fscape.stream.{BufD, BufI, BufL, Builder, Control, InD, InI, Layer, OutD, OutI, OutL}
 import de.sciss.lucre.Artifact
 
 import scala.collection.immutable.{Seq => ISeq}
+import scala.concurrent.Future
 import scala.util.control.NonFatal
+import scala.util.{Failure, Success}
 
 object AudioFileOut {
   def apply(uri: URI, fileType: OutI, sampleFormat: OutI, sampleRate: OutD, in: ISeq[OutD])
@@ -53,7 +54,7 @@ object AudioFileOut {
 
   private final class Stage(layer: Layer, uri: URI, name: String, numChannels: Int)
                            (implicit protected val ctrl: Control)
-    extends BlockingGraphStage[Shp](name) {
+    extends StageImpl[Shp](name) {
 
     val shape: Shape = In3UniformFanInShape(
       InI (s"$name.fileType"    ),
@@ -74,22 +75,24 @@ object AudioFileOut {
 
     // ---- impl ----
 
-    private[this] var af      : AudioFile   = _
-    private[this] var buf     : Frames      = _
+    private[this] var afFut   : Future[AsyncAudioFile] = _
+    private[this] var af      : AsyncAudioFile  = _
+    private[this] var buf     : Frames          = _
 
     private[this] var pushed        = 0
     private[this] val bufIns        = new Array[BufD](numChannels)
 
     private[this] var shouldStop    = false
-    private[this] var _isSuccess    = false
+    private[this] var _isComplete   = false
+    private[this] var _stopped      = false
 
-    protected def isSuccess     : Boolean  = _isSuccess
+    protected def isSuccess     : Boolean  = _isComplete
     protected def framesWritten : Long     = af.numFrames
 
     private[this] var fileType      = -1
     private[this] var sampleFormat  = -1
     private[this] var sampleRate    = -1.0
-    private[this] var afValid       = false
+    private[this] var afReady       = false
 
     override protected def init(): Unit = {
       super.init()
@@ -102,17 +105,28 @@ object AudioFileOut {
     }
 
     private def updateSpec(): Unit = {
-      if (fileType >= 0 && sampleFormat >= 0 && sampleRate >= 0) {
-        val f = new File(uri)
+      if (fileType >= 0 && sampleFormat >= 0 && sampleRate >= 0 && afFut == null) {
         val spec  = AudioFileSpec(AF.fileType(fileType), AF.sampleFormat(sampleFormat),
           numChannels = numChannels, sampleRate = sampleRate)
-        af        = AudioFile.openWrite(f, spec)
-        afValid   = true
+        import ctrl.config.executionContext
+        afFut     = AudioFile.openWriteAsync(uri, spec)
+        afFut.onComplete {
+          case Success(_af) =>
+            async {
+              af      = _af
+              afReady = true
+              if (!_isComplete && canProcess) process()
+            }
+          case Failure(ex) =>
+            async {
+              if (!_isComplete) failStage(ex)
+            }
+        }
       }
     }
 
     private def canProcess: Boolean =
-      afValid && pushed == numChannels && (isClosed(shape.out) || isAvailable(shape.out))
+      afReady && pushed == numChannels && (isClosed(shape.out) || isAvailable(shape.out))
 
     setHandler(shape.in0, new InHandler {
       def onPush(): Unit = {
@@ -199,7 +213,7 @@ object AudioFileOut {
           shouldStop = true
         } else {
           logStream(s"onUpstreamFinish($in)")
-          _isSuccess = true
+          _isComplete = true
           super.onUpstreamFinish()
         }
       }
@@ -260,7 +274,21 @@ object AudioFileOut {
         ch += 1
       }
       try {
-        af.write(buf, 0, chunk)
+        val futWrite = af.write(buf, 0, chunk)
+        afReady = false
+        import ctrl.config.executionContext
+        futWrite.onComplete {
+          case Success(_) =>
+            async {
+              afReady = true
+              if (!_isComplete && canProcess) process()
+            }
+          case Failure(ex) =>
+            async {
+              if (!_isComplete) failStage(ex)
+            }
+        }
+
       } catch {
         case NonFatal(ex) =>
           //          resultP.failure(ex)
@@ -284,7 +312,7 @@ object AudioFileOut {
       if (!isClosed(shape.out)) push(shape.out, bufOut)
 
       if (shouldStop) {
-        _isSuccess = true
+        _isComplete = true
         completeStage()
       } else {
         ch = 0
@@ -294,10 +322,5 @@ object AudioFileOut {
         }
       }
     }
-
-    //    override def onUpstreamFailure(ex: Throwable): Unit = {
-    //      resultP.failure(ex)
-    //      super.onUpstreamFailure(ex)
-    //    }
   }
 }
