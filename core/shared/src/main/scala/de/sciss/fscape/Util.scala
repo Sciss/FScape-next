@@ -276,6 +276,7 @@ object Util /*extends UtilPlatform*/ {
 //      .filter { ch =>
 //        ch.isLetterOrDigit || "!$&'*+,-.:;=@_~".contains(ch)
 //      }
-    s"$base-$nameF"
+//    s"$base-$nameF"
+    s"$base($nameF)"
   }
 }

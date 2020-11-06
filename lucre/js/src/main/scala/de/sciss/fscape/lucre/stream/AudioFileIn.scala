@@ -100,7 +100,7 @@ object AudioFileIn {
               }
 
             case Failure(ex) =>
-              if (!_isComplete) failStage(ex)
+              if (!_isComplete) notifyFail(ex)
           }
         }
       }
@@ -159,7 +159,7 @@ object AudioFileIn {
                 if (!_isComplete && canProcess) process()
 
               case Failure(ex) =>
-                if (!_isComplete) failStage(ex)
+                if (!_isComplete) notifyFail(ex)
             }
           }
         }

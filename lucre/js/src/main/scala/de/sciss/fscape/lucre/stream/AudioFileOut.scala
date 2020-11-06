@@ -109,6 +109,7 @@ object AudioFileOut {
         import ctrl.config.executionContext
         afFut = AudioFile.openWriteAsync(uri, spec)
         afFut.onComplete { tr =>
+          println(s"$name openWriteAsync() complete: $tr")
           async {
             tr match {
               case Success(_af) =>
@@ -121,7 +122,9 @@ object AudioFileOut {
                 }
 
               case Failure(ex) =>
-                if (!_isComplete) failStage(ex)
+                if (!_isComplete) {
+                  notifyFail(ex)
+                }
             }
           }
         }
@@ -288,7 +291,7 @@ object AudioFileOut {
                 if (!_isComplete && canProcess) process()
 
               case Failure(ex) =>
-                if (!_isComplete) failStage(ex)
+                if (!_isComplete) notifyFail(ex)
             }
           }
         }
