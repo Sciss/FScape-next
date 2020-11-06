@@ -154,8 +154,9 @@ object AudioFileIn {
           async {
             tr match {
               case Success(_) =>
-                bufOff  = chunk
-                afReady = true
+                bufOff      = chunk
+                framesRead += chunk
+                afReady     = true
                 if (!_isComplete && canProcess) process()
 
               case Failure(ex) =>
@@ -167,11 +168,9 @@ object AudioFileIn {
     }
 
     private def process(): Unit = {
-      val chunk = bufOff // math.min(bufSize, af.numFrames - framesRead).toInt
+      val chunk = bufOff
       assert (chunk > 0)
 
-      af.read(buf, 0, chunk)
-      framesRead += chunk
       val _gain = gain
       var ch = 0
       while (ch < numChannels) {

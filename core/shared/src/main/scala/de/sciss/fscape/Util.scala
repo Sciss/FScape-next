@@ -273,10 +273,10 @@ object Util /*extends UtilPlatform*/ {
 
   def mkLogicName(base: String, uri: URI): String = {
     val nameF = uriName(uri)
-//      .filter { ch =>
-//        ch.isLetterOrDigit || "!$&'*+,-.:;=@_~".contains(ch)
-//      }
-//    s"$base-$nameF"
-    s"$base($nameF)"
+      .filter { ch =>
+        ch.isLetterOrDigit || "!$&'*+,-.:;=@_~".contains(ch)
+      }
+    s"$base-$nameF"
+//    s"$base($nameF)"
   }
 }

@@ -109,7 +109,7 @@ object AudioFileOut {
         import ctrl.config.executionContext
         afFut = AudioFile.openWriteAsync(uri, spec)
         afFut.onComplete { tr =>
-          println(s"$name openWriteAsync() complete: $tr")
+          // println(s"$name openWriteAsync() complete: $tr")
           async {
             tr match {
               case Success(_af) =>
