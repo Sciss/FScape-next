@@ -27,7 +27,8 @@ import scala.collection.immutable.{Seq => ISeq}
 object ImageFileSeqOut {
   def apply(template: URI, spec: Spec, indices: OutI, in: ISeq[OutD])(implicit b: Builder): Unit = {
     require (spec.numChannels == in.size, s"Channel mismatch (spec has ${spec.numChannels}, in has ${in.size})")
-    val sink = new Stage(layer = b.layer, template = template, spec = spec)
+    val nameL = Util.mkLogicName(name, template)
+    val sink  = new Stage(layer = b.layer, template = template, spec = spec, nameL = nameL)
     val stage = b.add(sink)
     b.connect(indices, stage.in0)
     (in zip stage.inlets1).foreach { case (output, input) =>
@@ -39,13 +40,9 @@ object ImageFileSeqOut {
 
   private type Shp = In1UniformSinkShape[BufI, BufD]
 
-  private final class Stage(layer: Layer, template: URI, spec: Spec)(implicit protected val ctrl: Control)
-    extends BlockingGraphStage[Shp]({
-      val p = template.normalize().getPath
-      val i = p.lastIndexOf('/') + 1
-      val n = p.substring(i)
-      s"$name($n)"
-    }) {
+  private final class Stage(layer: Layer, template: URI, spec: Spec, nameL: String)
+                           (implicit protected val ctrl: Control)
+    extends BlockingGraphStage[Shp](nameL) {
 
     val shape: Shape = In1UniformSinkShape[BufI, BufD](
       InI(s"$name.indices"),
@@ -53,7 +50,7 @@ object ImageFileSeqOut {
     )
 
     def createLogic(attr: Attributes): NodeImpl[Shape] =
-      new Logic(name, shape, layer = layer, template = template, spec = spec)
+      new Logic(nameL, shape, layer = layer, template = template, spec = spec)
   }
 
   private final class Logic(name: String, shape: Shp, layer: Layer, protected val template: URI, val spec: Spec)

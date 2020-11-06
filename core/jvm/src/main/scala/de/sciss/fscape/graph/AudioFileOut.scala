@@ -41,6 +41,6 @@ final case class AudioFileOut(in: GE, file: URI, spec: AudioFileSpec) extends UG
       adjuncts = Adjunct.FileOut(file) :: Adjunct.AudioFileSpec(spec) :: Nil, isIndividual = true, hasSideEffect = true)
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): StreamOut = {
-    stream.AudioFileOut(file = file, spec = spec, in = args.map(_.toDouble))
+    stream.AudioFileOut(uri = file, spec = spec, in = args.map(_.toDouble))
   }
 }

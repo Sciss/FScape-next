@@ -27,8 +27,9 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   http://imagej.net/ImgLib2_Examples#Example_1_-_Opening.2C_creating_and_displaying_images
  */
 object ImageFileIn {
-  def apply(file: URI, numChannels: Int)(implicit b: Builder): Vec[OutD] = {
-    val source  = new Stage(layer = b.layer, f = file, numChannels = numChannels)
+  def apply(uri: URI, numChannels: Int)(implicit b: Builder): Vec[OutD] = {
+    val nameL   = Util.mkLogicName(name, uri)
+    val source  = new Stage(layer = b.layer, f = uri, numChannels = numChannels, nameL = nameL)
     val stage   = b.add(source)
     stage.outlets.toIndexedSeq
   }
@@ -38,18 +39,13 @@ object ImageFileIn {
   private type Shp = UniformSourceShape[BufD]
 
   // similar to internal `UnfoldResourceSource`
-  private final class Stage(layer: Int, f: URI, numChannels: Int)(implicit ctrl: Control)
-    extends BlockingGraphStage[Shp]({
-      val p = f.normalize().getPath
-      val i = p.lastIndexOf('/') + 1
-      val n = p.substring(i)
-      s"$name($n)"
-    }) {
+  private final class Stage(layer: Int, f: URI, numChannels: Int, nameL: String)(implicit ctrl: Control)
+    extends BlockingGraphStage[Shp](nameL) {
 
     val shape: Shape = UniformSourceShape(Vector.tabulate(numChannels)(ch => OutD(s"$name.out$ch")))
 
     def createLogic(attr: Attributes): NodeImpl[Shape] =
-      new Logic(name, shape, layer, f, numChannels = numChannels)
+      new Logic(nameL, shape, layer, f, numChannels = numChannels)
   }
 
   private final class Logic(name: String, shape: Shp, layer: Layer, uri: URI, protected val numChannels: Int)

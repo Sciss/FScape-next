@@ -15,6 +15,7 @@ package de.sciss.fscape.lucre.stream
 
 import akka.stream.{Attributes, UniformFanInShape}
 import de.sciss.audiofile.AudioFileSpec
+import de.sciss.fscape.Util
 import de.sciss.fscape.lucre.FScape.Output
 import de.sciss.fscape.lucre.UGenGraphBuilder.OutputRef
 import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeImpl}
@@ -26,9 +27,10 @@ import de.sciss.synth.proc.AudioCue
 import scala.collection.immutable.{Seq => ISeq}
 
 object MkAudioCue {
-  def apply(ref: OutputRef, file: Artifact.Value, spec: AudioFileSpec, in: ISeq[OutD])(implicit b: Builder): OutL = {
+  def apply(ref: OutputRef, uri: Artifact.Value, spec: AudioFileSpec, in: ISeq[OutD])(implicit b: Builder): OutL = {
     require (spec.numChannels == in.size, s"Channel mismatch (spec has ${spec.numChannels}, in has ${in.size})")
-    val sink = new Stage(layer = b.layer, ref = ref, f = file, spec = spec)
+    val nameL = Util.mkLogicName(name, uri)
+    val sink  = new Stage(layer = b.layer, ref = ref, uri = uri, spec = spec, nameL = nameL)
     val stage = b.add(sink)
     (in zip stage.inlets).foreach { case (output, input) =>
       b.connect(output, input)
@@ -40,19 +42,16 @@ object MkAudioCue {
 
   private type Shp = UniformFanInShape[BufD, BufL]
 
-  private final class Stage(layer: Layer, ref: OutputRef, f: Artifact.Value, spec: AudioFileSpec)
+  private final class Stage(layer: Layer, ref: OutputRef, uri: Artifact.Value, spec: AudioFileSpec, nameL: String)
                            (implicit protected val ctrl: Control)
-    extends BlockingGraphStage[Shp]({
-      import Artifact.Value.Ops
-      s"$name(${f.name})"
-    }) {
+    extends BlockingGraphStage[Shp](nameL) {
 
     val shape: Shape = UniformFanInShape[BufD, BufL](
       OutL(s"$name.out"),
       Vector.tabulate(spec.numChannels)(ch => InD(s"$name.in$ch")): _*
     )
 
-    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(name, shape, layer, ref, f, spec)
+    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(nameL, shape, layer, ref, uri, spec)
   }
 
   private final class Logic(name: String, shape: Shp, layer: Layer, ref: OutputRef, protected val uri: Artifact.Value,

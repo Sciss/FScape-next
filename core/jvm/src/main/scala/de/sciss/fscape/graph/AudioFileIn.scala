@@ -30,5 +30,5 @@ final case class AudioFileIn(file: URI, numChannels: Int) extends UGenSource.Mul
       isIndividual = true, hasSideEffect = true)
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Vec[StreamOut] =
-    stream.AudioFileIn(file = file, numChannels = numChannels)
+    stream.AudioFileIn(uri = file, numChannels = numChannels)
 }

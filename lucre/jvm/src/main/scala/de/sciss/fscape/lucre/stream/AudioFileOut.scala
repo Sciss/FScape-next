@@ -20,23 +20,22 @@ import akka.stream.stage.{GraphStageLogic, InHandler, OutHandler}
 import de.sciss.audiofile.AudioFile.Frames
 import de.sciss.audiofile.{AudioFile, AudioFileSpec, AudioFileType}
 import de.sciss.file._
-import de.sciss.fscape.logStream
 import de.sciss.fscape.lucre.graph.{AudioFileOut => AF}
 import de.sciss.fscape.stream.impl.shapes.In3UniformFanInShape
 import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeHasInitImpl, NodeImpl}
 import de.sciss.fscape.stream.{BufD, BufI, BufL, Builder, Control, InD, InI, Layer, OutD, OutI, OutL}
+import de.sciss.fscape.{Util, logStream}
 import de.sciss.lucre.Artifact
 
 import scala.collection.immutable.{Seq => ISeq}
 import scala.util.control.NonFatal
 
+// synchronous
 object AudioFileOut {
   def apply(uri: URI, fileType: OutI, sampleFormat: OutI, sampleRate: OutD, in: ISeq[OutD])
            (implicit b: Builder): OutL = {
-    import Artifact.Value.Ops
-    val name0   = uri.name
-    val name1   = s"$name($name0)"
-    val stage0  = new Stage(layer = b.layer, uri = uri, numChannels = in.size, name = name1)
+    val nameL   = Util.mkLogicName(name, uri)
+    val stage0  = new Stage(layer = b.layer, uri = uri, numChannels = in.size, nameL = nameL)
     val stage   = b.add(stage0)
     b.connect(fileType    , stage.in0)
     b.connect(sampleFormat, stage.in1)
@@ -51,9 +50,9 @@ object AudioFileOut {
 
   private type Shp = In3UniformFanInShape[BufI, BufI, BufD, BufD, BufL]
 
-  private final class Stage(layer: Layer, uri: URI, name: String, numChannels: Int)
+  private final class Stage(layer: Layer, uri: URI, nameL: String, numChannels: Int)
                            (implicit protected val ctrl: Control)
-    extends BlockingGraphStage[Shp](name) {
+    extends BlockingGraphStage[Shp](nameL) {
 
     val shape: Shape = In3UniformFanInShape(
       InI (s"$name.fileType"    ),
@@ -64,7 +63,7 @@ object AudioFileOut {
     )
 
     def createLogic(attr: Attributes): NodeImpl[Shape] =
-      new Logic(shape, layer, uri, name = name, numChannels = numChannels)
+      new Logic(shape, layer, uri, name = nameL, numChannels = numChannels)
   }
 
   private final class Logic(shape: Shp, layer: Layer, uri: URI, name: String, numChannels: Int)

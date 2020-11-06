@@ -16,8 +16,8 @@ package de.sciss.fscape.lucre.stream
 import java.net.URI
 
 import akka.stream.{Attributes, Outlet}
+import de.sciss.fscape.Util
 import de.sciss.fscape.graph.ImageFile
-import de.sciss.lucre.Artifact
 import de.sciss.fscape.lucre.stream.impl.ImageFileOutReadsSpec
 import de.sciss.fscape.stream.impl.Handlers.{InDMain, InIAux}
 import de.sciss.fscape.stream.impl.shapes.In5UniformSinkShape
@@ -29,7 +29,8 @@ import scala.collection.immutable.{Seq => ISeq}
 object ImageFileOut {
   def apply(uri: URI, width: OutI, height: OutI, fileType: OutI, sampleFormat: OutI, quality: OutI, in: ISeq[OutD])
            (implicit b: Builder): Unit = {
-    val stage0  = new Stage(layer = b.layer, uri = uri, numChannels = in.size)
+    val nameL   = Util.mkLogicName(name, uri)
+    val stage0  = new Stage(layer = b.layer, uri = uri, numChannels = in.size, nameL = nameL)
     val stage   = b.add(stage0)
     b.connect(width       , stage.in0)
     b.connect(height      , stage.in1)
@@ -46,11 +47,9 @@ object ImageFileOut {
 
   private type Shp = In5UniformSinkShape[BufI, BufI, BufI, BufI, BufI, BufD]
 
-  private final class Stage(layer: Layer, uri: URI, numChannels: Int)(implicit protected val ctrl: Control)
-    extends BlockingGraphStage[Shp]({
-      import Artifact.Value.Ops
-      s"$name(${uri.name})"
-    }) {
+  private final class Stage(layer: Layer, uri: URI, numChannels: Int, nameL: String)
+                           (implicit protected val ctrl: Control)
+    extends BlockingGraphStage[Shp](nameL) {
 
     val shape: Shape = In5UniformSinkShape(
       InI (s"$name.width"       ),
@@ -62,7 +61,7 @@ object ImageFileOut {
     )
 
     def createLogic(attr: Attributes): NodeImpl[Shape] =
-      new Logic(name, shape, layer, uri, numChannels = numChannels)
+      new Logic(nameL, shape, layer, uri, numChannels = numChannels)
   }
 
   private final class Logic(name: String, shape: Shp, layer: Layer, uri: URI, protected val numChannels: Int)

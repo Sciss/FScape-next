@@ -30,5 +30,5 @@ final case class ImageFileIn(file: URI, numChannels: Int) extends UGenSource.Mul
       isIndividual = true, hasSideEffect = true)
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Vec[StreamOut] =
-    stream.ImageFileIn(file = file, numChannels = numChannels)
+    stream.ImageFileIn(uri = file, numChannels = numChannels)
 }

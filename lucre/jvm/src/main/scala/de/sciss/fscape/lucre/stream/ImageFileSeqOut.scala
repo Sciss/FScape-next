@@ -16,12 +16,12 @@ package de.sciss.fscape.lucre.stream
 import java.net.URI
 
 import akka.stream.{Attributes, Outlet}
+import de.sciss.fscape.Util
 import de.sciss.fscape.lucre.stream.impl.ImageFileOutReadsSpec
 import de.sciss.fscape.stream.impl.Handlers.{InDMain, InIAux, InIMain}
 import de.sciss.fscape.stream.impl.shapes.In6UniformSinkShape
 import de.sciss.fscape.stream.impl.{BlockingGraphStage, Handlers, ImageFileSeqOutImpl, NodeImpl}
 import de.sciss.fscape.stream.{BufD, BufI, Builder, Control, InD, InI, Layer, OutD, OutI}
-import de.sciss.lucre.Artifact
 
 import scala.collection.immutable.{Seq => ISeq}
 
@@ -29,7 +29,8 @@ object ImageFileSeqOut {
   def apply(template: URI, width: OutI, height: OutI, fileType: OutI, sampleFormat: OutI, quality: OutI, indices: OutI,
             in: ISeq[OutD])
            (implicit b: Builder): Unit = {
-    val stage0  = new Stage(layer = b.layer, template = template, numChannels = in.size)
+    val nameL   = Util.mkLogicName(name, template)
+    val stage0  = new Stage(layer = b.layer, template = template, numChannels = in.size, nameL = nameL)
     val stage   = b.add(stage0)
     b.connect(width       , stage.in0)
     b.connect(height      , stage.in1)
@@ -47,11 +48,9 @@ object ImageFileSeqOut {
 
   private type Shp = In6UniformSinkShape[BufI, BufI, BufI, BufI, BufI, BufI, BufD]
 
-  private final class Stage(layer: Layer, template: URI, numChannels: Int)(implicit protected val ctrl: Control)
-    extends BlockingGraphStage[Shp]({
-      import Artifact.Value.Ops
-      s"$name(${template.name})"
-    }) {
+  private final class Stage(layer: Layer, template: URI, numChannels: Int, nameL: String)
+                           (implicit protected val ctrl: Control)
+    extends BlockingGraphStage[Shp](nameL) {
 
     require (numChannels > 0)
 
@@ -66,7 +65,7 @@ object ImageFileSeqOut {
     )
 
     def createLogic(attr: Attributes): NodeImpl[Shape] =
-      new Logic(name, shape, layer, template, numChannels = numChannels)
+      new Logic(nameL, shape, layer, template, numChannels = numChannels)
   }
 
   private final class Logic(name: String, shape: Shp, layer: Layer, protected val template: URI, protected val numChannels: Int)

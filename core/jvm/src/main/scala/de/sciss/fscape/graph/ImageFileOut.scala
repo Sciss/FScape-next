@@ -31,6 +31,6 @@ final case class ImageFileOut(in: GE, file: URI, spec: ImageFile.Spec) extends U
   }
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit = {
-    stream.ImageFileOut(file = file, spec = spec, in = args.map(_.toDouble))
+    stream.ImageFileOut(uri = file, spec = spec, in = args.map(_.toDouble))
   }
 }

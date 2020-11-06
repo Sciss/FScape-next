@@ -268,4 +268,14 @@ object Util /*extends UtilPlatform*/ {
     val f         = uriParentOption(template).fold(new URI(scheme, name, null))(p => uriAppend(p, name))
     f
   }
+
+  // ---- streams ----
+
+  def mkLogicName(base: String, uri: URI): String = {
+    val nameF = uriName(uri)
+//      .filter { ch =>
+//        ch.isLetterOrDigit || "!$&'*+,-.:;=@_~".contains(ch)
+//      }
+    s"$base-$nameF"
+  }
 }

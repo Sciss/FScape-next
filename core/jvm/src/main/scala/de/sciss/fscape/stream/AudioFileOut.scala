@@ -27,9 +27,10 @@ import scala.collection.immutable.{Seq => ISeq}
 import scala.util.control.NonFatal
 
 object AudioFileOut {
-  def apply(file: URI, spec: AudioFileSpec, in: ISeq[OutD])(implicit b: Builder): OutL = {
+  def apply(uri: URI, spec: AudioFileSpec, in: ISeq[OutD])(implicit b: Builder): OutL = {
     require (spec.numChannels == in.size, s"Channel mismatch (spec has ${spec.numChannels}, in has ${in.size})")
-    val sink = new Stage(layer = b.layer, f = file, spec = spec)
+    val nameL = Util.mkLogicName(name, uri)
+    val sink  = new Stage(layer = b.layer, uri = uri, spec = spec, nameL = nameL)
     val stage = b.add(sink)
     (in zip stage.inlets).foreach { case (output, input) =>
       b.connect(output, input)
@@ -41,20 +42,17 @@ object AudioFileOut {
 
   private type Shp = UniformFanInShape[BufD, BufL]
 
-  private final class Stage(layer: Layer, f: URI, spec: AudioFileSpec)(implicit protected val ctrl: Control)
-    extends BlockingGraphStage[Shp]({
-      val p = f.normalize().getPath
-      val i = p.lastIndexOf('/') + 1
-      val n = p.substring(i)
-      s"$name($n)"
-    }) {
+  private final class Stage(layer: Layer, uri: URI, spec: AudioFileSpec, nameL: String)
+                           (implicit protected val ctrl: Control)
+    extends BlockingGraphStage[Shp](nameL) {
 
     val shape: Shape = UniformFanInShape[BufD, BufL](
       OutL(s"$name.out"),
       Vector.tabulate(spec.numChannels)(ch => InD(s"$name.in$ch")): _*
     )
 
-    def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic(name, shape, layer = layer, uri = f, spec = spec)
+    def createLogic(attr: Attributes): NodeImpl[Shape] =
+      new Logic(nameL, shape, layer = layer, uri = uri, spec = spec)
   }
 
   private final class Logic(name: String, shape: Shp, layer: Layer, protected val uri: URI, protected val spec: AudioFileSpec)

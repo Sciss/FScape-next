@@ -25,9 +25,10 @@ import de.sciss.fscape.stream.impl.{BlockingGraphStage, Handlers, ImageFileSingl
 import scala.collection.immutable.{Seq => ISeq}
 
 object ImageFileOut {
-  def apply(file: URI, spec: Spec, in: ISeq[OutD])(implicit b: Builder): Unit = {
+  def apply(uri: URI, spec: Spec, in: ISeq[OutD])(implicit b: Builder): Unit = {
     require (spec.numChannels == in.size, s"Channel mismatch (spec has ${spec.numChannels}, in has ${in.size})")
-    val sink = new Stage(layer = b.layer, f = file, spec = spec)
+    val nameL = Util.mkLogicName(name, uri)
+    val sink  = new Stage(layer = b.layer, uri = uri, spec = spec, nameL = nameL)
     val stage = b.add(sink)
     (in zip stage.inlets).foreach { case (output, input) =>
       b.connect(output, input)
@@ -38,18 +39,13 @@ object ImageFileOut {
 
   private type Shp = UniformSinkShape[BufD]
 
-  private final class Stage(layer: Layer, f: URI, spec: Spec)(implicit protected val ctrl: Control)
-    extends BlockingGraphStage[Shp]({
-      val p = f.normalize().getPath
-      val i = p.lastIndexOf('/') + 1
-      val n = p.substring(i)
-      s"$name($n)"
-    }) {
+  private final class Stage(layer: Layer, uri: URI, spec: Spec, nameL: String)(implicit protected val ctrl: Control)
+    extends BlockingGraphStage[Shp](nameL) {
 
     val shape: Shape = UniformSinkShape[BufD](Vector.tabulate(spec.numChannels)(ch => InD(s"$name.in$ch")))
 
     def createLogic(attr: Attributes): NodeImpl[Shape] =
-      new Logic(name, shape, layer = layer, uri = f, spec = spec)
+      new Logic(nameL, shape, layer = layer, uri = uri, spec = spec)
   }
 
   private final class Logic(name: String, shape: Shp, layer: Layer, uri: URI, protected val spec: Spec)

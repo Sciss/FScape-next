@@ -27,8 +27,9 @@ import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeHasInitImpl, NodeImp
 import scala.collection.immutable.{IndexedSeq => Vec}
 
 object AudioFileIn {
-  def apply(file: URI, numChannels: Int)(implicit b: Builder): Vec[OutD] = {
-    val source  = new Stage(layer = b.layer, f = file, numChannels = numChannels)
+  def apply(uri: URI, numChannels: Int)(implicit b: Builder): Vec[OutD] = {
+    val nameL   = Util.mkLogicName(name, uri)
+    val source  = new Stage(layer = b.layer, uri = uri, numChannels = numChannels, nameL = nameL)
     val stage   = b.add(source)
     stage.outlets.toIndexedSeq
   }
@@ -38,18 +39,13 @@ object AudioFileIn {
   private type Shp = UniformSourceShape[BufD]
 
   // similar to internal `UnfoldResourceSource`
-  private final class Stage(layer: Layer, f: URI, numChannels: Int)(implicit ctrl: Control)
-    extends BlockingGraphStage[Shp]({
-      val p = f.normalize().getPath
-      val i = p.lastIndexOf('/') + 1
-      val n = p.substring(i)
-      s"$name($n)"
-    }) {
+  private final class Stage(layer: Layer, uri: URI, numChannels: Int, nameL: String)(implicit ctrl: Control)
+    extends BlockingGraphStage[Shp](nameL) {
 
     val shape: Shape = UniformSourceShape(Vector.tabulate(numChannels)(ch => OutD(s"$name.out$ch")))
 
     def createLogic(attr: Attributes): NodeImpl[Shape] =
-      new Logic(name, shape, layer = layer, uri = f, numChannels = numChannels)
+      new Logic(nameL, shape, layer = layer, uri = uri, numChannels = numChannels)
   }
 
   private final class Logic(name: String, shape: Shp, layer: Layer, uri: URI, numChannels: Int)(implicit ctrl: Control)

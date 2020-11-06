@@ -21,7 +21,7 @@ import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.graph.{ConstantD, ConstantL}
 import de.sciss.fscape.lucre.UGenGraphBuilder.Input
 import de.sciss.fscape.lucre.graph.impl.FutureConstant
-import de.sciss.fscape.stream.{BufL, StreamIn, StreamOut, Builder => SBuilder}
+import de.sciss.fscape.stream.{BufD, BufL, StreamIn, StreamOut, Builder => SBuilder}
 import de.sciss.fscape.{GE, UGen, UGenGraph, UGenIn, UGenInLike, UGenSource}
 import de.sciss.lucre.Artifact
 import de.sciss.synth.UGenSource.Vec
@@ -43,23 +43,6 @@ object AudioFileIn {
     }
   }
 
-//  final case class NumFramesWithValue(tr: Try[Long]) extends UGenSource.SingleOut {
-//
-//    protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
-//      makeUGen(Vector.empty)
-//
-//    protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike = {
-//      val adjuncts = tr.toOption.fold(List.empty[Adjunct])(Adjunct.Long(_) :: Nil)  // Try#fold requires Scala 2.12
-//      UGen.SingleOut(this, args, adjuncts = adjuncts)
-//    }
-//
-//    private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: SBuilder): StreamOut = {
-//      stream.TryConstant[Long, BufL](tr.map(BufL(_)))
-//    }
-//
-//    override def productPrefix: String = s"AudioFileIn$$NumFramesWithValue"
-//  }
-
   final case class SampleRate(key: String) extends GE.Lazy {
     override def productPrefix = s"AudioFileIn$$SampleRate"
 
@@ -67,32 +50,13 @@ object AudioFileIn {
       val cueTr = AudioFileIn.getCue(key, b)
       cueTr match {
         case Left (cue) => ConstantD(cue.sampleRate)
-        case Right(uri) => ???
+        case Right(uri) => FutureConstant[Double, BufD](Adjunct.FileIn(uri), { ctrl =>
+          import ctrl.config.executionContext
+          AudioFile.readSpecAsync(uri).map(_.sampleRate)
+        })
       }
     }
   }
-
-//  final case class SampleRateWithValue(tr: Try[Double]) extends UGenSource.SingleOut {
-//
-//    protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
-//      makeUGen(Vector.empty)
-//
-//    protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike = {
-//      val adjuncts = tr.toOption.fold(List.empty[Adjunct])(Adjunct.Double(_) :: Nil)   // Try#fold requires Scala 2.12
-//      UGen.SingleOut(this, args, adjuncts = adjuncts)
-//    }
-//
-//    private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: SBuilder): StreamOut = {
-//      stream.TryConstant[Double, BufD](tr.map(BufD(_)))
-//    }
-//
-//    override def productPrefix: String = s"AudioFileIn$$SampleRateWithValue"
-//  }
-
-//  private sealed trait CueOrArtifactOption
-//  private final case class  IsCue      (peer: AudioCue       ) extends CueOrArtifactOption
-//  private final case class  IsArtifact (peer: Artifact.Value ) extends CueOrArtifactOption
-//  private final case object NotCueOrArtifact extends CueOrArtifactOption
 
   private def getCue(key: String, b: UGenGraph.Builder): Either[AudioCue, Artifact.Value] = {
     val ub  = UGenGraphBuilder.get(b)
@@ -132,6 +96,10 @@ final case class AudioFileIn(key: String) extends GE.Lazy {
       case Left (cue) =>
         AudioFileIn.WithCue(cue.artifact, cue.offset, cue.gain, cue.spec.numChannels)
       case Right(uri) =>
+        // XXX TODO -- we do have to find a way to determine the number of channels
+        // before expanding the UGen
+        // - could be synchronous on JVM and yet unsupported on JS
+        // - should have an asynchronous `prepare` stage like AuralProc
         AudioFileIn.WithCue(uri, offset = 0L, gain = 1.0, numChannels = 1)
     }
   }
