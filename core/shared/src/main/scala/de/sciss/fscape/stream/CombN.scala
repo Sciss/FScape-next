@@ -17,6 +17,7 @@ package stream
 import akka.stream.{Attributes, FanInShape4, Inlet}
 import de.sciss.fscape.stream.impl.Handlers._
 import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
+import de.sciss.fscape.Log.{stream => logStream}
 
 import scala.math.{max, min, exp, abs, signum}
 
@@ -92,7 +93,7 @@ object CombN {
     }
 
     protected def process(): Unit = {
-      logStream(s"process() $this")
+      logStream.debug(s"process() $this")
 
       if (needsLen) {
         if (!hMaxDlyLen.hasNext) return

@@ -16,8 +16,9 @@ package de.sciss.fscape.stream
 import akka.stream.{Attributes, FanInShape6, Inlet}
 import de.sciss.fscape.stream.impl.Handlers._
 import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
-import de.sciss.fscape.{Util, logStream => log}
+import de.sciss.fscape.Util
 import de.sciss.numbers.Implicits._
+import de.sciss.fscape.Log.{stream => logStream}
 
 import scala.annotation.tailrec
 
@@ -87,7 +88,7 @@ object Histogram {
 
     @tailrec
     protected def process(): Unit = {
-      log(s"$this process()")
+      logStream.debug(s"$this process()")
 
 //      if (hOut.isDone) {
 //        completeStage()

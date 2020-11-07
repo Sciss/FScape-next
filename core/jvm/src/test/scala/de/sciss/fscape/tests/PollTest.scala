@@ -1,7 +1,9 @@
-package de.sciss.fscape.tests
+package de.sciss.fscape
+package tests
 
+import de.sciss.fscape.Ops._
 import de.sciss.fscape.gui.SimpleGUI
-import de.sciss.fscape.{GE, Graph, showStreamLog, stream}
+import de.sciss.log.Level
 
 import scala.swing.{Button, Frame, Swing}
 
@@ -25,7 +27,7 @@ object PollTest extends App {
     val cb = stream.Control.Config()
     cb.useAsync = false
     val config = cb.build
-    showStreamLog = true
+    Log.stream.level = Level.Debug
     implicit val ctrl: stream.Control = stream.Control(config)
     ctrl.run(g)
 //    import config.executionContext

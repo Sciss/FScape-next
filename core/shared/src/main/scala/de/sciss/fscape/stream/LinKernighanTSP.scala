@@ -17,7 +17,7 @@ import akka.stream.{Attributes, Inlet, Outlet}
 import de.sciss.fscape.stream.impl.Handlers._
 import de.sciss.fscape.stream.impl.shapes.In5Out2Shape
 import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
-import de.sciss.fscape.{logStream => log}
+import de.sciss.fscape.Log.{stream => logStream}
 import de.sciss.tsp.LinKernighan
 
 import scala.annotation.tailrec
@@ -128,7 +128,7 @@ object LinKernighanTSP {
 
     @tailrec
     protected def process(): Unit = {
-      log(s"$this process()")
+      logStream.debug(s"$this process()")
 
       //      if (hOutTour.isDone && hOutCost.isDone) {
       //        completeStage()

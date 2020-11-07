@@ -17,7 +17,7 @@ import akka.stream.stage.{InHandler, OutHandler}
 import akka.stream.{Attributes, FanInShape2, Inlet, Outlet}
 import de.sciss.fscape.graph.ConstantL
 import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
-import de.sciss.fscape.{logStream => log}
+import de.sciss.fscape.Log.{stream => logStream}
 
 object Take {
   def head[A, E <: BufElem[A]](in: Outlet[E])(implicit b: Builder): Outlet[E] = {
@@ -57,7 +57,7 @@ object Take {
 
     def onPull(): Unit = {
       val ok = hasLen && isAvailable(shape.in0)
-      log(s"$this onPull() hasLen && isAvailable(in0) ? $ok")
+      logStream.debug(s"$this onPull() hasLen && isAvailable(in0) ? $ok")
       if (ok) {
         process()
       }
@@ -68,7 +68,7 @@ object Take {
 
       def onPush(): Unit = {
         val ok = hasLen && isAvailable(shape.out)
-        log(s"$this onPush() hasLen && isAvailable(out) ? $ok")
+        logStream.debug(s"$this onPush() hasLen && isAvailable(out) ? $ok")
         if (ok) {
           process()
         }
@@ -76,7 +76,7 @@ object Take {
 
       override def onUpstreamFinish(): Unit = {
         val cond = !isAvailable(shape.in0)
-        log(s"$this onUpstreamFinish() !isAvailable(in0) ? $cond")
+        logStream.info(s"$this onUpstreamFinish() !isAvailable(in0) ? $cond")
         if (cond) super.onUpstreamFinish()
       }
     }
@@ -87,7 +87,7 @@ object Take {
       def onPush(): Unit = {
         val buf = grab(shape.in1)
         val ok  = !hasLen
-        log(s"$this onPush() !hasLen ? $ok")
+        logStream.debug(s"$this onPush() !hasLen ? $ok")
         if (ok) {
           takeRemain  = math.max(0L, buf.buf(0))
           hasLen      = true
@@ -102,7 +102,7 @@ object Take {
 
       override def onUpstreamFinish(): Unit = {
         val cond = !hasLen
-        log(s"$this onUpstreamFinish() !hasLen ? $cond")
+        logStream.info(s"$this onUpstreamFinish() !hasLen ? $cond")
         if (cond) super.onUpstreamFinish()
       }
     }

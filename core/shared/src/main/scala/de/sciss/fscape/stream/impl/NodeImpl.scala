@@ -17,7 +17,7 @@ package impl
 
 import akka.stream.stage.{GraphStageLogic, InHandler}
 import akka.stream.{Inlet, Shape}
-import de.sciss.fscape.{logStream => log}
+import de.sciss.fscape.Log.{stream => logStream}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -42,7 +42,7 @@ abstract class NodeImpl[+S <: Shape](protected final val name: String, val layer
   }
 
   protected def launch(): Unit = {
-    logStream(s"$this - launch")
+    logStream.debug(s"$this - launch")
 //    if (NodeImpl.BLA) {
 //      NodeImpl.BLA = false
 //      if (toString.contains("ResizeWindow")) {
@@ -70,7 +70,7 @@ abstract class NodeImpl[+S <: Shape](protected final val name: String, val layer
   def completeAsync(): Future[Unit] = {
     implicit val ex: ExecutionContext = control.config.executionContext
     asyncF.invokeWithFeedback { () =>
-      logStream(s"$this - completeAsync")
+      logStream.debug(s"$this - completeAsync")
       completeStage()
     }.map(_ => ())
   }
@@ -172,7 +172,7 @@ abstract class NodeImpl[+S <: Shape](protected final val name: String, val layer
 
     final def onPush(): Unit = {
       val cond = !hasValue && _buf == null
-      log(s"onPush() $this - !hasValue = $cond")
+      logStream.debug(s"onPush() $this - !hasValue = $cond")
       if (cond) {
 //        assert(_buf == null)
         _buf = grab(in)
@@ -190,7 +190,7 @@ abstract class NodeImpl[+S <: Shape](protected final val name: String, val layer
     }
 
     final override def onUpstreamFinish(): Unit = {
-      log(s"onUpstreamFinish() $this - hasValue = $hasValue, everHadValue = $everHadValue")
+      logStream.info(s"onUpstreamFinish() $this - hasValue = $hasValue, everHadValue = $everHadValue")
       if (!isAvailable(in)) {
         if (everHadValue) {
           if (!hasValue) ackValue()
@@ -215,7 +215,7 @@ trait NodeHasInitImpl extends NodeHasInit {
 
   final def initAsync(): Future[Unit] = {
     val async = getAsyncCallback { _: Unit =>
-      logStream(s"$this - initAsync")
+      logStream.debug(s"$this - initAsync")
       init()
       _init = true
     }

@@ -11,14 +11,14 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape.lucre.graph
-
-import de.sciss.fscape
+package de.sciss.fscape
 
 import scala.language.implicitConversions
 
-object Ops extends fscape.Ops {
-  /** Allows the construction of attribute controls, for example via `"freq".attr`. */
-  implicit def stringToControl(name: String): Attribute.Factory =
-    new Attribute.Factory(name)
+object Ops extends Ops
+trait Ops {
+  implicit def geOps1      (g: GE    ): GEOps1 = new GEOps1(g)
+  implicit def geOps2      (g: GE    ): GEOps2 = new GEOps2(g)
+  implicit def intGeOps2   (i: Int   ): GEOps2 = new GEOps2(i)
+  implicit def doubleGeOps2(d: Double): GEOps2 = new GEOps2(d)
 }

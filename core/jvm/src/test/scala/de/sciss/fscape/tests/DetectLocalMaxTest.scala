@@ -1,7 +1,8 @@
-package de.sciss.fscape.tests
+package de.sciss.fscape
+package tests
 
+import de.sciss.fscape.Ops._
 import de.sciss.fscape.stream.Control
-import de.sciss.fscape.{Graph, graph}
 
 object DetectLocalMaxTest extends App {
   val g = Graph {

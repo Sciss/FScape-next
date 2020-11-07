@@ -1,7 +1,9 @@
-package de.sciss.fscape.tests
+package de.sciss.fscape
+package tests
+
+import de.sciss.fscape.Ops._
 
 trait ReadmeExample {
-  import de.sciss.fscape._
   import de.sciss.audiofile.AudioFile
 
   {

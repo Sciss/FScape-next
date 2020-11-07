@@ -22,9 +22,9 @@ import akka.stream.{Inlet, Shape}
 import de.sciss.file.File
 import de.sciss.fscape.graph.ImageFile
 import de.sciss.fscape.graph.ImageFile.{SampleFormat, Type}
-import de.sciss.fscape.logStream
 import de.sciss.fscape.stream.impl.Handlers.InDMain
 import de.sciss.fscape.stream.impl.logic.WindowedMultiInOut
+import de.sciss.fscape.Log.{stream => logStream}
 import javax.imageio.plugins.jpeg.JPEGImageWriteParam
 import javax.imageio.stream.FileImageOutputStream
 import javax.imageio.{IIOImage, ImageIO, ImageTypeSpecifier, ImageWriteParam, ImageWriter}
@@ -149,7 +149,7 @@ trait ImageFileOutImpl[S <: Shape] extends NodeHasInitImpl with WindowedMultiInO
 
   override protected def stopped(): Unit = {
     super.stopped()
-    logStream(s"$this - postStop()")
+    logStream.info(s"$this - postStop()")
     if (writer != null) {
       closeImage()
       writer.dispose()

@@ -1,9 +1,10 @@
-package de.sciss.fscape.tests
+package de.sciss.fscape
+package tests
 
-import de.sciss.file._
-import de.sciss.fscape.gui.SimpleGUI
-import de.sciss.fscape.{Graph, graph, stream}
 import de.sciss.audiofile.{AudioFile, AudioFileSpec}
+import de.sciss.file._
+import de.sciss.fscape.Ops._
+import de.sciss.fscape.gui.SimpleGUI
 
 import scala.swing.Swing
 

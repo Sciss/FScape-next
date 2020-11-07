@@ -1,9 +1,11 @@
-package de.sciss.fscape.tests
+package de.sciss.fscape
+package tests
 
-import de.sciss.fscape.{GE, Graph, graph, stream}
+import de.sciss.fscape.Ops._
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
+
 
 object FFTTest extends App {
   lazy val g1 = Graph {

@@ -3,7 +3,7 @@ package de.sciss.fscape.stream
 import akka.stream.{Attributes, BidiShape, FanInShape3, Inlet, Outlet}
 import de.sciss.fscape.stream.impl.Handlers.{InIAux, InIMain, OutIMain}
 import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
-import de.sciss.fscape.{logStream => log}
+import de.sciss.fscape.Log.{stream => logStream}
 
 import scala.annotation.tailrec
 import scala.math.{max, min}
@@ -56,7 +56,7 @@ object HilbertCurve {
 
     @tailrec
     protected def process(): Unit = {
-      log(s"$this process()")
+      logStream.debug(s"$this process()")
 
       val _hN   = hN
       val _hX   = hX
@@ -161,7 +161,7 @@ object HilbertCurve {
 
     @tailrec
     protected def process(): Unit = {
-      log(s"$this process()")
+      logStream.debug(s"$this process()")
 
       val _hN     = hN
       val _hPos   = hPos

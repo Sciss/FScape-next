@@ -15,7 +15,8 @@ package de.sciss.fscape.stream
 
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
 import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
-import de.sciss.fscape.{logStream, stream}
+import de.sciss.fscape.stream
+import de.sciss.fscape.Log.{stream => logStream}
 
 object Map {
   def apply[A, B](in: Outlet[A], name: String)(fun: A => B)(implicit b: stream.Builder): Outlet[B] = {
@@ -48,24 +49,24 @@ object Map {
     import shape.{in, out}
 
     override def onPush(): Unit = {
-      logStream(s"onPush() $self")
+      logStream.debug(s"onPush() $self")
       val a = grab(in)
       val b = fun(a)
       push(out, b)
     }
 
     override def onPull(): Unit = {
-      logStream(s"onPull() $self")
+      logStream.debug(s"onPull() $self")
       pull(in)
     }
 
     override def onUpstreamFinish(): Unit = {
-      logStream(s"onUpstreamFinish() $self")
+      logStream.info(s"onUpstreamFinish() $self")
       super.onUpstreamFinish()
     }
 
     override def onDownstreamFinish(cause: Throwable): Unit = {
-      logStream(s"onDownstreamFinish() $self")
+      logStream.info(s"onDownstreamFinish() $self")
       super.onDownstreamFinish(cause)
     }
 

@@ -16,7 +16,8 @@ package de.sciss.fscape.stream
 import akka.stream.stage.{GraphStageLogic, InHandler, OutHandler}
 import akka.stream.{Attributes, Inlet, Outlet}
 import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
-import de.sciss.fscape.{Util, logStream}
+import de.sciss.fscape.Util
+import de.sciss.fscape.Log.{stream => logStream}
 
 import scala.annotation.tailrec
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -255,12 +256,12 @@ object WPE_ReverbFrame {
 
     private final class _InSignalHandlerImpl[T](in: Inlet[T]) extends InHandler {
       def onPush(): Unit = {
-        logStream(s"onPush($in)")
+        logStream.debug(s"onPush($in)")
         if (stage == 1) process()
       }
 
       override def onUpstreamFinish(): Unit = {
-        logStream(s"onUpstreamFinish($in)")
+        logStream.info(s"onUpstreamFinish($in)")
         if (stage == 1) process()
       }
 
@@ -269,12 +270,12 @@ object WPE_ReverbFrame {
 
     private final class _InHandlerImpl[T](in: Inlet[T])(isValid: => Boolean) extends InHandler {
       def onPush(): Unit = {
-        logStream(s"onPush($in)")
+        logStream.debug(s"onPush($in)")
         if (stage == 0) process()
       }
 
       override def onUpstreamFinish(): Unit = {
-        logStream(s"onUpstreamFinish($in)")
+        logStream.info(s"onUpstreamFinish($in)")
         if (isValid) {
           if (stage == 0) process()
         } else if (!isAvailable(in)) {
@@ -291,12 +292,12 @@ object WPE_ReverbFrame {
       override def toString: String = s"OutHandlerImpl($out)"
 
       def onPull(): Unit = {
-        logStream(s"onPull($out)")
+        logStream.debug(s"onPull($out)")
         if (stage == 2) process()
       }
 
       override def onDownstreamFinish(cause: Throwable): Unit = {
-        logStream(s"onDownstreamFinish($out)")
+        logStream.info(s"onDownstreamFinish($out)")
         if (outlets.forall(out => isClosed(out))) {
           super.onDownstreamFinish(cause)
         }

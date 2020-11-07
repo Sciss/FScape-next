@@ -17,6 +17,7 @@ package stream
 import akka.stream.stage.{InHandler, OutHandler}
 import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
 import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeHasInitImpl, NodeImpl}
+import de.sciss.fscape.Log.{stream => logStream}
 
 // XXX TODO --- we could use a "quasi-circular"
 // structure? this is, overwrite parts of the file
@@ -79,7 +80,7 @@ object BufferDisk {
       val bufIn = grab(shape.in)
       tryPull(shape.in)
       val chunk = bufIn.size
-      logStream(s"onPush(${shape.in}) $chunk; read = $framesRead; written = $framesWritten")
+      logStream.debug(s"onPush(${shape.in}) $chunk; read = $framesRead; written = $framesWritten")
 
       try {
         if (af.position != framesWritten) af.position = framesWritten
@@ -99,10 +100,10 @@ object BufferDisk {
       if (!inputDone && framesAvail < bufSize) return
 
       val chunk = math.min(bufSize, framesAvail).toInt
-      logStream(s"onPull(${shape.out}) $chunk; read = $framesRead; written = $framesWritten")
+      logStream.debug(s"onPull(${shape.out}) $chunk; read = $framesRead; written = $framesWritten")
       if (chunk == 0) {
         if (inputDone) {
-          logStream(s"completeStage() $this")
+          logStream.info(s"onPull() -> completeStage $this")
           completeStage()
         }
 
@@ -118,7 +119,7 @@ object BufferDisk {
 
     // in closed
     override def onUpstreamFinish(): Unit = {
-      logStream(s"onUpstreamFinish(${shape.in}); read = $framesRead; written = $framesWritten")
+      logStream.info(s"onUpstreamFinish(${shape.in}); read = $framesRead; written = $framesWritten")
       onPull()
     }
   }

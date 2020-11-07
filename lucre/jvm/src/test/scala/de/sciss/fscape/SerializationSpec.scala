@@ -1,8 +1,9 @@
 package de.sciss.fscape
 
+import de.sciss.fscape.Ops._
 import de.sciss.fscape.lucre.FScape
-import de.sciss.lucre.{DoubleObj, Durable}
 import de.sciss.lucre.store.BerkeleyDB
+import de.sciss.lucre.{DoubleObj, Durable}
 import de.sciss.synth.proc.SoundProcesses
 import org.scalatest.Outcome
 import org.scalatest.flatspec.FixtureAnyFlatSpec

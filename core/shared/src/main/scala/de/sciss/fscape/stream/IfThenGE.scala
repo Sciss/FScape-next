@@ -14,11 +14,11 @@
 package de.sciss.fscape
 package stream
 
-
 import akka.stream.stage.{InHandler, OutHandler}
 import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
 import de.sciss.fscape.stream.impl.shapes.BiformShape
 import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import de.sciss.fscape.Log.{stream => logStream}
 
 import scala.collection.immutable.{IndexedSeq => Vec, Seq => ISeq}
 import scala.concurrent.Future
@@ -105,7 +105,7 @@ object IfThenGE {
 
     override def onPush(): Unit = {
       val ok = isAvailable(shape.out)
-      logStream(s"$this - onPush() $ok")
+      logStream.debug(s"$this - onPush() $ok")
       if (ok) {
         pump()
       }
@@ -113,19 +113,19 @@ object IfThenGE {
 
     override def onPull(): Unit = {
       val ok = isAvailable(shape.in)
-      logStream(s"$this - onPull() $ok")
+      logStream.debug(s"$this - onPull() $ok")
       if (ok) {
         pump()
       }
     }
 
     override def onUpstreamFinish(): Unit = {
-      logStream(s"$this - onUpstreamFinish")
+      logStream.info(s"$this - onUpstreamFinish")
       if (!isAvailable(shape.in)) super.onUpstreamFinish()
     }
 
     override def onDownstreamFinish(cause: Throwable): Unit = {
-      logStream(s"$this - onDownstreamFinish")
+      logStream.info(s"$this - onDownstreamFinish")
       super.onDownstreamFinish(cause)
     }
 
@@ -156,7 +156,7 @@ object IfThenGE {
 
     // only poll the condition inlets
     override protected def launch(): Unit = {
-      logStream(s"$this - launch")
+      logStream.info(s"$this - launch")
       shape.ins1.foreach(pull)
     }
 
@@ -165,7 +165,7 @@ object IfThenGE {
       override def toString: String = s"$self.CondInHandlerImpl($in)"
 
       def onPush(): Unit = {
-        logStream(s"onPush() $self.${in.s}")
+        logStream.debug(s"onPush() $self.${in.s}")
         val b = grab(in)
 
         // println(s"IF-THEN-UNIT ${node.hashCode().toHexString} onPush($ch); numIns = $numIns, pending = $pending")
@@ -207,7 +207,7 @@ object IfThenGE {
       }
 
       override def onUpstreamFinish(): Unit = {
-        logStream(s"onUpstreamFinish() $self.${in.s}")
+        logStream.info(s"onUpstreamFinish() $self.${in.s}")
         // if we made the decision, ignore,
         // otherwise shut down including branches
         if (!condDone(branchIdx) && selBranchIdx < 0) {
@@ -225,7 +225,7 @@ object IfThenGE {
       private[this] val out = outs(ch)
 
       def onPush(): Unit = {
-        logStream(s"onPush() $self.${in.s}")
+        logStream.debug(s"onPush() $self.${in.s}")
         if (branchIdx == selBranchIdx) {
           if (isAvailable(out) || isClosed(out)) {
             pump(ch)
@@ -239,7 +239,7 @@ object IfThenGE {
       }
 
       override def onUpstreamFinish(): Unit = {
-        logStream(s"onUpstreamFinish() $self.${in.s}")
+        logStream.info(s"onUpstreamFinish() $self.${in.s}")
         if (branchIdx == selBranchIdx && !isAvailable(in)) {
           selBranchChans -= 1
           if (selBranchChans == 0) {
@@ -261,7 +261,7 @@ object IfThenGE {
       override def toString: String = s"$self.OutHandlerImpl($ch)"
 
       def onPull(): Unit = {
-        logStream(s"onPull() $self")
+        logStream.debug(s"onPull() $self")
         if (selIn != null && isAvailable(selIn(ch))) {
           pump(ch)
         }
@@ -271,7 +271,7 @@ object IfThenGE {
 
       override def onDownstreamFinish(cause: Throwable): Unit = {
         val all = shape.outlets.forall(isClosed(_)) // IntelliJ highlight bug
-        logStream(s"onDownstreamFinish() $self - $all")
+        logStream.info(s"onDownstreamFinish() $self - $all")
         if (all) {
           completeAll()
           super.onDownstreamFinish(cause)
@@ -282,7 +282,7 @@ object IfThenGE {
     }
 
     private def completeAll(): Unit = {
-      logStream(s"completeAll() $self")
+      logStream.info(s"completeAll() $self")
       var ch = 0
       val it = branchLayers.iterator
       while (ch < numBranches) {
@@ -312,7 +312,7 @@ object IfThenGE {
     }
 
     private def pump(ch: Int): Unit = {
-      logStream(s"pump($ch) $self")
+      logStream.debug(s"pump($ch) $self")
       val _selIn = selIn(ch)
       val b = grab(_selIn)
       val _out = outs(ch)
@@ -332,7 +332,7 @@ object IfThenGE {
     }
 
     private def branchSelected(): Unit = {
-      logStream(s"branchSelected($selBranchIdx) $self")
+      logStream.info(s"branchSelected($selBranchIdx) $self")
       // println(s"IF-THEN-UNIT ${node.hashCode().toHexString} process($selBranchIdx)")
 
       var bi = 0
@@ -372,7 +372,7 @@ object IfThenGE {
             }
             import ctrl.config.executionContext
             done.foreach { _ =>
-              logStream(s"launchLayer done - $self")
+              logStream.info(s"launchLayer done - $self")
               async.invoke(())
             }
           }

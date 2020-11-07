@@ -1,5 +1,6 @@
 package de.sciss.fscape
 
+import de.sciss.fscape.Ops._
 import de.sciss.fscape.graph.Constant
 import de.sciss.fscape.stream.Control.{Config, ConfigBuilder}
 import de.sciss.kollflitz.Vec

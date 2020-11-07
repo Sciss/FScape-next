@@ -69,6 +69,7 @@ object Then {
       val condI       = condE.unbubble match {
         case u: UGenIn => u
         case g: UGenInGroup =>
+          import de.sciss.fscape.Ops._
           g.flatOutputs.foldLeft(0: UGenIn)((a, b) => (a | b).expand.flatOutputs.head)
       }
       val branchOutI  = branchOutE.flatOutputs  // XXX TODO --- what else could we do?

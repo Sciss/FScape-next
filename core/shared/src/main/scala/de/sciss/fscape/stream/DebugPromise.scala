@@ -17,6 +17,7 @@ package stream
 import akka.stream.{Attributes, Inlet, Outlet, SinkShape}
 import de.sciss.fscape.stream.impl.Handlers.InMain
 import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
+import de.sciss.fscape.Log.{stream => logStream}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.Promise
@@ -59,7 +60,7 @@ object DebugPromise {
     }
 
     private def done(): Unit = {
-      logStream(s"done() $this")
+      logStream.info(s"done() $this")
       p.success(builder.result())
       completeStage()
     }

@@ -17,6 +17,7 @@ package stream
 import akka.stream.stage.{InHandler, OutHandler}
 import akka.stream.{Attributes, FlowShape, Inlet}
 import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import de.sciss.fscape.Log.{stream => logStream}
 
 object Done {
   def apply(in: OutA)(implicit b: Builder): OutI = {
@@ -69,7 +70,7 @@ object Done {
       buf.size   = 1
       push(shape.out, buf)
 //      println(s"NUM = $NUM")
-      logStream(s"completeStage() $this")
+      logStream.info(s"completeStage() $this")
       completeStage()
     }
   }

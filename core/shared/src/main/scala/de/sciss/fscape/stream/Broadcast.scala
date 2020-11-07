@@ -17,6 +17,7 @@ package stream
 import akka.stream.stage.{InHandler, OutHandler}
 import akka.stream.{Attributes, Inlet, Outlet, UniformFanOutShape}
 import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import de.sciss.fscape.Log.{stream => logStream}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.Future
@@ -69,12 +70,12 @@ object Broadcast {
     override def completeAsync(): Future[Unit] = futureUnit // super.completeAsync()
 
     def onPush(): Unit = {
-      logStream(s"onPush() $this")
+      logStream.debug(s"onPush() $this")
       if (pendingCount == 0) process()
     }
 
     override def onUpstreamFinish(): Unit = {
-      logStream(s"onUpstreamFinish() $this")
+      logStream.info(s"onUpstreamFinish() $this")
       if (isAvailable(shape.in)) {
         if (pendingCount == 0) process()
       } else {
@@ -83,7 +84,7 @@ object Broadcast {
     }
 
     private def process(): Unit = {
-      logStream(s"process() $this")
+      logStream.debug(s"process() $this")
       pendingCount  = sinksRunning
       val in        = shape.in
       val buf       = grab(in)
@@ -139,20 +140,20 @@ object Broadcast {
       }
 
       def onPull(): Unit = {
-        logStream(s"onPull() $self.${out.s}")
+        logStream.debug(s"onPull() $self.${out.s}")
         decPendingAndCheck()
       }
 
       override def onDownstreamFinish(cause: Throwable): Unit = {
-        logStream(s"onDownstreamFinish() $self.${out.s}")
+        logStream.info(s"onDownstreamFinish() $self.${out.s}")
         if (eagerCancel) {
-          logStream(s"completeStage() $self")
+          logStream.info(s"completeStage() $self")
           super.onDownstreamFinish(cause)
         }
         else {
           sinksRunning -= 1
           if (sinksRunning == 0) {
-            logStream(s"completeStage() $self")
+            logStream.info(s"completeStage() $self")
             super.onDownstreamFinish(cause)
           } else {
             decPendingAndCheck()

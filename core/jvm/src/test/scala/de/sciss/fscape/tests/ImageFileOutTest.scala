@@ -1,7 +1,8 @@
-package de.sciss.fscape.tests
+package de.sciss.fscape
+package tests
 
 import de.sciss.file._
-import de.sciss.fscape.{GE, Graph, graph, stream}
+import de.sciss.fscape.Ops._
 
 object ImageFileOutTest extends App {
   val width   = 1024

@@ -25,7 +25,8 @@ import de.sciss.fscape.lucre.graph.{AudioFileOut => AF}
 import de.sciss.fscape.stream.impl.shapes.In3UniformFanInShape
 import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeHasInitImpl, NodeImpl}
 import de.sciss.fscape.stream.{BufD, BufI, BufL, Builder, Control, InD, InI, Layer, OutD, OutI, OutL}
-import de.sciss.fscape.{Util, logStream}
+import de.sciss.fscape.Util
+import de.sciss.fscape.Log.{stream => logStream}
 
 import scala.collection.immutable.{Seq => ISeq}
 import scala.util.control.NonFatal
@@ -92,7 +93,7 @@ object AudioFileOut {
 
     override protected def init(): Unit = {
       super.init()
-      logStream(s"init() $this")
+      logStream.info(s"init() $this")
     }
 
     override protected def launch(): Unit = {
@@ -117,7 +118,7 @@ object AudioFileOut {
       def onPush(): Unit = {
         val buf = grab(shape.in0)
         if (buf.size > 0 && fileType < 0) {
-          logStream("AudioFileOut: fileType")
+          logStream.debug("AudioFileOut: fileType")
           val _fileType = math.min(AF.maxFileTypeId, buf.buf(0))
           fileType = if (_fileType >= 0) _fileType else {
             import asyncfile.Ops._
@@ -133,7 +134,7 @@ object AudioFileOut {
 
       override def onUpstreamFinish(): Unit =
         if (fileType < 0) {
-          logStream(s"onUpstreamFinish(${shape.in0})")
+          logStream.info(s"onUpstreamFinish(${shape.in0})")
           super.onUpstreamFinish()
         }
     })
@@ -142,7 +143,7 @@ object AudioFileOut {
       def onPush(): Unit = {
         val buf = grab(shape.in1)
         if (buf.size > 0 && sampleFormat < 0) {
-          logStream("AudioFileOut: sampleFormat")
+          logStream.debug("AudioFileOut: sampleFormat")
           sampleFormat = math.max(0, math.min(AF.maxSampleFormatId, buf.buf(0)))
           updateSpec()
           if (canProcess) process()
@@ -152,7 +153,7 @@ object AudioFileOut {
 
       override def onUpstreamFinish(): Unit =
         if (sampleFormat < 0) {
-          logStream(s"onUpstreamFinish(${shape.in1})")
+          logStream.info(s"onUpstreamFinish(${shape.in1})")
           super.onUpstreamFinish()
         }
     })
@@ -161,7 +162,7 @@ object AudioFileOut {
       def onPush(): Unit = {
         val buf = grab(shape.in2)
         if (buf.size > 0 && sampleRate < 0) {
-          logStream("AudioFileOut: sampleRate")
+          logStream.debug("AudioFileOut: sampleRate")
           sampleRate = math.max(0.0, buf.buf(0))
           updateSpec()
           if (canProcess) process()
@@ -171,7 +172,7 @@ object AudioFileOut {
 
       override def onUpstreamFinish(): Unit =
         if (sampleRate < 0) {
-          logStream(s"onUpstreamFinish(${shape.in2})")
+          logStream.info(s"onUpstreamFinish(${shape.in2})")
           super.onUpstreamFinish()
         }
     })
@@ -197,7 +198,7 @@ object AudioFileOut {
         if (isAvailable(in)) {
           shouldStop = true
         } else {
-          logStream(s"onUpstreamFinish($in)")
+          logStream.info(s"onUpstreamFinish($in)")
           _isSuccess = true
           super.onUpstreamFinish()
         }
@@ -205,7 +206,7 @@ object AudioFileOut {
     }
 
     override protected def stopped(): Unit = {
-      logStream(s"$this - postStop()")
+      logStream.info(s"$this - postStop()")
       buf = null
       var ch = 0
       while (ch < numChannels) {
@@ -229,7 +230,7 @@ object AudioFileOut {
 
     private def process(): Unit = {
       //      logStream(s"process() $this")
-      logStream(s"process() $this")
+      logStream.debug(s"process() $this")
       pushed = 0
 
       var ch = 0

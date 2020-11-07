@@ -16,7 +16,8 @@ package de.sciss.fscape.stream
 import akka.stream.stage.InHandler
 import akka.stream.{Attributes, Inlet, Outlet, SinkShape}
 import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
-import de.sciss.fscape.{logStream, stream}
+import de.sciss.fscape.stream
+import de.sciss.fscape.Log.{stream => logStream}
 
 object SinkIgnore {
   def apply[E <: BufLike](in: Outlet[E])(implicit b: stream.Builder): Unit = {
@@ -43,7 +44,7 @@ object SinkIgnore {
     setHandler(shape.in, this)
 
     override protected def launch(): Unit = {
-      logStream(s"$this - launch")
+      logStream.debug(s"$this - launch")
       completeStage()
       // super.launch()
     }

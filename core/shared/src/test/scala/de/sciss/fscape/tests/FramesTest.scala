@@ -1,6 +1,8 @@
-package de.sciss.fscape.tests
+package de.sciss.fscape
+package tests
 
-import de.sciss.fscape.{Graph, graph, showStreamLog, stream}
+import de.sciss.fscape.Ops._
+import de.sciss.log.Level
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
@@ -13,7 +15,7 @@ object FramesTest extends App {
     frames.last.poll(0, "last")
   }
 
-  showStreamLog = true
+  Log.stream.level = Level.Debug
 
   val c = stream.Control()
   c.run(g)

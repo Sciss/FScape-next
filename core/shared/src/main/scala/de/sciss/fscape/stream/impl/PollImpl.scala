@@ -17,6 +17,7 @@ package impl
 
 import akka.stream.Inlet
 import de.sciss.fscape.stream.impl.shapes.SinkShape2
+import de.sciss.fscape.Log.{stream => logStream}
 
 /** Common building block for `Poll` and `Progress`. */
 abstract class PollImpl[A, E <: BufElem[A]](name: String, layer: Layer, shape: SinkShape2[E, BufI])
@@ -39,7 +40,7 @@ abstract class PollImpl[A, E <: BufElem[A]](name: String, layer: Layer, shape: S
     val rem = math.min(hIn.available, hGate.available)
     if (rem == 0) return
 
-    logStream(s"process() $this")
+    logStream.debug(s"process() $this")
 
     val in      = hIn.array
     var inOff   = hIn.offset
@@ -54,7 +55,7 @@ abstract class PollImpl[A, E <: BufElem[A]](name: String, layer: Layer, shape: S
     hIn.advance(rem)
 
     if (hIn.isDone) {
-      logStream(s"completeStage() $this")
+      logStream.info(s"process() -> completeStage $this")
       completeStage()
     }
   }

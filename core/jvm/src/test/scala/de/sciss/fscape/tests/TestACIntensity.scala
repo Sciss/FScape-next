@@ -1,9 +1,10 @@
-package de.sciss.fscape.tests
+package de.sciss.fscape
+package tests
 
-import de.sciss.file._
-import de.sciss.fscape.{GE, Graph, stream}
-import de.sciss.numbers.Implicits._
 import de.sciss.audiofile.AudioFile
+import de.sciss.file._
+import de.sciss.fscape.Ops._
+import de.sciss.numbers.Implicits._
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration

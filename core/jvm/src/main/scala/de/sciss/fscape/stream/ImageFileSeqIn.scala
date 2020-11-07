@@ -19,6 +19,7 @@ import java.net.URI
 import akka.stream.stage.InHandler
 import akka.stream.{Attributes, UniformFanOutShape}
 import de.sciss.fscape.stream.impl.{BlockingGraphStage, ImageFileInImpl, NodeImpl}
+import de.sciss.fscape.Log.{stream => logStream}
 
 import scala.annotation.tailrec
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -89,7 +90,7 @@ object ImageFileSeqIn {
 
     @tailrec
     protected def process(): Unit = {
-      logStream(s"process() $this")
+      logStream.debug(s"process() $this")
       var stateChange = false
 
       if (shouldRead) {
@@ -128,7 +129,7 @@ object ImageFileSeqIn {
         }
 
         if (flushOut) {
-          logStream(s"completeStage() $this")
+          logStream.info(s"process() -> completeStage $this")
           completeStage()
           stateChange = false
         }
@@ -162,7 +163,7 @@ object ImageFileSeqIn {
     // ---- InHandler ----
 
     def onPush(): Unit = {
-      logStream(s"onPush($in0)")
+      logStream.debug(s"onPush($in0)")
       testRead()
     }
 
@@ -172,11 +173,11 @@ object ImageFileSeqIn {
     }
 
     override def onUpstreamFinish(): Unit = {
-      logStream(s"onUpstreamFinish($in0)")
+      logStream.info(s"onUpstreamFinish($in0)")
       if (_inValid || isAvailable(in0)) {
         testRead()
       } else {
-        logStream(s"Invalid aux $in0")
+        logStream.info(s"Invalid aux $in0")
         completeStage()
       }
     }

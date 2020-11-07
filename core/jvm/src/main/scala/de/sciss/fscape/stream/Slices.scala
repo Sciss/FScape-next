@@ -17,6 +17,7 @@ package stream
 import akka.stream.stage.{InHandler, OutHandler}
 import akka.stream.{Attributes, FanInShape2, Inlet, Outlet}
 import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeHasInitImpl, NodeImpl}
+import de.sciss.fscape.Log.{stream => logStream}
 
 import scala.annotation.tailrec
 
@@ -61,7 +62,7 @@ object Slices {
       def onPush(): Unit = onPush0()
 
       override def onUpstreamFinish(): Unit = {
-        logStream(s"onUpstreamFinish(${shape.in0}); read = $framesWritten; written = $framesRead")
+        logStream.info(s"onUpstreamFinish(${shape.in0}); read = $framesWritten; written = $framesRead")
         if (!isAvailable(shape.in0)) {
           clipSpan()
           process()
@@ -70,12 +71,12 @@ object Slices {
     })
     setHandler(shape.in1, new InHandler {
       def onPush(): Unit = {
-        logStream(s"onPush(${shape.in1})")
+        logStream.debug(s"onPush(${shape.in1})")
         process()
       }
 
       override def onUpstreamFinish(): Unit = {
-        logStream(s"onUpstreamFinish(${shape.in1})")
+        logStream.info(s"onUpstreamFinish(${shape.in1})")
         process()
       }
     })
@@ -219,7 +220,7 @@ object Slices {
       val bufIn = grab(shape.in0)
       tryPull(shape.in0)
       val chunk = bufIn.size
-      logStream(s"onPush(${shape.in0}) $chunk; read = $framesWritten; written = $framesRead")
+      logStream.debug(s"onPush(${shape.in0}) $chunk; read = $framesWritten; written = $framesRead")
 
       try {
         if (af.position != framesWritten) af.position = framesWritten
@@ -235,7 +236,7 @@ object Slices {
 
     def onPull(): Unit = {
       val ok = isInitialized && isAvailable(shape.out)
-      logStream(s"onPull(${shape.out}) - $ok")
+      logStream.debug(s"onPull(${shape.out}) - $ok")
       if (ok) process()
     }
   }

@@ -1,12 +1,13 @@
-package de.sciss.fscape.tests
+package de.sciss.fscape
+package tests
 
+import de.sciss.audiofile.AudioFile
 import de.sciss.file._
+import de.sciss.fscape.Ops._
 import de.sciss.fscape.lucre.FScape
 import de.sciss.fscape.stream.Cancelled
-import de.sciss.fscape.{Graph, graph, lucre}
 import de.sciss.lucre.synth.InMemory
 import de.sciss.lucre.{Artifact, ArtifactLocation, IntObj}
-import de.sciss.audiofile.AudioFile
 import de.sciss.synth.proc.Universe
 
 import scala.util.{Failure, Success}

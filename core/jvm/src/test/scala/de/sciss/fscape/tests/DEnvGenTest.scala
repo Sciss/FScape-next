@@ -1,10 +1,12 @@
-package de.sciss.fscape.tests
+package de.sciss.fscape
+package tests
 
-import de.sciss.fscape.{GE, Graph, graph, showControlLog, showStreamLog, stream}
+import de.sciss.fscape.Ops._
+import de.sciss.log.Level
 
 object DEnvGenTest extends App {
-  showStreamLog   = true
-  showControlLog  = true
+  Log.stream  .level = Level.Debug
+  Log.control .level = Level.Debug
 
   val g = Graph {
     import graph._

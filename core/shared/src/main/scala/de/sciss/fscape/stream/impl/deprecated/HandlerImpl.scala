@@ -15,7 +15,7 @@ package de.sciss.fscape.stream.impl.deprecated
 
 import akka.stream.stage.OutHandler
 import akka.stream.{Outlet, Shape}
-import de.sciss.fscape.logStream
+import de.sciss.fscape.Log.{stream => logStream}
 
 @deprecated("Should move to using Handlers", since = "2.35.1")
 final class ProcessOutHandlerImpl[A, S <: Shape](out: Outlet[A], logic: InOutImpl[S])
@@ -24,13 +24,13 @@ final class ProcessOutHandlerImpl[A, S <: Shape](out: Outlet[A], logic: InOutImp
   override def toString: String = s"ProcessOutHandlerImpl($out)"
 
   def onPull(): Unit = {
-    logStream(s"onPull($out)")
+    logStream.debug(s"onPull($out)")
     logic.updateCanWrite()
     if (logic.canWrite) logic.process()
   }
 
   override def onDownstreamFinish(cause: Throwable): Unit = {
-    logStream(s"onDownstreamFinish($out)")
+    logStream.info(s"onDownstreamFinish($out)")
     super.onDownstreamFinish(cause)
   }
 

@@ -1,10 +1,11 @@
 package de.sciss.fscape
 
+import de.sciss.audiofile.{AudioFile, AudioFileSpec, AudioFileType, SampleFormat}
 import de.sciss.file._
+import de.sciss.fscape.Ops._
 import de.sciss.fscape.lucre.FScape
 import de.sciss.lucre.store.BerkeleyDB
 import de.sciss.lucre.{Artifact, ArtifactLocation}
-import de.sciss.audiofile.{AudioFile, AudioFileSpec, AudioFileType, SampleFormat}
 import de.sciss.synth.proc.{Durable, SoundProcesses, Universe}
 import org.scalatest.Outcome
 import org.scalatest.flatspec.FixtureAnyFlatSpec

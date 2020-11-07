@@ -17,7 +17,7 @@ package impl
 import akka.stream.stage.{InHandler, OutHandler}
 import akka.stream.{Inlet, Outlet, Shape}
 import de.sciss.fscape.stream.impl.Handlers.Resource
-import de.sciss.fscape.{logStream => log}
+import de.sciss.fscape.Log.{stream => logStream}
 
 /** In the mess of all the different implementation classes, this is a new
   * approach for collecting standard type of handlers which correctly handle the
@@ -382,7 +382,7 @@ object Handlers {
 
     final def onPush(): Unit = {
       val ok = buf == null
-      log(s"$this onPush() - $ok")
+      logStream.debug(s"$this onPush() - $ok")
       if (ok) {
         doGrab()
         assert (!_hasNext)
@@ -393,7 +393,7 @@ object Handlers {
 
     override final def onUpstreamFinish(): Unit = {
       val ok = buf == null && !isAvailable(inlet)
-      log(s"$this onUpstreamFinish() - $ok")
+      logStream.info(s"$this onUpstreamFinish() - $ok")
       if (ok) {
         _isDone = true
         onDone(inlet)
@@ -508,7 +508,7 @@ object Handlers {
     final def onPull(): Unit = {
       val _buf  = buf
       val ok    = _buf != null && (off == _buf.size || _flush)
-      log(s"$this onPull()")
+      logStream.debug(s"$this onPull()")
       if (ok) {
         write()
         if (_flush) {
@@ -524,7 +524,7 @@ object Handlers {
     }
 
     override def onDownstreamFinish(cause: Throwable): Unit = {
-      log(s"$this onDownstreamFinish()")
+      logStream.info(s"$this onDownstreamFinish()")
       _isDone   = true
       _hasNext  = false
       free()
@@ -644,7 +644,7 @@ object Handlers {
 
     final def onPush(): Unit = {
       val ok = buf == null
-      log(s"$this onPush() - $ok")
+      logStream.debug(s"$this onPush() - $ok")
       if (ok) {
         buf = grab(inlet)
         off = 0
@@ -661,7 +661,7 @@ object Handlers {
 
     override final def onUpstreamFinish(): Unit = {
       val ok = buf == null && !isAvailable(inlet)
-      log(s"$this onUpstreamFinish() - $ok")
+      logStream.info(s"$this onUpstreamFinish() - $ok")
       if (ok) {
         if (valid) {
           closedValid = true

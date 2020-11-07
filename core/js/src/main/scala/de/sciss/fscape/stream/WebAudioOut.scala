@@ -16,6 +16,7 @@ package stream
 
 import akka.stream.Attributes
 import akka.stream.stage.InHandler
+import de.sciss.fscape.Log.{stream => logStream}
 import de.sciss.fscape.stream.impl.shapes.UniformSinkShape
 import de.sciss.fscape.stream.impl.{AudioContextExt, AudioProcessingEvent, BlockingGraphStage, NodeHasInitImpl, NodeImpl, ScriptProcessorNode}
 import org.scalajs.dom
@@ -140,7 +141,7 @@ object WebAudioOut {
         if (isAvailable(in)) {
           shouldStop = true
         } else {
-          logStream(s"onUpstreamFinish($in)")
+          logStream.info(s"onUpstreamFinish($in)")
           _isSuccess = true
           super.onUpstreamFinish()
         }
@@ -151,7 +152,7 @@ object WebAudioOut {
 
     override protected def init(): Unit = {
       // super.init()
-      logStream(s"$this - init()")
+      logStream.info(s"$this - init()")
     }
 
     override protected def launch(): Unit = {
@@ -182,7 +183,7 @@ object WebAudioOut {
     }
 
     override protected def stopped(): Unit = {
-      logStream(s"$this - postStop()")
+      logStream.info(s"$this - postStop()")
       okRT = false
       if (scriptProcessor != null) {
         scriptProcessor.disconnect(audioContext.destination)
@@ -210,8 +211,7 @@ object WebAudioOut {
       pushed == numChannels && writtenCircle < readCircle
 
     private def process(): Unit = {
-      //      logStream(s"process() $this")
-      logStream(s"process() $this")
+      logStream.debug(s"process() $this")
       pushed = 0
 
       var ch = 0

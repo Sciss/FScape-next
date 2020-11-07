@@ -22,6 +22,7 @@ import de.sciss.audiofile.AudioFile.Frames
 import de.sciss.file._
 import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeHasInitImpl, NodeImpl}
 import de.sciss.audiofile.{AudioFile, AudioFileSpec}
+import de.sciss.fscape.Log.{stream => logStream}
 
 import scala.collection.immutable.{Seq => ISeq}
 import scala.util.control.NonFatal
@@ -108,7 +109,7 @@ object AudioFileOut {
         if (isAvailable(in)) {
           shouldStop = true
         } else {
-          logStream(s"onUpstreamFinish($in)")
+          logStream.info(s"onUpstreamFinish($in)")
           _isSuccess = true
           super.onUpstreamFinish()
         }
@@ -119,7 +120,7 @@ object AudioFileOut {
 
     override protected def init(): Unit = {
       // super.init()
-      logStream(s"$this - init()")
+      logStream.info(s"$this - init()")
       val f = new File(uri)
       af = AudioFile.openWrite(f, spec)
     }
@@ -130,7 +131,7 @@ object AudioFileOut {
     }
 
     override protected def stopped(): Unit = {
-      logStream(s"$this - postStop()")
+      logStream.info(s"$this - postStop()")
       buf = null
       var ch = 0
       while (ch < numChannels) {
@@ -160,7 +161,7 @@ object AudioFileOut {
 
     private def process(): Unit = {
 //      logStream(s"process() $this")
-      logStream(s"process() $this")
+      logStream.debug(s"process() $this")
       pushed = 0
 
       var ch = 0

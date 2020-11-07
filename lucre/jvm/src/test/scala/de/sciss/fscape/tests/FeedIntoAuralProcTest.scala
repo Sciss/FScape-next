@@ -3,6 +3,7 @@ package tests
 
 import de.sciss.file._
 import de.sciss.filecache.Limit
+import de.sciss.fscape.Ops._
 import de.sciss.fscape.lucre.{Cache, FScape}
 import de.sciss.lucre.IntObj
 import de.sciss.lucre.synth.InMemory

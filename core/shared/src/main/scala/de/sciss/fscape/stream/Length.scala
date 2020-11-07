@@ -17,6 +17,7 @@ package stream
 import akka.stream.stage.{InHandler, OutHandler}
 import akka.stream.{Attributes, FlowShape}
 import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import de.sciss.fscape.Log.{stream => logStream}
 
 object Length {
   def apply(in: OutA)(implicit b: Builder): OutL = {
@@ -50,7 +51,7 @@ object Length {
     // ---- InHandler ----
 
     def onPush(): Unit = {
-      logStream(s"onPush() $this")
+      logStream.debug(s"onPush() $this")
       val buf = grab(shape.in)
       framesRead += buf.size
       buf.release()
@@ -58,24 +59,24 @@ object Length {
     }
 
     override def onUpstreamFinish(): Unit = {
-      logStream(s"onUpstreamFinish() $this")
+      logStream.info(s"onUpstreamFinish() $this")
       if (isAvailable(shape.out)) writeAndFinish()
     }
 
     // ---- OutHandler ----
 
     def onPull(): Unit = {
-      logStream(s"onPull() $this")
+      logStream.debug(s"onPull() $this")
       if (isClosed(shape.in) /*&& !isAvailable(shape.in)*/) writeAndFinish()
     }
 
     override def onDownstreamFinish(cause: Throwable): Unit = {
-      logStream(s"onDownstreamFinish() $this")
+      logStream.info(s"onDownstreamFinish() $this")
       super.onDownstreamFinish(cause)
     }
 
     private def writeAndFinish(): Unit = {
-      logStream(s"push and completeStage() $this")
+      logStream.info(s"push and completeStage() $this")
       val buf     = ctrl.borrowBufL()
       buf.size    = 1
       buf.buf(0)  = framesRead

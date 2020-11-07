@@ -29,6 +29,8 @@ package graph
   *                         produce less bass attenuation.
   */
 final case class LeakDC(in: GE, coeff: GE = 0.995) extends GE.Lazy {
-  protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
+  protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = {
+    import Ops._
     Biquad(in, b0 = 1.0, b1 = -1.0, a1 = -coeff)
+  }
 }

@@ -19,9 +19,9 @@ import akka.stream.{Attributes, FanInShape14, Inlet}
 import de.sciss.fscape.graph.BinaryOp.Op
 import de.sciss.fscape.graph.PenImage._
 import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
-import de.sciss.fscape.{logStream => log}
 import de.sciss.numbers
 import de.sciss.numbers.IntFunctions
+import de.sciss.fscape.Log.{stream => logStream}
 
 import scala.annotation.switch
 import scala.math.{abs, min}
@@ -199,14 +199,14 @@ object PenImage {
     // ---- out handler ----
 
     def onPull(): Unit = {
-      log(s"onPull() $logic")
+      logStream.debug(s"onPull() $logic")
       if (stage == 3) {
         processOutData()
       }
     }
 
     override def onDownstreamFinish(cause: Throwable): Unit = {
-      log(s"onDownstreamFinish() $logic")
+      logStream.info(s"onDownstreamFinish() $logic")
       super.onDownstreamFinish(cause)
     }
 
@@ -215,7 +215,7 @@ object PenImage {
     // ---- stages ----
 
     private def requestNextAuxData(): Unit = {
-      log("requestNextAuxData")
+      logStream.debug("requestNextAuxData")
       assert (stage == 0)
       assert (!auxDataReady)
       if (auxDataRem == 0) {  // no ongoing request
@@ -229,7 +229,7 @@ object PenImage {
     }
 
     private def requestNextDstData(): Unit = {
-      log("requestNextDstData")
+      logStream.debug("requestNextDstData")
       assert (stage == 1)
       assert (!dstDataReady)
       if (dstDataRem == 0) {  // no ongoing request
@@ -243,7 +243,7 @@ object PenImage {
     }
 
     private def requestNextPenData(): Unit = {
-      log("requestNextPenData")
+      logStream.debug("requestNextPenData")
       assert (stage == 2)
       assert (!penDataReady)
       if (penDataRem == 0) {  // no ongoing request
@@ -257,7 +257,7 @@ object PenImage {
     }
 
     private def notifyAuxDataReady(): Unit = {
-      log("notifyAuxDataReady")
+      logStream.debug("notifyAuxDataReady")
       assert (!auxDataReady)
       if (stage == 0) {
         processAuxData()
@@ -267,7 +267,7 @@ object PenImage {
     }
 
     private def notifyDstDataReady(): Unit = {
-      log("notifyDstDataReady")
+      logStream.debug("notifyDstDataReady")
       assert (!dstDataReady)
       if (stage == 1) {
         processDstData()
@@ -277,7 +277,7 @@ object PenImage {
     }
 
     private def notifyPenDataReady(): Unit = {
-      log("notifyPenDataReady")
+      logStream.debug("notifyPenDataReady")
       assert (!penDataReady)
       if (stage == 2) {
         processPenData()
@@ -287,7 +287,7 @@ object PenImage {
     }
 
     private def processAuxData(): Unit = {
-      log("processAuxData")
+      logStream.error("processAuxData")
       assert (stage == 0)
       import numbers.Implicits._
 
@@ -316,7 +316,7 @@ object PenImage {
     }
 
     private def processDstData(): Unit = {
-      log("processDstData")
+      logStream.debug("processDstData")
       assert (stage == 1)
 
       val dstRem    = hDst.bufRemain
@@ -355,7 +355,7 @@ object PenImage {
     private[this] var outWritten  = 0   // pushed out plus `outOff`
 
     private def processPenData(): Unit = {
-      log("processPenData")
+      logStream.debug("processPenData")
       assert (stage == 2)
 
       // hSrc, hAlpha, hX, hY, hNext
@@ -420,7 +420,7 @@ object PenImage {
 
     // shape.out must be available
     private def processOutData(): Unit = {
-      log("processOutData")
+      logStream.debug("processOutData")
       assert (stage == 3)
 
       if (bufOut == null) {
@@ -454,7 +454,7 @@ object PenImage {
     }
 
     private def writeOut(): Unit = {
-      log("writeOut")
+      logStream.debug("writeOut")
       if (outOff > 0) {
         bufOut.size = outOff
         push(shape.out, bufOut)

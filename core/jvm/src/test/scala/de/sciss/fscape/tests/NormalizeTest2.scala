@@ -1,10 +1,11 @@
-package de.sciss.fscape.tests
+package de.sciss.fscape
+package tests
 
 import de.sciss.audiofile.AudioFileSpec
 import de.sciss.file._
+import de.sciss.fscape.Ops._
 import de.sciss.fscape.gui.SimpleGUI
 import de.sciss.fscape.stream.Control
-import de.sciss.fscape.{GE, Graph, graph}
 import de.sciss.numbers.Implicits._
 
 import scala.swing.Swing

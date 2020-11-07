@@ -1,9 +1,10 @@
-package de.sciss.fscape.tests
+package de.sciss.fscape
+package tests
 
 import de.sciss.file._
+import de.sciss.fscape.Ops._
 import de.sciss.fscape.graph.ImageFile
 import de.sciss.fscape.gui.SimpleGUI
-import de.sciss.fscape.{Graph, graph, stream}
 import de.sciss.kollflitz
 import org.rogach.scallop.{ScallopConf, ScallopOption => Opt}
 

@@ -19,6 +19,7 @@ import java.net.URI
 import akka.stream.Attributes
 import de.sciss.fscape.stream.impl.shapes.UniformSourceShape
 import de.sciss.fscape.stream.impl.{BlockingGraphStage, ImageFileInImpl, NodeHasInitImpl, NodeImpl}
+import de.sciss.fscape.Log.{stream => logStream}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
@@ -58,7 +59,7 @@ object ImageFileIn {
 
     override protected def init(): Unit = {
       super.init()
-      logStream(s"init() $this")
+      logStream.info(s"init() $this")
       openImage(uri)
     }
 
@@ -76,7 +77,7 @@ object ImageFileIn {
         writeOuts(chunk)
       }
       if (framesRead == numFrames) {
-        logStream(s"completeStage() $this")
+        logStream.info(s"process() -> completeStage $this")
         completeStage()
       }
     }

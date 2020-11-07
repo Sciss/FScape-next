@@ -17,9 +17,10 @@ package stream
 import akka.stream.stage.{InHandler, OutHandler}
 import akka.stream.{Attributes, FlowShape}
 import de.sciss.audiofile.AudioFile.Frames
-import de.sciss.file._
-import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeHasInitImpl, NodeImpl}
 import de.sciss.audiofile.{AudioFile, AudioFileSpec, AudioFileType, SampleFormat}
+import de.sciss.file._
+import de.sciss.fscape.Log.{stream => logStream}
+import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeHasInitImpl, NodeImpl}
 
 import scala.util.control.NonFatal
 
@@ -72,7 +73,7 @@ object CdpModifyRadicalReverse {
 
     override def init(): Unit = {
       super.init()
-      logStream(s"init() $this")
+      logStream.info(s"init() $this")
       val tmpFileSource0  = control.createTempFile()
       val tmpFileSink0    = control.createTempFile()
       tmpFileSource       = tmpFileSource0.replaceExt("aif")
@@ -105,7 +106,7 @@ object CdpModifyRadicalReverse {
     }
 
     override protected def stopped(): Unit = {
-      logStream(s"postStop() $this")
+      logStream.info(s"postStop() $this")
       buf = null
       if (afSource != null) {
         if (afSource.isOpen) afSource.close()
@@ -135,7 +136,7 @@ object CdpModifyRadicalReverse {
       if (buf == null || buf(0).length < chunk) buf = afSink.buffer(chunk)
 
     private def processSink(): Unit = {
-      logStream(s"processSink() $this")
+      logStream.debug(s"processSink() $this")
 
       val bufIn = grab(shape.in)
       val chunk = bufIn.size
@@ -180,7 +181,7 @@ object CdpModifyRadicalReverse {
 
     private def processCdp(): Unit = {
       val cmdArgs = Seq(cmd.path, "radical", "1", tmpFileSink.path, tmpFileSource.path)
-      logStream(s"$this: ${cmdArgs.mkString(" ")}")
+      logStream.debug(s"$this: ${cmdArgs.mkString(" ")}")
       import sys.process._
       val swallow = ProcessLogger(_ => (), Console.err.println)
       val res     = cmdArgs.!(swallow)
@@ -192,7 +193,7 @@ object CdpModifyRadicalReverse {
     private def processSource(): Unit = {
       val chunk = math.min(bufSize, afSource.numFrames - framesRead).toInt
       if (chunk == 0) {
-        logStream(s"completeStage() $this")
+        logStream.debug(s"completeStage() $this")
         completeStage()
       } else {
         checkBuf(chunk)

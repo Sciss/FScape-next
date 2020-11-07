@@ -1,8 +1,9 @@
-package de.sciss.fscape.tests
+package de.sciss.fscape
+package tests
 
 import de.sciss.file._
+import de.sciss.fscape.Ops._
 import de.sciss.fscape.stream.Control
-import de.sciss.fscape.{GE, Graph, graph}
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration

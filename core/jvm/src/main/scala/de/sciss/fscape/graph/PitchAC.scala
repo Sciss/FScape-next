@@ -14,6 +14,8 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Ops._
+
 /** A graph element that implements Boersma's auto-correlation based pitch tracking
   * algorithm.
   *

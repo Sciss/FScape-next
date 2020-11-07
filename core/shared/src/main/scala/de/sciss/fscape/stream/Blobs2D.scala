@@ -20,6 +20,7 @@ import akka.stream.{Attributes, Inlet, Outlet}
 import de.sciss.fscape.stream.impl.Handlers.{InDAux, InDMain, InIAux, OutDMain, OutIMain}
 import de.sciss.fscape.stream.impl.shapes.In5Out4Shape
 import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
+import de.sciss.fscape.Log.{stream => logStream}
 
 import scala.annotation.{switch, tailrec}
 import scala.math.{max, min}
@@ -358,7 +359,7 @@ object Blobs2D {
 
     @tailrec
     protected def process(): Unit = {
-      logStream(s"process() $this")
+      logStream.debug(s"process() $this")
 
       if (stage == 0) {
         if (!tryObtainWinParams()) return

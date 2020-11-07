@@ -18,6 +18,7 @@ import akka.stream.stage.InHandler
 import akka.stream.{Attributes, FanInShape10}
 import de.sciss.fscape.stream.impl.deprecated.{Out1DoubleImpl, Out1LogicImpl, ProcessOutHandlerImpl}
 import de.sciss.fscape.stream.impl.{NodeImpl, ScanImageImpl, StageImpl}
+import de.sciss.fscape.Log.{stream => logStream}
 
 import scala.annotation.tailrec
 import scala.math.{max, min}
@@ -171,17 +172,17 @@ object ScanImage {
     // this is rather the case for x/y
     setHandler(shape.in0, new InHandler {
       def onPush(): Unit = {
-        logStream(s"onPush(${shape.in0})")
+        logStream.debug(s"onPush(${shape.in0})")
         updateMainCanRead()
         if (_mainCanRead) process()
       }
 
       override def onUpstreamFinish(): Unit = {
-        logStream(s"onUpstreamFinish(${shape.in0})")
+        logStream.info(s"onUpstreamFinish(${shape.in0})")
         if (inValid) {
           process()
         } else if (!isAvailable(shape.in0)) {
-          logStream(s"Invalid process ${shape.in0}")
+          logStream.info(s"Invalid process ${shape.in0}")
           completeStage()
         }
       }
@@ -240,19 +241,19 @@ object ScanImage {
       val in = shape.inlets(inIdx)
       setHandler(in, new InHandler {
         def onPush(): Unit = {
-          logStream(s"onPush($in)")
+          logStream.debug(s"onPush($in)")
           updateAux1CanRead()
           if (_aux1CanRead) process()
         }
 
         override def onUpstreamFinish(): Unit = {
-          logStream(s"onUpstreamFinish($in)")
+          logStream.info(s"onUpstreamFinish($in)")
           if (_aux1InValid || isAvailable(in)) {
             updateAux1CanRead()
             // updateAux1Ended()
             if (_aux1CanRead) process()
           } else {
-            logStream(s"Invalid aux $in")
+            logStream.info(s"Invalid aux $in")
             completeStage()
           }
         }
@@ -379,19 +380,19 @@ object ScanImage {
       val in = shape.inlets(inIdx)
       setHandler(in, new InHandler {
         def onPush(): Unit = {
-          logStream(s"onPush($in)")
+          logStream.debug(s"onPush($in)")
           updateAux2CanRead()
           if (_aux2CanRead) process()
         }
 
         override def onUpstreamFinish(): Unit = {
-          logStream(s"onUpstreamFinish($in)")
+          logStream.info(s"onUpstreamFinish($in)")
           if (_aux2InValid || isAvailable(in)) {
             updateAux2CanRead()
             updateXYEnded()
             if (_aux2CanRead || _xyEnded) process()  // may lead to `flushOut`
           } else {
-            logStream(s"Invalid aux $in")
+            logStream.info(s"Invalid aux $in")
             completeStage()
           }
         }
@@ -425,7 +426,7 @@ object ScanImage {
 
     @tailrec
     def process(): Unit = {
-      logStream(s"process() $this")
+      logStream.debug(s"process() $this")
       var stateChange = false
 
       if (mainShouldRead) {
@@ -463,7 +464,7 @@ object ScanImage {
       }
 
       if (flushOut && outSent) {
-        logStream(s"completeStage() $this")
+        logStream.debug(s"process() -> completeStage $this")
         completeStage()
       }
       else if (stateChange) process()

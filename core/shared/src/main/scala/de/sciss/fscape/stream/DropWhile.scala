@@ -17,6 +17,7 @@ package stream
 import akka.stream.{Attributes, FanInShape2, Inlet, Outlet}
 import de.sciss.fscape.stream.impl.Handlers._
 import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
+import de.sciss.fscape.Log.{stream => logStream}
 
 object DropWhile {
   def apply[A, E <: BufElem[A]](in: Outlet[E], p: OutI)
@@ -66,7 +67,7 @@ object DropWhile {
     }
 
     def process(): Unit = {
-      logStream(s"process() $this")
+      logStream.debug(s"process() $this")
 
       if (gate) {
         while (gate) {

@@ -14,6 +14,7 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Ops._
 import de.sciss.fscape.stream.{Builder, StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}

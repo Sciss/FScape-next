@@ -16,6 +16,7 @@ package stream
 
 import akka.stream.{Attributes, FanInShape3, Inlet, Outlet}
 import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
+import de.sciss.fscape.Log.{stream => logStream}
 
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -92,7 +93,7 @@ object PriorityQueue {
       } // else ignore
 
     def process(): Unit = {
-      logStream(s"process() $this state = $state")
+      logStream.debug(s"process() $this state = $state")
 
       if (state == 0) {
         if (!hSize.hasNext) return

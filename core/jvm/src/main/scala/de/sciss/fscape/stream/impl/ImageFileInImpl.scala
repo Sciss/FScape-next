@@ -21,6 +21,7 @@ import java.net.URI
 import akka.stream.Shape
 import akka.stream.stage.OutHandler
 import de.sciss.file.File
+import de.sciss.fscape.Log.{stream => logStream}
 import javax.imageio.ImageIO
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -87,7 +88,7 @@ trait ImageFileInImpl[S <: Shape] extends NodeHasInitImpl with OutHandler {
   }
 
   override protected def stopped(): Unit = {
-    logStream(s"postStop() $this")
+    logStream.info(s"postStop() $this")
     freeInputBuffers()
     freeOutputBuffers()
     closeImage()
@@ -198,7 +199,7 @@ trait ImageFileInImpl[S <: Shape] extends NodeHasInitImpl with OutHandler {
 
   override final def onDownstreamFinish(cause: Throwable): Unit = {
     val all = shape.outlets.forall(isClosed(_))
-    logStream(s"onDownstreamFinish() $this - $all")
+    logStream.info(s"onDownstreamFinish() $this - $all")
     if (all) {
       super.onDownstreamFinish(cause)
     } else {
@@ -211,7 +212,7 @@ trait ImageFileInImpl[S <: Shape] extends NodeHasInitImpl with OutHandler {
 
   override final def onPull(): Unit = {
     val ok = isInitialized && canWrite
-    logStream(s"onPull() - $ok - $this")
+    logStream.debug(s"onPull() - $ok - $this")
     if (ok) process()
   }
 }

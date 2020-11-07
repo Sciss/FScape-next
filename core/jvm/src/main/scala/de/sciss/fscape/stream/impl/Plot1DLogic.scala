@@ -14,9 +14,9 @@
 package de.sciss.fscape.stream.impl
 
 import akka.stream.Inlet
-import de.sciss.fscape.logStream
 import de.sciss.fscape.stream.impl.shapes.SinkShape2
 import de.sciss.fscape.stream.{BufElem, BufI, Control, Layer, StreamType}
+import de.sciss.fscape.Log.{stream => logStream}
 
 import scala.annotation.tailrec
 import scala.math.{max, min}
@@ -110,7 +110,7 @@ abstract class Plot1DLogic[A, E <: BufElem[A]](name: String, shape: SinkShape2[E
 
   @tailrec
   protected final def process(): Unit = {
-    logStream(s"process() $this")
+    logStream.debug(s"process() $this")
 
     if (isNextWindow) {
       if (!hSize.hasNext) return
@@ -129,7 +129,7 @@ abstract class Plot1DLogic[A, E <: BufElem[A]](name: String, shape: SinkShape2[E
     processChunk(rem)
 
     if (shouldComplete()) {
-      logStream(s"completeStage() $this")
+      logStream.info(s"process() -> completeStage $this")
       completeStage()
     } else {
       process()

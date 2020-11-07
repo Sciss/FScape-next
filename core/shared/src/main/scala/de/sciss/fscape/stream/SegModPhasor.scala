@@ -16,6 +16,7 @@ package stream
 
 import akka.stream.{Attributes, FanInShape2, Inlet}
 import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
+import de.sciss.fscape.Log.{stream => logStream}
 
 import scala.annotation.tailrec
 
@@ -60,7 +61,7 @@ object SegModPhasor {
 
     @tailrec
     def process(): Unit = {
-      logStream(s"process() $this")
+      logStream.debug(s"process() $this")
 
       if (nextPhase) {
         if (!(hFreqN.hasNext && hPhase.hasNext)) {

@@ -16,6 +16,7 @@ package stream
 
 import akka.stream.Shape
 import akka.stream.stage.GraphStageLogic
+import de.sciss.fscape.Log.{stream => logStream}
 
 import scala.concurrent.Future
 
@@ -49,7 +50,7 @@ trait Node {
   /** Calls `stopped` and then removes the node from the control. */
   override final def postStop(): Unit = {
     stopped()
-    logStream(s"$this - postStop()")
+    logStream.debug(s"$this - postStop()")
     val tr = akka.stream.sciss.Util.findFailure(this)
     if (tr.isFailure) control.nodeFailed(this, tr.failed.get)
     control.removeNode(this)

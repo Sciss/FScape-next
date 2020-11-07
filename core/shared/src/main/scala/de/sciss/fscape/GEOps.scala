@@ -13,6 +13,7 @@
 
 package de.sciss.fscape
 
+import de.sciss.fscape.Ops._
 import de.sciss.fscape.graph.BinaryOp._
 import de.sciss.fscape.graph.UnaryOp._
 import de.sciss.fscape.graph.{BinaryOp, ChannelProxy, Clip, ComplexBinaryOp, ComplexUnaryOp, Concat, Constant, Differentiate, Distinct, Drop, DropRight, DropWhile, Elastic, ExpExp, ExpLin, FilterSeq, Fold, Indices, Length, LinExp, LinLin, MatchLen, Metro, Poll, RunningMax, RunningMin, RunningProduct, RunningSum, Take, TakeRight, TakeWhile, UnaryOp, UnzipWindow, Wrap, Zip}

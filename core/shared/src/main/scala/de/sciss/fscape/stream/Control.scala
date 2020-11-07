@@ -18,6 +18,7 @@ import java.util.concurrent.ConcurrentLinkedQueue
 
 import akka.actor.{Actor, ActorContext, ActorRef, ActorSystem, Props}
 import akka.stream.{ActorMaterializer, Materializer}
+import de.sciss.fscape.Log.{control => logControl}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.collection.mutable
@@ -279,7 +280,7 @@ object Control {
     private[this] var tryResult = Ok
 
     private def actNodeFailed(n: Node, ex: Throwable): Unit = if (tryResult.isSuccess) {
-      logControl(s"actNodeFailed($n, $ex)")
+      logControl.info(s"actNodeFailed($n, $ex)")
       tryResult = Failure(ex)
     }
 
@@ -300,7 +301,7 @@ object Control {
         }
 
         if (nodes.isEmpty) {
-          logControl(s"${hashCode().toHexString} actRemoveNode complete")
+          logControl.info(s"${hashCode().toHexString} actRemoveNode complete")
           /* val ok = */ statusP.tryComplete(tryResult)
           // if (!ok) logControl(s"${hashCode().toHexString} promise already completed")
           sync.synchronized {
@@ -330,12 +331,12 @@ object Control {
     // nodes (`launch` will typically poll a node's inputs).
     private def actLaunch(layer: Layer, done: Promise[Unit]): Unit = {
       val nodes0 = nodesInLayer(layer)
-      logControl(s"${hashCode().toHexString} actLaunch. #nodes = ${nodes0.size}")
+      logControl.info(s"${hashCode().toHexString} actLaunch. #nodes = ${nodes0.size}")
       val futInit0: List[Future[Unit]] = nodes0.iterator.collect {
         case ni: NodeHasInit => ni.initAsync()
       } .toList
 
-      logControl(s"${hashCode().toHexString} actLaunch. # NodeHasInit = ${futInit0.size}")
+      logControl.info(s"${hashCode().toHexString} actLaunch. # NodeHasInit = ${futInit0.size}")
 
       import config.executionContext
       val futInit1 = config.debugWaitLaunch match {
@@ -344,18 +345,18 @@ object Control {
       }
       val futInit   = Future.sequence(futInit1)
       val futLaunch: Future[Unit] = futInit.flatMap { _ =>
-        logControl(s"${hashCode().toHexString} actLaunch. launchAsync()")
+        logControl.info(s"${hashCode().toHexString} actLaunch. launchAsync()")
         val inner = nodes0.map { n =>
           n.launchAsync()
         }
-        logControl(s"--- woppa ${inner.size}")
+        logControl.debug(s"--- inner.size ${inner.size}")
         Future.sequence(inner).map(_ => ())
       }
       done.completeWith(futLaunch)
     }
 
     private def actComplete(layer: Layer, done: Promise[Unit]): Unit = {
-      logControl(s"${hashCode().toHexString} actComplete")
+      logControl.info(s"${hashCode().toHexString} actComplete")
       val nodes0 = nodesInLayer(layer)
       val futComplete = nodes0.map { n =>
         n.completeAsync()
@@ -366,7 +367,7 @@ object Control {
     }
 
     private def actCancel(): Unit = {
-      logControl(s"${hashCode().toHexString} actCancel")
+      logControl.info(s"${hashCode().toHexString} actCancel")
       val ex = Cancelled()
 //      statusP.tryFailure(ex)
       val nodes0 = nodes
@@ -397,7 +398,7 @@ object Control {
 //        println("Woopa dooopa")
 //        Stop
 //      })
-      logControl(s"${hashCode().toHexString} runExpanded")
+      logControl.info(s"${hashCode().toHexString} runExpanded")
       mkActor()
       r.run()(config.materializer)
       _actor ! Launch(0, Promise[Unit]())

@@ -1,5 +1,6 @@
 package de.sciss.fscape
 
+import de.sciss.fscape.Ops._
 import de.sciss.kollflitz.Vec
 import de.sciss.numbers
 

@@ -14,9 +14,9 @@
 package de.sciss.fscape.stream.impl.logic
 
 import akka.stream.{Inlet, Outlet}
-import de.sciss.fscape.logStream
 import de.sciss.fscape.stream.Node
 import de.sciss.fscape.stream.impl.Handlers
+import de.sciss.fscape.Log.{stream => logStream}
 
 import scala.annotation.tailrec
 import scala.math.min
@@ -117,7 +117,7 @@ trait WindowedMultiInOut extends Node {
 
   @tailrec
   final protected def process(): Unit = {
-    logStream(s"process() $this")
+    logStream.debug(s"process() $this")
 
     if (stage == 0) {
       if (!tryObtainWinParams()) return

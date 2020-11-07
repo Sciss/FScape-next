@@ -1,8 +1,9 @@
 package de.sciss.fscape
 
-import de.sciss.file._
-import de.sciss.fscape.gui.SimpleGUI
 import de.sciss.audiofile.AudioFileSpec
+import de.sciss.file._
+import de.sciss.fscape.Ops._
+import de.sciss.fscape.gui.SimpleGUI
 
 import scala.swing.Swing
 

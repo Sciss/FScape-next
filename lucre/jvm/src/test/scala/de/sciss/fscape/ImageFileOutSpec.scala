@@ -1,6 +1,7 @@
 package de.sciss.fscape
 
 import de.sciss.file._
+import de.sciss.fscape.Ops._
 import de.sciss.fscape.graph.ImageFile
 import de.sciss.fscape.lucre.FScape
 import de.sciss.lucre.store.BerkeleyDB

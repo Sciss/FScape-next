@@ -18,6 +18,7 @@ import akka.stream.ClosedShape
 import akka.stream.scaladsl.{GraphDSL, RunnableGraph}
 import de.sciss.fscape.graph.{Constant, UGenProxy}
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
+import de.sciss.fscape.Log.{graph => logGraph}
 
 import scala.annotation.elidable
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -274,6 +275,6 @@ object UGenGraph {
   }
 
   @elidable(elidable.CONFIG) private def log(builder: Basic, what: => String): Unit =
-    if (showLog) logGraph(s"<${builder.toString}> $what")
+    if (showLog) logGraph.debug(s"<${builder.toString}> $what")
 }
 final case class UGenGraph(runnable: RunnableGraph[NotUsed])

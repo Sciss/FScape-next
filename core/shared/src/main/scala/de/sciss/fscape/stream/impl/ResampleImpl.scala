@@ -17,6 +17,7 @@ package impl
 
 import akka.stream.{Inlet, Shape}
 import de.sciss.fscape.stream.impl.Handlers.{InDAux, InDMain, InIAux, OutDMain}
+import de.sciss.fscape.Log.{stream => logStream}
 
 import scala.annotation.tailrec
 import scala.math._
@@ -91,7 +92,7 @@ abstract class ResampleImpl[S <: Shape](name: String, layer: Layer, shape: S)(im
 
   @tailrec
   final def process(): Unit = {
-    logStream(s"process() $this")
+    logStream.debug(s"process() $this")
     val stateChange = processChunk()
 
     val flushOut = hIn.isDone && flushRemain == 0

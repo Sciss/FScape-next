@@ -15,8 +15,8 @@ package de.sciss.fscape.stream
 package impl.logic
 
 import akka.stream.Inlet
-import de.sciss.fscape.logStream
 import de.sciss.fscape.stream.impl.Handlers
+import de.sciss.fscape.Log.{stream => logStream}
 
 import scala.annotation.tailrec
 import scala.math.min
@@ -129,7 +129,7 @@ trait WindowedInA1A2OutB[A1, E1 <: BufElem[A1], A2, E2 <: BufElem[A2], B, F <: B
 
   @tailrec
   final protected def process(): Unit = {
-    logStream(s"process() $this")
+    logStream.debug(s"process() $this")
 
     if (stage == 0) {
       if (!tryObtainWinParams()) return

@@ -1,11 +1,13 @@
-package de.sciss.fscape.tests
+package de.sciss.fscape
+package tests
 
+import de.sciss.audiofile.{AudioFile, AudioFileSpec, AudioFileType, SampleFormat}
 import de.sciss.file._
+import de.sciss.fscape.Ops._
 import de.sciss.fscape.graph.GenWindow
 import de.sciss.fscape.gui.SimpleGUI
-import de.sciss.fscape.{GE, Graph, graph, showStreamLog, stream}
+import de.sciss.log.Level
 import de.sciss.numbers
-import de.sciss.audiofile.{AudioFile, AudioFileSpec, AudioFileType, SampleFormat}
 
 import scala.swing.Swing
 
@@ -287,7 +289,7 @@ object MorassTest extends App {
       config.useAsync = false // for debugging
       val ctrl = stream.Control(config)
 
-      showStreamLog = true
+      Log.stream.level = Level.Debug
 
       ctrl.run(g)
 

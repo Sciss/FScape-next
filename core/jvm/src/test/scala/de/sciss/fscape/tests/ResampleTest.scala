@@ -1,8 +1,9 @@
-package de.sciss.fscape.tests
+package de.sciss.fscape
+package tests
 
-import de.sciss.file._
-import de.sciss.fscape.{GE, Graph, graph, stream}
 import de.sciss.audiofile.AudioFileSpec
+import de.sciss.file._
+import de.sciss.fscape.Ops._
 
 object ResampleTest extends App {
   def any2stringadd: Any = ()

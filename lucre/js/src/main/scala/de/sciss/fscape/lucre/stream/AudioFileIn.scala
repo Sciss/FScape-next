@@ -19,10 +19,11 @@ import akka.stream.Attributes
 import akka.stream.stage.OutHandler
 import de.sciss.audiofile.AudioFile.Frames
 import de.sciss.audiofile.{AsyncAudioFile, AudioFile}
+import de.sciss.fscape.Log.{stream => logStream}
 import de.sciss.fscape.stream.impl.shapes.UniformSourceShape
 import de.sciss.fscape.stream.impl.{NodeHasInitImpl, NodeImpl, StageImpl}
 import de.sciss.fscape.stream.{BufD, Control, Layer, OutD}
-import de.sciss.fscape.{Util, logStream, stream}
+import de.sciss.fscape.{Util, stream}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.Future
@@ -74,7 +75,7 @@ object AudioFileIn {
 
     override protected def init(): Unit = {
       super.init()
-      logStream(s"init() $this")
+      logStream.info(s"init() $this")
       import ctrl.config.executionContext
       afFut   = AudioFile.openReadAsync(uri)
       bufSize = ctrl.blockSize
@@ -112,7 +113,7 @@ object AudioFileIn {
     }
 
     override protected def stopped(): Unit = {
-      logStream(s"postStop() $this")
+      logStream.info(s"postStop() $this")
       buf = null
       _isComplete = true
       //      try {
@@ -127,7 +128,7 @@ object AudioFileIn {
 
     override def onDownstreamFinish(cause: Throwable): Unit = {
       val all = shape.outlets.forall(out => isClosed(out))
-      logStream(s"completeStage() $this - $all")
+      logStream.info(s"completeStage() $this - $all")
       if (all) {
         super.onDownstreamFinish(cause)
       } else {
@@ -145,7 +146,7 @@ object AudioFileIn {
       afReady = false
       val chunk = math.min(bufSize, af.numFrames - framesRead).toInt
       if (chunk == 0) {
-        logStream(s"completeStage() $this")
+        logStream.info(s"readChunk() -> completeStage $this")
         completeStage()
       } else {
         val futRead = af.read(buf, 0, chunk)

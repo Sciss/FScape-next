@@ -2,6 +2,7 @@ package de.sciss.fscape
 package tests
 
 import de.sciss.audiofile.AudioFileSpec
+import de.sciss.fscape.Ops._
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration

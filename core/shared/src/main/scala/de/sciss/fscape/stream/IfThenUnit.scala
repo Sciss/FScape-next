@@ -18,6 +18,7 @@ import akka.stream.Attributes
 import akka.stream.stage.InHandler
 import de.sciss.fscape.stream.impl.shapes.UniformSinkShape
 import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
+import de.sciss.fscape.Log.{stream => logStream}
 
 import scala.collection.immutable.{Seq => ISeq}
 import scala.concurrent.Future
@@ -109,7 +110,7 @@ object IfThenUnit {
     }
 
     private def process(selBranchIdx: Int): Unit = {
-      logStream(s"process($selBranchIdx) $this")
+      logStream.debug(s"process($selBranchIdx) $this")
       // println(s"IF-THEN-UNIT ${node.hashCode().toHexString} process($selBranchIdx)")
 
       var ch = 0

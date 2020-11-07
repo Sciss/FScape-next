@@ -17,6 +17,7 @@ package stream
 import akka.stream.{Attributes, FanInShape2, Inlet, Outlet}
 import de.sciss.fscape.stream.impl.Handlers._
 import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
+import de.sciss.fscape.Log.{stream => logStream}
 
 import scala.math.{max, min}
 
@@ -80,7 +81,7 @@ object BufferMemory {
     }
 
     protected def process(): Unit = {
-      logStream(s"process() $this")
+      logStream.debug(s"process() $this")
 
       if (needsLen) {
         if (!hDlyLen.hasNext) return

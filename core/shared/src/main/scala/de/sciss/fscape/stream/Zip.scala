@@ -17,6 +17,7 @@ package stream
 import akka.stream.{Attributes, FanInShape2, Inlet, Outlet}
 import de.sciss.fscape.stream.impl.Handlers._
 import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
+import de.sciss.fscape.Log.{stream => logStream}
 
 object Zip {
   def apply[A, E <: BufElem[A]](a: Outlet[E], b: Outlet[E])
@@ -67,7 +68,7 @@ object Zip {
     protected def run(n: Int): Unit
 
     final def process(): Unit = {
-      logStream(s"process() $this")
+      logStream.debug(s"process() $this")
 
       while (true) {
         val rem = math.min(hInA.available, math.min(hInB.available, hOut.available >>> 1))

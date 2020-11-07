@@ -16,8 +16,8 @@ package de.sciss.fscape.stream
 import akka.stream.stage.{InHandler, OutHandler}
 import akka.stream.{Attributes, FanInShape4}
 import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
-import de.sciss.fscape.{Util, logStream => log}
-//import de.sciss.fscape.Util
+import de.sciss.fscape.Util
+import de.sciss.fscape.Log.{stream => logStream}
 import de.sciss.numbers.Implicits._
 import edu.emory.mathcs.jtransforms.fft.DoubleFFT_1D
 
@@ -94,7 +94,7 @@ object Convolution {
 
     def onPull(): Unit = {
       val ok = stage == 2
-      log(s"$this.out onPull() stage == 2 ? $ok")
+      logStream.debug(s"$this.out onPull() stage == 2 ? $ok")
       if (ok) {
         processOverlapAdd()
       }
@@ -151,7 +151,7 @@ object Convolution {
 
       def onPush(): Unit = {
         val ok = buf == null
-        log(s"$this - onPush() buf == null ? $ok")
+        logStream.debug(s"$this - onPush() buf == null ? $ok")
         if (ok) {
           buf     = grab(in)
           bufOff  = 0
@@ -250,7 +250,7 @@ object Convolution {
 
       override def onUpstreamFinish(): Unit = {
         val really = !isAvailable(in)
-        log(s"$this - onUpstreamFinish() !isAvailable(in) ? $really")
+        logStream.info(s"$this - onUpstreamFinish() !isAvailable(in) ? $really")
         if (really) {
           if (_shouldFill) {
             processDone()
@@ -310,7 +310,7 @@ object Convolution {
 
       def onPush(): Unit = {
         val ok = buf == null
-        log(s"$this - onPush() buf == null ? $ok")
+        logStream.debug(s"$this - onPush() buf == null ? $ok")
         if (ok) {
           buf     = grab(in)
           bufOff  = 0
@@ -349,7 +349,7 @@ object Convolution {
 
       override def onUpstreamFinish(): Unit = {
         val really = !isAvailable(in)
-        log(s"$this - onUpstreamFinish() !isAvailable(in) ? $really")
+        logStream.info(s"$this - onUpstreamFinish() !isAvailable(in) ? $really")
         if (really) {
           if (_shouldFill) processDone()
         }
@@ -389,12 +389,12 @@ object Convolution {
     private def writeDone(): Unit =
       if (outFlush) {
         val done = framesWritten == framesProd && outOff == 0
-        log(s"$this writeDone() outFlush, done = $done")
+        logStream.info(s"$this writeDone() outFlush, done = $done")
         if (done) {
           completeStage()
         }
       } else {
-        log(s"$this writeDone() !outFlush, updateKernel = $updateKernel")
+        logStream.info(s"$this writeDone() !outFlush, updateKernel = $updateKernel")
         if (updateKernel) {
           stage = 0
           // what the fucking fuck did I do in that InHandlerImpl ??
@@ -424,7 +424,7 @@ object Convolution {
     private def processKernelLen(): Unit = {
       val oldKernelLen = kernelLen
       val _kernelLen = math.max(1, KernelLenH.takeValue())
-      log(s"$this processKernelLen() ${_kernelLen}")
+      logStream.debug(s"$this processKernelLen() ${_kernelLen}")
       if (_kernelLen != oldKernelLen) {
         kernelLen   = _kernelLen
         val fftLen0 = (_kernelLen + 1).nextPowerOfTwo
@@ -467,19 +467,19 @@ object Convolution {
 
     private def notifyKernelFilled(): Unit = {
       val ok = InH.isFilled
-      log(s"$this - notifyKernelFilled() InH.isFilled ? $ok")
+      logStream.debug(s"$this - notifyKernelFilled() InH.isFilled ? $ok")
       if (ok) processConvolution()
     }
 
     private def notifyInFilled(): Unit = {
       val ok = KernelH.isFilled
-      log(s"$this - notifyInFilled() KernelH.isFilled ? $ok")
+      logStream.debug(s"$this - notifyInFilled() KernelH.isFilled ? $ok")
       if (ok) processConvolution()
     }
 
     private def processConvolution(): Unit = {
       val _inLen = InH.length
-      log(s"$this processConvolution() inLen = ${_inLen}")
+      logStream.debug(s"$this processConvolution() inLen = ${_inLen}")
       if (_inLen > 0) {
         val _kernelLen  = kernelLen
         val _inArr      = InH     .array

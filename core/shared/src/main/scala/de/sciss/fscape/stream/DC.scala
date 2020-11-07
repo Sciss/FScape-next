@@ -16,7 +16,7 @@ package de.sciss.fscape.stream
 import akka.stream.stage.{InHandler, OutHandler}
 import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
 import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
-import de.sciss.fscape.{logStream => log}
+import de.sciss.fscape.Log.{stream => logStream}
 
 object DC {
   def apply[A, Buf <: BufElem[A]](in: Outlet[Buf])
@@ -62,7 +62,7 @@ object DC {
 
     def onPull(): Unit = {
       val ok = hasValue
-      log(s"$this onPull() $ok")
+      logStream.debug(s"$this onPull() $ok")
       if (ok) {
         process()
       }
@@ -74,7 +74,7 @@ object DC {
       def onPush(): Unit = {
         val buf = grab(shape.in)
         val ok  = !hasValue
-        log(s"$this onPush() $ok")
+        logStream.debug(s"$this onPush() $ok")
         if (ok) {
           value     = buf.buf(0)
           hasValue  = true
