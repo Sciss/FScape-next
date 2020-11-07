@@ -18,8 +18,7 @@ package graph
 import java.net.URI
 
 import de.sciss.file._
-import de.sciss.fscape
-import de.sciss.lucre.Artifact
+import de.sciss.{asyncfile, fscape}
 import de.sciss.fscape.graph.{ArithmSeq, Constant, DC, ImageFile}
 import de.sciss.fscape.lucre.UGenGraphBuilder.Input
 
@@ -66,7 +65,7 @@ object ImageFileSeqIn {
         // find a child that matches the template.
         val idx0Opt = tryResolveInt(indices)
         val idx0 = idx0Opt.getOrElse {
-          import Artifact.Value.Ops
+          import asyncfile.Ops._
           template.parentOption.fold(1) { dir =>
             val n     = template.name
             val i     = n.indexOf("%d")

@@ -15,7 +15,6 @@ package de.sciss.lucre.swing.graph
 
 import java.net.URI
 
-import de.sciss.file.File
 import de.sciss.fscape.graph.ImageFile
 import de.sciss.fscape.graph.ImageFile.SampleFormat
 import de.sciss.lucre.{IExpr, Txn}

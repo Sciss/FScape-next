@@ -17,6 +17,7 @@ import java.net.URI
 
 import akka.stream.Attributes
 import akka.stream.stage.{GraphStageLogic, InHandler, OutHandler}
+import de.sciss.asyncfile
 import de.sciss.audiofile.AudioFile.Frames
 import de.sciss.audiofile.{AudioFile, AudioFileSpec, AudioFileType}
 import de.sciss.file._
@@ -25,7 +26,6 @@ import de.sciss.fscape.stream.impl.shapes.In3UniformFanInShape
 import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeHasInitImpl, NodeImpl}
 import de.sciss.fscape.stream.{BufD, BufI, BufL, Builder, Control, InD, InI, Layer, OutD, OutI, OutL}
 import de.sciss.fscape.{Util, logStream}
-import de.sciss.lucre.Artifact
 
 import scala.collection.immutable.{Seq => ISeq}
 import scala.util.control.NonFatal
@@ -120,7 +120,7 @@ object AudioFileOut {
           logStream("AudioFileOut: fileType")
           val _fileType = math.min(AF.maxFileTypeId, buf.buf(0))
           fileType = if (_fileType >= 0) _fileType else {
-            import Artifact.Value.Ops
+            import asyncfile.Ops._
             val ext   = uri.extL
             val tpe   = AudioFileType.writable.find(_.extensions.contains(ext)).getOrElse(AudioFileType.AIFF)
             AF.id(tpe)
