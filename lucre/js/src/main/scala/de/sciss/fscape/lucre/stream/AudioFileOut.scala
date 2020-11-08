@@ -96,6 +96,7 @@ object AudioFileOut {
     override protected def init(): Unit = {
       super.init()
       logStream.info(s"init() $this")
+      setKeepGoing(true)
     }
 
     override protected def launch(): Unit = {
@@ -259,9 +260,19 @@ object AudioFileOut {
     private def flushAndComplete(): Unit = {
       logStream.info(s"$this - flushAndComplete()")
       import ctrl.config.executionContext
-      af.close().onComplete {
-        case Success(_)   => completeStage()
-        case Failure(ex)  => notifyFail(ex)
+      af.close().onComplete { tr =>
+        async {
+          logStream.debug(s"$this - flushAndComplete() - success? ${tr.isSuccess}")
+          tr match {
+            case Success(_)   =>
+              completeStage()
+              // setKeepGoing(false)
+              // postStop()
+            case Failure(ex)  =>
+              notifyFail(ex)
+              // setKeepGoing(false)
+          }
+        }
       }
     }
 
