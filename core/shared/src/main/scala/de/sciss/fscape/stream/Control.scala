@@ -285,6 +285,7 @@ object Control {
     }
 
     private def actRemoveNode(n: Node, context: ActorContext, self: ActorRef): Unit = {
+      logControl.debug(s"actRemoveNode($n)")
       val nl = n.layer
       val ni = nodes.indexOf(n)
       if (ni >= 0) {
@@ -406,6 +407,7 @@ object Control {
 
     private[stream] def launchLayer(layer: Layer): Future[Unit] =
       sync.synchronized {
+        logControl.info(s"launchLayer($layer)")
         if (_actor != null) {
 //          implicit val timeOut: Timeout = Timeout(1L, TimeUnit.HOURS)
 //          _actor.ask(Launch(layer)).mapTo[Unit]
@@ -489,17 +491,27 @@ object Control {
     }
 
     // called during run, have to relay using actor
-    final private[stream] def removeNode(n: Node): Unit = _actor ! RemoveNode(n)
+    final private[stream] def removeNode(n: Node): Unit = {
+      logControl.debug(s"removeNode($n)")
+      _actor ! RemoveNode(n)
+    }
 
-    final private[stream] def nodeFailed(n: Node, ex: Throwable): Unit = _actor ! NodeFailed(n, ex)
+    final private[stream] def nodeFailed(n: Node, ex: Throwable): Unit = {
+      logControl.debug(s"nodeFailed($n, $ex)")
+      _actor ! NodeFailed(n, ex)
+    }
 
     final def status: Future[Unit] = statusP.future
 
-    final def cancel(): Unit = sync.synchronized {
-      if (_actor != null) _actor ! Cancel
+    final def cancel(): Unit = {
+      sync.synchronized {
+        logControl.info("cancel()")
+        if (_actor != null) _actor ! Cancel
+      }
     }
 
     final private[stream] def completeLayer(layer: Layer): Future[Unit] = sync.synchronized {
+      logControl.info(s"completeLayer($layer)")
       if (_actor != null) {
         val p = Promise[Unit]()
         _actor ! Complete(layer, p)

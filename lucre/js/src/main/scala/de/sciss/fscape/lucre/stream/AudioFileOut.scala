@@ -155,7 +155,7 @@ object AudioFileOut {
 
       override def onUpstreamFinish(): Unit =
         if (fileType < 0) {
-          logStream.info(s"onUpstreamFinish(${shape.in0})")
+          logStream.info(s"$logic: no fileType - onUpstreamFinish()")
           super.onUpstreamFinish()
         }
     })
@@ -174,7 +174,7 @@ object AudioFileOut {
 
       override def onUpstreamFinish(): Unit =
         if (sampleFormat < 0) {
-          logStream.info(s"onUpstreamFinish(${shape.in1})")
+          logStream.info(s"$logic: no sampleFormat - onUpstreamFinish()")
           super.onUpstreamFinish()
         }
     })
@@ -193,7 +193,7 @@ object AudioFileOut {
 
       override def onUpstreamFinish(): Unit =
         if (sampleRate < 0) {
-          logStream.info(s"onUpstreamFinish(${shape.in2})")
+          logStream.info(s"$logic: no sampleRate - onUpstreamFinish()")
           super.onUpstreamFinish()
         }
     })
@@ -217,17 +217,19 @@ object AudioFileOut {
 
       override def onUpstreamFinish(): Unit = {
         if (isAvailable(in)) {
+          logStream.info(s"$logic - onUpstreamFinish($in) - shouldStop")
           shouldStop = true
         } else {
-          logStream.info(s"onUpstreamFinish($in)")
+          logStream.info(s"$logic - onUpstreamFinish($in) - isComplete")
           _isComplete = true
-          super.onUpstreamFinish()
+          flushAndComplete()
+//          super.onUpstreamFinish()
         }
       }
     }
 
     override protected def stopped(): Unit = {
-      logStream.info(s"$this - postStop()")
+      logStream.info(s"$this - stopped()")
       buf = null
       var ch = 0
       while (ch < numChannels) {
@@ -235,7 +237,10 @@ object AudioFileOut {
         ch += 1
       }
       // try {
-      if (af != null) af.close()
+      if (af != null) {
+        af.close()
+        ()
+      }
       // resultP.trySuccess(af.numFrames)
       // } catch {
       //   case NonFatal(ex) => resultP.tryFailure(ex)
@@ -246,10 +251,13 @@ object AudioFileOut {
       if (canProcess) process()
 
     // we do not care if the consumer of the frame information closes early.
-    override def onDownstreamFinish(cause: Throwable): Unit =
+    override def onDownstreamFinish(cause: Throwable): Unit = {
+      logStream.debug(s"$this - out - onDownstreamFinish()")
       onPull()
+    }
 
     private def flushAndComplete(): Unit = {
+      logStream.info(s"$this - flushAndComplete()")
       import ctrl.config.executionContext
       af.close().onComplete {
         case Success(_)   => completeStage()
@@ -288,11 +296,13 @@ object AudioFileOut {
         ch += 1
       }
       try {
+        logStream.debug(s"$this - af.write(_, 0, $chunk)")
         val futWrite = af.write(buf, 0, chunk)
         afReady = false
         import ctrl.config.executionContext
         futWrite.onComplete { tr =>
           async {
+            logStream.debug(s"$this - futWrite complete")
             tr match {
               case Success(_) =>
                 afReady = true
@@ -310,7 +320,6 @@ object AudioFileOut {
 
       } catch {
         case NonFatal(ex) =>
-          //          resultP.failure(ex)
           notifyFail(ex)
       } finally {
         ch = 0

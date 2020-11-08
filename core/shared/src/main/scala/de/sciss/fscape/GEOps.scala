@@ -14,8 +14,6 @@
 package de.sciss.fscape
 
 import de.sciss.fscape.Ops._
-import de.sciss.fscape.graph.BinaryOp._
-import de.sciss.fscape.graph.UnaryOp._
 import de.sciss.fscape.graph.{BinaryOp, ChannelProxy, Clip, ComplexBinaryOp, ComplexUnaryOp, Concat, Constant, Differentiate, Distinct, Drop, DropRight, DropWhile, Elastic, ExpExp, ExpLin, FilterSeq, Fold, Indices, Length, LinExp, LinLin, MatchLen, Metro, Poll, RunningMax, RunningMin, RunningProduct, RunningSum, Take, TakeRight, TakeWhile, UnaryOp, UnzipWindow, Wrap, Zip}
 import de.sciss.optional.Optional
 
@@ -45,6 +43,8 @@ final class GEOps1(val `this`: GE) extends AnyVal { me =>
       case _            => in.head
     }
 
+  import de.sciss.fscape.graph.UnaryOp.{Log => _Log, _}
+
   // unary ops
   def unary_-   : GE  = unOp(Neg        )
   def unary_!   : GE  = unOp(Not        )
@@ -70,7 +70,7 @@ final class GEOps1(val `this`: GE) extends AnyVal { me =>
   def ampDb     : GE  = unOp(AmpDb      )
   def octCps    : GE  = unOp(OctCps     )
   def cpsOct    : GE  = unOp(CpsOct     )
-  def log       : GE  = unOp(Log        )
+  def log       : GE  = unOp(_Log       )
   def log2      : GE  = unOp(Log2       )
   def log10     : GE  = unOp(Log10      )
   def sin       : GE  = unOp(Sin        )
@@ -305,6 +305,8 @@ final class GEOps2(val `this`: GE) extends AnyVal { me =>
   // binary ops
   @inline private def binOp(op: BinaryOp.Op, b: GE): GE = op.make(g, b)
 
+  import de.sciss.fscape.graph.BinaryOp._
+
   def +         (b: GE): GE = binOp(Plus      , b)
   def -         (b: GE): GE = binOp(Minus     , b)
   def *         (b: GE): GE = binOp(Times     , b)
@@ -399,7 +401,7 @@ final class GEComplexOps(val `this`: GE) extends AnyVal { me =>
 
   @inline private def cUnOp(op: ComplexUnaryOp.Op): GE = op.make(g)
 
-  import ComplexUnaryOp._
+  import ComplexUnaryOp.{Log => _Log, _}
 
   // unary ops, complex output
   def abs       : GE  = cUnOp(Abs        )
@@ -407,7 +409,7 @@ final class GEComplexOps(val `this`: GE) extends AnyVal { me =>
   def cubed     : GE  = cUnOp(Cubed      )
   def exp       : GE  = cUnOp(Exp        )
   def reciprocal: GE  = cUnOp(Reciprocal )
-  def log       : GE  = cUnOp(Log        )
+  def log       : GE  = cUnOp(_Log       )
   def log2      : GE  = cUnOp(Log2       )
   def log10     : GE  = cUnOp(Log10      )
   def conj      : GE  = cUnOp(Conj       )
