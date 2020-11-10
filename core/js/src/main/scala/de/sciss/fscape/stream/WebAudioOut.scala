@@ -18,7 +18,7 @@ import akka.stream.Attributes
 import akka.stream.stage.InHandler
 import de.sciss.fscape.Log.{stream => logStream}
 import de.sciss.fscape.stream.impl.shapes.UniformSinkShape
-import de.sciss.fscape.stream.impl.{AudioContextExt, AudioProcessingEvent, BlockingGraphStage, NodeHasInitImpl, NodeImpl, ScriptProcessorNode}
+import de.sciss.fscape.stream.impl.{AudioContextExt, AudioProcessingEvent, NodeHasInitImpl, NodeImpl, ScriptProcessorNode, StageImpl}
 import org.scalajs.dom
 import org.scalajs.dom.AudioContext
 
@@ -40,7 +40,7 @@ object WebAudioOut {
   private type Shp = UniformSinkShape[BufD]
 
   private final class Stage(layer: Layer, numChannels: Int)(implicit protected val ctrl: Control)
-    extends BlockingGraphStage[Shp](name) {
+    extends StageImpl[Shp](name) {
 
     val shape: Shape = UniformSinkShape[BufD](
       Vector.tabulate(numChannels)(ch => InD(s"$name.in$ch"))
