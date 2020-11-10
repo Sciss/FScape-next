@@ -83,7 +83,7 @@ object WebAudioIn {
     private[this] var LAST_REP_IN     = 0L
     private[this] var LAST_REP_IN_C   = 0
 
-    private[this] val DEBUG     = true
+    private[this] val DEBUG     = false
     private[this] var okRT      = false
     private[this] var _stopped  = false
 
@@ -97,11 +97,9 @@ object WebAudioIn {
 
         var ch = 0
         while (ch < numCh) {
-          // println(s"ch = $ch, b.length = ${b.length}, rtBuf? ${rtBuf(ch) != null}, rtBuf.length = ${if (rtBuf(ch) == null) "null" else rtBuf(ch).length.toString}")
           b.copyFromChannel(rtBuf(ch), ch, 0)
           ch += 1
         }
-        // okRT = false
 
         if (DEBUG) {
           val NOW = System.currentTimeMillis()
@@ -161,6 +159,7 @@ object WebAudioIn {
 
       import webrtc.toWebRTC
       audioContext      = new dom.AudioContext
+//      audioContext      = new dom.OfflineAudioContext()
       val nav           = dom.window.navigator
       val mediaDevices  = nav.mediaDevices
       val reqUserMedia  = mediaDevices.getUserMedia(
@@ -176,10 +175,16 @@ object WebAudioIn {
                 mediaStream = audioContext.createMediaStreamSource(um)
                 val mediaNumCh = mediaStream.channelCount
                 logStream.info(s"$this - user media channels: $mediaNumCh")
+                // N.B.: Firefox and Chrome behave differently. In Firefox,
+                // we can capture the input without requiring a connection
+                // to AudioContext; but in Chrome, we must make a connection
+                // to audioContext.destination. We create a dummy output
+                // channel on the script processor, but we never will any
+                // buffers (its output is thus silent)
                 scriptProcessor   = audioContext.createScriptProcessor(
                   bufferSize              = control.blockSize,  // XXX TODO -- we could and should decouple this
                   numberOfInputChannels   = mediaNumCh,
-                  numberOfOutputChannels  = 0,
+                  numberOfOutputChannels  = 1, // !
                 )
                 val bufSize = scriptProcessor.bufferSize
                 var ch = 0
@@ -193,9 +198,8 @@ object WebAudioIn {
                 }
                 okRT = true
                 scriptProcessor.onaudioprocess = realtimeFun
-                mediaStream.connect(scriptProcessor)
-//                audioContext.resume()
-//                println("here!")
+                mediaStream     .connect(scriptProcessor)
+                scriptProcessor .connect(audioContext.destination)
 
               } catch {
                 case NonFatal(ex) =>
@@ -218,11 +222,24 @@ object WebAudioIn {
       logStream.info(s"$this - postStop()")
       okRT      = false
       _stopped  = true
-      if (mediaStream != null && scriptProcessor != null) {
-        mediaStream.disconnect(scriptProcessor)
-        mediaStream     = null
+
+      if (scriptProcessor != null) {
+        try {
+          scriptProcessor.disconnect(audioContext.destination)
+        } catch {
+          case _: Exception => ()
+        }
+        if (mediaStream != null) {
+          try {
+            mediaStream.disconnect(scriptProcessor)
+          } catch {
+            case _: Exception => ()
+          }
+          mediaStream = null
+        }
         scriptProcessor = null
       }
+
       if (audioContext != null) {
         audioContext.close()
         audioContext = null
