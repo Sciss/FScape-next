@@ -36,16 +36,16 @@ lazy val deps = new {
   val core = new {
     val akka            = "2.6.10"  // on the JVM
     val akkaJs          = "2.2.6.9" // on JS
-    val audioFile       = "2.2.0-SNAPSHOT"
+    val audioFile       = "2.2.0"
     val dom             = "1.1.0"
-    val dsp             = "2.0.0"
+    val dsp             = "2.1.0-SNAPSHOT"
     val fileUtil        = "1.1.5"
     val linKernighan    = "0.1.3"
     val log             = "0.1.1"
     val numbers         = "0.2.1"
     val optional        = "1.0.1"
-    val scalaChart      = "0.7.1"
-    val swingPlus       = "0.4.2"
+    val scalaChart      = "0.8.0"
+    val swingPlus       = "0.5.0"
   }
   val lucre = new {
     val fileCache       = "1.1.0"
@@ -60,7 +60,7 @@ lazy val deps = new {
   }
   val test = new {
     val kollFlitz       = "0.2.4"
-    val scalaTest       = "3.2.2"
+    val scalaTest       = "3.2.3"
     val scallop: String = modules.scallop
     val submin          = "0.3.4"
   }
@@ -107,6 +107,7 @@ lazy val core = crossProject(JVMPlatform, JSPlatform).in(file("core"))
     buildInfoPackage := "de.sciss.fscape",
     libraryDependencies ++= Seq(
       "de.sciss"          %%%  "audiofile"            % deps.core.audioFile,
+      "de.sciss"          %%%  "scissdsp"             % deps.core.dsp,
       "de.sciss"          %%%  "linkernighantsp"      % deps.core.linKernighan,
       "de.sciss"          %%%  "log"                  % deps.core.log,
       "de.sciss"          %%%  "numbers"              % deps.core.numbers,
@@ -123,7 +124,6 @@ lazy val core = crossProject(JVMPlatform, JSPlatform).in(file("core"))
       "com.typesafe.akka" %%%  "akka-stream-testkit"  % deps.core.akka,
       "de.sciss"          %%%  "fileutil"             % deps.core.fileUtil,
       "de.sciss"          %%%  "scala-chart"          % deps.core.scalaChart,
-      "de.sciss"          %%%  "scissdsp"             % deps.core.dsp,      // XXX TODO -- need replacement for Java dep
       "de.sciss"          %%%  "swingplus"            % deps.core.swingPlus,
     ),
   )
