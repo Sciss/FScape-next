@@ -14,12 +14,9 @@
 package de.sciss.fscape
 package stream
 
-import java.io.RandomAccessFile
-import java.nio.channels.FileChannel
 import java.nio.{DoubleBuffer, IntBuffer, LongBuffer}
 
 import akka.stream.{Attributes, FanInShape3, Inlet, Outlet}
-import de.sciss.file.File
 import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
 
 import scala.annotation.tailrec
@@ -27,7 +24,7 @@ import scala.collection.mutable
 import scala.math.min
 
 /** Sliding overlapping window. */
-object Sliding {
+object Sliding extends SlidingPlatform {
   /**
     * @param in     the signal to window
     * @param size   the window size. this is clipped to be `&lt;= 1`
@@ -47,7 +44,7 @@ object Sliding {
 
   private final val name = "Sliding"
 
-  private type Shp[E] = FanInShape3[E, BufI, BufI, E]
+  type Shp[E] = FanInShape3[E, BufI, BufI, E]
 
   private final class Stage[A, E <: BufElem[A]](layer: Layer)(implicit ctrl: Control, tpe: StreamType[A, E])
     extends StageImpl[Shp[E]](name) {
@@ -72,7 +69,7 @@ object Sliding {
     }
   }
 
-  private abstract class Window[A](final val size0: Int, f: File, raf: RandomAccessFile) {
+  abstract class Window[A](final val size0: Int, val dispose: () => Unit) {
 
     def writeFrom (arr: Array[A], off: Int, num: Int): Unit
     def readTo    (arr: Array[A], off: Int, num: Int): Unit
@@ -90,21 +87,17 @@ object Sliding {
 
     final def isEmpty: Boolean = offIn == 0
 
-    final def dispose(): Unit = if (raf != null) {
-      raf.close()
-      f.delete()
-      ()
-    }
-
     override def toString = s"Window(offIn = $offIn, offOut = $offOut, size = $size)"
   }
 
-  private final class WindowD(buf: DoubleBuffer, size0: Int, f: File, raf: RandomAccessFile)
-    extends Window[Double](size0, f, raf) {
+  protected val DisposeNop = () => ()
+
+  final class WindowD(buf: DoubleBuffer, size0: Int, dispose: () => Unit = DisposeNop /* f: File, raf: RandomAccessFile*/)
+    extends Window[Double](size0, dispose /*f, raf*/) {
 
     type A = Double
 
-    def this(arr: Array[Double]) = this(DoubleBuffer.wrap(arr), arr.length, null, null)
+    def this(arr: Array[Double]) = this(DoubleBuffer.wrap(arr), arr.length, DisposeNop)
 
     def writeFrom(arr: Array[A], off: Int, num: Int): Unit = {
       buf.position(offIn)
@@ -119,12 +112,12 @@ object Sliding {
     }
   }
 
-  private final class WindowI(buf: IntBuffer, size0: Int, f: File, raf: RandomAccessFile)
-    extends Window[Int](size0, f, raf) {
+  final class WindowI(buf: IntBuffer, size0: Int, dispose: () => Unit /*f: File, raf: RandomAccessFile*/)
+    extends Window[Int](size0, dispose /*f, raf*/) {
 
     type A = Int
 
-    def this(arr: Array[Int]) = this(IntBuffer.wrap(arr), arr.length, null, null)
+    def this(arr: Array[Int]) = this(IntBuffer.wrap(arr), arr.length, DisposeNop)
 
     def writeFrom(arr: Array[A], off: Int, num: Int): Unit = {
       buf.position(offIn)
@@ -139,12 +132,12 @@ object Sliding {
     }
   }
 
-  private final class WindowL(buf: LongBuffer, size0: Int, f: File, raf: RandomAccessFile)
-    extends Window[Long](size0, f, raf) {
+  final class WindowL(buf: LongBuffer, size0: Int, dispose: () => Unit /* f: File, raf: RandomAccessFile*/)
+    extends Window[Long](size0, dispose /*f, raf*/) {
 
     type A = Long
 
-    def this(arr: Array[Long]) = this(LongBuffer.wrap(arr), arr.length, null, null)
+    def this(arr: Array[Long]) = this(LongBuffer.wrap(arr), arr.length, DisposeNop)
 
     def writeFrom(arr: Array[A], off: Int, num: Int): Unit = {
       buf.position(offIn)
@@ -159,58 +152,15 @@ object Sliding {
     }
   }
 
-  private final class LogicD(shape: Shp[BufD], layer: Layer)(implicit ctrl: Control)
-    extends Logic[Double, BufD](shape, layer) {
-
-    type A = Double
-
-    protected def mkMemWindow(sz: Int): Window[A] = new WindowD(new Array(sz))
-
-    def mkDiskWindow(sz: Int, f: File, raf: RandomAccessFile): Window[A] = {
-      val fch   = raf.getChannel
-      val bb    = fch.map(FileChannel.MapMode.READ_WRITE, 0L, sz * 8)
-      val db    = bb.asDoubleBuffer()
-      new WindowD(db, sz, f, raf)
-    }
-  }
-
-  private final class LogicI(shape: Shp[BufI], layer: Layer)(implicit ctrl: Control)
-    extends Logic[Int, BufI](shape, layer) {
-
-    type A = Int
-
-    protected def mkMemWindow(sz: Int): Window[A] = new WindowI(new Array(sz))
-
-    def mkDiskWindow(sz: Int, f: File, raf: RandomAccessFile): Window[A] = {
-      val fch   = raf.getChannel
-      val bb    = fch.map(FileChannel.MapMode.READ_WRITE, 0L, sz * 4)
-      val db    = bb.asIntBuffer()
-      new WindowI(db, sz, f, raf)
-    }
-  }
-
-  private final class LogicL(shape: Shp[BufL], layer: Layer)(implicit ctrl: Control)
-    extends Logic[Long, BufL](shape, layer) {
-
-    type A = Long
-
-    protected def mkMemWindow(sz: Int): Window[A] = new WindowL(new Array(sz))
-
-    def mkDiskWindow(sz: Int, f: File, raf: RandomAccessFile): Window[A] = {
-      val fch   = raf.getChannel
-      val bb    = fch.map(FileChannel.MapMode.READ_WRITE, 0L, sz * 8)
-      val db    = bb.asLongBuffer()
-      new WindowL(db, sz, f, raf)
-    }
-  }
-
-  private abstract class Logic[A, E <: BufElem[A]](shape: Shp[E], layer: Layer)
-                                                  (implicit ctrl: Control, tpe: StreamType[A, E])
+  abstract class Logic[A, E <: BufElem[A]](shape: Shp[E], layer: Layer)
+                                          (implicit ctrl: Control, tpe: StreamType[A, E])
     extends Handlers(name, layer, shape) {
 
-    protected def mkMemWindow (sz: Int): Window[A]
+    protected def mkWindow (sz: Int)(implicit ctrl: Control): Window[A]
 
-    protected def mkDiskWindow(sz: Int, f: File, raf: RandomAccessFile): Window[A]
+//    protected def mkMemWindow (sz: Int): Window[A]
+//
+//    protected def mkDiskWindow(sz: Int, f: File, raf: RandomAccessFile): Window[A]
 
     private[this] val hIn     = Handlers.InMain [A, E](this, shape.in0)
     private[this] val hSize   = Handlers.InIAux       (this, shape.in1)(math.max(1, _)) // XXX TODO -- allow zero?
@@ -320,13 +270,14 @@ object Sliding {
         step = hStep.next()
 
         val sz  = size
-        val win: Window[A] = if (sz <= ctrl.nodeBufferSize) {
-          mkMemWindow(sz)
-        } else {
-          val f     = ctrl.createTempFile()
-          val raf   = new RandomAccessFile(f, "rw")
-          mkDiskWindow(sz, f, raf)
-        }
+        val win: Window[A] = mkWindow(sz)
+//        if (sz <= ctrl.nodeBufferSize) {
+//          mkMemWindow(sz)
+//        } else {
+//          val f     = ctrl.createTempFile()
+//          val raf   = new RandomAccessFile(f, "rw")
+//          mkDiskWindow(sz, f, raf)
+//        }
         windows += win
 //        windowFrames += sz
       }

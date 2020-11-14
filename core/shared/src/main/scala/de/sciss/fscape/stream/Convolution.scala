@@ -15,11 +15,11 @@ package de.sciss.fscape.stream
 
 import akka.stream.stage.{InHandler, OutHandler}
 import akka.stream.{Attributes, FanInShape4}
-import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
-import de.sciss.fscape.Util
 import de.sciss.fscape.Log.{stream => logStream}
+import de.sciss.fscape.Util
+import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
 import de.sciss.numbers.Implicits._
-import edu.emory.mathcs.jtransforms.fft.DoubleFFT_1D
+import de.sciss.transform4s.fft.DoubleFFT_1D
 
 import scala.annotation.tailrec
 
@@ -514,7 +514,7 @@ object Convolution {
 
         } else {  // perform convolution in frequency domain
           if (fft == null) {
-            fft = new DoubleFFT_1D(_fftLen)
+            fft = DoubleFFT_1D(_fftLen)
           }
           if (!kernelDidFFT) {
             fft.realForward(_kernelArr)

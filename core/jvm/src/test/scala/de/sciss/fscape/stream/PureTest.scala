@@ -1,22 +1,22 @@
 package de.sciss.fscape.stream
 
-import de.sciss.file._
 import de.sciss.audiofile.{AudioFile, AudioFileSpec}
-import edu.emory.mathcs.jtransforms.fft.DoubleFFT_1D
+import de.sciss.file._
+import de.sciss.transform4s.fft.DoubleFFT_1D
 
 object PureTest extends App {
   val fIn   = userHome / "Music" / "work" / "B19h39m45s23jan2015.wav"
   val fOut  = userHome / "Music" / "work" / "_killme.aif"
 
   println(s"${new java.util.Date()} start")
-  val afIn  = AudioFile.openRead(fIn)
-  val afOut = AudioFile.openWrite(fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100))
-  val bufSize = 8192
-  val buf   = afIn.buffer(bufSize)
-  var framesRead = 0L
-  val fftSize = 1024
-  val fft = new DoubleFFT_1D(fftSize)
-  val fftBuf = new Array[Double](fftSize)
+  val afIn        = AudioFile.openRead(fIn)
+  val afOut       = AudioFile.openWrite(fOut, spec = AudioFileSpec(numChannels = 1, sampleRate = 44100))
+  val bufSize     = 8192
+  val buf         = afIn.buffer(bufSize)
+  var framesRead  = 0L
+  val fftSize     = 1024
+  val fft         = DoubleFFT_1D(fftSize)
+  val fftBuf      = new Array[Double](fftSize)
   while (framesRead < afIn.numFrames) {
     val chunkSize = math.min(bufSize, afIn.numFrames - framesRead).toInt
     afIn.read(buf, 0, chunkSize)

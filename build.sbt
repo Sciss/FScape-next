@@ -38,7 +38,7 @@ lazy val deps = new {
     val akkaJs          = "2.2.6.9" // on JS
     val audioFile       = "2.2.0"
     val dom             = "1.1.0"
-    val dsp             = "2.1.0-SNAPSHOT"
+    val dsp             = "2.1.0"
     val fileUtil        = "1.1.5"
     val linKernighan    = "0.1.3"
     val log             = "0.1.1"
@@ -46,6 +46,7 @@ lazy val deps = new {
     val optional        = "1.0.1"
     val scalaChart      = "0.8.0"
     val swingPlus       = "0.5.0"
+    val transform4s     = "0.1.1"
   }
   val lucre = new {
     val fileCache       = "1.1.0"
@@ -108,6 +109,7 @@ lazy val core = crossProject(JVMPlatform, JSPlatform).in(file("core"))
     libraryDependencies ++= Seq(
       "de.sciss"          %%%  "audiofile"            % deps.core.audioFile,
       "de.sciss"          %%%  "scissdsp"             % deps.core.dsp,
+      "de.sciss"          %%%  "transform4s"          % deps.core.transform4s,
       "de.sciss"          %%%  "linkernighantsp"      % deps.core.linKernighan,
       "de.sciss"          %%%  "log"                  % deps.core.log,
       "de.sciss"          %%%  "numbers"              % deps.core.numbers,

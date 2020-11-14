@@ -19,7 +19,7 @@ import de.sciss.fscape.stream.impl.Handlers._
 import de.sciss.fscape.stream.impl.logic.WindowedInDOutD
 import de.sciss.fscape.stream.{BufD, BufI, Builder, Control, InD, InI, Layer, OutD, OutI}
 import de.sciss.numbers
-import edu.emory.mathcs.jtransforms.fft.DoubleFFT_1D
+import de.sciss.transform4s.fft.DoubleFFT_1D
 
 import scala.annotation.switch
 import scala.math.max
@@ -50,7 +50,7 @@ trait FFTLogicImpl extends WindowedInDOutD {
   protected final def setFFTSize(n: Int): Unit =
     if (fftSize != n) {
       fftSize = n
-      fft     = new DoubleFFT_1D (n)
+      fft     = DoubleFFT_1D (n)
       gain    = gainFor(n)
     }
 
@@ -224,7 +224,7 @@ final class Real1IFFTLogicImpl(name: String, shape: FanInShape4[BufD, BufI, BufI
       case 2 => // discarded
         fftBuf(1) = 0.0
     }
-    fft.realInverse(fftBuf, false)
+    fft.realInverse(fftBuf, scale = false)
     if (gain != 1.0) Util.mul(fftBuf, 0, timeSize, gain)
   }
 }
@@ -300,7 +300,7 @@ final class Real1FullIFFTLogicImpl(name: String, shape: FanInShape3[BufD, BufI, 
 
   protected def performFFT(): Unit = {
     val _fftBuf = winBuf
-    fft.complexInverse(_fftBuf, false)
+    fft.complexInverse(_fftBuf, scale = false)
     var i = 0
     var j = 0
     val g = gain
@@ -339,6 +339,6 @@ final class Complex1IFFTLogicImpl(name: String, shape: FanInShape3[BufD, BufI, B
 
   protected def performFFT(): Unit = {
     val _fftBuf = winBuf
-    fft.complexInverse(_fftBuf, false)
+    fft.complexInverse(_fftBuf, scale = false)
   }
 }

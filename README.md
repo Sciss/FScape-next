@@ -158,6 +158,22 @@ ImageFileOut(file = fOut, spec = specOut, in = Seq(rotImg.out(0), rotImg.out(1),
 For more examples, browse the 'test' sources. Also see
 the [API Documentation](http://sciss.de/mellite/latest/api/de/sciss/fscape/).
 
+## Scala.js limitations
+
+The following UGens are currently not available under Scala.js:
+
+- `ImageFileIn`, `ImageFileOut`, `ImageFileSeqIn`, `ImageFileSeqOut`
+- `BufferDisk` _(high priority to get it working)_
+- `Plot1D`, `Sheet1D`
+- `Slices` _(high priority to get it working)_
+- `Fourier` (file based long FFT; regular FFT is available)
+- `ResampleWindow`
+- `PitchAC`, `WPE_ReverbFrame`
+
+On the other hand, the following real-time UGens are available:
+
+- `WebAudioIn`, `WebAudioOut`
+
 ## notes
 
 - early blog post: https://sciss.github.io/rethinking-fscape/

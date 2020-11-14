@@ -19,7 +19,7 @@ import de.sciss.fscape.Util
 import de.sciss.fscape.stream.impl.Handlers.{InDMain, InIAux, OutDMain}
 import de.sciss.fscape.stream.impl.logic.WindowedInDOutD
 import de.sciss.numbers
-import edu.emory.mathcs.jtransforms.fft.DoubleFFT_2D
+import de.sciss.transform4s.fft.DoubleFFT_2D
 
 import scala.annotation.switch
 import scala.math.max
@@ -54,7 +54,7 @@ trait FFT2LogicImpl extends WindowedInDOutD {
       fftSize = r * c
       fftRows = r
       fftCols = c
-      fft     = new DoubleFFT_2D(r, c)
+      fft     = DoubleFFT_2D(rows = r, columns = c)
       gain    = gainFor(fftSize)
     }
 

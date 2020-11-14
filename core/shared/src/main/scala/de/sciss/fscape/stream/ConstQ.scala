@@ -21,7 +21,7 @@ import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
 import de.sciss.numbers
 import de.sciss.numbers.Implicits._
 import de.sciss.numbers.IntFunctions
-import edu.emory.mathcs.jtransforms.fft.DoubleFFT_1D
+import de.sciss.transform4s.fft.DoubleFFT_1D
 
 import scala.math.max
 
@@ -141,7 +141,7 @@ object ConstQ {
       val fftBuf      = new Array[Double](fftSizeC)
 
 
-      val fft         = new DoubleFFT_1D(fftSizeK)
+      val fft         = DoubleFFT_1D(fftSizeK)
 
       //		thresh		= 0.0054f / fftLen; // for Hamming window
       // weird observation : lowering the threshold will _increase_ the

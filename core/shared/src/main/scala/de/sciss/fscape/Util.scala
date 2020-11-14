@@ -14,6 +14,7 @@
 package de.sciss.fscape
 
 import java.net.URI
+import de.sciss.asyncfile
 
 object Util /*extends UtilPlatform*/ {
   final val log2  = math.log  (2.0)
@@ -210,44 +211,13 @@ object Util /*extends UtilPlatform*/ {
 
   // ---- files ----
 
-  private def uriName(v: URI): String = {
-    val p = v.normalize().getPath
-    val i = p.lastIndexOf('/') + 1
-    p.substring(i)
-  }
-
-  private def uriReplaceName(v: URI, name: String): URI = {
-    val p       = v.normalize().getPath
-    val i       = p.lastIndexOf('/') + 1
-    val pNew    = p.substring(0, i) + name
-    val scheme  = v.getScheme
-    new URI(scheme, pNew, null)
-  }
-
-  private def uriParentOption(v: URI): Option[URI] = {
-    val p = v.normalize().getPath
-    val j = if (p.endsWith("/")) p.length - 2 else p.length - 1
-    val i = p.lastIndexOf('/', j)
-    if (i < 0) None else {
-      val pp      = if (i == 0) "/" else p.substring(0, i)
-      val scheme  = v.getScheme
-      Some(new URI(scheme, pp, null))
-    }
-  }
-
-  private def uriAppend(parent: URI, sub: String): URI = {
-    val parent0 = parent.normalize().getPath
-    val parentS = if (parent0.isEmpty || parent0.endsWith("/")) parent0 else s"$parent0/"
-    val path    = s"$parentS$sub"
-    new URI("idb", path, null)
-  }
-
   /** If the input contains placeholder `%`, returns it unchanged,
     * otherwise determines an integer number in the name and replaces
     * it by `%d`.
     */
   def mkTemplate(in: URI): URI = {
-    val n = uriName(in) // .name
+    import asyncfile.Ops._
+    val n = in.name
     if (n.contains("%")) in else {
       val j = n.lastIndexWhere(_.isDigit)
       if (j < 0) throw new IllegalArgumentException(
@@ -258,21 +228,23 @@ object Util /*extends UtilPlatform*/ {
       val pre   = n.substring(0, i)
       val post  = n.substring(j + 1)
       val nn    = s"$pre%d$post"
-      uriReplaceName(in, nn)
+      in.replaceName(nn)
     }
   }
 
   def formatTemplate(template: URI, index: Int): URI = {
-    val name      = uriName(template).format(index)
+    import asyncfile.Ops._
+    val name      = template.name.format(index)
     val scheme    = template.getScheme
-    val f         = uriParentOption(template).fold(new URI(scheme, name, null))(p => uriAppend(p, name))
+    val f         = template.parentOption.fold(new URI(scheme, name, null))(p => p / name)
     f
   }
 
   // ---- streams ----
 
   def mkLogicName(base: String, uri: URI): String = {
-    val nameF = uriName(uri)
+    import asyncfile.Ops._
+    val nameF = uri.name
       .filter { ch =>
         ch.isLetterOrDigit || "!$&'*+,-.:;=@_~".contains(ch)
       }
