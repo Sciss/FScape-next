@@ -1,6 +1,5 @@
 package de.sciss.fscape
 
-import de.sciss.fscape.Ops._
 import de.sciss.fscape.lucre.GraphObj
 import de.sciss.serial.{DataInput, DataOutput}
 import org.scalatest.flatspec.AnyFlatSpec

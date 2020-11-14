@@ -75,10 +75,10 @@ object AudioFileOut {
     // ---- impl ----
 
     private[this] var af      : AudioFile   = _
-    private[this] var buf     : Frames      = _
 
     private[this] var pushed        = 0
     private[this] val bufIns        = new Array[BufD](numChannels)
+    private[this] val buf: Frames   = new Array[Array[Double]](numChannels)
 
     private[this] var shouldStop    = false
     private[this] var _isSuccess    = false
@@ -205,20 +205,24 @@ object AudioFileOut {
       }
     }
 
-    override protected def stopped(): Unit = {
-      logStream.info(s"$this - postStop()")
-      buf = null
+    private def releaseBufIns(): Unit = {
       var ch = 0
       while (ch < numChannels) {
-        bufIns(ch) = null
+        val b = bufIns(ch)
+        if (b != null) {
+          b.release()
+          bufIns(ch) = null
+          buf   (ch) = null
+        }
         ch += 1
       }
-      // try {
+    }
+
+    override protected def stopped(): Unit = {
+      logStream.info(s"$this - postStop()")
+      releaseBufIns()
+
       if (af != null) af.close()
-      // resultP.trySuccess(af.numFrames)
-      // } catch {
-      //   case NonFatal(ex) => resultP.tryFailure(ex)
-      // }
     }
 
     def onPull(): Unit =
@@ -236,41 +240,22 @@ object AudioFileOut {
       var ch = 0
       var chunk = 0
       while (ch < numChannels) {
-        val bufIn = grab(shape.inlets3(ch))
+        val bufIn   = grab(shape.inlets3(ch))
         bufIns(ch)  = bufIn
+        buf   (ch)  = bufIn.buf
         chunk       = if (ch == 0) bufIn.size else math.min(chunk, bufIn.size)
         ch += 1
       }
 
-      if (buf == null || buf(0).length < chunk) {
-        buf = af.buffer(chunk)
-      }
-
       val pos1 = af.position + 1
 
-      ch = 0
-      while (ch < numChannels) {
-        var i = 0
-        val a = bufIns(ch).buf
-        val b = buf(ch)
-        while (i < chunk) {
-          b(i) = a(i).toFloat
-          i += 1
-        }
-        ch += 1
-      }
       try {
         af.write(buf, 0, chunk)
       } catch {
         case NonFatal(ex) =>
-          //          resultP.failure(ex)
           notifyFail(ex)
       } finally {
-        ch = 0
-        while (ch < numChannels) {
-          bufIns(ch).release()
-          ch += 1
-        }
+        releaseBufIns()
       }
 
       val bufOut  = control.borrowBufL()
@@ -294,10 +279,5 @@ object AudioFileOut {
         }
       }
     }
-
-    //    override def onUpstreamFailure(ex: Throwable): Unit = {
-    //      resultP.failure(ex)
-    //      super.onUpstreamFailure(ex)
-    //    }
   }
 }

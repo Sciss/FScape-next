@@ -3,7 +3,6 @@ package tests
 
 import de.sciss.audiofile.AudioFile
 import de.sciss.file._
-import de.sciss.fscape.Ops._
 import de.sciss.fscape.lucre.FScape
 import de.sciss.fscape.stream.Cancelled
 import de.sciss.lucre.synth.InMemory

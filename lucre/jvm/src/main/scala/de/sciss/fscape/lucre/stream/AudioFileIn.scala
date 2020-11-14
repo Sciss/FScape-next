@@ -25,6 +25,7 @@ import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeHasInitImpl, NodeImp
 import de.sciss.fscape.stream.{BufD, Control, Layer, OutD}
 import de.sciss.fscape.{Util, stream}
 import de.sciss.fscape.Log.{stream => logStream}
+import math.max
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
@@ -61,6 +62,7 @@ object AudioFileIn {
 
     private[this] var af        : AudioFile  = _
     private[this] var buf       : Frames     = _
+    private[this] var bufOuts   : Array[BufD] = _
     private[this] var bufSize   : Int        = _
 
     private[this] var framesRead  = 0L
@@ -76,7 +78,9 @@ object AudioFileIn {
         Console.err.println(s"Warning: DiskIn - channel mismatch (file has ${af.numChannels}, UGen has $numChannels)")
       }
       bufSize     = ctrl.blockSize
-      buf         = af.buffer(bufSize)
+      val numChMx = math.max(numChannels, af.numChannels)
+      bufOuts     = new Array[BufD](numChMx)
+      buf         = new Array[Array[Double]](numChMx)
       if (offset > 0L) {
         framesRead = math.min(af.numFrames, offset)
         af.seek(framesRead)
@@ -92,6 +96,15 @@ object AudioFileIn {
     override protected def stopped(): Unit = {
       logStream.info(s"postStop() $this")
       buf = null
+      var ch = 0
+      if (bufOuts != null) {
+        while (ch < bufOuts.length) {
+          val b = bufOuts(ch)
+          if (b != null) b.release()
+          ch += 1
+        }
+        bufOuts = null
+      }
       //      try {
       if (af != null) {
         af.close()
@@ -126,30 +139,29 @@ object AudioFileIn {
         logStream.info(s"process() -> completeStage $this")
         completeStage()
       } else {
-        af.read(buf, 0, chunk)
-        framesRead += chunk
-        val _gain = gain
         var ch = 0
         while (ch < numChannels) {
           val out = shape.out(ch)
           if (!isClosed(out)) {
-            val bufOut = ctrl.borrowBufD()
-            val b = bufOut.buf
-            if (ch < buf.length) {
-              val a = buf(ch)
-              var i = 0
-              while (i < chunk) {
-                b(i) = a(i).toDouble
-                i += 1
-              }
-              if (_gain != 1.0) Util.mul(b, 0, chunk, _gain)
-
-            } else {
-              Util.clear(b, 0, chunk)
-            }
-            bufOut.size = chunk
-            //            println(s"disk   : ${bufOut.hashCode.toHexString} - ${bufOut.buf.toVector.hashCode.toHexString}")
+            val bufOut    = ctrl.borrowBufD()
+            bufOuts (ch)  = bufOut
+            buf     (ch)  = bufOut.buf
+          }
+          ch += 1
+        }
+        af.read(buf, 0, chunk)
+        framesRead += chunk
+        val _gain = gain
+        ch = 0
+        while (ch < numChannels) {
+          val bufOut      = bufOuts(ch)
+          if (bufOut != null) {
+            if (_gain != 1.0) Util.mul(bufOut.buf, 0, chunk, _gain)
+            bufOut.size   = chunk
+            val out       = shape.out(ch)
             push(out, bufOut)
+            bufOuts (ch)  = null
+            buf     (ch)  = null
           }
           ch += 1
         }

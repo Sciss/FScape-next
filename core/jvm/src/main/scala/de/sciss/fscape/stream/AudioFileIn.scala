@@ -125,11 +125,7 @@ object AudioFileIn {
             val b = bufOut.buf
             if (ch < buf.length) {
               val a = buf(ch)
-              var i = 0
-              while (i < chunk) {
-                b(i) = a(i).toDouble
-                i += 1
-              }
+              System.arraycopy(a, 0, b, 0, chunk)
             } else {
               Util.clear(b, 0, chunk)
             }

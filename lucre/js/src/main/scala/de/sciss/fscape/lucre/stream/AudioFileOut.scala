@@ -77,10 +77,10 @@ object AudioFileOut {
 
     private[this] var afFut   : Future[AsyncAudioFile] = _
     private[this] var af      : AsyncAudioFile  = _
-    private[this] var buf     : Frames          = _
 
     private[this] var pushed        = 0
-    private[this] val bufIns        = new Array[BufD](numChannels)
+    private[this] val bufIns        = new Array[BufD]         (numChannels)
+    private[this] val buf: Frames   = new Array[Array[Double]](numChannels)
 
     private[this] var shouldStop    = false
     private[this] var _isComplete   = false
@@ -224,28 +224,17 @@ object AudioFileOut {
           logStream.info(s"$logic - onUpstreamFinish($in) - isComplete")
           _isComplete = true
           flushAndComplete()
-//          super.onUpstreamFinish()
         }
       }
     }
 
     override protected def stopped(): Unit = {
       logStream.info(s"$this - stopped()")
-      buf = null
-      var ch = 0
-      while (ch < numChannels) {
-        bufIns(ch) = null
-        ch += 1
-      }
-      // try {
+      releaseBufIns()
       if (af != null) {
         af.close()
         ()
       }
-      // resultP.trySuccess(af.numFrames)
-      // } catch {
-      //   case NonFatal(ex) => resultP.tryFailure(ex)
-      // }
     }
 
     def onPull(): Unit =
@@ -276,36 +265,35 @@ object AudioFileOut {
       }
     }
 
+    private def releaseBufIns(): Unit = {
+      var ch = 0
+      while (ch < numChannels) {
+        val b = bufIns(ch)
+        if (b != null) {
+          b.release()
+          bufIns(ch) = null
+          buf   (ch) = null
+        }
+        ch += 1
+      }
+    }
+
     private def process(): Unit = {
       logStream.debug(s"process() $this")
       pushed = 0
 
-      var ch = 0
+      var ch    = 0
       var chunk = 0
       while (ch < numChannels) {
-        val bufIn = grab(shape.inlets3(ch))
+        val bufIn   = grab(shape.inlets3(ch))
         bufIns(ch)  = bufIn
+        buf   (ch)  = bufIn.buf
         chunk       = if (ch == 0) bufIn.size else math.min(chunk, bufIn.size)
         ch += 1
       }
 
-      if (buf == null || buf(0).length < chunk) {
-        buf = af.buffer(chunk)
-      }
-
       val pos1 = af.position + 1
 
-      ch = 0
-      while (ch < numChannels) {
-        var i = 0
-        val a = bufIns(ch).buf
-        val b = buf(ch)
-        while (i < chunk) {
-          b(i) = a(i).toFloat
-          i += 1
-        }
-        ch += 1
-      }
       try {
         logStream.debug(s"$this - af.write(_, 0, $chunk)")
         val futWrite = af.write(buf, 0, chunk)
@@ -314,6 +302,8 @@ object AudioFileOut {
         futWrite.onComplete { tr =>
           async {
             logStream.debug(s"$this - futWrite complete")
+            releaseBufIns()
+
             tr match {
               case Success(_) =>
                 afReady = true
@@ -332,12 +322,6 @@ object AudioFileOut {
       } catch {
         case NonFatal(ex) =>
           notifyFail(ex)
-      } finally {
-        ch = 0
-        while (ch < numChannels) {
-          bufIns(ch).release()
-          ch += 1
-        }
       }
 
       // XXX TODO this should really happen after `futWrite` succeeds

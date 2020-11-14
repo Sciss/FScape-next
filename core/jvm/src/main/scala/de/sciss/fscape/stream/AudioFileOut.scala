@@ -184,10 +184,7 @@ object AudioFileOut {
         var i = 0
         val a = bufIns(ch).buf
         val b = buf(ch)
-        while (i < chunk) {
-          b(i) = a(i).toFloat
-          i += 1
-        }
+        System.arraycopy(a, 0, b, 0, chunk)
         ch += 1
       }
       try {
