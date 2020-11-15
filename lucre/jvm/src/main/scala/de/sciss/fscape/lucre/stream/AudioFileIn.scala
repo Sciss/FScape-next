@@ -25,7 +25,6 @@ import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeHasInitImpl, NodeImp
 import de.sciss.fscape.stream.{BufD, Control, Layer, OutD}
 import de.sciss.fscape.{Util, stream}
 import de.sciss.fscape.Log.{stream => logStream}
-import math.max
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
@@ -94,7 +93,7 @@ object AudioFileIn {
     }
 
     override protected def stopped(): Unit = {
-      logStream.info(s"postStop() $this")
+      logStream.info(s"stopped() $this")
       buf = null
       var ch = 0
       if (bufOuts != null) {
@@ -105,19 +104,15 @@ object AudioFileIn {
         }
         bufOuts = null
       }
-      //      try {
       if (af != null) {
         af.close()
         af = null
       }
-      //      } catch {
-      //        case NonFatal(ex) =>  // XXX TODO -- what with this?
-      //      }
     }
 
     override def onDownstreamFinish(cause: Throwable): Unit = {
       val all = shape.outlets.forall(out => isClosed(out))
-      logStream.info(s"onDownstreamFinish() -> completeStage $this - $all")
+      logStream.info(s"onDownstreamFinish() $this - $all")
       if (all) {
         super.onDownstreamFinish(cause)
       } else {

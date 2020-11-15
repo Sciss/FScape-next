@@ -76,11 +76,11 @@ object AudioFileOut {
     // ---- impl ----
 
     private[this] var af      : AudioFile = _
-    private[this] var buf     : Frames = _
 
     private[this] var pushed        = 0
     private[this] val numChannels   = spec.numChannels
     private[this] val bufIns        = new Array[BufD](spec.numChannels)
+    private[this] val buf: Frames   = new Array[Array[Double]](spec.numChannels)
 
     private[this] var shouldStop    = false
     private[this] var _isSuccess    = false
@@ -132,21 +132,11 @@ object AudioFileOut {
 
     override protected def stopped(): Unit = {
       logStream.info(s"$this - postStop()")
-      buf = null
-      var ch = 0
-      while (ch < numChannels) {
-        bufIns(ch) = null
-        ch += 1
-      }
-      // try {
+      releaseBufIns()
       if (af != null) {
         af.close()
         af = null
       }
-        // resultP.trySuccess(af.numFrames)
-      // } catch {
-      //   case NonFatal(ex) => resultP.tryFailure(ex)
-      // }
     }
 
     private def canProcess: Boolean =
@@ -159,6 +149,19 @@ object AudioFileOut {
     override def onDownstreamFinish(cause: Throwable): Unit =
       onPull()
 
+    private def releaseBufIns(): Unit = {
+      var ch = 0
+      while (ch < numChannels) {
+        val b = bufIns(ch)
+        if (b != null) {
+          b.release()
+          bufIns(ch) = null
+          buf   (ch) = null
+        }
+        ch += 1
+      }
+    }
+
     private def process(): Unit = {
 //      logStream(s"process() $this")
       logStream.debug(s"process() $this")
@@ -167,26 +170,15 @@ object AudioFileOut {
       var ch = 0
       var chunk = 0
       while (ch < numChannels) {
-        val bufIn = grab(shape.in(ch))
+        val bufIn   = grab(shape.in(ch))
         bufIns(ch)  = bufIn
+        buf   (ch)  = bufIn.buf
         chunk       = if (ch == 0) bufIn.size else math.min(chunk, bufIn.size)
         ch += 1
       }
 
-      if (buf == null || buf(0).length < chunk) {
-        buf = af.buffer(chunk)
-      }
-
       val pos1 = af.position + 1
 
-      ch = 0
-      while (ch < numChannels) {
-        var i = 0
-        val a = bufIns(ch).buf
-        val b = buf(ch)
-        System.arraycopy(a, 0, b, 0, chunk)
-        ch += 1
-      }
       try {
         af.write(buf, 0, chunk)
       } catch {
@@ -194,11 +186,7 @@ object AudioFileOut {
 //          resultP.failure(ex)
           notifyFail(ex)
       } finally {
-        ch = 0
-        while (ch < numChannels) {
-          bufIns(ch).release()
-          ch += 1
-        }
+        releaseBufIns()
       }
 
       if (!isClosed(shape.out)) {
@@ -224,10 +212,5 @@ object AudioFileOut {
         }
       }
     }
-
-//    override def onUpstreamFailure(ex: Throwable): Unit = {
-//      resultP.failure(ex)
-//      super.onUpstreamFailure(ex)
-//    }
   }
 }

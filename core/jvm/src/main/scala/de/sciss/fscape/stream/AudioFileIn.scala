@@ -54,6 +54,7 @@ object AudioFileIn {
 
     private[this] var af        : AudioFile  = _
     private[this] var buf       : Frames     = _
+    private[this] var bufOuts   : Array[BufD] = _
     private[this] var bufSize   : Int        = _
 
     private[this] var framesRead  = 0L
@@ -64,31 +65,37 @@ object AudioFileIn {
       super.init()
       logStream.info(s"init() $this")
       val f = new File(uri)
-      af    = AudioFile.openRead(f)
+      af = AudioFile.openRead(f)
       if (af.numChannels != numChannels) {
         Console.err.println(s"Warning: DiskIn - channel mismatch (file has ${af.numChannels}, UGen has $numChannels)")
       }
       bufSize     = ctrl.blockSize
-      buf         = af.buffer(bufSize)
+      val numChMx = math.max(numChannels, af.numChannels)
+      bufOuts     = new Array[BufD](numChMx)
+      buf         = new Array[Array[Double]](numChMx)
     }
 
     override protected def launch(): Unit = {
-      super.launch()
       super.launch()
       onPull()  // needed for asynchronous logic
     }
 
     override protected def stopped(): Unit = {
-      logStream.info(s"postStop() $this")
+      logStream.info(s"stopped() $this")
       buf = null
-//      try {
+      var ch = 0
+      if (bufOuts != null) {
+        while (ch < bufOuts.length) {
+          val b = bufOuts(ch)
+          if (b != null) b.release()
+          ch += 1
+        }
+        bufOuts = null
+      }
       if (af != null) {
         af.close()
         af = null
       }
-//      } catch {
-//        case NonFatal(ex) =>  // XXX TODO -- what with this?
-//      }
     }
 
     override def onDownstreamFinish(cause: Throwable): Unit = {
@@ -115,23 +122,28 @@ object AudioFileIn {
         logStream.info(s"process() - completeStage $this")
         completeStage()
       } else {
-        af.read(buf, 0, chunk)
-        framesRead += chunk
         var ch = 0
         while (ch < numChannels) {
           val out = shape.out(ch)
           if (!isClosed(out)) {
-            val bufOut = ctrl.borrowBufD()
-            val b = bufOut.buf
-            if (ch < buf.length) {
-              val a = buf(ch)
-              System.arraycopy(a, 0, b, 0, chunk)
-            } else {
-              Util.clear(b, 0, chunk)
-            }
-            bufOut.size = chunk
-//            println(s"disk   : ${bufOut.hashCode.toHexString} - ${bufOut.buf.toVector.hashCode.toHexString}")
+            val bufOut    = ctrl.borrowBufD()
+            bufOuts (ch)  = bufOut
+            buf     (ch)  = bufOut.buf
+          }
+          ch += 1
+        }
+        af.read(buf, 0, chunk)
+        framesRead += chunk
+        ch = 0
+        while (ch < numChannels) {
+          val bufOut      = bufOuts(ch)
+          if (bufOut != null) {
+            // if (_gain != 1.0) Util.mul(bufOut.buf, 0, chunk, _gain)
+            bufOut.size   = chunk
+            val out       = shape.out(ch)
             push(out, bufOut)
+            bufOuts (ch)  = null
+            buf     (ch)  = null
           }
           ch += 1
         }
