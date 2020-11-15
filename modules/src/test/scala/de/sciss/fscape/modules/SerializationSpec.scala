@@ -3,8 +3,8 @@ package de.sciss.fscape.modules
 import de.sciss.fscape.{Graph => FGraph}
 import de.sciss.lucre.{Cursor, Durable, Source}
 import de.sciss.lucre.store.BerkeleyDB
-import de.sciss.synth.proc.Widget.{Graph => WGraph}
-import de.sciss.synth.proc.{FScape, SoundProcesses, Widget}
+import de.sciss.proc.Widget.{Graph => WGraph}
+import de.sciss.proc.{FScape, SoundProcesses, Widget}
 import org.scalatest.Outcome
 import org.scalatest.flatspec.FixtureAnyFlatSpec
 import org.scalatest.matchers.should.Matchers

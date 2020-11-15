@@ -1,17 +1,4 @@
-/*
- *  FScapeRenderingImpl.scala
- *  (FScape)
- *
- *  Copyright (c) 2001-2020 Hanns Holger Rutz. All rights reserved.
- *
- *  This software is published under the GNU Affero General Public License v3+
- *
- *
- *  For further information, please contact Hanns Holger Rutz at
- *  contact@sciss.de
- */
-
-package de.sciss.synth.proc.impl
+package de.sciss.proc.impl
 
 import de.sciss.fscape.lucre.UGenGraphBuilder
 import de.sciss.fscape.lucre.UGenGraphBuilder.{MissingIn, OutputResult}
@@ -20,10 +7,10 @@ import de.sciss.fscape.stream.Control
 import de.sciss.lucre.impl.{DummyObservableImpl, ObservableImpl}
 import de.sciss.lucre.synth.{Txn => STxn}
 import de.sciss.lucre.{Cursor, Disposable, Obj, Txn}
+import de.sciss.proc.FScape.Rendering.State
+import de.sciss.proc.FScape.{Output, Rendering}
+import de.sciss.proc.{FScape, GenView, Runner, SoundProcesses, Universe}
 import de.sciss.serial.{DataInput, DataOutput}
-import de.sciss.synth.proc.FScape.{Output, Rendering}
-import de.sciss.synth.proc.FScape.Rendering.State
-import de.sciss.synth.proc.{FScape, GenView, Runner, SoundProcesses, Universe}
 
 import scala.concurrent.stm.Ref
 import scala.concurrent.{Future, Promise}
@@ -35,10 +22,10 @@ object FScapeRenderingImpl {
 
   /** Creates a rendering with the default `UGenGraphBuilder.Context`.
     *
-    * @param fscape     the fscape object whose graph is to be rendered
-    * @param config     configuration for the stream control
-    * @param force      if `true`, always renders even if there are no
-    *                   outputs.
+    * @param fscape the fscape object whose graph is to be rendered
+    * @param config configuration for the stream control
+    * @param force  if `true`, always renders even if there are no
+    *               outputs.
     */
   def apply[T <: STxn[T]](fscape: FScape[T], config: Control.Config, attr: Runner.Attr[T], force: Boolean)
                          (implicit tx: T, universe: Universe[T]): Rendering[T] = {
@@ -69,9 +56,8 @@ object FScapeRenderingImpl {
 
   /** Turns a built UGen graph into a rendering instance. Used by TxnSon.
     *
-    * @param uState   the result of building, either complete or incomplete
-    * @param force    if `true` forces rendering of graphs that do not produce outputs
-    *
+    * @param uState the result of building, either complete or incomplete
+    * @param force  if `true` forces rendering of graphs that do not produce outputs
     * @return a rendering, either cached, or newly started, or directly aborted if the graph was incomplete
     */
   def withState[T <: Txn[T]](uState: UGenGraphBuilder.State[T], force: Boolean)
@@ -92,21 +78,21 @@ object FScapeRenderingImpl {
               control.runExpanded(res.graph)
               val fut = control.status
               fut.map { _ =>
-//                val resourcesB  = List.newBuilder[File]
-                val dataB       = Map .newBuilder[String, Array[Byte]]
+                //                val resourcesB  = List.newBuilder[File]
+                val dataB = Map.newBuilder[String, Array[Byte]]
 
                 res.outputs.foreach { outRes =>
-//                  resourcesB ++= outRes.cacheFiles
+                  //                  resourcesB ++= outRes.cacheFiles
                   val out = DataOutput()
-                  val w   = outRes.writer
+                  val w = outRes.writer
                   w.write(out)
                   val bytes = out.toByteArray
                   // val data  = (w.outputValue, bytes)
                   dataB += outRes.key -> bytes
                 }
 
-//                val resources = resourcesB.result()
-                val data      = dataB     .result()
+                //                val resources = resourcesB.result()
+                val data = dataB.result()
                 new CacheValue(/*resources,*/ data)
               }
             } catch {
@@ -120,20 +106,20 @@ object FScapeRenderingImpl {
           }
 
           val useCache = !isEmpty && !force // new variant: `force` has to be `false` to use cache
-          require (!useCache, "Cache not implemented in Scala.js")
+          require(!useCache, "Cache not implemented in Scala.js")
           val fut: Future[CacheValue] =
-//            if (useCache) {
-//              // - check file cache for structure
-//              RenderingImpl.acquire[T](struct)(mkFuture())
-//            } else
-            {
-              val p = Promise[CacheValue]()
-              tx.afterCommit {
-                val _fut = mkFuture()
-                p.completeWith(_fut)
-              }
-              p.future
+          //            if (useCache) {
+          //              // - check file cache for structure
+          //              RenderingImpl.acquire[T](struct)(mkFuture())
+          //            } else
+          {
+            val p = Promise[CacheValue]()
+            tx.afterCommit {
+              val _fut = mkFuture()
+              p.completeWith(_fut)
             }
+            p.future
+          }
 
           val impl = new Impl[T](struct, res.outputs, control, fut, useCache = useCache)
           fut.onComplete { cvt =>
@@ -153,13 +139,13 @@ object FScapeRenderingImpl {
     override def toString: String = s"CacheValue@${hashCode().toHexString}"
   }
 
-//  // same as filecache.impl.TxnConsumerImpl.Entry
-//  private final class Entry[B](val useCount: Int = 1, val future: Future[B]) {
-//    def inc = new Entry(useCount + 1, future)
-//    def dec = new Entry(useCount - 1, future)
-//  }
+  //  // same as filecache.impl.TxnConsumerImpl.Entry
+  //  private final class Entry[B](val useCount: Int = 1, val future: Future[B]) {
+  //    def inc = new Entry(useCount + 1, future)
+  //    def dec = new Entry(useCount - 1, future)
+  //  }
 
-//  private[this] val map = TMap.empty[CacheKey, Entry[CacheValue]]
+  //  private[this] val map = TMap.empty[CacheKey, Entry[CacheValue]]
 
   // FScape is rendering
   private final class Impl[T <: Txn[T]](struct: CacheKey, outputs: List[OutputResult[T]],
@@ -170,8 +156,8 @@ object FScapeRenderingImpl {
     override def toString = s"Impl@${hashCode.toHexString} - ${fut.value}"
 
     private[this] val _disposed = Ref(false)
-    private[this] val _state    = Ref[GenView.State](if (fut.isCompleted) GenView.Completed else GenView.Running(0.0))
-    private[this] val _result   = Ref[Option[Try[CacheValue]]](fut.value)
+    private[this] val _state = Ref[GenView.State](if (fut.isCompleted) GenView.Completed else GenView.Running(0.0))
+    private[this] val _result = Ref[Option[Try[CacheValue]]](fut.value)
 
     def result(implicit tx: T): Option[Try[Unit]] = _result.get(tx.peer).map(_.map(_ => ()))
 
@@ -194,7 +180,7 @@ object FScapeRenderingImpl {
 
             case _ => None
           }
-        case res @ Some(Failure(_)) =>
+        case res@Some(Failure(_)) =>
           res.asInstanceOf[Option[Try[Obj[T]]]]
 
         case None => None
@@ -213,7 +199,7 @@ object FScapeRenderingImpl {
                 outRef.updateValue(in)
               }
             }
-            _state .set(GenView.Completed)(tx.peer)
+            _state.set(GenView.Completed)(tx.peer)
             _result.set(fut.value)(tx.peer)
             // ...then issue event
             fire(GenView.Completed)
@@ -222,10 +208,10 @@ object FScapeRenderingImpl {
 
     def state(implicit tx: T): GenView.State = _state.get(tx.peer)
 
-    def dispose()(implicit tx: T): Unit =    // XXX TODO --- should cancel processor
+    def dispose()(implicit tx: T): Unit = // XXX TODO --- should cancel processor
       if (!_disposed.swap(true)(tx.peer)) {
-        assert (!useCache)
-//        if (useCache) RenderingImpl.release[T](struct)
+        assert(!useCache)
+        //        if (useCache) RenderingImpl.release[T](struct)
         cancel()
       }
   }
@@ -269,4 +255,5 @@ object FScapeRenderingImpl {
 
     def cacheResult(implicit tx: T): Option[Try[CacheValue]] = nada
   }
+
 }

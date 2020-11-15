@@ -13,7 +13,7 @@
 
 package de.sciss.fscape.lucre.impl
 
-import de.sciss.synth.proc.FScape.Output
+import de.sciss.proc.FScape.Output
 import de.sciss.fscape.lucre.UGenGraphBuilder.OutputResult
 import de.sciss.lucre.Txn
 

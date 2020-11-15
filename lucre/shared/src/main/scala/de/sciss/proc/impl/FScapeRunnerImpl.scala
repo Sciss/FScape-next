@@ -11,7 +11,7 @@
  *  contact@sciss.de
  */
 
-package de.sciss.synth.proc.impl
+package de.sciss.proc.impl
 
 import java.util.concurrent.TimeUnit
 
@@ -19,9 +19,9 @@ import de.sciss.lucre.Txn.peer
 import de.sciss.lucre.impl.ObservableImpl
 import de.sciss.lucre.synth.Executor
 import de.sciss.lucre.{Disposable, Obj, Source, Txn, synth}
-import de.sciss.synth.proc.FScape.Rendering
-import de.sciss.synth.proc.Runner.{Done, Failed, Stopped}
-import de.sciss.synth.proc.{FScape, Runner, SoundProcesses, Universe}
+import de.sciss.proc.FScape.Rendering
+import de.sciss.proc.Runner.{Done, Failed, Stopped}
+import de.sciss.proc.{FScape, Runner, SoundProcesses, Universe}
 
 import scala.concurrent.ExecutionException
 import scala.concurrent.stm.{Ref, TxnExecutor}

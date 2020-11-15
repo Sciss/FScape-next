@@ -7,8 +7,8 @@ import de.sciss.fscape.Ops._
 import de.sciss.fscape.lucre.Cache
 import de.sciss.lucre.DoubleObj
 import de.sciss.lucre.synth.InMemory
-import de.sciss.synth.proc.FScape.Output
-import de.sciss.synth.proc.{FScape, GenView, Universe}
+import de.sciss.proc.FScape.Output
+import de.sciss.proc.{FScape, GenView, Universe}
 
 import scala.concurrent.stm.Ref
 import scala.util.{Failure, Success}

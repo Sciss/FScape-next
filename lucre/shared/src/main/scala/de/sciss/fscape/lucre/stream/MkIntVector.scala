@@ -21,7 +21,7 @@ import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
 import de.sciss.fscape.stream.{Builder, Control, _}
 import de.sciss.lucre.IntVector
 import de.sciss.serial.DataOutput
-import de.sciss.synth.proc.FScape.Output
+import de.sciss.proc.FScape.Output
 
 import scala.annotation.tailrec
 import scala.collection.immutable.{IndexedSeq => Vec}

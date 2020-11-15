@@ -16,8 +16,8 @@ package impl
 
 import de.sciss.fscape.Graph
 import de.sciss.lucre.Txn
-import de.sciss.synth.proc.{Code, FScape}
-import de.sciss.synth.proc.impl.Macros.mkSource
+import de.sciss.proc.{Code, FScape}
+import de.sciss.proc.impl.Macros.mkSource
 
 import scala.reflect.macros.blackbox
 

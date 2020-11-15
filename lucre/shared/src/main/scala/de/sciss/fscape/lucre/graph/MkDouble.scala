@@ -16,7 +16,7 @@ package de.sciss.fscape.lucre.graph
 import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.lucre.UGenGraphBuilder
-import de.sciss.synth.proc.FScape.Output
+import de.sciss.proc.FScape.Output
 import de.sciss.fscape.lucre.UGenGraphBuilder.OutputRef
 import de.sciss.fscape.{GE, Lazy, UGen, UGenGraph, UGenIn, UGenSource, stream}
 import de.sciss.fscape.stream.StreamIn

@@ -6,7 +6,7 @@ import de.sciss.file._
 import de.sciss.fscape.stream.Cancelled
 import de.sciss.lucre.synth.InMemory
 import de.sciss.lucre.{Artifact, ArtifactLocation, IntObj}
-import de.sciss.synth.proc.{FScape, Universe}
+import de.sciss.proc.{FScape, Universe}
 
 import scala.util.{Failure, Success}
 

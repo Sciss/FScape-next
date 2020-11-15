@@ -9,7 +9,7 @@ import de.sciss.lucre.IntObj
 import de.sciss.lucre.synth.InMemory
 import de.sciss.synth
 import de.sciss.synth.SynthGraph
-import de.sciss.synth.proc.{AudioCue, FScape, GenView, Proc, Transport, Universe}
+import de.sciss.proc.{AudioCue, FScape, GenView, Proc, Transport, Universe}
 
 object FeedIntoAuralProcTest extends App {
   type S                  = InMemory

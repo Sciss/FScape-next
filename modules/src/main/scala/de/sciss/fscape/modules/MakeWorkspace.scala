@@ -16,8 +16,8 @@ package de.sciss.fscape.modules
 import de.sciss.file._
 import de.sciss.lucre.store.BerkeleyDB
 import de.sciss.lucre.{BooleanObj, Folder, Txn}
-import de.sciss.synth.proc.Implicits._
-import de.sciss.synth.proc.{FScape, Markdown, SoundProcesses, Widget, Workspace}
+import de.sciss.proc.Implicits._
+import de.sciss.proc.{FScape, Markdown, SoundProcesses, Widget, Workspace}
 import org.rogach.scallop.{ScallopConf, ScallopOption => Opt}
 
 import scala.io.Source

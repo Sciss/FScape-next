@@ -5,7 +5,7 @@ import de.sciss.file._
 import de.sciss.fscape.Ops._
 import de.sciss.lucre.store.BerkeleyDB
 import de.sciss.lucre.{Artifact, ArtifactLocation}
-import de.sciss.synth.proc.{Durable, FScape, SoundProcesses, Universe}
+import de.sciss.proc.{Durable, FScape, SoundProcesses, Universe}
 import org.scalatest.Outcome
 import org.scalatest.flatspec.FixtureAnyFlatSpec
 import org.scalatest.matchers.should.Matchers

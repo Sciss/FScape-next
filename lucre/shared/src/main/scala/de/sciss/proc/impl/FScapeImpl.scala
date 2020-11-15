@@ -11,7 +11,7 @@
  *  contact@sciss.de
  */
 
-package de.sciss.synth.proc.impl
+package de.sciss.proc.impl
 
 import de.sciss.fscape.stream.Control
 import de.sciss.lucre.Event.Targets
@@ -19,8 +19,8 @@ import de.sciss.lucre.data.SkipList
 import de.sciss.lucre.impl.{GeneratorEvent, ObjFormat, SingleEventNode}
 import de.sciss.lucre.{AnyTxn, Copy, Elem, Obj, Pull, Txn, synth}
 import de.sciss.serial.{DataInput, DataOutput, TFormat}
-import de.sciss.synth.proc.FScape.{Output, Rendering}
-import de.sciss.synth.proc.{FScape, GenView, Runner, Universe}
+import de.sciss.proc.FScape.{Output, Rendering}
+import de.sciss.proc.{FScape, GenView, Runner, Universe}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 

@@ -11,13 +11,13 @@
  *  contact@sciss.de
  */
 
-package de.sciss.synth.proc.impl
+package de.sciss.proc.impl
 
 import de.sciss.fscape.stream.Control
 import de.sciss.lucre.impl.ObservableImpl
 import de.sciss.lucre.{Disposable, Obj, Source, Txn}
-import de.sciss.synth.proc.FScape.{Output, Rendering}
-import de.sciss.synth.proc.{FScape, GenContext, GenView}
+import de.sciss.proc.FScape.{Output, Rendering}
+import de.sciss.proc.{FScape, GenContext, GenView}
 
 import scala.util.Try
 

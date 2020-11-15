@@ -14,7 +14,7 @@
 package de.sciss.fscape.modules
 
 import de.sciss.lucre.Txn
-import de.sciss.synth.proc.{FScape, Widget}
+import de.sciss.proc.{FScape, Widget}
 
 trait Module {
   // ---- abstract ----

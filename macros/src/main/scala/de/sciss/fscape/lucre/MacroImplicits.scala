@@ -15,7 +15,7 @@ package de.sciss.fscape.lucre
 
 import de.sciss.fscape.lucre.impl.Macros
 import de.sciss.lucre.Txn
-import de.sciss.synth.proc.FScape
+import de.sciss.proc.FScape
 
 import scala.language.experimental.macros
 

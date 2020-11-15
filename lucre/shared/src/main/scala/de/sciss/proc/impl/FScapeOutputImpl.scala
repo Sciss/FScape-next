@@ -11,13 +11,13 @@
  *  contact@sciss.de
  */
 
-package de.sciss.synth.proc.impl
+package de.sciss.proc.impl
 
 import de.sciss.lucre.impl.{ConstObjImpl, ObjFormat}
 import de.sciss.lucre.{AnyTxn, Copy, Elem, Ident, Obj, Txn, Var => LVar}
 import de.sciss.serial.{DataInput, DataOutput, TFormat}
-import de.sciss.synth.proc.FScape
-import de.sciss.synth.proc.FScape.Output
+import de.sciss.proc.FScape
+import de.sciss.proc.FScape.Output
 
 object FScapeOutputImpl {
   private final val SER_VERSION = 0x464F  // "FO"

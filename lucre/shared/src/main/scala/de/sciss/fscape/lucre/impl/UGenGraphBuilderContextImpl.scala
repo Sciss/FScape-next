@@ -19,7 +19,7 @@ import de.sciss.fscape.lucre.UGenGraphBuilder.MissingIn
 import de.sciss.fscape.lucre.{UGenGraphBuilder => UGB}
 import de.sciss.lucre.ExprLike
 import de.sciss.lucre.Txn
-import de.sciss.synth.proc.{FScape, Runner, Universe}
+import de.sciss.proc.{FScape, Runner, Universe}
 
 object UGenGraphBuilderContextImpl {
   final class Default[T <: Txn[T]](protected val fscape: FScape[T],

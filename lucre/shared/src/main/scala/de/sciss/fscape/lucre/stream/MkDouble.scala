@@ -20,7 +20,7 @@ import de.sciss.fscape.stream.impl.Handlers.InDMain
 import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
 import de.sciss.fscape.stream.{BufD, Builder, Control, _}
 import de.sciss.serial.{DataOutput, TFormat}
-import de.sciss.synth.proc.FScape.Output
+import de.sciss.proc.FScape.Output
 
 object MkDouble {
   def apply(in: OutD, ref: OutputRef)(implicit b: Builder): Unit = {

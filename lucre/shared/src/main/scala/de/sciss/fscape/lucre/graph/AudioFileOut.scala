@@ -22,7 +22,7 @@ import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.lucre.UGenGraphBuilder.{Input, MissingIn}
 import de.sciss.fscape.stream.{Builder, StreamIn, StreamOut}
-import de.sciss.synth.proc.AudioCue
+import de.sciss.proc.AudioCue
 
 import scala.annotation.switch
 import scala.collection.immutable.{IndexedSeq => Vec}

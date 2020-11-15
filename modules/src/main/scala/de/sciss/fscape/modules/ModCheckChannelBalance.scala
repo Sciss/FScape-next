@@ -15,7 +15,7 @@ package de.sciss.fscape.modules
 
 import de.sciss.fscape.graph.{AudioFileIn => _, AudioFileOut => _, _}
 import de.sciss.lucre.Txn
-import de.sciss.synth.proc.{FScape, Widget}
+import de.sciss.proc.{FScape, Widget}
 
 object ModCheckChannelBalance extends Module {
   val name = "Check Channel Balance"
@@ -69,7 +69,7 @@ object ModCheckChannelBalance extends Module {
     import de.sciss.lucre.expr.ExImport._
     import de.sciss.lucre.swing.graph._
     val w = Widget[T]()
-    import de.sciss.synth.proc.MacroImplicits._
+    import de.sciss.proc.MacroImplicits._
     w.setGraph {
       // version: 04-Oct-2020
       val r     = Runner("run")

@@ -1,21 +1,8 @@
-/*
- *  FScapeRenderingImpl.scala
- *  (FScape)
- *
- *  Copyright (c) 2001-2020 Hanns Holger Rutz. All rights reserved.
- *
- *  This software is published under the GNU Affero General Public License v3+
- *
- *
- *  For further information, please contact Hanns Holger Rutz at
- *  contact@sciss.de
- */
-
-package de.sciss.synth.proc.impl
+package de.sciss.proc.impl
 
 import java.net.URI
 
-import de.sciss.file._
+import de.sciss.file.File
 import de.sciss.filecache
 import de.sciss.filecache.TxnProducer
 import de.sciss.fscape.lucre.UGenGraphBuilder.{MissingIn, OutputResult}
@@ -25,10 +12,10 @@ import de.sciss.fscape.stream.Control
 import de.sciss.lucre.impl.{DummyObservableImpl, ObservableImpl}
 import de.sciss.lucre.synth.{Txn => STxn}
 import de.sciss.lucre.{Artifact, Cursor, Disposable, Obj, Txn}
+import de.sciss.proc.FScape.Rendering.State
+import de.sciss.proc.FScape.{Output, Rendering}
+import de.sciss.proc.{FScape, GenView, Runner, SoundProcesses, Universe}
 import de.sciss.serial.{ConstFormat, DataInput, DataOutput}
-import de.sciss.synth.proc.FScape.{Output, Rendering}
-import de.sciss.synth.proc.FScape.Rendering.State
-import de.sciss.synth.proc.{FScape, GenView, Runner, SoundProcesses, Universe}
 
 import scala.concurrent.stm.{Ref, TMap, atomic}
 import scala.concurrent.{Future, Promise}
@@ -40,10 +27,10 @@ object FScapeRenderingImpl {
 
   /** Creates a rendering with the default `UGenGraphBuilder.Context`.
     *
-    * @param fscape     the fscape object whose graph is to be rendered
-    * @param config     configuration for the stream control
-    * @param force      if `true`, always renders even if there are no
-    *                   outputs.
+    * @param fscape the fscape object whose graph is to be rendered
+    * @param config configuration for the stream control
+    * @param force  if `true`, always renders even if there are no
+    *               outputs.
     */
   def apply[T <: STxn[T]](fscape: FScape[T], config: Control.Config, attr: Runner.Attr[T], force: Boolean)
                          (implicit tx: T, universe: Universe[T]): Rendering[T] = {
@@ -88,9 +75,8 @@ object FScapeRenderingImpl {
 
   /** Turns a built UGen graph into a rendering instance. Used by TxnSon.
     *
-    * @param uState   the result of building, either complete or incomplete
-    * @param force    if `true` forces rendering of graphs that do not produce outputs
-    *
+    * @param uState the result of building, either complete or incomplete
+    * @param force  if `true` forces rendering of graphs that do not produce outputs
     * @return a rendering, either cached, or newly started, or directly aborted if the graph was incomplete
     */
   def withState[T <: Txn[T]](uState: UGenGraphBuilder.State[T], force: Boolean)
@@ -111,13 +97,13 @@ object FScapeRenderingImpl {
               control.runExpanded(res.graph)
               val fut = control.status
               fut.map { _ =>
-                val resourcesB  = List.newBuilder[Artifact.Value]
-                val dataB       = Map .newBuilder[String, Array[Byte]]
+                val resourcesB = List.newBuilder[Artifact.Value]
+                val dataB = Map.newBuilder[String, Array[Byte]]
 
                 res.outputs.foreach { outRes =>
                   resourcesB ++= outRes.cacheFiles
                   val out = DataOutput()
-                  val w   = outRes.writer
+                  val w = outRes.writer
                   w.write(out)
                   val bytes = out.toByteArray
                   // val data  = (w.outputValue, bytes)
@@ -125,7 +111,7 @@ object FScapeRenderingImpl {
                 }
 
                 val resources = resourcesB.result()
-                val data      = dataB     .result()
+                val data = dataB.result()
                 new CacheValue(resources, data)
               }
             } catch {
@@ -166,22 +152,22 @@ object FScapeRenderingImpl {
   type CacheKey = Long
 
   object CacheValue {
-    private[this] val COOKIE = 0x46734356   // "FsCV"
+    private[this] val COOKIE = 0x46734356 // "FsCV"
 
     implicit object format extends ConstFormat[CacheValue] {
       def read(in: DataInput): CacheValue = {
         val cookie = in.readInt()
         if (cookie != COOKIE) sys.error(s"Unexpected cookie (found $cookie, expected $COOKIE)")
-        val numFiles  = in.readUnsignedShort()
+        val numFiles = in.readUnsignedShort()
         val resources = if (numFiles == 0) Nil else List.fill(numFiles)(new URI(in.readUTF()))
-        val numData   = in.readShort()
+        val numData = in.readShort()
         val data: Map[String, Array[Byte]] = if (numData == 0) Map.empty else {
-          val b     = Map.newBuilder[String, Array[Byte]]
+          val b = Map.newBuilder[String, Array[Byte]]
           b.sizeHint(numData)
-          var i     = 0
+          var i = 0
           while (i < numData) {
-            val key   = in.readUTF()
-            val sz    = in.readUnsignedShort()
+            val key = in.readUTF()
+            val sz = in.readUnsignedShort()
             val bytes = new Array[Byte](sz)
             in.readFully(bytes)
             b += key -> bytes // ((), bytes)
@@ -206,33 +192,40 @@ object FScapeRenderingImpl {
         }
       }
     }
+
   }
+
   final class CacheValue(val resources: List[Artifact.Value], val data: Map[String, Array[Byte]]) {
     override def toString: String = s"CacheValue@${hashCode().toHexString}"
   }
 
   private[this] lazy val producer: TxnProducer[CacheKey, CacheValue] = {
     val cacheCfg = filecache.Config[CacheKey, CacheValue]()
-    val global   = Cache.instance
-    cacheCfg.accept           = { (_ /* key */, _ /* value */) => true }
-    cacheCfg.space            = { (_ /* key */, value) => value.resources.map { uri =>
-      val f = new File(uri) // XXX TODO
-      f.length()
-    } .sum }
-    cacheCfg.evict            = { (_ /* key */, value) => value.resources.foreach { uri =>
-      val f = new File(uri) // XXX TODO
-      f.delete()
-    }}
-    cacheCfg.capacity         = global.capacity
+    val global = Cache.instance
+    cacheCfg.accept = { (_ /* key */ , _ /* value */) => true }
+    cacheCfg.space = { (_ /* key */ , value) =>
+      value.resources.map { uri =>
+        val f = new File(uri) // XXX TODO
+        f.length()
+      }.sum
+    }
+    cacheCfg.evict = { (_ /* key */ , value) =>
+      value.resources.foreach { uri =>
+        val f = new File(uri) // XXX TODO
+        f.delete()
+      }
+    }
+    cacheCfg.capacity = global.capacity
     cacheCfg.executionContext = global.executionContext
-    cacheCfg.fileExtension    = global.extension
-    cacheCfg.folder           = global.folder
+    cacheCfg.fileExtension = global.extension
+    cacheCfg.folder = global.folder
     atomic { implicit tx => TxnProducer(cacheCfg) }
   }
 
   // same as filecache.impl.TxnConsumerImpl.Entry
   private final class Entry[B](val useCount: Int = 1, val future: Future[B]) {
     def inc = new Entry(useCount + 1, future)
+
     def dec = new Entry(useCount - 1, future)
   }
 
@@ -240,7 +233,7 @@ object FScapeRenderingImpl {
 
   // mostly same as filecache.impl.TxnConsumerImpl.acquire
   def acquire[T <: Txn[T]](key: CacheKey)(source: => Future[CacheValue])
-                          (implicit tx: T)      : Future[CacheValue] = {
+                          (implicit tx: T): Future[CacheValue] = {
     import Txn.peer
     map.get(key).fold {
       val fut = producer.acquireWith(key)(source)
@@ -265,8 +258,8 @@ object FScapeRenderingImpl {
     import Txn.peer
     map.get(key) match {
       case Some(e0) =>
-        val e1    = e0.dec
-        val last  = e1.useCount == 0
+        val e1 = e0.dec
+        val last = e1.useCount == 0
         if (last) {
           map.remove(key)
           producer.release(key)
@@ -292,8 +285,8 @@ object FScapeRenderingImpl {
     override def toString = s"Impl@${hashCode.toHexString} - ${fut.value}"
 
     private[this] val _disposed = Ref(false)
-    private[this] val _state    = Ref[GenView.State](if (fut.isCompleted) GenView.Completed else GenView.Running(0.0))
-    private[this] val _result   = Ref[Option[Try[CacheValue]]](fut.value)
+    private[this] val _state = Ref[GenView.State](if (fut.isCompleted) GenView.Completed else GenView.Running(0.0))
+    private[this] val _result = Ref[Option[Try[CacheValue]]](fut.value)
 
     def result(implicit tx: T): Option[Try[Unit]] = _result.get(tx.peer).map(_.map(_ => ()))
 
@@ -316,7 +309,7 @@ object FScapeRenderingImpl {
 
             case _ => None
           }
-        case res @ Some(Failure(_)) =>
+        case res@Some(Failure(_)) =>
           res.asInstanceOf[Option[Try[Obj[T]]]]
 
         case None => None
@@ -335,7 +328,7 @@ object FScapeRenderingImpl {
                 outRef.updateValue(in)
               }
             }
-            _state .set(GenView.Completed)(tx.peer)
+            _state.set(GenView.Completed)(tx.peer)
             _result.set(fut.value)(tx.peer)
             // ...then issue event
             fire(GenView.Completed)
@@ -344,7 +337,7 @@ object FScapeRenderingImpl {
 
     def state(implicit tx: T): GenView.State = _state.get(tx.peer)
 
-    def dispose()(implicit tx: T): Unit =    // XXX TODO --- should cancel processor
+    def dispose()(implicit tx: T): Unit = // XXX TODO --- should cancel processor
       if (!_disposed.swap(true)(tx.peer)) {
         if (useCache) FScapeRenderingImpl.release[T](struct)
         cancel()
@@ -390,4 +383,5 @@ object FScapeRenderingImpl {
 
     def cacheResult(implicit tx: T): Option[Try[CacheValue]] = nada
   }
+
 }

@@ -25,7 +25,7 @@ class SerializationSpec2 extends AnyFlatSpec with Matchers {
 
   dfs.foreach { case (n, g) =>
     s"Example $n" should "be serializable" in {
-      import de.sciss.synth.proc.FScape.GraphObj.{valueFormat => fmt}
+      import de.sciss.proc.FScape.GraphObj.{valueFormat => fmt}
       val out = DataOutput()
       fmt.write(g, out)
       val in = DataInput(out.toByteArray)

@@ -25,7 +25,7 @@ import de.sciss.fscape.stream.{BufD, BufL, StreamIn, StreamOut, Builder => SBuil
 import de.sciss.fscape.{GE, UGen, UGenGraph, UGenIn, UGenInLike, UGenSource}
 import de.sciss.lucre.Artifact
 import de.sciss.synth.UGenSource.Vec
-import de.sciss.synth.proc.AudioCue
+import de.sciss.proc.AudioCue
 
 object AudioFileIn extends AudioFileInPlatform {
   final case class NumFrames(key: String) extends GE.Lazy {

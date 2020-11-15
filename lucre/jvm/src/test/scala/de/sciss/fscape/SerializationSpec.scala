@@ -3,7 +3,7 @@ package de.sciss.fscape
 import de.sciss.fscape.Ops._
 import de.sciss.lucre.store.BerkeleyDB
 import de.sciss.lucre.{DoubleObj, Durable}
-import de.sciss.synth.proc.{FScape, SoundProcesses}
+import de.sciss.proc.{FScape, SoundProcesses}
 import org.scalatest.Outcome
 import org.scalatest.flatspec.FixtureAnyFlatSpec
 import org.scalatest.matchers.should.Matchers

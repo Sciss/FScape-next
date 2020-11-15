@@ -11,26 +11,23 @@
  *  contact@sciss.de
  */
 
-package de.sciss.synth.proc
+package de.sciss.proc
 
 import java.net.URI
 import java.util
 
 import de.sciss.fscape.graph.{Constant, ConstantD, ConstantI, ConstantL}
 import de.sciss.fscape.lucre.impl.UGenGraphBuilderContextImpl
-import de.sciss.fscape.stream.{Control => SControl} // make Scala 2.12 happy
+import de.sciss.fscape.stream.{Control => SControl}
 import de.sciss.fscape.{Graph, Lazy}
 import de.sciss.lucre.Event.Targets
 import de.sciss.lucre.impl.{DummyEvent, ExprTypeImpl}
-import de.sciss.lucre.{Artifact, Copy, Disposable, Elem, Event, EventLike, Expr, Ident, Obj, Observable, Publisher, Txn, Workspace => LWorkspace}
-import de.sciss.lucre.{Var => LVar}
+import de.sciss.lucre.{Artifact, Copy, Disposable, Elem, Event, EventLike, Expr, Ident, Obj, Observable, Publisher, Txn, Var => LVar, Workspace => LWorkspace}
 import de.sciss.model.{Change => MChange}
+import de.sciss.proc.Code.{Example, Import}
+import de.sciss.proc.impl.{CodeImpl, FScapeImpl, FScapeOutputGenViewImpl, FScapeOutputImpl, FScapeRunnerImpl, FScapeRenderingImpl}
 import de.sciss.serial.{ConstFormat, DataInput, DataOutput, TFormat}
-import de.sciss.synth.proc
-import de.sciss.synth.proc.Code.{Example, Import}
-import de.sciss.synth.proc.impl.{CodeImpl, FScapeImpl, FScapeOutputGenViewImpl, FScapeOutputImpl, FScapeRunnerImpl}
-import de.sciss.{fscape, model}
-import de.sciss.synth.proc.impl.FScapeRenderingImpl
+import de.sciss.{fscape, model, proc}
 
 import scala.annotation.{switch, tailrec}
 import scala.collection.immutable.{IndexedSeq => Vec, Seq => ISeq}

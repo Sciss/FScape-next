@@ -21,8 +21,8 @@ import de.sciss.fscape.stream.impl.{BlockingGraphStage, NodeImpl}
 import de.sciss.fscape.stream.{BufD, BufL, Builder, Control, InD, Layer, OutD, OutL, AudioFileOut => _AudioFileOut}
 import de.sciss.lucre.Artifact
 import de.sciss.serial.DataOutput
-import de.sciss.synth.proc.AudioCue
-import de.sciss.synth.proc.FScape.Output
+import de.sciss.proc.AudioCue
+import de.sciss.proc.FScape.Output
 
 import scala.collection.immutable.{Seq => ISeq}
 

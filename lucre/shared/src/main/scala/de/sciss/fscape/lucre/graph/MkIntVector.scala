@@ -22,7 +22,7 @@ import de.sciss.fscape.stream.StreamIn
 import de.sciss.fscape.{GE, Lazy, UGen, UGenGraph, UGenIn, UGenSource, stream}
 import de.sciss.lucre.{IntVector, Obj, Txn, Workspace}
 import de.sciss.serial.DataInput
-import de.sciss.synth.proc.FScape.Output
+import de.sciss.proc.FScape.Output
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 

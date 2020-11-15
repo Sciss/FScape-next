@@ -3,7 +3,7 @@ package de.sciss.lucre.swing
 import de.sciss.lucre.expr.Context
 import de.sciss.lucre.edit.UndoManager
 import de.sciss.lucre.synth.InMemory
-import de.sciss.synth.proc.{ExprContext, Universe}
+import de.sciss.proc.{ExprContext, Universe}
 
 import scala.swing.Component
 

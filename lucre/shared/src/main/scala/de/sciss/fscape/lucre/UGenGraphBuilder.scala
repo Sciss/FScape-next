@@ -24,9 +24,9 @@ import de.sciss.lucre.expr.graph.{Const => ExConst, Var => ExVar}
 import de.sciss.lucre.{Artifact, Source, Txn, Workspace}
 import de.sciss.serial.DataInput
 import de.sciss.synth.UGenSource.Vec
-import de.sciss.synth.proc.FScape.Output
-import de.sciss.synth.proc.impl.FScapeOutputImpl
-import de.sciss.synth.proc.{FScape, Runner}
+import de.sciss.proc.FScape.Output
+import de.sciss.proc.impl.FScapeOutputImpl
+import de.sciss.proc.{FScape, Runner}
 
 import scala.annotation.tailrec
 import scala.util.control.ControlThrowable

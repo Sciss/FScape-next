@@ -15,7 +15,7 @@ package de.sciss.fscape.modules
 
 import de.sciss.fscape.GE
 import de.sciss.lucre.Txn
-import de.sciss.synth.proc.{FScape, Widget}
+import de.sciss.proc.{FScape, Widget}
 
 import scala.Predef.{any2stringadd => _}
 
@@ -121,7 +121,7 @@ object ModMakeLoop extends Module {
     import de.sciss.lucre.expr.graph._
     import de.sciss.lucre.swing.graph._
     val w = Widget[T]()
-    import de.sciss.synth.proc.MacroImplicits._
+    import de.sciss.proc.MacroImplicits._
     w.setGraph {
       // version: 02-Apr-2019
       val r     = Runner("run")
