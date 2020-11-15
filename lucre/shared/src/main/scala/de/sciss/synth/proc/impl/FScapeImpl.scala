@@ -11,18 +11,16 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape
-package lucre
-package impl
+package de.sciss.synth.proc.impl
 
-import de.sciss.fscape.lucre.FScape.{Output, Rendering}
 import de.sciss.fscape.stream.Control
 import de.sciss.lucre.Event.Targets
 import de.sciss.lucre.data.SkipList
 import de.sciss.lucre.impl.{GeneratorEvent, ObjFormat, SingleEventNode}
 import de.sciss.lucre.{AnyTxn, Copy, Elem, Obj, Pull, Txn, synth}
 import de.sciss.serial.{DataInput, DataOutput, TFormat}
-import de.sciss.synth.proc.{GenView, Runner, Universe}
+import de.sciss.synth.proc.FScape.{Output, Rendering}
+import de.sciss.synth.proc.{FScape, GenView, Runner, Universe}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
@@ -30,7 +28,7 @@ object FScapeImpl {
   private final val SER_VERSION_OLD = 0x4673  // "Fs"
   private final val SER_VERSION     = 0x4674
 
-  def apply[T <: Txn[T]](implicit tx: T): FScape[T] = new New[T]
+  def apply[T <: Txn[T]]()(implicit tx: T): FScape[T] = new New[T]
 
   def read[T <: Txn[T]](in: DataInput)(implicit tx: T): FScape[T] =
     format[T].readT(in)
@@ -79,9 +77,9 @@ object FScapeImpl {
       val _fscape = output.fscape
       import universe.genContext
       val fscView = genContext.acquire[Rendering[T]](_fscape) {
-        RenderingImpl(_fscape, config, attr = Runner.emptyAttr[T], force = false)
+        FScapeRenderingImpl(_fscape, config, attr = Runner.emptyAttr[T], force = false)
       }
-      OutputGenView(config, output, fscView)
+      Output.GenView(config, output, fscView)
     }
   }
 
@@ -105,7 +103,7 @@ object FScapeImpl {
     def copy[Out <: Txn[Out]]()(implicit tx: T, txOut: Out, context: Copy[T, Out]): Elem[Out] =
       new Impl[Out] { out =>
         protected val targets: Targets[Out] = Targets[Out]()
-        val graph     : GraphObj.Var[Out]                       = context(proc.graph)
+        val graph     : FScape.GraphObj.Var[Out]                = context(proc.graph)
         val outputsMap: SkipList.Map[Out, String, Output[Out]]  = SkipList.Map.empty
         connect()
       }
@@ -181,7 +179,7 @@ object FScapeImpl {
     def copy[Out <: Txn[Out]]()(implicit tx: T, txOut: Out, context: Copy[T, Out]): Elem[Out] =
       new Impl[Out] { out =>
         protected val targets: Targets[Out]                     = Targets[Out]()
-        val graph     : GraphObj.Var[Out]                       = context(proc.graph)
+        val graph     : FScape.GraphObj.Var[Out]                = context(proc.graph)
         val outputsMap: SkipList.Map[Out, String, Output[Out]]  = SkipList.Map.empty
 
         context.defer(proc, out) {
@@ -273,7 +271,7 @@ object FScapeImpl {
 
       def add(key: String, tpe: Obj.Type)(implicit tx: T): Output[T] =
         get(key).getOrElse {
-          val res = OutputImpl[T](proc, key, tpe)
+          val res = FScapeOutputImpl[T](proc, key, tpe)
           add(key, res)
           res
         }
@@ -288,7 +286,7 @@ object FScapeImpl {
 
   private final class New[T <: Txn[T]](implicit tx0: T) extends Impl[T] {
     protected val targets: Targets[T] = Targets()(tx0)
-    val graph     : GraphObj.Var[T]                     = GraphObj.newVar(GraphObj.empty)
+    val graph     : FScape.GraphObj.Var[T]              = FScape.GraphObj.newVar(FScape.GraphObj.empty)
     val outputsMap: SkipList.Map[T, String, Output[T]]  = SkipList.Map.empty
     connect()(tx0)
   }
@@ -297,14 +295,14 @@ object FScapeImpl {
                                           (implicit tx0: T)
     extends ImplOLD[T] {
 
-    val graph: GraphObj.Var[T] = GraphObj.readVar(in)
+    val graph: FScape.GraphObj.Var[T] = FScape.GraphObj.readVar(in)
   }
 
   private final class Read[T <: Txn[T]](in: DataInput, protected val targets: Targets[T])
                                        (implicit tx0: T)
     extends Impl[T] {
 
-    val graph     : GraphObj.Var[T]                     = GraphObj    .readVar(in)
-    val outputsMap: SkipList.Map[T, String, Output[T]]  = SkipList.Map.read   (in)
+    val graph     : FScape.GraphObj.Var[T]              = FScape.GraphObj .readVar(in)
+    val outputsMap: SkipList.Map[T, String, Output[T]]  = SkipList.Map    .read   (in)
   }
 }

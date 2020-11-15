@@ -4,12 +4,12 @@ package tests
 import de.sciss.file._
 import de.sciss.filecache.Limit
 import de.sciss.fscape.Ops._
-import de.sciss.fscape.lucre.{Cache, FScape}
+import de.sciss.fscape.lucre.Cache
 import de.sciss.lucre.IntObj
 import de.sciss.lucre.synth.InMemory
 import de.sciss.synth
 import de.sciss.synth.SynthGraph
-import de.sciss.synth.proc.{AudioCue, GenView, Proc, Transport, Universe}
+import de.sciss.synth.proc.{AudioCue, FScape, GenView, Proc, Transport, Universe}
 
 object FeedIntoAuralProcTest extends App {
   type S                  = InMemory

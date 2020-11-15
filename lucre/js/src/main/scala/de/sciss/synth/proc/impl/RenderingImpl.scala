@@ -1,5 +1,5 @@
 /*
- *  FScapeView.scala
+ *  FScapeRenderingImpl.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2020 Hanns Holger Rutz. All rights reserved.
@@ -11,25 +11,26 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape.lucre.impl
+package de.sciss.synth.proc.impl
 
-import de.sciss.fscape.lucre.FScape.Rendering
-import de.sciss.fscape.lucre.FScape.Rendering.State
+import de.sciss.fscape.lucre.UGenGraphBuilder
 import de.sciss.fscape.lucre.UGenGraphBuilder.{MissingIn, OutputResult}
-import de.sciss.fscape.lucre.{FScape, OutputGenView, UGenGraphBuilder}
+import de.sciss.fscape.lucre.impl.UGenGraphBuilderContextImpl
 import de.sciss.fscape.stream.Control
 import de.sciss.lucre.impl.{DummyObservableImpl, ObservableImpl}
 import de.sciss.lucre.synth.{Txn => STxn}
 import de.sciss.lucre.{Cursor, Disposable, Obj, Txn}
 import de.sciss.serial.{DataInput, DataOutput}
-import de.sciss.synth.proc.{GenView, Runner, SoundProcesses, Universe}
+import de.sciss.synth.proc.FScape.{Output, Rendering}
+import de.sciss.synth.proc.FScape.Rendering.State
+import de.sciss.synth.proc.{FScape, GenView, Runner, SoundProcesses, Universe}
 
 import scala.concurrent.stm.Ref
 import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
-object RenderingImpl {
+object FScapeRenderingImpl {
   var DEBUG = false
 
   /** Creates a rendering with the default `UGenGraphBuilder.Context`.
@@ -176,11 +177,11 @@ object RenderingImpl {
 
     def cacheResult(implicit tx: T): Option[Try[CacheValue]] = _result.get(tx.peer)
 
-    def outputResult(outputView: OutputGenView[T])(implicit tx: T): Option[Try[Obj[T]]] = {
+    def outputResult(outputView: Output.GenView[T])(implicit tx: T): Option[Try[Obj[T]]] = {
       _result.get(tx.peer) match {
         case Some(Success(cv)) =>
           outputView.output match {
-            case oi: OutputImpl[T] =>
+            case oi: FScapeOutputImpl[T] =>
               val valOpt: Option[Obj[T]] = oi.value.orElse {
                 val key = oi.key // outputView.key
                 outputs.find(_.key == key).flatMap { outRef =>
@@ -252,7 +253,7 @@ object RenderingImpl {
   private final class EmptyImpl[T <: Txn[T]](val control: Control) extends DummyImpl[T] {
     def result(implicit tx: T): Option[Try[Unit]] = Some(Success(()))
 
-    def outputResult(output: OutputGenView[T])(implicit tx: T): Option[Try[Obj[T]]] = None
+    def outputResult(output: Output.GenView[T])(implicit tx: T): Option[Try[Obj[T]]] = None
 
     def cacheResult(implicit tx: T): Option[Try[CacheValue]] =
       Some(Success(new CacheValue(/*Nil,*/ Map.empty)))
@@ -262,7 +263,7 @@ object RenderingImpl {
   private final class FailedImpl[T <: Txn[T]](val control: Control, rejected: Set[String]) extends DummyImpl[T] {
     def result(implicit tx: T): Option[Try[Unit]] = nada
 
-    def outputResult(output: OutputGenView[T])(implicit tx: T): Option[Try[Obj[T]]] = nada
+    def outputResult(output: Output.GenView[T])(implicit tx: T): Option[Try[Obj[T]]] = nada
 
     private def nada: Option[Try[Nothing]] = Some(Failure(MissingIn(rejected.head)))
 

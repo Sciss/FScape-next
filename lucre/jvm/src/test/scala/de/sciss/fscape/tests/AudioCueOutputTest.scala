@@ -4,11 +4,11 @@ package tests
 import de.sciss.file._
 import de.sciss.filecache.Limit
 import de.sciss.fscape.Ops._
-import de.sciss.fscape.lucre.FScape.Output
-import de.sciss.fscape.lucre.{Cache, FScape}
+import de.sciss.fscape.lucre.Cache
 import de.sciss.lucre.IntObj
 import de.sciss.lucre.synth.InMemory
-import de.sciss.synth.proc.{AudioCue, GenView, Universe}
+import de.sciss.synth.proc.FScape.Output
+import de.sciss.synth.proc.{AudioCue, FScape, GenView, Universe}
 
 import scala.concurrent.stm.Ref
 import scala.util.{Failure, Success}

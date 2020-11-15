@@ -15,12 +15,12 @@ package de.sciss.fscape
 package lucre.stream
 
 import akka.stream.{Attributes, Inlet, SinkShape}
-import de.sciss.fscape.lucre.FScape.Output
 import de.sciss.fscape.lucre.UGenGraphBuilder.OutputRef
 import de.sciss.fscape.stream.impl.Handlers.InIMain
 import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
 import de.sciss.fscape.stream.{BufI, Builder, Control, _}
 import de.sciss.serial.{DataOutput, TFormat}
+import de.sciss.synth.proc.FScape.Output
 
 object MkInt {
   def apply(in: OutI, ref: OutputRef)(implicit b: Builder): Unit = {

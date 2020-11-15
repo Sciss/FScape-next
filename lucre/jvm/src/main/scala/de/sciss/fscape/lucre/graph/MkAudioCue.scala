@@ -18,7 +18,7 @@ package graph
 import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.graph.Constant
-import de.sciss.fscape.lucre.FScape.Output
+import de.sciss.synth.proc.FScape.Output
 import de.sciss.fscape.lucre.UGenGraphBuilder.OutputRef
 import de.sciss.fscape.stream.{StreamIn, StreamOut, Builder => SBuilder}
 import de.sciss.lucre.{Obj, Txn, Workspace}

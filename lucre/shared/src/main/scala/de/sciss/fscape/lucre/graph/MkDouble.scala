@@ -11,16 +11,16 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape
-package lucre
-package graph
+package de.sciss.fscape.lucre.graph
 
 import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.UGenSource.unwrap
-import de.sciss.fscape.lucre.FScape.Output
+import de.sciss.fscape.lucre.UGenGraphBuilder
+import de.sciss.synth.proc.FScape.Output
 import de.sciss.fscape.lucre.UGenGraphBuilder.OutputRef
-import de.sciss.fscape.stream
+import de.sciss.fscape.{GE, Lazy, UGen, UGenGraph, UGenIn, UGenSource, stream}
 import de.sciss.fscape.stream.StreamIn
+import de.sciss.fscape.lucre.stream.{MkDouble => SMKDouble}
 import de.sciss.lucre.DoubleObj
 import de.sciss.lucre.{Obj, Txn, Workspace}
 import de.sciss.serial.{DataInput, TFormat}
@@ -40,7 +40,7 @@ object MkDouble {
 
     private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit = {
       val Vec(in) = args
-      lucre.stream.MkDouble(in = in.toDouble, ref = ref)
+      SMKDouble(in = in.toDouble, ref = ref)
     }
 
     override def productPrefix: String = s"MkDouble$$WithRef"

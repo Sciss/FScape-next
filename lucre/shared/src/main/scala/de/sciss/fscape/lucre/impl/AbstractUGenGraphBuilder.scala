@@ -18,7 +18,7 @@ package impl
 import java.util
 
 import de.sciss.fscape.graph.{ConstantD, ConstantI, ConstantL}
-import de.sciss.fscape.lucre.FScape.Output
+import de.sciss.synth.proc.FScape.Output
 import de.sciss.fscape.lucre.UGenGraphBuilder.{Complete, Context, IO, Incomplete, Input, Key, MissingIn, OutputRef, OutputResult, State}
 import de.sciss.fscape.stream.Control
 import de.sciss.lucre.Txn

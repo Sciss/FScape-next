@@ -11,19 +11,17 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape.lucre
-package impl
+package de.sciss.synth.proc.impl
 
 import java.util.concurrent.TimeUnit
 
-import de.sciss.fscape.lucre.FScape.Rendering
 import de.sciss.lucre.Txn.peer
 import de.sciss.lucre.impl.ObservableImpl
 import de.sciss.lucre.synth.Executor
 import de.sciss.lucre.{Disposable, Obj, Source, Txn, synth}
+import de.sciss.synth.proc.FScape.Rendering
 import de.sciss.synth.proc.Runner.{Done, Failed, Stopped}
-import de.sciss.synth.proc.impl.BasicRunnerImpl
-import de.sciss.synth.proc.{Runner, SoundProcesses, Universe}
+import de.sciss.synth.proc.{FScape, Runner, SoundProcesses, Universe}
 
 import scala.concurrent.ExecutionException
 import scala.concurrent.stm.{Ref, TxnExecutor}

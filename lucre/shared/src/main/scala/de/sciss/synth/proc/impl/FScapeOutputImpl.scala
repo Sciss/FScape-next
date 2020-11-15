@@ -1,5 +1,5 @@
 /*
- *  OutputImpl.scala
+ *  FScapeOutputImpl.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2020 Hanns Holger Rutz. All rights reserved.
@@ -11,21 +11,20 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape
-package lucre
-package impl
+package de.sciss.synth.proc.impl
 
-import de.sciss.fscape.lucre.FScape.Output
 import de.sciss.lucre.impl.{ConstObjImpl, ObjFormat}
 import de.sciss.lucre.{AnyTxn, Copy, Elem, Ident, Obj, Txn, Var => LVar}
 import de.sciss.serial.{DataInput, DataOutput, TFormat}
+import de.sciss.synth.proc.FScape
+import de.sciss.synth.proc.FScape.Output
 
-object OutputImpl {
+object FScapeOutputImpl {
   private final val SER_VERSION = 0x464F  // "FO"
 
   sealed trait Update[T]
 
-  def apply[T <: Txn[T]](fscape: FScape[T], key: String, tpe: Obj.Type)(implicit tx: T): OutputImpl[T] = {
+  def apply[T <: Txn[T]](fscape: FScape[T], key: String, tpe: Obj.Type)(implicit tx: T): FScapeOutputImpl[T] = {
 //    val tgt = evt.Targets[T]
 //    val id = tgt.id
     val id  = tx.newId()
@@ -38,8 +37,8 @@ object OutputImpl {
 
   def format[T <: Txn[T]]: TFormat[T, Output[T]] = anyFmt.asInstanceOf[Fmt[T]]
 
-  implicit def implFmt[T <: Txn[T]]: TFormat[T, OutputImpl[T]] =
-    anyFmt.asInstanceOf[TFormat[T, OutputImpl[T]]]
+  implicit def implFmt[T <: Txn[T]]: TFormat[T, FScapeOutputImpl[T]] =
+    anyFmt.asInstanceOf[TFormat[T, FScapeOutputImpl[T]]]
 
   private val anyFmt = new Fmt[AnyTxn]
 
@@ -72,7 +71,7 @@ object OutputImpl {
   private final class Impl[T <: Txn[T]](val id: Ident[T] /* protected val targets: evt.Targets[T] */ ,
                                         val fscape: FScape[T], val key: String, val valueType: Obj.Type,
                                         valueVr: LVar[T, Option[Obj[T]]])
-    extends OutputImpl[T] with ConstObjImpl[T, Any] /* SingleEventNode[T, Output.Update[T]] */ { self =>
+    extends FScapeOutputImpl[T] with ConstObjImpl[T, Any] /* SingleEventNode[T, Output.Update[T]] */ { self =>
 
     def tpe: Obj.Type = Output
 
@@ -136,7 +135,7 @@ object OutputImpl {
     }
   }
 }
-sealed trait OutputImpl[T <: Txn[T]] extends Output[T] {
+sealed trait FScapeOutputImpl[T <: Txn[T]] extends Output[T] {
   def value(implicit tx: T): Option[Obj[T]]
   def value_=(v: Option[Obj[T]])(implicit tx: T): Unit
 }

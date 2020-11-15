@@ -16,16 +16,17 @@ package lucre
 
 import de.sciss.fscape.graph.impl.GESeq
 import de.sciss.fscape.graph.{ArithmSeq, BinaryOp, Constant, ConstantD, ConstantI, ConstantL, GeomSeq, UnaryOp}
-import de.sciss.fscape.lucre.FScape.Output
 import de.sciss.fscape.lucre.UGenGraphBuilder.OutputRef
 import de.sciss.fscape.lucre.graph.Attribute
-import de.sciss.fscape.lucre.impl.{AbstractOutputRef, AbstractUGenGraphBuilder, OutputImpl}
+import de.sciss.fscape.lucre.impl.{AbstractOutputRef, AbstractUGenGraphBuilder}
 import de.sciss.fscape.stream.Control
 import de.sciss.lucre.expr.graph.{Const => ExConst, Var => ExVar}
 import de.sciss.lucre.{Artifact, Source, Txn, Workspace}
 import de.sciss.serial.DataInput
 import de.sciss.synth.UGenSource.Vec
-import de.sciss.synth.proc.Runner
+import de.sciss.synth.proc.FScape.Output
+import de.sciss.synth.proc.impl.FScapeOutputImpl
+import de.sciss.synth.proc.{FScape, Runner}
 
 import scala.annotation.tailrec
 import scala.util.control.ControlThrowable
@@ -403,7 +404,7 @@ object UGenGraphBuilder /*extends UGenGraphBuilderPlatform*/ {
       val key = reader.key
       val outOpt = fscape.outputs.get(key)
       outOpt match {
-        case Some(out: OutputImpl[T]) =>
+        case Some(out: FScapeOutputImpl[T]) =>
           if (out.valueType.typeId == reader.tpe.typeId) {
             val res = new ObjOutputRefImpl(reader, tx.newHandle(out))
             Some(res)
@@ -437,7 +438,7 @@ object UGenGraphBuilder /*extends UGenGraphBuilderPlatform*/ {
   }
 
   private final class ObjOutputRefImpl[T <: Txn[T]](val reader: Output.Reader,
-                                                 outputH: Source[T, OutputImpl[T]])
+                                                 outputH: Source[T, FScapeOutputImpl[T]])
                                                 (implicit workspace: Workspace[T])
     extends AbstractOutputRef[T] {
 

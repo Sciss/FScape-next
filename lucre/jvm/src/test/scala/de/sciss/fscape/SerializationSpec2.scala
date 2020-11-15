@@ -1,6 +1,5 @@
 package de.sciss.fscape
 
-import de.sciss.fscape.lucre.GraphObj
 import de.sciss.serial.{DataInput, DataOutput}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -26,7 +25,7 @@ class SerializationSpec2 extends AnyFlatSpec with Matchers {
 
   dfs.foreach { case (n, g) =>
     s"Example $n" should "be serializable" in {
-      import GraphObj.{valueFormat => fmt}
+      import de.sciss.synth.proc.FScape.GraphObj.{valueFormat => fmt}
       val out = DataOutput()
       fmt.write(g, out)
       val in = DataInput(out.toByteArray)

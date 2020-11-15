@@ -1,5 +1,5 @@
 /*
- *  FScapeView.scala
+ *  FScapeRenderingImpl.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2020 Hanns Holger Rutz. All rights reserved.
@@ -11,30 +11,31 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape.lucre.impl
+package de.sciss.synth.proc.impl
 
 import java.net.URI
 
 import de.sciss.file._
 import de.sciss.filecache
 import de.sciss.filecache.TxnProducer
-import de.sciss.fscape.lucre.FScape.Rendering
-import de.sciss.fscape.lucre.FScape.Rendering.State
 import de.sciss.fscape.lucre.UGenGraphBuilder.{MissingIn, OutputResult}
-import de.sciss.fscape.lucre.{Cache, FScape, OutputGenView, UGenGraphBuilder}
+import de.sciss.fscape.lucre.impl.UGenGraphBuilderContextImpl
+import de.sciss.fscape.lucre.{Cache, UGenGraphBuilder}
 import de.sciss.fscape.stream.Control
 import de.sciss.lucre.impl.{DummyObservableImpl, ObservableImpl}
 import de.sciss.lucre.synth.{Txn => STxn}
 import de.sciss.lucre.{Artifact, Cursor, Disposable, Obj, Txn}
 import de.sciss.serial.{ConstFormat, DataInput, DataOutput}
-import de.sciss.synth.proc.{GenView, Runner, SoundProcesses, Universe}
+import de.sciss.synth.proc.FScape.{Output, Rendering}
+import de.sciss.synth.proc.FScape.Rendering.State
+import de.sciss.synth.proc.{FScape, GenView, Runner, SoundProcesses, Universe}
 
 import scala.concurrent.stm.{Ref, TMap, atomic}
 import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
-object RenderingImpl {
+object FScapeRenderingImpl {
   var DEBUG = false
 
   /** Creates a rendering with the default `UGenGraphBuilder.Context`.
@@ -76,8 +77,7 @@ object RenderingImpl {
                          force: Boolean)
                         (implicit tx: T, universe: Universe[T]): Rendering[T] = {
     implicit val control: Control = Control(config)
-    import universe.cursor
-    import universe.workspace
+    import universe.{cursor, workspace}
     val uState = UGenGraphBuilder.build(ugbContext, fscape)
     withState(uState, force = force)
   }
@@ -141,7 +141,7 @@ object RenderingImpl {
           val useCache = !isEmpty && !force // new variant: `force` has to be `false` to use cache
           val fut: Future[CacheValue] = if (useCache) {
             // - check file cache for structure
-            RenderingImpl.acquire[T](struct)(mkFuture())
+            FScapeRenderingImpl.acquire[T](struct)(mkFuture())
           } else {
             val p = Promise[CacheValue]()
             tx.afterCommit {
@@ -299,11 +299,11 @@ object RenderingImpl {
 
     def cacheResult(implicit tx: T): Option[Try[CacheValue]] = _result.get(tx.peer)
 
-    def outputResult(outputView: OutputGenView[T])(implicit tx: T): Option[Try[Obj[T]]] = {
+    def outputResult(outputView: Output.GenView[T])(implicit tx: T): Option[Try[Obj[T]]] = {
       _result.get(tx.peer) match {
         case Some(Success(cv)) =>
           outputView.output match {
-            case oi: OutputImpl[T] =>
+            case oi: FScapeOutputImpl[T] =>
               val valOpt: Option[Obj[T]] = oi.value.orElse {
                 val key = oi.key // outputView.key
                 outputs.find(_.key == key).flatMap { outRef =>
@@ -346,7 +346,7 @@ object RenderingImpl {
 
     def dispose()(implicit tx: T): Unit =    // XXX TODO --- should cancel processor
       if (!_disposed.swap(true)(tx.peer)) {
-        if (useCache) RenderingImpl.release[T](struct)
+        if (useCache) FScapeRenderingImpl.release[T](struct)
         cancel()
       }
   }
@@ -374,7 +374,7 @@ object RenderingImpl {
   private final class EmptyImpl[T <: Txn[T]](val control: Control) extends DummyImpl[T] {
     def result(implicit tx: T): Option[Try[Unit]] = Some(Success(()))
 
-    def outputResult(output: OutputGenView[T])(implicit tx: T): Option[Try[Obj[T]]] = None
+    def outputResult(output: Output.GenView[T])(implicit tx: T): Option[Try[Obj[T]]] = None
 
     def cacheResult(implicit tx: T): Option[Try[CacheValue]] =
       Some(Success(new CacheValue(Nil, Map.empty)))
@@ -384,7 +384,7 @@ object RenderingImpl {
   private final class FailedImpl[T <: Txn[T]](val control: Control, rejected: Set[String]) extends DummyImpl[T] {
     def result(implicit tx: T): Option[Try[Unit]] = nada
 
-    def outputResult(output: OutputGenView[T])(implicit tx: T): Option[Try[Obj[T]]] = nada
+    def outputResult(output: Output.GenView[T])(implicit tx: T): Option[Try[Obj[T]]] = nada
 
     private def nada: Option[Try[Nothing]] = Some(Failure(MissingIn(rejected.head)))
 

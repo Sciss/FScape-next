@@ -15,13 +15,13 @@ package de.sciss.fscape.lucre.graph
 
 import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.UGenSource.unwrap
-import de.sciss.fscape.lucre.FScape.Output
 import de.sciss.fscape.lucre.UGenGraphBuilder.OutputRef
 import de.sciss.fscape.lucre.{UGenGraphBuilder, stream => Lstream}
 import de.sciss.fscape.stream.StreamIn
 import de.sciss.fscape.{GE, Lazy, UGen, UGenGraph, UGenIn, UGenSource, stream}
 import de.sciss.lucre.{IntObj, Obj, Txn, Workspace}
 import de.sciss.serial.{DataInput, TFormat}
+import de.sciss.synth.proc.FScape.Output
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 

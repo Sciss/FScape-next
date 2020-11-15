@@ -27,7 +27,7 @@ import de.sciss.lucre.Artifact
 import de.sciss.synth.UGenSource.Vec
 import de.sciss.synth.proc.AudioCue
 
-object AudioFileIn {
+object AudioFileIn extends AudioFileInPlatform {
   final case class NumFrames(key: String) extends GE.Lazy {
     override def productPrefix = s"AudioFileIn$$NumFrames"
 
@@ -100,7 +100,8 @@ final case class AudioFileIn(key: String) extends GE.Lazy {
         // before expanding the UGen
         // - could be synchronous on JVM and yet unsupported on JS
         // - should have an asynchronous `prepare` stage like AuralProc
-        AudioFileIn.WithCue(uri, offset = 0L, gain = 1.0, numChannels = 1)
+//        AudioFileIn.WithCue(uri, offset = 0L, gain = 1.0, numChannels = 1)
+        AudioFileIn.mkCue(uri)
     }
   }
 

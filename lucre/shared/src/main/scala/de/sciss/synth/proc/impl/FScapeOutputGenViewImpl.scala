@@ -1,5 +1,5 @@
 /*
- *  OutputGenViewImpl.scala
+ *  FScapeOutputGenViewImpl.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2020 Hanns Holger Rutz. All rights reserved.
@@ -11,21 +11,19 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape
-package lucre
-package impl
+package de.sciss.synth.proc.impl
 
-import de.sciss.fscape.lucre.FScape.{Output, Rendering}
 import de.sciss.fscape.stream.Control
 import de.sciss.lucre.impl.ObservableImpl
 import de.sciss.lucre.{Disposable, Obj, Source, Txn}
-import de.sciss.synth.proc.{GenContext, GenView}
+import de.sciss.synth.proc.FScape.{Output, Rendering}
+import de.sciss.synth.proc.{FScape, GenContext, GenView}
 
 import scala.util.Try
 
-object OutputGenViewImpl {
+object FScapeOutputGenViewImpl {
   def apply[T <: Txn[T]](config: Control.Config, output: Output[T], rendering: Rendering[T])
-                        (implicit tx: T, context: GenContext[T]): OutputGenView[T] = {
+                        (implicit tx: T, context: GenContext[T]): Output.GenView[T] = {
     new Impl(config, tx.newHandle(output), key = output.key, valueType = output.valueType,
       rendering = rendering).init()
   }
@@ -36,7 +34,7 @@ object OutputGenViewImpl {
                                         val valueType: Obj.Type,
                                         rendering: Rendering[T])
                                        (implicit context: GenContext[T])
-    extends OutputGenView[T] with ObservableImpl[T, GenView.State] {
+    extends Output.GenView[T] with ObservableImpl[T, GenView.State] {
     view =>
 
     private[this] var observer: Disposable[T] = _

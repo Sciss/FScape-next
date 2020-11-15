@@ -11,19 +11,18 @@
  *  contact@sciss.de
  */
 
-package de.sciss.fscape
-package lucre
-package graph
+package de.sciss.fscape.lucre.graph
 
 import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.UGenSource.unwrap
-import de.sciss.fscape.lucre.FScape.Output
+import de.sciss.fscape.lucre.UGenGraphBuilder
 import de.sciss.fscape.lucre.UGenGraphBuilder.OutputRef
-import de.sciss.fscape.stream
+import de.sciss.fscape.lucre.stream.{MkIntVector => SMkIntVector}
 import de.sciss.fscape.stream.StreamIn
-import de.sciss.lucre.IntVector
-import de.sciss.lucre.{Obj, Txn, Workspace}
+import de.sciss.fscape.{GE, Lazy, UGen, UGenGraph, UGenIn, UGenSource, stream}
+import de.sciss.lucre.{IntVector, Obj, Txn, Workspace}
 import de.sciss.serial.DataInput
+import de.sciss.synth.proc.FScape.Output
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
@@ -40,7 +39,7 @@ object MkIntVector {
 
     private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit = {
       val Vec(in) = args
-      lucre.stream.MkIntVector(in = in.toInt, ref = ref)
+      SMkIntVector(in = in.toInt, ref = ref)
     }
 
     override def productPrefix: String = s"MkIntVector$$WithRef"

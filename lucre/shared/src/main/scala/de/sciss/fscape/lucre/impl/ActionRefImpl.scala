@@ -19,7 +19,7 @@ import de.sciss.fscape.lucre.UGenGraphBuilder.Input
 import de.sciss.lucre.expr.SourcesAsRunnerMap
 import de.sciss.lucre.expr.graph.Const
 import de.sciss.lucre.{Obj, Source, Txn}
-import de.sciss.synth.proc.{Runner, SoundProcesses, Universe}
+import de.sciss.synth.proc.{FScape, Runner, SoundProcesses, Universe}
 
 final class ActionRefImpl[T <: Txn[T]](val key: String,
                                        fH: Source[T, FScape[T]], aH: Source[T, Obj[T]])
