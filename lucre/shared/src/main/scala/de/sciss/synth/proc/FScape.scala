@@ -18,11 +18,11 @@ import java.util
 
 import de.sciss.fscape.graph.{Constant, ConstantD, ConstantI, ConstantL}
 import de.sciss.fscape.lucre.impl.UGenGraphBuilderContextImpl
-import de.sciss.fscape.stream.Control
+import de.sciss.fscape.stream.{Control => SControl} // make Scala 2.12 happy
 import de.sciss.fscape.{Graph, Lazy}
 import de.sciss.lucre.Event.Targets
 import de.sciss.lucre.impl.{DummyEvent, ExprTypeImpl}
-import de.sciss.lucre.{Artifact, Copy, Disposable, Elem, Event, EventLike, Expr, Ident, Obj, Observable, Publisher, Txn, Workspace}
+import de.sciss.lucre.{Artifact, Copy, Disposable, Elem, Event, EventLike, Expr, Ident, Obj, Observable, Publisher, Txn, Workspace => LWorkspace}
 import de.sciss.lucre.{Var => LVar}
 import de.sciss.model.{Change => MChange}
 import de.sciss.serial.{ConstFormat, DataInput, DataOutput, TFormat}
@@ -97,7 +97,7 @@ object FScape extends Obj.Type {
     type Cancelled                                = fscape.stream.Cancelled
 
     /** Creates a view with the default `UGenGraphBuilder.Context`. */
-    def apply[T <: Txn[T]](peer: FScape[T], config: Control.Config, attr: Runner.Attr[T] = Runner.emptyAttr[T])
+    def apply[T <: Txn[T]](peer: FScape[T], config: SControl.Config, attr: Runner.Attr[T] = Runner.emptyAttr[T])
                           (implicit tx: T, universe: Universe[T]): Rendering[T] = {
       val ugbCtx = new UGenGraphBuilderContextImpl.Default(peer, attr = attr)
       FScapeRenderingImpl(peer, ugbCtx, config, force = true)
@@ -110,7 +110,7 @@ object FScape extends Obj.Type {
 
     def outputResult(output: Output.GenView[T])(implicit tx: T): Option[Try[Obj[T]]]
 
-    def control: Control
+    def control: SControl
 
     /** Like `react` but invokes the function immediately with the current state. */
     def reactNow(fun: T => Rendering.State => Unit)(implicit tx: T): Disposable[T]
@@ -200,7 +200,7 @@ object FScape extends Obj.Type {
 
       def readOutputValue(in: DataInput): Any
 
-      def readOutput[T <: Txn[T]](in: DataInput)(implicit tx: T, workspace: Workspace[T]): Obj[T]
+      def readOutput[T <: Txn[T]](in: DataInput)(implicit tx: T, workspace: LWorkspace[T]): Obj[T]
     }
 
     trait Writer extends de.sciss.serial.Writable {
@@ -208,7 +208,7 @@ object FScape extends Obj.Type {
     }
 
     object GenView {
-      def apply[T <: Txn[T]](config: Control.Config, output: Output[T], rendering: Rendering[T])
+      def apply[T <: Txn[T]](config: SControl.Config, output: Output[T], rendering: Rendering[T])
                             (implicit tx: T, context: GenContext[T]): GenView[T] =
         FScapeOutputGenViewImpl(config, output, rendering)
     }
@@ -237,14 +237,14 @@ object FScape extends Obj.Type {
     def remove(key: String)(implicit tx: T): Boolean
   }
 
-  def genViewFactory(config: Control.Config = defaultConfig): GenView.Factory =
+  def genViewFactory(config: SControl.Config = defaultConfig): GenView.Factory =
     FScapeImpl.genViewFactory(config)
 
   @volatile
-  private[this] var _defaultConfig: Control.Config = _
+  private[this] var _defaultConfig: SControl.Config = _
 
-  private lazy val _lazyDefaultConfig: Control.Config = {
-    val b             = Control.Config()
+  private lazy val _lazyDefaultConfig: SControl.Config = {
+    val b             = SControl.Config()
     b.useAsync        = false
     b.terminateActors = false
     // b.actorTxntem = b.actorTxntem
@@ -256,16 +256,16 @@ object FScape extends Obj.Type {
     * unless an actual rendering is performed. As a work around, use this single
     * instance which will reuse one and the same actor system.
     */
-  def defaultConfig: Control.Config = {
+  def defaultConfig: SControl.Config = {
     if (_defaultConfig == null) _defaultConfig = _lazyDefaultConfig
     _defaultConfig
   }
 
-  def defaultConfig_=(value: Control.Config): Unit =
+  def defaultConfig_=(value: SControl.Config): Unit =
     _defaultConfig = value
 
-  type Config = Control.Config
-  val  Config = Control.Config
+  type Config = SControl.Config
+  val  Config = SControl.Config
 
   // ---- GraphObj ----
 
@@ -573,6 +573,6 @@ trait FScape[T <: Txn[T]] extends Obj[T] with Publisher[T, FScape.Update[T]] {
 
   def outputs: FScape.Outputs[T]
 
-  def run(config: Control.Config = FScape.defaultConfig, attr: Runner.Attr[T] = Runner.emptyAttr[T])
+  def run(config: SControl.Config = FScape.defaultConfig, attr: Runner.Attr[T] = Runner.emptyAttr[T])
          (implicit tx: T, universe: Universe[T]): FScape.Rendering[T]
 }

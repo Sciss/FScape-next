@@ -33,7 +33,7 @@ object Macros {
       val ext           = c.prefix.splice.asInstanceOf[MacroImplicits.FScapeMacroOps[T]]
       implicit val txc  = tx.splice // N.B.: don't annotate the type with `S#Tx`, it will break scalac
       val p             = ext.`this`
-      p.graph()         = GraphObj.newConst[T](Graph(body.splice))
+      p.graph()         = FScape.GraphObj.newConst[T](Graph(body.splice))
       val code          = FScape.Code(sourceExpr.splice)
       val codeObj       = Code.Obj.newVar[T](Code.Obj.newConst[T](code))
       p.attr.put(FScape.attrSource, codeObj)
