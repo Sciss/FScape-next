@@ -181,6 +181,7 @@ lazy val views = project
   .in(file("views"))
   .dependsOn(lucre.jvm)
   .settings(commonSettings)
+  .settings(commonJvmSettings)
   .settings(
     name := s"$baseName-Views",
     description := s"Widget elements for $baseName",
