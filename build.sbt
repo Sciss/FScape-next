@@ -72,7 +72,8 @@ def commonJavaOptions = Seq("-source", "1.8")
 lazy val testSettings = Seq(
   libraryDependencies += {
     "org.scalatest" %%% "scalatest" % deps.test.scalaTest % Test
-  }
+  },
+  concurrentRestrictions in Global += Tags.limit(Tags.Test, 1),
 )
 
 // ---- projects ----
