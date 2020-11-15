@@ -166,6 +166,7 @@ lazy val macros = project
   .in(file("macros"))
   .dependsOn(lucre.jvm)
   .settings(commonSettings)
+  .settings(commonJvmSettings)
   .settings(
     name := s"$baseName-Macros",
     description := s"Macro support for $baseName",
@@ -198,6 +199,7 @@ lazy val modules = project
   .in(file("modules"))
   .dependsOn(macros, views)
   .settings(commonSettings)
+  .settings(commonJvmSettings)
   .settings(testSettings)
   .settings(
     name := s"$baseName-Modules",
@@ -219,6 +221,7 @@ lazy val cdp = project
   .in(file("cdp"))
   .dependsOn(core.jvm)
   .settings(commonSettings)
+  .settings(commonJvmSettings)
   .settings(testSettings)
   .settings(
     name := s"$baseName-CDP",
