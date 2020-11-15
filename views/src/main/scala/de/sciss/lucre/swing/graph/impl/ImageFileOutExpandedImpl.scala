@@ -15,6 +15,7 @@ package de.sciss.lucre.swing.graph.impl
 
 import java.awt.Color
 import java.awt.geom.{AffineTransform, Path2D}
+import java.net.URI
 
 import de.sciss.audiowidgets.ShapeIcon
 import de.sciss.desktop.{FileDialog, TextFieldWithPaint}
@@ -36,6 +37,7 @@ import javax.swing.{JList, ListCellRenderer, SpinnerNumberModel}
 import scala.swing.Reactions.Reaction
 import scala.swing.event.{SelectionChanged, ValueChanged}
 import scala.swing.{Alignment, Label, Orientation, SequentialContainer, Swing}
+import scala.util.Try
 
 final class ImageFileOutExpandedImpl[T <: Txn[T]](protected val peer: ImageFileOut)
   extends View[T] with ComponentHolder[ImageFileOut.Peer] with ComponentExpandedImpl[T] {
@@ -43,7 +45,7 @@ final class ImageFileOutExpandedImpl[T <: Txn[T]](protected val peer: ImageFileO
   type C = ImageFileOut.Peer
 
   override def initComponent()(implicit tx: T, ctx: Context[T]): this.type = {
-    val pathOpt   = ctx.getProperty[Ex[File   ]](peer, PathField   .keyValue       ).map(_.expand[T].value)
+    val pathOpt   = ctx.getProperty[Ex[URI    ]](peer, PathField   .keyValue       ).map(_.expand[T].value)
     val titleOpt  = ctx.getProperty[Ex[String ]](peer, PathField   .keyTitle       ).map(_.expand[T].value)
     val fileTpeIdx= ctx.getProperty[Ex[Int    ]](peer, ImageFileOut.keyFileType    ).fold(ImageFileOut.defaultFileType     )(_.expand[T].value)
     val smpFmtIdx = ctx.getProperty[Ex[Int    ]](peer, ImageFileOut.keySampleFormat).fold(ImageFileOut.defaultSampleFormat )(_.expand[T].value)
@@ -77,7 +79,10 @@ final class ImageFileOutExpandedImpl[T <: Txn[T]](protected val peer: ImageFileO
         lazy val pathField: desktop.PathField = {
           val res = new desktop.PathField
           res.mode = FileDialog.Save
-          pathOpt .foreach(res.value = _)
+          pathOpt .foreach { uri =>
+            val fileOpt     = Try(new File(uri)).toOption
+            res.valueOption = fileOpt
+          }
           titleOpt.foreach(res.title = _)
           res
         }

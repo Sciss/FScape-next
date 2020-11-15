@@ -13,6 +13,8 @@
 
 package de.sciss.lucre.swing.graph.impl
 
+import java.net.URI
+
 import de.sciss.desktop
 import de.sciss.desktop.{FileDialog, TextFieldWithPaint}
 import de.sciss.file._
@@ -31,6 +33,7 @@ import javax.swing.{JList, ListCellRenderer}
 import scala.swing.Reactions.Reaction
 import scala.swing.event.{SelectionChanged, ValueChanged}
 import scala.swing.{Orientation, SequentialContainer, Swing}
+import scala.util.Try
 
 final class AudioFileOutExpandedImpl[T <: Txn[T]](protected val peer: AudioFileOut)
   extends View[T] with ComponentHolder[AudioFileOut.Peer] with ComponentExpandedImpl[T] {
@@ -38,7 +41,7 @@ final class AudioFileOutExpandedImpl[T <: Txn[T]](protected val peer: AudioFileO
   type C = AudioFileOut.Peer
 
   override def initComponent()(implicit tx: T, ctx: Context[T]): this.type = {
-    val pathOpt   = ctx.getProperty[Ex[File   ]](peer, PathField   .keyValue       ).map(_.expand[T].value)
+    val pathOpt   = ctx.getProperty[Ex[URI    ]](peer, PathField   .keyValue       ).map(_.expand[T].value)
     val titleOpt  = ctx.getProperty[Ex[String ]](peer, PathField   .keyTitle       ).map(_.expand[T].value)
     val fileTpeIdx= ctx.getProperty[Ex[Int    ]](peer, AudioFileOut.keyFileType    ).fold(AudioFileOut.defaultFileType     )(_.expand[T].value)
     val smpFmtIdx = ctx.getProperty[Ex[Int    ]](peer, AudioFileOut.keySampleFormat).fold(AudioFileOut.defaultSampleFormat )(_.expand[T].value)
@@ -72,7 +75,10 @@ final class AudioFileOutExpandedImpl[T <: Txn[T]](protected val peer: AudioFileO
         lazy val pathField: desktop.PathField = {
           val res = new desktop.PathField
           res.mode = FileDialog.Save
-          pathOpt .foreach(res.value = _)
+          pathOpt .foreach { uri =>
+            val fileOpt     = if (!uri.isAbsolute) None else Try(new File(uri)).toOption
+            res.valueOption = fileOpt
+          }
           titleOpt.foreach(res.title = _)
           res
         }

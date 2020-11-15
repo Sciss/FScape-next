@@ -13,11 +13,11 @@
 
 package de.sciss.lucre.swing.graph.impl
 
+import java.io.File
 import java.net.URI
 
 import de.sciss.desktop
 import de.sciss.desktop.TextFieldWithPaint
-import de.sciss.file.File
 import de.sciss.lucre.Txn
 import de.sciss.lucre.expr.Context
 import de.sciss.lucre.expr.graph.Ex
@@ -28,6 +28,7 @@ import de.sciss.lucre.swing.{PanelWithPathField, View}
 
 import scala.swing.event.ValueChanged
 import scala.swing.{Orientation, SequentialContainer, Swing}
+import scala.util.Try
 import scala.util.control.NonFatal
 
 trait FileInExpandedImpl[T <: Txn[T]]
@@ -38,7 +39,7 @@ trait FileInExpandedImpl[T <: Txn[T]]
   protected def mkFormat(f: URI): String
 
   override def initComponent()(implicit tx: T, ctx: Context[T]): this.type = {
-    val valueOpt  = ctx.getProperty[Ex[File   ]](peer, PathField.keyValue).map(_.expand[T].value)
+    val valueOpt  = ctx.getProperty[Ex[URI    ]](peer, PathField.keyValue).map(_.expand[T].value)
     val titleOpt  = ctx.getProperty[Ex[String ]](peer, PathField.keyTitle).map(_.expand[T].value)
     val pathVis   = ctx.getProperty[Ex[Boolean]](peer, AudioFileIn.keyPathFieldVisible).fold(
       AudioFileIn.defaultPathFieldVisible)(_.expand[T].value)
@@ -80,7 +81,10 @@ trait FileInExpandedImpl[T <: Txn[T]]
 
         lazy val pathField: desktop.PathField = {
           val res = new desktop.PathField
-          valueOpt.foreach(res.value = _)
+          valueOpt.foreach { uri =>
+            val fileOpt     = if (!uri.isAbsolute) None else Try(new File(uri)).toOption
+            res.valueOption = fileOpt
+          }
           titleOpt.foreach(res.title = _)
           res.listenTo(res)
           res.reactions += {

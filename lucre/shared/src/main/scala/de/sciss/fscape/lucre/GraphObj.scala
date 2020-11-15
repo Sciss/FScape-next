@@ -242,7 +242,7 @@ object GraphObj extends ExprTypeImpl[Graph, GraphObj] {
           Artifact.Value.read(in)
         case 'f' =>   // backwards compatible
           val path = in.readUTF()
-          new URI("file", path, null)
+          Artifact.fileToURI(path)
       }
     }
 

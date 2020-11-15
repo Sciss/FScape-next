@@ -13,6 +13,7 @@
 
 package de.sciss.lucre.swing.graph
 
+import java.io.FileNotFoundException
 import java.net.URI
 
 import de.sciss.audiowidgets.AxisFormat
@@ -55,6 +56,7 @@ object AudioFileIn {
 
   private final class Expanded[T <: Txn[T]](protected val peer: AudioFileIn) extends FileInExpandedImpl[T] {
     protected def mkFormat(uri: URI): String = {
+      if (!uri.isAbsolute) throw new FileNotFoundException(uri.toString)
       val f     = new File(uri)   // XXX TODO
       val spec  = AudioFile.readSpec(f)
       specToString(spec)
