@@ -36,7 +36,7 @@ The following dependency is necessary:
 
     "de.sciss" %% "fscape" % v
 
-The current version `v` is `"3.2.0"`.
+The current version `v` is `"3.3.0"`.
 
 The following sub modules are available:
 
