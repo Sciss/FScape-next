@@ -17,7 +17,7 @@ import de.sciss.file._
 import de.sciss.lucre.store.BerkeleyDB
 import de.sciss.lucre.{BooleanObj, Folder, Txn}
 import de.sciss.proc.Implicits._
-import de.sciss.proc.{FScape, Markdown, SoundProcesses, Widget, Workspace}
+import de.sciss.proc.{Durable, FScape, Markdown, SoundProcesses, Widget, Workspace}
 import org.rogach.scallop.{ScallopConf, ScallopOption => Opt}
 
 import scala.io.Source
@@ -39,21 +39,22 @@ object MakeWorkspace {
 
   val list: List[Module] =
     List(
+      ModBleach,
       ModChangeGain,
-      ModLimiter,
-      ModTapeSpeed,
+      ModCheckChannelBalance,
+      ModConvolution,
       ModFourierTranslation,
-      ModMakeLoop,
-      ModSignalGenerator,
       ModFreqShift,
-      ModSincFilter,
+      ModInverseFilter,
+      ModLimiter,
+      ModMakeLoop,
       ModMixToMono,
       ModRemoveDC,
-      ModInverseFilter,
-      ModBleach,
-      ModSpectralShadow,
+      ModSignalGenerator,
+      ModSincFilter,
       ModSlewRateLimiter,
-      ModCheckChannelBalance,
+      ModSpectralShadow,
+      ModTapeSpeed,
     ).sortBy(_.name)
 
   def help[T <: Txn[T]](m: Module)(implicit tx: T): Option[Markdown[T]] = {
@@ -71,7 +72,10 @@ object MakeWorkspace {
     }
   }
 
-  def add[T <: Txn[T]](f: Folder[T], m: Module)(implicit tx: T): Unit = {
+  def add[T <: Txn[T]](f: Folder[T], m: Module)(implicit tx: T): Unit =
+    add(f, m, f)
+
+  def add[T <: Txn[T]](f: Folder[T], m: Module, fHelp: Folder[T])(implicit tx: T): Unit = {
     val fsc   = m.apply[T]()
     fsc.name  = m.name
     val w     = m.ui[T]()
@@ -87,7 +91,7 @@ object MakeWorkspace {
       }
     } { help =>
       w.attr.put("help", help)
-      f.addLast(help)
+      fHelp.addLast(help)
     }
   }
 
@@ -101,10 +105,14 @@ object MakeWorkspace {
     require (!target.exists(), s"Workspace '${target.name}' already exists. Not overwriting.")
     val ds  = BerkeleyDB.factory(target)
     val ws  = Workspace.Durable.empty(target, ds)
+    type T  = Durable.Txn
     ws.cursor.step { implicit tx =>
-      val r = ws.root
+      val r       = ws.root
+      val fHelp   = Folder[T]()
+      fHelp.name  = "Help"
+      r.addHead(fHelp)
       modules.foreach { m =>
-        add(r, m)
+        add(r, m,fHelp)
       }
       ws.dispose()
     }
