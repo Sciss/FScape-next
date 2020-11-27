@@ -437,7 +437,6 @@ object Control {
       val res0 = queueD.poll()
       val res  = if (res0 == null) BufD.alloc(blockSize) else {
         res0.acquire()
-        res0.size = res0.buf.length
         res0
       }
       // println(s"Control.borrowBufD(): $res / ${res.allocCount()}")
@@ -456,7 +455,6 @@ object Control {
       val res0 = queueI.poll()
       if (res0 == null) BufI.alloc(blockSize) else {
         res0.acquire()
-        res0.size = res0.buf.length
         res0
       }
     }
@@ -471,7 +469,6 @@ object Control {
       val res0 = queueL.poll()
       if (res0 == null) BufL.alloc(blockSize) else {
         res0.acquire()
-        res0.size = res0.buf.length
         res0
       }
     }

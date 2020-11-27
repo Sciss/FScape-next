@@ -28,40 +28,43 @@ abstract class BufLike {
   def allocCount(): Int
 
   def buf: Array[Elem]
-
-//  def at(idx: Int): Elem
-//
-//  def ordering: Ordering[Elem]
 }
 
 object BufD {
   def apply(elems: Double*): BufD = {
     val arr = elems.toArray
-    new BufD(arr, size = arr.length, borrowed = false)
+    new BufD(arr, borrowed = false)
   }
 
   def alloc(size: Int): BufD = {
-    new BufD(new Array[Double](size), size = size, borrowed = true)
+    new BufD(new Array[Double](size), borrowed = true)
   }
 }
-final class BufD private(val buf: Array[Double], var size: Int, borrowed: Boolean)
+final class BufD private(val buf: Array[Double], borrowed: Boolean)
   extends BufLike {
 
   type Elem = Double
 
+  @volatile
+  private[this] var _size = buf.length
+
+  def size: Int = _size
+
+  def size_=(value: Int): Unit = {
+    assertOwned()
+    _size = value
+  }
+
   private[this] val _allocCount = if (borrowed) new AtomicInteger(1) else null
 
-  def assertAllocated(): Unit = require(!borrowed || _allocCount.get() > 0)
+  def assertAllocated (): Unit = require(!borrowed || _allocCount.get() >  0)
+  def assertOwned     (): Unit = require(!borrowed || _allocCount.get() == 1)
 
   def allocCount(): Int = _allocCount.get()
 
-//  def at(idx: Int): Double = buf(idx)
-//
-//  def ordering: Ordering[Double] = Ordering.Double
-
   def acquire(): Unit = if (borrowed) {
-    /* val oldCount = */ _allocCount.getAndIncrement()
-    // require(oldCount >= 0)
+    val oldCount = _allocCount.getAndIncrement()
+    if (oldCount == 0) _size = buf.length
     ()
   }
 
@@ -78,30 +81,38 @@ final class BufD private(val buf: Array[Double], var size: Int, borrowed: Boolea
 object BufI {
   def apply(elems: Int*): BufI = {
     val arr = elems.toArray
-    new BufI(arr, size = arr.length, borrowed = false)
+    new BufI(arr, borrowed = false)
   }
 
   def alloc(size: Int): BufI = {
-    new BufI(new Array[Int](size), size = size, borrowed = true)
+    new BufI(new Array[Int](size), borrowed = true)
   }
 }
-final class BufI private(val buf: Array[Int], var size: Int, borrowed: Boolean)
+final class BufI private(val buf: Array[Int], borrowed: Boolean)
   extends BufLike {
 
   type Elem = Int
 
+  @volatile
+  private[this] var _size = buf.length
+
+  def size: Int = _size
+
+  def size_=(value: Int): Unit = {
+    assertOwned()
+    _size = value
+  }
+
   private[this] val _allocCount = if (borrowed) new AtomicInteger(1) else null
 
-  def assertAllocated(): Unit = require(!borrowed || _allocCount.get() > 0)
+  def assertAllocated (): Unit = require(!borrowed || _allocCount.get() >  0)
+  def assertOwned     (): Unit = require(!borrowed || _allocCount.get() == 1)
 
   def allocCount(): Int = _allocCount.get()
 
-//  def at(idx: Int): Int = buf(idx)
-//
-//  def ordering: Ordering[Int] = Ordering.Int
-
   def acquire(): Unit = if (borrowed) {
-    _allocCount.getAndIncrement()
+    val oldCount = _allocCount.getAndIncrement()
+    if (oldCount == 0) _size = buf.length
     ()
   }
 
@@ -112,36 +123,44 @@ final class BufI private(val buf: Array[Int], var size: Int, borrowed: Boolean)
   }
 
   override def toString: String =
-    if (size == 1) buf(0).toString else s"BufI(size = $size)@${hashCode.toHexString}"
+    if (_size == 1) buf(0).toString else s"BufI(size = ${_size})@${hashCode.toHexString}"
 }
 
 object BufL {
   def apply(elems: Long*): BufL = {
     val arr = elems.toArray
-    new BufL(arr, size = arr.length, borrowed = false)
+    new BufL(arr, borrowed = false)
   }
 
   def alloc(size: Int): BufL = {
-    new BufL(new Array[Long](size), size = size, borrowed = true)
+    new BufL(new Array[Long](size), borrowed = true)
   }
 }
-final class BufL private(val buf: Array[Long], var size: Int, borrowed: Boolean)
+final class BufL private(val buf: Array[Long], borrowed: Boolean)
   extends BufLike {
 
   type Elem = Long
 
+  @volatile
+  private[this] var _size = buf.length
+
+  def size: Int = _size
+
+  def size_=(value: Int): Unit = {
+    assertOwned()
+    _size = value
+  }
+
   private[this] val _allocCount = if (borrowed) new AtomicInteger(1) else null
 
   def assertAllocated(): Unit = require(!borrowed || _allocCount.get() > 0)
+  def assertOwned    (): Unit = require(!borrowed || _allocCount.get() == 1)
 
   def allocCount(): Int = _allocCount.get()
 
-//  def at(idx: Int): Long = buf(idx)
-//
-//  def ordering: Ordering[Long] = Ordering.Long
-
   def acquire(): Unit = if (borrowed) {
-    _allocCount.getAndIncrement()
+    val oldCount = _allocCount.getAndIncrement()
+    if (oldCount == 0) _size = buf.length
     ()
   }
 

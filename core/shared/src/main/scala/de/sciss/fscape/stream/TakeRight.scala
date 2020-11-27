@@ -60,7 +60,7 @@ object TakeRight {
     extends Handlers(name, layer, shape) {
 
     private[this] val hIn   = Handlers.InMain [A, E](this, shape.in0)
-    private[this] val hSize = Handlers.InIAux       (this, shape.in1)(max(0, _))
+    private[this] val hLen  = Handlers.InIAux       (this, shape.in1)(max(0, _))
     private[this] val hOut  = Handlers.OutMain[A, E](this, shape.out)
 
     private[this] var len     : Int       = _
@@ -90,8 +90,8 @@ object TakeRight {
       logStream.debug(s"process() $this state = $state")
 
       if (state == 0) {
-        if (!hSize.hasNext) return
-        len       = hSize.next()
+        if (!hLen.hasNext) return
+        len       = hLen.next()
         bufSize   = max(len, ctrl.blockSize)
         bufWin    = tpe.newArray(bufSize)
         state     = 1

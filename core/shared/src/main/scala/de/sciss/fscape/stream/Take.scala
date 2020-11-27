@@ -13,19 +13,20 @@
 
 package de.sciss.fscape.stream
 
-import akka.stream.stage.{InHandler, OutHandler}
 import akka.stream.{Attributes, FanInShape2, Inlet, Outlet}
 import de.sciss.fscape.graph.ConstantL
-import de.sciss.fscape.stream.impl.{NodeImpl, StageImpl}
-import de.sciss.fscape.Log.{stream => logStream}
+import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
+
+import scala.annotation.tailrec
+import scala.math.{max, min}
 
 object Take {
-  def head[A, E <: BufElem[A]](in: Outlet[E])(implicit b: Builder): Outlet[E] = {
+  def head[A, E <: BufElem[A]](in: Outlet[E])(implicit b: Builder, tpe: StreamType[A, E]): Outlet[E] = {
     val length = ConstantL(1L).toLong
     apply[A, E](in = in, length = length)
   }
 
-  def apply[A, E <: BufElem[A]](in: Outlet[E], length: OutL)(implicit b: Builder): Outlet[E] = {
+  def apply[A, E <: BufElem[A]](in: Outlet[E], length: OutL)(implicit b: Builder, tpe: StreamType[A, E]): Outlet[E] = {
     val stage0  = new Stage[A, E](b.layer)
     val stage   = b.add(stage0)
     b.connect(in    , stage.in0)
@@ -37,7 +38,7 @@ object Take {
 
   private type Shp[E] = FanInShape2[E, BufL, E]
 
-  private final class Stage[A, E <: BufElem[A]](layer: Layer)(implicit ctrl: Control)
+  private final class Stage[A, E <: BufElem[A]](layer: Layer)(implicit ctrl: Control, tpe: StreamType[A, E])
     extends StageImpl[Shp[E]](name) {
 
     val shape: Shape = new FanInShape2(
@@ -49,83 +50,51 @@ object Take {
     def createLogic(attr: Attributes): NodeImpl[Shape] = new Logic[A, E](shape, layer)
   }
 
-  private final class Logic[A, E <: BufElem[A]](shape: Shp[E], layer: Layer)(implicit ctrl: Control)
-    extends NodeImpl(name, layer, shape) with OutHandler { logic =>
+  private final class Logic[A, E <: BufElem[A]](shape: Shp[E], layer: Layer)
+                                               (implicit ctrl: Control, tpe: StreamType[A, E])
+    extends Handlers(name, layer, shape) {
 
-    private[this] var takeRemain  = Long.MaxValue
-    private[this] var hasLen      = false
+    private[this] val hIn   = Handlers.InMain [A, E](this, shape.in0)
+    private[this] val hLen  = Handlers.InLAux       (this, shape.in1)(max(0L, _))
+    private[this] val hOut  = Handlers.OutMain[A, E](this, shape.out)
 
-    def onPull(): Unit = {
-      val ok = hasLen && isAvailable(shape.in0)
-      logStream.debug(s"$this onPull() hasLen && isAvailable(in0) ? $ok")
-      if (ok) {
-        process()
+    private[this] var takeRemain  = -1L
+    private[this] var init        = true
+
+    protected def onDone(inlet: Inlet[_]): Unit = {
+      assert (inlet == hIn.inlet)
+      if (hOut.flush()) {
+        completeStage()
       }
     }
 
-    private object InH extends InHandler {
-      override def toString: String = s"$logic.in"
+    @tailrec
+    protected def process(): Unit = {
+      if (init) {
+        if (!hLen.hasNext) return
+        takeRemain  = hLen.next()
+        init        = false
+      }
 
-      def onPush(): Unit = {
-        val ok = hasLen && isAvailable(shape.out)
-        logStream.debug(s"$this onPush() hasLen && isAvailable(out) ? $ok")
-        if (ok) {
-          process()
+      val remIn = hIn.available
+      if (remIn == 0) return
+
+      val remOut  = hOut.available
+      val numCopy = min(remOut, min(remIn, takeRemain).toInt)
+      val hasCopy = numCopy > 0
+      if (hasCopy) {
+        hIn.copyTo(hOut, numCopy)
+        takeRemain -= numCopy
+      }
+
+      if (takeRemain == 0L || hIn.isDone) {
+        if (hOut.flush()) {
+          completeStage()
         }
+        return
       }
 
-      override def onUpstreamFinish(): Unit = {
-        val cond = !isAvailable(shape.in0)
-        logStream.info(s"$this onUpstreamFinish() !isAvailable(in0) ? $cond")
-        if (cond) super.onUpstreamFinish()
-      }
-    }
-
-    private object LenH extends InHandler {
-      override def toString: String = s"$logic.length"
-
-      def onPush(): Unit = {
-        val buf = grab(shape.in1)
-        val ok  = !hasLen
-        logStream.debug(s"$this onPush() !hasLen ? $ok")
-        if (ok) {
-          takeRemain  = math.max(0L, buf.buf(0))
-          hasLen      = true
-          if (takeRemain == 0L) completeStage()
-          else {
-            if (isAvailable(shape.in0) && isAvailable(shape.out)) process()
-          }
-        }
-        buf.release()
-        tryPull(shape.in1)
-      }
-
-      override def onUpstreamFinish(): Unit = {
-        val cond = !hasLen
-        logStream.info(s"$this onUpstreamFinish() !hasLen ? $cond")
-        if (cond) super.onUpstreamFinish()
-      }
-    }
-
-    setHandler(shape.out, this)
-    setHandler(shape.in0, InH)
-    setHandler(shape.in1, LenH)
-
-    private def process(): Unit = {
-      val buf   = grab(shape.in0)
-      val chunk = math.min(takeRemain, buf.size).toInt
-      if (chunk > 0) {
-        buf.size = chunk
-        push(shape.out, buf)
-        takeRemain -= chunk
-      } else {
-        buf.release()
-      }
-
-//      if ((takeRemain % 100000) == 0) println(s"takeRemain $takeRemain")
-
-      if (takeRemain == 0L || isClosed(shape.in0)) completeStage()
-      else pull(shape.in0)
+      if (hasCopy) process()
     }
   }
 }

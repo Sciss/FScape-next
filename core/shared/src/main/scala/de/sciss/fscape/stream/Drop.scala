@@ -19,6 +19,7 @@ import de.sciss.fscape.graph.ConstantL
 import de.sciss.fscape.stream.impl.{Handlers, NodeImpl, StageImpl}
 
 import scala.annotation.tailrec
+import scala.math.min
 
 object Drop {
   def tail[A, E <: BufElem[A]](in: Outlet[E])(implicit b: Builder, tpe: StreamType[A, E]): Outlet[E] = {
@@ -62,11 +63,11 @@ object Drop {
     private[this] var dropRemain    = -1L
     private[this] var init          = true
 
-    protected def allocOutBuf0(): E = tpe.allocBuf()
-
     protected def onDone(inlet: Inlet[_]): Unit = {
       assert (inlet == hIn.inlet)
-      if (hOut.flush()) completeStage()
+      if (hOut.flush()) {
+        completeStage()
+      }
     }
 
     @tailrec
@@ -80,7 +81,7 @@ object Drop {
       val remIn = hIn.available
       if (remIn == 0) return
 
-      val numSkip = math.min(remIn, dropRemain).toInt
+      val numSkip = min(remIn, dropRemain).toInt
       val hasSkip = numSkip > 0
       if (hasSkip) {
         hIn.skip(numSkip)
@@ -88,14 +89,16 @@ object Drop {
       }
 
       val remOut  = hOut.available
-      val numCopy = math.min(remOut, remIn - numSkip)
+      val numCopy = min(remOut, remIn - numSkip)
       val hasCopy = numCopy > 0
       if (hasCopy) {
         hIn.copyTo(hOut, numCopy)
       }
 
       if (hIn.isDone) {
-        if (hOut.flush()) completeStage()
+        if (hOut.flush()) {
+          completeStage()
+        }
         return
       }
 

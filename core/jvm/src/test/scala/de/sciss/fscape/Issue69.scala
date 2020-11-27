@@ -8,7 +8,7 @@ import java.io.File
 import scala.concurrent.Promise
 
 class Issue69 extends UGenSpec {
-  "Take an drop" should "not terminate early" in {
+  "Take" should "not play nicely in broadcast setting" in {
     val p   = Promise[Vec[Int]]()
     val f   = File.createTempFile("temp", ".aif")
     val uri = f.toURI
@@ -26,7 +26,7 @@ class Issue69 extends UGenSpec {
       val inA     = mkIn()
       val inB     = mkIn()
       val inAD    = inA .drop(P)
-      val seg0    = inAD.take(M)
+      val seg0    = inAD.take(M)  // the culprit
       val inADD   = inAD.drop(M)
       val len     = Length(inADD)
       DebugIntPromise(len.out(0) ++ len.out(1), p)
