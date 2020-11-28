@@ -54,6 +54,7 @@ object MakeWorkspace {
       ModSincFilter,
       ModSlewRateLimiter,
       ModSpectralShadow,
+      ModStepAround,
       ModTapeSpeed,
     ).sortBy(_.name)
 

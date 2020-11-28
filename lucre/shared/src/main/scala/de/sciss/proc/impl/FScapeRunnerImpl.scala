@@ -13,8 +13,6 @@
 
 package de.sciss.proc.impl
 
-import java.util.concurrent.TimeUnit
-
 import de.sciss.lucre.Txn.peer
 import de.sciss.lucre.impl.ObservableImpl
 import de.sciss.lucre.synth.Executor
@@ -23,8 +21,10 @@ import de.sciss.proc.FScape.Rendering
 import de.sciss.proc.Runner.{Done, Failed, Stopped}
 import de.sciss.proc.{FScape, Runner, SoundProcesses, Universe}
 
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.ExecutionException
-import scala.concurrent.stm.{Ref, TxnExecutor}
+import scala.concurrent.stm.Ref
 import scala.util.{Failure, Success}
 
 object FScapeRunnerImpl extends Runner.Factory {
@@ -52,48 +52,45 @@ object FScapeRunnerImpl extends Runner.Factory {
     private[this] val renderRef = Ref(Option.empty[Rendering[T]])
     private[this] val obsRef    = Ref(Disposable.empty[T])
     private[this] val attrRef   = Ref(Runner.emptyAttr[T]) // (NoManifest)
+    private[this] val disposed  = Ref(false)
 
-    def tpe: Obj.Type = FScape
+//    def tpe: Obj.Type = FScape
 
     object progress extends Runner.Progress[T] with ObservableImpl[T, Double] {
-      private[this] val ref = Ref(-1.0)
-      private[this] val timerRef = Ref(Option.empty[Executor.Cancelable])
+      private[this] val ref       = Ref(-1.0)
+      private[this] val timerRef  = new AtomicReference(Option.empty[Executor.Cancelable])
 
       def current(implicit tx: T): Double = ref()
 
       def current_=(value: Double)(implicit tx: T): Unit = {
         val old = ref.swap(value)
-        if (value != old) fire(value)
+        if (value != old && !disposed()) fire(value)
       }
 
       // XXX TODO --- introduce a general abstraction for throttling
 
+      @volatile
       private[this] var guiValue = -1.0
 
+      @volatile
       private[this] var lastReported = 0L
 
       // called by Control
       def push(value: Double): Unit = {
         guiValue = value
         val now = System.currentTimeMillis()
-        if (now - lastReported > 150) {
-          timerRef.single.swap(None).foreach(_.cancel())
+        val rp  = lastReported
+        val ok  = timerRef.get().isEmpty
+        if (!ok) return
+
+        if (now - rp > 150) {
           report()
         } else {
-          TxnExecutor.defaultAtomic { implicit tx =>
-            if (timerRef().isEmpty) {
-              lazy val cancel: Executor.Cancelable = Executor.scheduleWithCancel(100, TimeUnit.MILLISECONDS) {
-                val ok = TxnExecutor.defaultAtomic { implicit tx =>
-                  timerRef.transformAndExtract {
-                    case Some(`cancel`) => (None  , true  )
-                    case other          => (other , false )
-                  }
-                }
-                if (ok) report()
-              }
-              timerRef() = Some(cancel)
-            }
+          val cancel = Executor.scheduleWithCancel(100, TimeUnit.MILLISECONDS) {
+            if (lastReported == rp) report()
           }
+          // it's ok to replace an existing task here, because it will simply report twice
+          timerRef.set(Some(cancel))
         }
       }
 
@@ -104,16 +101,17 @@ object FScapeRunnerImpl extends Runner.Factory {
         }
       }
 
-      def stop()(implicit tx: T): Unit = {
-        timerRef.swap(None) // don't call 'cancel' in a transaction, just let it finish
+      def stop()(implicit tx: T): Unit =
         setCurrent()
-      }
 
-      private def setCurrent()(implicit tx: T): Unit =
-        current = guiValue
+      private def setCurrent()(implicit tx: T): Unit = {
+        lastReported  = System.currentTimeMillis()
+        current       = guiValue
+      }
     }
 
     protected def disposeData()(implicit tx: T): Unit = {
+      disposed() = true
       obsRef   .swap(Disposable.empty).dispose()
       disposeRender()
     }

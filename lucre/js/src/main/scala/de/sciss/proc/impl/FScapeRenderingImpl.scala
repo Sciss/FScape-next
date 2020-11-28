@@ -188,23 +188,22 @@ object FScapeRenderingImpl {
     }
 
     def completeWith(t: Try[CacheValue]): Unit =
-      if (!_disposed.single.get)
-        SoundProcesses.step[T]("FScape completeWith") { implicit tx =>
-          import Txn.peer
-          if (!_disposed()) {
-            // update first...
-            if (t.isSuccess && outputs.nonEmpty) t.foreach { cv =>
-              outputs.foreach { outRef =>
-                val in = DataInput(cv.data(outRef.key))
-                outRef.updateValue(in)
-              }
+      SoundProcesses.step[T]("FScape completeWith") { implicit tx =>
+        import Txn.peer
+        if (!_disposed()) {
+          // update first...
+          if (t.isSuccess && outputs.nonEmpty) t.foreach { cv =>
+            outputs.foreach { outRef =>
+              val in = DataInput(cv.data(outRef.key))
+              outRef.updateValue(in)
             }
-            _state.set(GenView.Completed)(tx.peer)
-            _result.set(fut.value)(tx.peer)
-            // ...then issue event
-            fire(GenView.Completed)
           }
+          _state.set(GenView.Completed)(tx.peer)
+          _result.set(fut.value)(tx.peer)
+          // ...then issue event
+          fire(GenView.Completed)
         }
+      }
 
     def state(implicit tx: T): GenView.State = _state.get(tx.peer)
 
