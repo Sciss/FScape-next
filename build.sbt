@@ -8,7 +8,7 @@ lazy val mimaVersion    = "3.4.0"
 lazy val baseDescription = "An audio rendering library"
 
 lazy val commonJvmSettings = Seq(
-  crossScalaVersions := Seq("3.0.0-M2", "2.13.4", "2.12.12"),
+  crossScalaVersions := Seq(/* "3.0.0-M2", */ "2.13.4", "2.12.12"),
 )
 
 // sonatype plugin requires that these are in global
@@ -34,7 +34,10 @@ lazy val commonSettings = Seq(
   updateOptions      := updateOptions.value.withLatestSnapshots(false),
   javacOptions        := commonJavaOptions ++ Seq("-target", "1.8", "-g", "-Xlint:deprecation" /*, "-Xlint:unchecked" */),
   javacOptions in doc := commonJavaOptions,
-  parallelExecution in Test := false
+  parallelExecution in Test := false,
+  concurrentRestrictions in Global ++= Seq(
+    Tags.limitAll(2), Tags.limit(Tags.Test, 1) // with cross-builds we otherwise get OutOfMemoryError
+  ),
 ) ++ publishSettings
 
 lazy val deps = new {

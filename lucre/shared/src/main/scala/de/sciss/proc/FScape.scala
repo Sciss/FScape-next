@@ -164,14 +164,12 @@ object FScape extends Obj.Type {
     def tpe: proc.Code.Type = Code
 
     def compileBody()(implicit compiler: proc.Code.Compiler): Future[Unit] = {
-      import scala.reflect.runtime.universe._
-      CodeImpl.compileBody[In, Out, Unit, Code](this, typeTag[Unit])
+      CodeImpl.compileBody[In, Out, Unit, Code](this, classOf[Unit])
     }
 
     def execute(in: In)(implicit compiler: proc.Code.Compiler): Out =
       Graph {
-        import scala.reflect.runtime.universe._
-        CodeImpl.compileThunk[Unit](this, typeTag[Unit], execute = true)
+        CodeImpl.compileThunk[Unit](this, classOf[Unit], execute = true)
       }
 
     def prelude : String = "object Main {\n"
