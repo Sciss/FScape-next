@@ -1,7 +1,7 @@
 # FScape-next
 
 [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/Sciss/FScape?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-[![Build Status](https://travis-ci.org/Sciss/FScape-next.svg?branch=main)](https://travis-ci.org/Sciss/FScape-next)
+[![Build Status](https://github.com/Sciss/FScape-next/workflows/Scala%20CI/badge.svg?branch=main)](https://github.com/Sciss/FScape-next/actions?query=workflow%3A%22Scala+CI%22)
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/de.sciss/fscape_2.13/badge.svg)](https://maven-badges.herokuapp.com/maven-central/de.sciss/fscape_2.13)
 <a href="https://liberapay.com/sciss"><img alt="Donate using Liberapay" src="https://liberapay.com/assets/widgets/donate.svg" height="24"></a>
 
@@ -27,7 +27,7 @@ Please consider supporting this project through Liberapay (see badge above) – 
 
 ## building
 
-The project builds with sbt against Scala 2.13, 2.12 (JVM) and Scala 2.13 (JS).
+The project builds with sbt against Scala 2.12, 2.13, Dotty (JVM) and Scala 2.13 (JS).
 The last version to support Scala 2.11 was 2.28.0.
 
 ## linking
@@ -36,7 +36,7 @@ The following dependency is necessary:
 
     "de.sciss" %% "fscape" % v
 
-The current version `v` is `"3.3.1"`.
+The current version `v` is `"3.4.0"`.
 
 The following sub modules are available:
 

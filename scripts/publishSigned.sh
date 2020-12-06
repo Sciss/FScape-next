@@ -7,5 +7,5 @@ then
    exit 1
 fi
 
-sbt +coreJS/publishSigned +coreJVM/publishSigned +fscape-cdp/publishSigned +fscape-macros/publishSigned +fscape-modules/publishSigned +fscape-views/publishSigned +lucreJS/publishSigned +lucreJVM/publishSigned
+sbt "; + coreJS/publishSigned ; + coreJVM/publishSigned ; + fscape-cdp/publishSigned ; + fscape-macros/publishSigned ; + fscape-modules/publishSigned ; + fscape-views/publishSigned ; + lucreJS/publishSigned ; + lucreJVM/publishSigned ; sonatypeBundleRelease"
 

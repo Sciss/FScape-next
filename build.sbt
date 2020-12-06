@@ -2,19 +2,23 @@ lazy val baseName   = "FScape"
 lazy val baseNameL  = baseName.toLowerCase
 lazy val gitRepo    = "FScape-next"
 
-lazy val projectVersion = "3.3.1"
-lazy val mimaVersion    = "3.3.0"
+lazy val projectVersion = "3.4.0-SNAPSHOT"
+lazy val mimaVersion    = "3.4.0"
 
 lazy val baseDescription = "An audio rendering library"
 
 lazy val commonJvmSettings = Seq(
-  crossScalaVersions := Seq("2.13.4", "2.12.12"),
+  crossScalaVersions := Seq("3.0.0-M2", "2.13.4", "2.12.12"),
 )
 
+// sonatype plugin requires that these are in global
+ThisBuild / version      := projectVersion
+ThisBuild / organization := "de.sciss"
+
 lazy val commonSettings = Seq(
-  organization       := "de.sciss",
+//  version            := projectVersion,
+//  organization       := "de.sciss",
   description        := baseDescription,
-  version            := projectVersion,
   scalaVersion       := "2.13.4",
   licenses           := Seq("AGPL v3+" -> url("http://www.gnu.org/licenses/agpl-3.0.txt")),
   homepage           := Some(url(s"https://git.iem.at/sciss/$gitRepo")),
@@ -22,8 +26,9 @@ lazy val commonSettings = Seq(
     "-deprecation", "-unchecked", "-feature", "-encoding", "utf8", "-Xlint", "-Xsource:2.13"
   ),
   scalacOptions in (Compile, compile) ++= {
-    val xs = (if (scala.util.Properties.isJavaAtLeast("9")) Seq("-release", "8") else Nil)  // JDK >8 breaks API; skip scala-doc
-    val sv = scalaVersion.value
+    val dot = isDotty.value
+    val xs  = (if (!dot && scala.util.Properties.isJavaAtLeast("9")) Seq("-release", "8") else Nil)  // JDK >8 breaks API; skip scala-doc
+    val sv  = scalaVersion.value
     if (sv.startsWith("2.13.")) xs :+ "-Wvalue-discard" else xs
   },
   updateOptions      := updateOptions.value.withLatestSnapshots(false),
@@ -36,9 +41,9 @@ lazy val deps = new {
   val core = new {
     val akka            = "2.6.10"  // on the JVM
     val akkaJs          = "2.2.6.9" // on JS
-    val audioFile       = "2.3.1"
+    val audioFile       = "2.3.2"
     val dom             = "1.1.0"
-    val dsp             = "2.2.0"
+    val dsp             = "2.2.1"
     val fileUtil        = "1.1.5"
     val linKernighan    = "0.1.3"
     val log             = "0.1.1"
@@ -49,12 +54,12 @@ lazy val deps = new {
     val transform4s     = "0.1.1"
   }
   val lucre = new {
-    val fileCache       = "1.1.0"
-    val lucre           = "4.2.0"
-    val soundProcesses  = "4.4.1"
+    val fileCache       = "1.1.1"
+    val lucre           = "4.3.0-SNAPSHOT"
+    val soundProcesses  = "4.5.0-SNAPSHOT"
   }
   val views = new {
-    val lucreSwing      = "2.4.1"
+    val lucreSwing      = "2.5.0-SNAPSHOT"
   }
   val modules = new {
     val scallop         = "3.5.1"
@@ -233,26 +238,20 @@ lazy val cdp = project
 
 lazy val publishSettings = Seq(
   publishMavenStyle := true,
-  publishTo := {
-    Some(if (isSnapshot.value)
-      "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
-    else
-      "Sonatype Releases"  at "https://oss.sonatype.org/service/local/staging/deploy/maven2"
-    )
-  },
   publishArtifact in Test := false,
   pomIncludeRepository := { _ => false },
-  pomExtra := {
-<scm>
-  <url>git@git.iem.at:sciss/{gitRepo}.git</url>
-  <connection>scm:git:git@git.iem.at:sciss/{gitRepo}.git</connection>
-</scm>
-<developers>
-  <developer>
-    <id>sciss</id>
-    <name>Hanns Holger Rutz</name>
-    <url>http://www.sciss.de</url>
-  </developer>
-</developers>
-  }
+  developers := List(
+    Developer(
+      id    = "sciss",
+      name  = "Hanns Holger Rutz",
+      email = "contact@sciss.de",
+      url   = url("https://www.sciss.de")
+    )
+  ),
+  scmInfo := {
+    val h = "git.iem.at"
+    val a = s"sciss/$gitRepo"
+    Some(ScmInfo(url(s"https://$h/$a"), s"scm:git@$h:$a.git"))
+  },
 )
+
