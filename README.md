@@ -3,7 +3,6 @@
 [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/Sciss/FScape?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![Build Status](https://github.com/Sciss/FScape-next/workflows/Scala%20CI/badge.svg?branch=main)](https://github.com/Sciss/FScape-next/actions?query=workflow%3A%22Scala+CI%22)
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/de.sciss/fscape_2.13/badge.svg)](https://maven-badges.herokuapp.com/maven-central/de.sciss/fscape_2.13)
-<a href="https://liberapay.com/sciss"><img alt="Donate using Liberapay" src="https://liberapay.com/assets/widgets/donate.svg" height="24"></a>
 
 ## statement
 
@@ -22,8 +21,6 @@ To contact the author, send an e-mail to `contact at sciss.de`.
 
 FScape contains code adapted from Praat by Paul Boersma and David Weenink, published under the 
 GNU General Public License v2+.
-
-Please consider supporting this project through Liberapay (see badge above) – thank you!
 
 ## building
 
