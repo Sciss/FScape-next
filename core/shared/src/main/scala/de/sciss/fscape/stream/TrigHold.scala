@@ -72,12 +72,12 @@ object TrigHold {
     @tailrec
     protected def process(): Unit = {
       val remOut    = hOut.available
-      if (remOut == 0) return
+      val remIn     = hIn .available
+      if (remOut == 0 || remIn == 0) return
 
       val hasClear  = !hClear.isDone
       if (hasClear && !hClear.hasNext) return
 
-      val remIn     = hIn.available
       val remClear  = if (hasClear) hClear.available else remIn // if closed, we treat a zero ("valid")
       val rem       = min(remOut, min(remIn, remClear))
 
