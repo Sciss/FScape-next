@@ -45,7 +45,7 @@ object ModConvolution extends Module {
     val f = FScape[T]()
     import de.sciss.fscape.lucre.MacroImplicits._
     f.setGraph {
-      // version: 24-Nov-2020
+      // version: 11-Dec-2020
 
       val in        = AudioFileIn("in")
       val ir        = AudioFileIn("impulse")
@@ -55,7 +55,7 @@ object ModConvolution extends Module {
       val morphNum  = "morph-num" .attr(2).max(1)
       // TODO: add 'norm' option
       // val morphNorm = "morph-norm".attr(0).clip(0, 1)  // 0 -- off, 1 -- on
-      val morphWin  = "morph-win" .attr(0.02)             // milliseconds
+      val morphWin  = "morph-win" .attr(20.0)             // milliseconds
       val fileLenTpe= "file-len"  .attr(1).clip(0, 1)     // 0 -- input, 1 -- input + IR - 1
 
       val gainType  = "gain-type" .attr(1)
@@ -155,7 +155,7 @@ object ModConvolution extends Module {
     val w = Widget[T]()
     import de.sciss.proc.MacroImplicits._
     w.setGraph {
-      // version: 24-Nov-2020
+      // version: 11-Dec-2020
       val r     = Runner("run")
       val m     = r.messages
       m.changed.filter(m.nonEmpty) ---> PrintLn(m.mkString("\n"))
@@ -199,7 +199,7 @@ object ModConvolution extends Module {
       ggMorphWin.min  = 0.1
       ggMorphWin.max  = 60000.0
       ggMorphWin.step = 1.0
-      ggMorphWin.value <--> "run:morph-win".attr(0.02)
+      ggMorphWin.value <--> "run:morph-win".attr(20.0)
 
       ggMorphNum.enabled = ggMorph.selected()
       ggMorphWin.enabled = ggMorph.selected()
