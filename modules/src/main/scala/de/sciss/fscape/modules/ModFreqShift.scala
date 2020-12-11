@@ -30,8 +30,7 @@ object ModFreqShift extends Module {
     val f = FScape[T]()
     import de.sciss.fscape.lucre.MacroImplicits._
     f.setGraph {
-      // version: 24-Mar-2020
-      // TODO: anti-aliasing filter
+      // version: 11-Dec-2020
       // TODO: compensate for filter gain
 
       val in0         = AudioFileIn("in")
@@ -45,6 +44,7 @@ object ModFreqShift extends Module {
 
       val freqShiftHz = "shift-freq".attr(300.0)
       val freqShiftN  = freqShiftHz / sr
+      val antiAlias   = "anti-alias".attr(1)
 
       val lpFreqN     = 0.245 // Fs/4 minus roll-off
       val lpWinSz     = 1024
@@ -64,7 +64,34 @@ object ModFreqShift extends Module {
       val fftSizeC    = fftSize << 1
       val inWinSz     = fftSize /* + 1 */ - lpWinSz
 
-      val inFT    = Complex1FFT(in0 zip DC(0.0), size = inWinSz, padding = fftSize - inWinSz)
+      val in1 = If (antiAlias & (freqShiftHz > 0)) Then {
+        // shifting up; low pass
+        val numZero   = 6
+        val kaiser    = 6.0
+        val f1N       = (0.5 - freqShiftN) * 0.95
+        val fltLenH   = (numZero / f1N).ceil.max(1)
+        val fltLen    = fltLenH * 2 // - 1
+        val flt0      = GenWindow.Sinc(fltLen, param = f1N) * f1N
+        val win       = GenWindow.Kaiser(fltLen, param = kaiser)
+        val flt       = (flt0 * win).take(fltLen)
+        Convolution(in0, flt, fltLen)
+
+      } ElseIf (antiAlias & (freqShiftHz < 0)) Then {
+        // shifting down; high pass
+        val numZero   = 6
+        val kaiser    = 6.0
+        val f1N       = freqShiftN.abs * 1.05
+        val fltLenH   = (numZero / f1N).ceil.max(1)
+        val fltLen    = fltLenH * 2 // - 1
+        val flt0      = GenWindow.Sinc(fltLen, param = 0.5) * 0.5 -
+          GenWindow.Sinc(fltLen, param = f1N) * f1N
+        val win       = GenWindow.Kaiser(fltLen, param = kaiser)
+        val flt       = (flt0 * win).take(fltLen)
+        Convolution(in0, flt, fltLen)
+
+      } Else in0
+
+      val inFT    = Complex1FFT(in1 zip DC(0.0), size = inWinSz, padding = fftSize - inWinSz)
       val fltFT   = Complex1FFT(fltRe zip fltIm, size = lpWinSz, padding = fftSize - lpWinSz)
       // avoid running the sinc and fft repeatedly
       val numFFTs = (numFramesIn / inWinSz).ceil
@@ -116,7 +143,7 @@ object ModFreqShift extends Module {
     val w = Widget[T]()
     import de.sciss.proc.MacroImplicits._
     w.setGraph {
-      // version: 07-Apr-2019
+      // version: 11-Dec-2020
       val r     = Runner("run")
       val m     = r.messages
       m.changed.filter(m.nonEmpty) ---> PrintLn(m.mkString("\n"))
@@ -145,6 +172,9 @@ object ModFreqShift extends Module {
       ggShift.max       = +192000.0
       ggShift.value <--> "run:shift-freq".attr(300.0)
 
+      val ggAntiAlias = CheckBox()
+      ggAntiAlias.selected <--> "run:anti-alias".attr(true)
+
       def mkLabel(text: String) = {
         val l = Label(text)
         l.hAlign = Align.Trailing
@@ -164,8 +194,7 @@ object ModFreqShift extends Module {
         mkLabel("Gain:"), left(ggGain, ggGainType),
         Label(" "), Empty(),
         mkLabel("Shift:"), left(ggShift),
-        Label(" "), Label(" "),
-        mkLabel(""), Label("<html><b>Note:</b> Anti-aliasing not yet implemented.")
+        mkLabel("Anti-Aliasing:"), ggAntiAlias,
       )
       p.columns = 2
       p.hGap    = 8
