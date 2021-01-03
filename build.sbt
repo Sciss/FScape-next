@@ -2,13 +2,13 @@ lazy val baseName   = "FScape"
 lazy val baseNameL  = baseName.toLowerCase
 lazy val gitRepo    = "FScape-next"
 
-lazy val projectVersion = "3.4.1-SNAPSHOT"
-lazy val mimaVersion    = "3.4.0"
+lazy val projectVersion = "3.5.0-SNAPSHOT"
+lazy val mimaVersion    = "3.5.0"
 
 lazy val baseDescription = "An audio rendering library"
 
 lazy val commonJvmSettings = Seq(
-  crossScalaVersions := Seq(/* "3.0.0-M2", */ "2.13.4", "2.12.12"),
+  crossScalaVersions := Seq(/* "3.0.0-M2", */ "2.13.4", "2.12.12"),  // no Dotty, because no Akka
 )
 
 // sonatype plugin requires that these are in global
@@ -22,16 +22,17 @@ lazy val commonSettings = Seq(
   scalaVersion       := "2.13.4",
   licenses           := Seq("AGPL v3+" -> url("http://www.gnu.org/licenses/agpl-3.0.txt")),
   homepage           := Some(url(s"https://git.iem.at/sciss/$gitRepo")),
-  scalacOptions ++= Seq(
-    "-deprecation", "-unchecked", "-feature", "-encoding", "utf8", "-Xlint", "-Xsource:2.13"
-  ),
+  scalacOptions     ++= Seq("-deprecation", "-unchecked", "-feature", "-encoding", "utf8"),
+  scalacOptions ++= {
+    if (isDotty.value) Nil else Seq("-Xlint", "-Xsource:2.13"),
+  },
   scalacOptions in (Compile, compile) ++= {
     val dot = isDotty.value
     val xs  = (if (!dot && scala.util.Properties.isJavaAtLeast("9")) Seq("-release", "8") else Nil)  // JDK >8 breaks API; skip scala-doc
     val sv  = scalaVersion.value
     if (sv.startsWith("2.13.")) xs :+ "-Wvalue-discard" else xs
   },
-  updateOptions      := updateOptions.value.withLatestSnapshots(false),
+  updateOptions       := updateOptions.value.withLatestSnapshots(false),
   javacOptions        := commonJavaOptions ++ Seq("-target", "1.8", "-g", "-Xlint:deprecation" /*, "-Xlint:unchecked" */),
   javacOptions in doc := commonJavaOptions,
   parallelExecution in Test := false,
@@ -59,13 +60,13 @@ lazy val deps = new {
   val lucre = new {
     val fileCache       = "1.1.1"
     val lucre           = "4.3.0"
-    val soundProcesses  = "4.5.0"
+    val soundProcesses  = "4.6.0-SNAPSHOT"
   }
   val views = new {
     val lucreSwing      = "2.5.0"
   }
   val modules = new {
-    val scallop         = "3.5.1"
+    val scallop         = "4.0.1"
   }
   val test = new {
     val kollFlitz       = "0.2.4"
