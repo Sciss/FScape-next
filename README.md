@@ -14,7 +14,7 @@ It has basic integration with [Mellite](http://sciss.de/mellite/), increasingly 
 FScape modules, using Mellite's widget object for a user interface similar to FScape 1. See below for instructions
 on how to generate these "standard modules".
 
-FScape(-next) is (C)opyright 2001&ndash;2020 by Hanns Holger Rutz. All rights reserved.
+FScape(-next) is (C)opyright 2001&ndash;2021 by Hanns Holger Rutz. All rights reserved.
 This program is free software; you can redistribute it and/or modify it under the terms 
 of the [GNU Affero General Public License](https://git.iem.at/sciss/FScape-next/raw/main/LICENSE) v3+.
 To contact the author, send an e-mail to `contact at sciss.de`.
@@ -33,7 +33,7 @@ The following dependency is necessary:
 
     "de.sciss" %% "fscape" % v
 
-The current version `v` is `"3.4.1"`.
+The current version `v` is `"3.5.0"`.
 
 The following sub modules are available:
 

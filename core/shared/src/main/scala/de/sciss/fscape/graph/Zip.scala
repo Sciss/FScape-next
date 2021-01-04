@@ -2,7 +2,7 @@
  *  Zip.scala
  *  (FScape)
  *
- *  Copyright (c) 2001-2020 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2001-2021 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU Affero General Public License v3+
  *
