@@ -14,8 +14,8 @@
 package de.sciss.lucre.swing.graph
 
 import java.net.URI
-
 import de.sciss.fscape.graph.ImageFile
+import de.sciss.lucre.expr.ExElem.{ProductReader, RefMapIn}
 import de.sciss.lucre.{IExpr, Txn}
 import de.sciss.lucre.expr.graph.{Const, Ex}
 import de.sciss.lucre.expr.{Context, IControl, Model}
@@ -23,9 +23,21 @@ import de.sciss.lucre.swing.graph.impl.{ComboBoxValueExpandedImpl, ComponentImpl
 import de.sciss.lucre.swing.{Graph, PanelWithPathField, View}
 import de.sciss.swingplus.{Spinner, ComboBox => _ComboBox}
 
-object ImageFileOut {
+object ImageFileOut extends ProductReader[ImageFileOut] {
   def apply(): ImageFileOut = Impl()
 
+  override def read(in: RefMapIn, key: String, arity: Int, adj: Int): ImageFileOut = {
+    require (arity == 0 && adj == 0)
+    ImageFileOut()
+  }
+
+  object Value extends ProductReader[Value] {
+    override def read(in: RefMapIn, key: String, arity: Int, adj: Int): Value = {
+      require (arity == 1 && adj == 0)
+      val _w = in.readProductT[ImageFileOut]()
+      new Value(_w)
+    }
+  }
   final case class Value(w: ImageFileOut) extends Ex[URI] {
     type Repr[T <: Txn[T]] = IExpr[T, URI]
 
@@ -40,6 +52,13 @@ object ImageFileOut {
     }
   }
 
+  object FileType extends ProductReader[FileType] {
+    override def read(in: RefMapIn, key: String, arity: Int, adj: Int): FileType = {
+      require (arity == 1 && adj == 0)
+      val _w = in.readProductT[ImageFileOut]()
+      new FileType(_w)
+    }
+  }
   final case class FileType(w: ImageFileOut) extends Ex[Int] {
     type Repr[T <: Txn[T]] = IExpr[T, Int]
 
@@ -56,6 +75,13 @@ object ImageFileOut {
     }
   }
 
+  object SampleFormat extends ProductReader[SampleFormat] {
+    override def read(in: RefMapIn, key: String, arity: Int, adj: Int): SampleFormat = {
+      require (arity == 1 && adj == 0)
+      val _w = in.readProductT[ImageFileOut]()
+      new SampleFormat(_w)
+    }
+  }
   final case class SampleFormat(w: ImageFileOut) extends Ex[Int] {
     type Repr[T <: Txn[T]] = IExpr[T, Int]
 
@@ -72,6 +98,13 @@ object ImageFileOut {
     }
   }
 
+  object Quality extends ProductReader[Quality] {
+    override def read(in: RefMapIn, key: String, arity: Int, adj: Int): Quality = {
+      require (arity == 1 && adj == 0)
+      val _w = in.readProductT[ImageFileOut]()
+      new Quality(_w)
+    }
+  }
   final case class Quality(w: ImageFileOut) extends Ex[Int] {
     type Repr[T <: Txn[T]] = IExpr[T, Int]
 
@@ -86,6 +119,13 @@ object ImageFileOut {
     }
   }
 
+  object Title extends ProductReader[Title] {
+    override def read(in: RefMapIn, key: String, arity: Int, adj: Int): Title = {
+      require (arity == 1 && adj == 0)
+      val _w = in.readProductT[ImageFileOut]()
+      new Title(_w)
+    }
+  }
   final case class Title(w: ImageFileOut) extends Ex[String] {
     type Repr[T <: Txn[T]] = IExpr[T, String]
 
@@ -97,6 +137,13 @@ object ImageFileOut {
     }
   }
 
+  object PathFieldVisible extends ProductReader[PathFieldVisible] {
+    override def read(in: RefMapIn, key: String, arity: Int, adj: Int): PathFieldVisible = {
+      require (arity == 1 && adj == 0)
+      val _w = in.readProductT[ImageFileOut]()
+      new PathFieldVisible(_w)
+    }
+  }
   final case class PathFieldVisible(w: ImageFileOut) extends Ex[Boolean] {
     type Repr[T <: Txn[T]] = IExpr[T, Boolean]
 
@@ -108,6 +155,13 @@ object ImageFileOut {
     }
   }
 
+  object FileTypeVisible extends ProductReader[FileTypeVisible] {
+    override def read(in: RefMapIn, key: String, arity: Int, adj: Int): FileTypeVisible = {
+      require (arity == 1 && adj == 0)
+      val _w = in.readProductT[ImageFileOut]()
+      new FileTypeVisible(_w)
+    }
+  }
   final case class FileTypeVisible(w: ImageFileOut) extends Ex[Boolean] {
     type Repr[T <: Txn[T]] = IExpr[T, Boolean]
 
@@ -119,6 +173,13 @@ object ImageFileOut {
     }
   }
 
+  object SampleFormatVisible extends ProductReader[SampleFormatVisible] {
+    override def read(in: RefMapIn, key: String, arity: Int, adj: Int): SampleFormatVisible = {
+      require (arity == 1 && adj == 0)
+      val _w = in.readProductT[ImageFileOut]()
+      new SampleFormatVisible(_w)
+    }
+  }
   final case class SampleFormatVisible(w: ImageFileOut) extends Ex[Boolean] {
     type Repr[T <: Txn[T]] = IExpr[T, Boolean]
 
@@ -130,6 +191,13 @@ object ImageFileOut {
     }
   }
 
+  object QualityVisible extends ProductReader[QualityVisible] {
+    override def read(in: RefMapIn, key: String, arity: Int, adj: Int): QualityVisible = {
+      require (arity == 1 && adj == 0)
+      val _w = in.readProductT[ImageFileOut]()
+      new QualityVisible(_w)
+    }
+  }
   final case class QualityVisible(w: ImageFileOut) extends Ex[Boolean] {
     type Repr[T <: Txn[T]] = IExpr[T, Boolean]
 

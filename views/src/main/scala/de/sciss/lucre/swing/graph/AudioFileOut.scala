@@ -14,7 +14,6 @@
 package de.sciss.lucre.swing.graph
 
 import java.net.URI
-
 import de.sciss.lucre.expr.graph.{Const, Ex}
 import de.sciss.lucre.expr.{Context, IControl, Model}
 import de.sciss.lucre.swing.graph.impl.{AudioFileOutExpandedImpl, ComboBoxValueExpandedImpl, ComponentImpl, PathFieldValueExpandedImpl, Tup2_1Expanded, Tup2_2OptExpanded}
@@ -22,10 +21,23 @@ import de.sciss.lucre.swing.{Graph, PanelWithPathField, View}
 import de.sciss.lucre.{IExpr, Txn}
 import de.sciss.swingplus.{ComboBox => _ComboBox}
 import de.sciss.audiofile.{AudioFileType, SampleFormat => _SampleFormat}
+import de.sciss.lucre.expr.ExElem.{ProductReader, RefMapIn}
 
-object AudioFileOut {
+object AudioFileOut extends ProductReader[AudioFileOut] {
   def apply(): AudioFileOut = Impl()
 
+  override def read(in: RefMapIn, key: String, arity: Int, adj: Int): AudioFileOut = {
+    require (arity == 0 && adj == 0)
+    AudioFileOut()
+  }
+
+  object Value extends ProductReader[Value] {
+    override def read(in: RefMapIn, key: String, arity: Int, adj: Int): Value = {
+      require (arity == 1 && adj == 0)
+      val _w = in.readProductT[AudioFileOut]()
+      new Value(_w)
+    }
+  }
   final case class Value(w: AudioFileOut) extends Ex[URI] {
     type Repr[T <: Txn[T]] = IExpr[T, URI]
 
@@ -40,18 +52,13 @@ object AudioFileOut {
     }
   }
 
-//  private final class Tup2_2Expanded[T <: Txn[T], A, B](tup: IExpr[T, (A, B)], tx0: T)
-//                                                       (implicit targets: ITargets[T])
-//    extends MappedIExpr[T, (A, B), B](tup, tx0) {
-//
-//    protected def mapValue(tupVal: (A, B))(implicit tx: T): B = tupVal._2
-//
-//    override def dispose()(implicit tx: T): Unit = {
-//      super.dispose()
-//      tup.dispose()
-//    }
-//  }
-
+  object FileType extends ProductReader[FileType] {
+    override def read(in: RefMapIn, key: String, arity: Int, adj: Int): FileType = {
+      require (arity == 1 && adj == 0)
+      val _w = in.readProductT[AudioFileOut]()
+      new FileType(_w)
+    }
+  }
   final case class FileType(w: AudioFileOut) extends Ex[Int] {
     type Repr[T <: Txn[T]] = IExpr[T, Int]
 
@@ -68,6 +75,13 @@ object AudioFileOut {
     }
   }
 
+  object SampleFormat extends ProductReader[SampleFormat] {
+    override def read(in: RefMapIn, key: String, arity: Int, adj: Int): SampleFormat = {
+      require (arity == 1 && adj == 0)
+      val _w = in.readProductT[AudioFileOut]()
+      new SampleFormat(_w)
+    }
+  }
   final case class SampleFormat(w: AudioFileOut) extends Ex[Int] {
     type Repr[T <: Txn[T]] = IExpr[T, Int]
 
@@ -84,6 +98,13 @@ object AudioFileOut {
     }
   }
 
+  object SampleRate extends ProductReader[SampleRate] {
+    override def read(in: RefMapIn, key: String, arity: Int, adj: Int): SampleRate = {
+      require (arity == 1 && adj == 0)
+      val _w = in.readProductT[AudioFileOut]()
+      new SampleRate(_w)
+    }
+  }
   final case class SampleRate(w: AudioFileOut) extends Ex[Double] {
     type Repr[T <: Txn[T]] = IExpr[T, Double]
 
@@ -100,6 +121,13 @@ object AudioFileOut {
     }
   }
 
+  object Title extends ProductReader[Title] {
+    override def read(in: RefMapIn, key: String, arity: Int, adj: Int): Title = {
+      require (arity == 1 && adj == 0)
+      val _w = in.readProductT[AudioFileOut]()
+      new Title(_w)
+    }
+  }
   final case class Title(w: AudioFileOut) extends Ex[String] {
     type Repr[T <: Txn[T]] = IExpr[T, String]
 
@@ -111,6 +139,13 @@ object AudioFileOut {
     }
   }
 
+  object PathFieldVisible extends ProductReader[PathFieldVisible] {
+    override def read(in: RefMapIn, key: String, arity: Int, adj: Int): PathFieldVisible = {
+      require (arity == 1 && adj == 0)
+      val _w = in.readProductT[AudioFileOut]()
+      new PathFieldVisible(_w)
+    }
+  }
   final case class PathFieldVisible(w: AudioFileOut) extends Ex[Boolean] {
     type Repr[T <: Txn[T]] = IExpr[T, Boolean]
 
@@ -122,6 +157,13 @@ object AudioFileOut {
     }
   }
 
+  object FileTypeVisible extends ProductReader[FileTypeVisible] {
+    override def read(in: RefMapIn, key: String, arity: Int, adj: Int): FileTypeVisible = {
+      require (arity == 1 && adj == 0)
+      val _w = in.readProductT[AudioFileOut]()
+      new FileTypeVisible(_w)
+    }
+  }
   final case class FileTypeVisible(w: AudioFileOut) extends Ex[Boolean] {
     type Repr[T <: Txn[T]] = IExpr[T, Boolean]
 
@@ -133,6 +175,13 @@ object AudioFileOut {
     }
   }
 
+  object SampleFormatVisible extends ProductReader[SampleFormatVisible] {
+    override def read(in: RefMapIn, key: String, arity: Int, adj: Int): SampleFormatVisible = {
+      require (arity == 1 && adj == 0)
+      val _w = in.readProductT[AudioFileOut]()
+      new SampleFormatVisible(_w)
+    }
+  }
   final case class SampleFormatVisible(w: AudioFileOut) extends Ex[Boolean] {
     type Repr[T <: Txn[T]] = IExpr[T, Boolean]
 
@@ -144,6 +193,13 @@ object AudioFileOut {
     }
   }
 
+  object SampleRateVisible extends ProductReader[SampleRateVisible] {
+    override def read(in: RefMapIn, key: String, arity: Int, adj: Int): SampleRateVisible = {
+      require (arity == 1 && adj == 0)
+      val _w = in.readProductT[AudioFileOut]()
+      new SampleRateVisible(_w)
+    }
+  }
   final case class SampleRateVisible(w: AudioFileOut) extends Ex[Boolean] {
     type Repr[T <: Txn[T]] = IExpr[T, Boolean]
 

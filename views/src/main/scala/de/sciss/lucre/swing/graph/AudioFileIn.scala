@@ -15,7 +15,6 @@ package de.sciss.lucre.swing.graph
 
 import java.io.FileNotFoundException
 import java.net.URI
-
 import de.sciss.audiowidgets.AxisFormat
 import de.sciss.file.File
 import de.sciss.lucre.expr.graph.{Const, Ex}
@@ -24,9 +23,15 @@ import de.sciss.lucre.swing.graph.impl.{ComponentImpl, FileInExpandedImpl, PathF
 import de.sciss.lucre.swing.{Graph, PanelWithPathField, View}
 import de.sciss.lucre.{IExpr, Txn}
 import de.sciss.audiofile.{AudioFile, AudioFileSpec, SampleFormat}
+import de.sciss.lucre.expr.ExElem.{ProductReader, RefMapIn}
 
-object AudioFileIn {
+object AudioFileIn extends ProductReader[AudioFileIn] {
   def apply(): AudioFileIn = Impl()
+
+  override def read(in: RefMapIn, key: String, arity: Int, adj: Int): AudioFileIn = {
+    require (arity == 0 && adj == 0)
+    AudioFileIn()
+  }
 
   private lazy val timeFmt = AxisFormat.Time(hours = false, millis = true)
 
@@ -63,6 +68,13 @@ object AudioFileIn {
     }
   }
 
+  object Value extends ProductReader[Value] {
+    override def read(in: RefMapIn, key: String, arity: Int, adj: Int): Value = {
+      require (arity == 1 && adj == 0)
+      val _w = in.readProductT[AudioFileIn]()
+      new Value(_w)
+    }
+  }
   final case class Value(w: AudioFileIn) extends Ex[URI] {
     type Repr[T <: Txn[T]] = IExpr[T, URI]
 
@@ -77,6 +89,13 @@ object AudioFileIn {
     }
   }
 
+  object Title extends ProductReader[Title] {
+    override def read(in: RefMapIn, key: String, arity: Int, adj: Int): Title = {
+      require (arity == 1 && adj == 0)
+      val _w = in.readProductT[AudioFileIn]()
+      new Title(_w)
+    }
+  }
   final case class Title(w: AudioFileIn) extends Ex[String] {
     type Repr[T <: Txn[T]] = IExpr[T, String]
 
@@ -88,6 +107,13 @@ object AudioFileIn {
     }
   }
 
+  object PathFieldVisible extends ProductReader[PathFieldVisible] {
+    override def read(in: RefMapIn, key: String, arity: Int, adj: Int): PathFieldVisible = {
+      require (arity == 1 && adj == 0)
+      val _w = in.readProductT[AudioFileIn]()
+      new PathFieldVisible(_w)
+    }
+  }
   final case class PathFieldVisible(w: AudioFileIn) extends Ex[Boolean] {
     type Repr[T <: Txn[T]] = IExpr[T, Boolean]
 
@@ -99,6 +125,13 @@ object AudioFileIn {
     }
   }
 
+  object FormatVisible extends ProductReader[FormatVisible] {
+    override def read(in: RefMapIn, key: String, arity: Int, adj: Int): FormatVisible = {
+      require (arity == 1 && adj == 0)
+      val _w = in.readProductT[AudioFileIn]()
+      new FormatVisible(_w)
+    }
+  }
   final case class FormatVisible(w: AudioFileIn) extends Ex[Boolean] {
     type Repr[T <: Txn[T]] = IExpr[T, Boolean]
 
