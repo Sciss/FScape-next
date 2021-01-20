@@ -14,12 +14,24 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.StreamIn
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-final case class WebAudioOut(in: GE) extends UGenSource.ZeroOut {
+object PhysicalOut extends ProductReader[PhysicalOut] {
+  override def read(in: RefMapIn, key: String, arity: Int): PhysicalOut = {
+    require (arity == 2)
+    val _indices  = in.readGE()
+    val _in       = in.readGE()
+    new PhysicalOut(_indices, _in)
+  }
+
+  def apply(in: GE): PhysicalOut = new PhysicalOut(0, in)
+}
+// XXX TODO: `indices` currently unused
+final case class PhysicalOut(indices: GE, in: GE) extends UGenSource.ZeroOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): Unit = unwrap(this, in.expand.outputs)
 
   protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): Unit = {
