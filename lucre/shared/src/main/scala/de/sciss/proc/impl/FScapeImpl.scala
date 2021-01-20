@@ -24,9 +24,13 @@ import de.sciss.proc.{FScape, GenView, Runner, Universe}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-object FScapeImpl {
+object FScapeImpl extends FScapePlatform {
   private final val SER_VERSION_OLD = 0x4673  // "Fs"
   private final val SER_VERSION     = 0x4674
+
+  def init(): Unit = {
+    initPlatform()
+  }
 
   def apply[T <: Txn[T]]()(implicit tx: T): FScape[T] = new New[T]
 

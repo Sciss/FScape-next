@@ -14,12 +14,22 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{Builder, StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
 object HilbertCurve {
+  object From2D extends ProductReader[From2D] {
+    override def read(in: RefMapIn, key: String, arity: Int): From2D = {
+      require (arity == 3)
+      val _n = in.readGE()
+      val _x = in.readGE()
+      val _y = in.readGE()
+      new From2D(_n, _x, _y)
+    }
+  }
   /** Encodes two dimensional coordinates as one dimensional indices or positions
     * of a Hilbert curve.
     *
@@ -45,6 +55,14 @@ object HilbertCurve {
     }
   }
 
+  object To2D extends ProductReader[To2D] {
+    override def read(in: RefMapIn, key: String, arity: Int): To2D = {
+      require (arity == 2)
+      val _n    = in.readGE()
+      val _pos  = in.readGE()
+      new To2D(_n, _pos)
+    }
+  }
   /** Decodes one dimensional indices or positions
     * of a Hilbert curve to two dimensional coordinates.
     *

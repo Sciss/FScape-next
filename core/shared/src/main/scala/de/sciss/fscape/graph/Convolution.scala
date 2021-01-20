@@ -13,12 +13,24 @@
 
 package de.sciss.fscape.graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 import de.sciss.fscape.{GE, UGen, UGenGraph, UGenIn, UGenInLike, UGenSource, stream}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object Convolution extends ProductReader[Convolution] {
+  override def read(in: RefMapIn, key: String, arity: Int): Convolution = {
+    require (arity == 5)
+    val _in           = in.readGE()
+    val _kernel       = in.readGE()
+    val _kernelLen    = in.readGE()
+    val _kernelUpdate = in.readGE()
+    val _mode         = in.readGE()
+    new Convolution(_in, _kernel, _kernelLen, _kernelUpdate, _mode)
+  }
+}
 /** A UGen that convolves an input signal with a fixed or changing filter kernel.
   * `kernelUpdate` is read synchronous with `in`, and while it is zero the most
   * recent kernel is reused (making it possible to use more efficient calculation

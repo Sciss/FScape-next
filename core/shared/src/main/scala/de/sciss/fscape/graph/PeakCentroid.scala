@@ -14,12 +14,24 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenGraph.Builder
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object PeakCentroid1D extends ProductReader[PeakCentroid1D] {
+  override def read(in: RefMapIn, key: String, arity: Int): PeakCentroid1D = {
+    require (arity == 5)
+    val _in       = in.readGE()
+    val _size     = in.readGE()
+    val _thresh1  = in.readGE()
+    val _thresh2  = in.readGE()
+    val _radius   = in.readGE()
+    new PeakCentroid1D(_in, _size, _thresh1, _thresh2, _radius)
+  }
+}
 /**
   * '''Warning:''' window parameter modulation is currently not working correctly (issue #30)
   */
@@ -37,6 +49,18 @@ final case class PeakCentroid1D(in: GE, size: GE, thresh1: GE = 0.5, thresh2: GE
   def peak     : GE = ChannelProxy(this, 1)
 }
 
+object PeakCentroid2D extends ProductReader[PeakCentroid2D] {
+  override def read(in: RefMapIn, key: String, arity: Int): PeakCentroid2D = {
+    require (arity == 6)
+    val _in       = in.readGE()
+    val _width    = in.readGE()
+    val _height   = in.readGE()
+    val _thresh1  = in.readGE()
+    val _thresh2  = in.readGE()
+    val _radius   = in.readGE()
+    new PeakCentroid2D(_in, _width, _height, _thresh1, _thresh2, _radius)
+  }
+}
 /**
   * '''Warning:''' window parameter modulation is currently not working correctly (issue #30)
   */

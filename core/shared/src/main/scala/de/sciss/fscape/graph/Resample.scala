@@ -14,11 +14,24 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object Resample extends ProductReader[Resample] {
+  override def read(in: RefMapIn, key: String, arity: Int): Resample = {
+    require (arity == 6)
+    val _in            = in.readGE()
+    val _factor        = in.readGE()
+    val _minFactor     = in.readGE()
+    val _rollOff       = in.readGE()
+    val _kaiserBeta    = in.readGE()
+    val _zeroCrossings = in.readGE()
+    new Resample(_in, _factor, _minFactor, _rollOff, _kaiserBeta, _zeroCrossings)
+  }
+}
 /** A band-limited resampling UGen.
   *
   * It uses an internal table for the anti-aliasing filter.
@@ -49,8 +62,13 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * @param kaiserBeta     the FIR windowing function's parameter
   * @param zeroCrossings  the number of zero-crossings in the truncated and windowed sinc FIR.
   */
-final case class Resample(in: GE, factor: GE, minFactor: GE = 0,
-                          rollOff: GE = 0.86, kaiserBeta: GE = 7.5, zeroCrossings: GE = 15)
+final case class Resample(in            : GE,
+                          factor        : GE,
+                          minFactor     : GE = 0,
+                          rollOff       : GE = 0.86,
+                          kaiserBeta    : GE = 7.5,
+                          zeroCrossings : GE = 15,
+                         )
   extends UGenSource.SingleOut {
 
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =

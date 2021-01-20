@@ -13,6 +13,7 @@
 
 package de.sciss.fscape.lucre.graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.lucre.UGenGraphBuilder.OutputRef
@@ -25,8 +26,8 @@ import de.sciss.proc.FScape.Output
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-object MkInt {
-  final case class WithRef(peer: MkInt, ref: OutputRef) extends UGenSource.ZeroOut {
+object MkInt extends ProductReader[MkInt] {
+  final case class WithRef private(peer: MkInt, ref: OutputRef) extends UGenSource.ZeroOut {
 
     protected def makeUGens(implicit b: UGenGraph.Builder): Unit =
       unwrap(this, Vector(peer.in.expand))
@@ -42,6 +43,13 @@ object MkInt {
     }
 
     override def productPrefix: String = s"MkInt$$WithRef"
+  }
+
+  override def read(in: RefMapIn, key: String, arity: Int): MkInt = {
+    require (arity == 2)
+    val _key  = in.readString()
+    val _in   = in.readGE()
+    new MkInt(_key, _in)
   }
 }
 final case class MkInt(key: String, in: GE) extends Lazy.Expander[Unit] with Output.Reader {

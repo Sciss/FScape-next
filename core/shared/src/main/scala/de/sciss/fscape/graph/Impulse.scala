@@ -14,11 +14,20 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object Impulse extends ProductReader[Impulse] {
+  override def read(in: RefMapIn, key: String, arity: Int): Impulse = {
+    require (arity == 2)
+    val _freqN  = in.readGE()
+    val _phase  = in.readGE()
+    new Impulse(_freqN, _phase)
+  }
+}
 /** Impulse (repeated dirac) generator.
   * For a single impulse that is never repeated,
   * use zero.

@@ -14,11 +14,22 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object ResizeWindow extends ProductReader[ResizeWindow] {
+  override def read(in: RefMapIn, key: String, arity: Int): ResizeWindow = {
+    require (arity == 4)
+    val _in     = in.readGE()
+    val _size   = in.readGE()
+    val _start  = in.readGE()
+    val _stop   = in.readGE()
+    new ResizeWindow(_in, _size, _start, _stop)
+  }
+}
 /** A UGen that resizes the windowed input signal by trimming each
   * windows boundaries (if `start` is greater than zero
   * or `stop` is less than zero) or padding the boundaries

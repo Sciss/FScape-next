@@ -14,6 +14,7 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
@@ -26,7 +27,7 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   *
   * XXX TODO - need more ops such as conjugate, polar-to-cartesian, ...
   */
-object ComplexBinaryOp {
+object ComplexBinaryOp extends ProductReader[ComplexBinaryOp] {
   object Op {
     def apply(id: Int): Op = (id: @switch) match {
       case Plus     .id => Plus
@@ -165,6 +166,14 @@ object ComplexBinaryOp {
 //      out(outOff)     = aRe * bRe - aIm * bIm
 //      out(outOff + 1) = aRe * bIm + aIm * bRe
 //    }
+  }
+
+  override def read(in: RefMapIn, key: String, arity: Int): ComplexBinaryOp = {
+    require (arity == 3)
+    val _op = in.readInt()
+    val _a  = in.readGE()
+    val _b  = in.readGE()
+    new ComplexBinaryOp(_op, _a, _b)
   }
 }
 /** Binary operation UGen between two complex signals.

@@ -14,11 +14,20 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object Latch extends ProductReader[Latch] {
+  override def read(in: RefMapIn, key: String, arity: Int): Latch = {
+    require (arity == 2)
+    val _in   = in.readGE()
+    val _gate = in.readGE()
+    new Latch(_in, _gate)
+  }
+}
 /** A sample-and-hold UGen. It passes through its input while the gate is open,
   * and outputs the last held value while the gate is closed.
   *

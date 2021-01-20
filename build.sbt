@@ -54,6 +54,7 @@ lazy val deps = new {
     val numbers         = "0.2.1"
     val optional        = "1.0.1"
     val scalaChart      = "0.8.0"
+    val serial          = "2.0.1-SNAPSHOT"
     val swingPlus       = "0.5.0"
     val transform4s     = "0.1.1"
   }
@@ -124,6 +125,7 @@ lazy val core = crossProject(JVMPlatform, JSPlatform).in(file("core"))
       "de.sciss"          %%%  "log"                  % deps.core.log,
       "de.sciss"          %%%  "numbers"              % deps.core.numbers,
       "de.sciss"          %%%  "optional"             % deps.core.optional,
+      "de.sciss"          %%%  "serial"               % deps.core.serial,
       "de.sciss"          %%%  "kollflitz"            % deps.test.kollFlitz  % Test,
       "org.rogach"        %%%  "scallop"              % deps.test.scallop    % Test,
     ),

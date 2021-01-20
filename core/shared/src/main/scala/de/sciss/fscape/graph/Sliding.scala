@@ -14,11 +14,21 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object Sliding extends ProductReader[Sliding] {
+  override def read(in: RefMapIn, key: String, arity: Int): Sliding = {
+    require (arity == 3)
+    val _in   = in.readGE()
+    val _size = in.readGE()
+    val _step = in.readGE()
+    new Sliding(_in, _size, _step)
+  }
+}
 /** A UGen that produces a sliding window over its input.
   *
   * When the input terminates and the last window is not full, it will be flushed

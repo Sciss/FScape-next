@@ -14,11 +14,20 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object SinOsc extends ProductReader[SinOsc] {
+  override def read(in: RefMapIn, key: String, arity: Int): SinOsc = {
+    require (arity == 2)
+    val _freqN  = in.readGE()
+    val _phase  = in.readGE()
+    new SinOsc(_freqN, _phase)
+  }
+}
 /** Sine oscillator.
   * Note that the frequency is not in Hertz but
   * the normalized frequency

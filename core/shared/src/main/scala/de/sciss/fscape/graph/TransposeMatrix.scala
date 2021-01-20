@@ -14,6 +14,7 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
@@ -21,6 +22,15 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 
 // XXX TODO --- we could probably use a disk-buffered variant as well for image processing
 
+object TransposeMatrix extends ProductReader[TransposeMatrix] {
+  override def read(in: RefMapIn, key: String, arity: Int): TransposeMatrix = {
+    require (arity == 3)
+    val _in       = in.readGE()
+    val _rows     = in.readGE()
+    val _columns  = in.readGE()
+    new TransposeMatrix(_in, _rows, _columns)
+  }
+}
 /** A UGen that transposes 2-dimensional matrices.
   * This is a 2-dimensional windowed process, where
   * each window has length `rows * columns`. Input

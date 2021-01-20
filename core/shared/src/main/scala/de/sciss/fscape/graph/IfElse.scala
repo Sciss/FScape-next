@@ -14,6 +14,7 @@
 package de.sciss.fscape.graph
 
 import de.sciss.fscape
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{BufD, BufI, BufL, OutD, OutI, OutL, StreamIn, StreamOut}
@@ -46,7 +47,7 @@ object Then {
   private[fscape] case class UnitCase (cond: GE, branchLayer: Int)
   private[fscape] case class GECase   (cond: UGenIn, branchLayer: Int, branchOut: Vec[UGenIn])
 
-  private[fscape] def gatherUnit[A](e: Then[Any])(implicit b: UGenGraph.Builder): List[UnitCase] = {
+  private[fscape] def gatherUnit(e: Then[Any])(implicit b: UGenGraph.Builder): List[UnitCase] = {
     @tailrec
     def loop(t: Then[Any], res: List[UnitCase]): List[UnitCase] = {
       val layer = b.expandNested(t.branch)
@@ -60,7 +61,7 @@ object Then {
     loop(e, Nil)
   }
 
-  private[fscape] def gatherGE[A](e: Then[GE])(implicit builder: UGenGraph.Builder): List[GECase] = {
+  private[fscape] def gatherGE(e: Then[GE])(implicit builder: UGenGraph.Builder): List[GECase] = {
     @tailrec
     def loop(t: Then[GE], res: List[GECase]): List[GECase] = {
       val layer       = builder.expandNested(t.branch)
@@ -83,7 +84,7 @@ object Then {
     loop(e, Nil)
   }
 
-  case class SourceUnit(cases: List[UnitCase]) extends UGenSource.ZeroOut {
+  case class SourceUnit private(cases: List[UnitCase]) extends UGenSource.ZeroOut {
     protected def makeUGens(implicit b: UGenGraph.Builder): Unit =
       unwrap(this, cases.iterator.map(_.cond.expand).toIndexedSeq)
 
@@ -100,7 +101,7 @@ object Then {
     }
   }
 
-  case class SourceGE(cases: List[GECase]) extends UGenSource.MultiOut {
+  case class SourceGE private(cases: List[GECase]) extends UGenSource.MultiOut {
     private[this] val numCases = cases.size
 
     protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = {
@@ -176,6 +177,15 @@ sealed trait IfThenLike[+A] extends IfOrElseIfThen[A] with Lazy.Expander[Unit] {
   }
 }
 
+object IfThen extends ProductReader[IfThen[_]] {
+  override def read(in: RefMapIn, key: String, arity: Int): IfThen[_] = {
+    require (arity == 3)
+    val _cond   = in.readGE()
+    val _branch = in.readGraph()
+    val _result = in.readElem()
+    new IfThen(_cond, _branch, _result)
+  }
+}
 /** A side effecting conditional block. To turn it into a full `if-then-else` construction,
   * call `Else` or `ElseIf`.
   *
@@ -198,6 +208,16 @@ sealed trait ElseOrElseIfThen[+A] extends Then[A] {
   def pred: IfOrElseIfThen[A]
 }
 
+object ElseIfThen extends ProductReader[ElseIfThen[_]] {
+  override def read(in: RefMapIn, key: String, arity: Int): ElseIfThen[_] = {
+    require (arity == 4)
+    val _pred   = in.readProductT[IfOrElseIfThen[Any]]()
+    val _cond   = in.readGE()
+    val _branch = in.readGraph()
+    val _result = in.readElem()
+    new ElseIfThen(_pred, _cond, _branch, _result)
+  }
+}
 final case class ElseIfThen[+A](pred: IfOrElseIfThen[A], cond: GE, branch: Graph, result: A)
   extends IfThenLike[A] with ElseOrElseIfThen[A]
 
@@ -238,6 +258,14 @@ sealed trait ElseLike[+A] extends ElseOrElseIfThen[A] {
   def cond: GE = ConstantI.C1
 }
 
+object ElseUnit extends ProductReader[ElseUnit] {
+  override def read(in: RefMapIn, key: String, arity: Int): ElseUnit = {
+    require (arity == 2)
+    val _pred   = in.readProductT[IfOrElseIfThen[Any]]()
+    val _branch = in.readGraph()
+    new ElseUnit(_pred, _branch)
+  }
+}
 final case class ElseUnit(pred: IfOrElseIfThen[Any], branch: Graph)
   extends ElseLike[Any] with Lazy.Expander[Unit] {
 
@@ -251,6 +279,15 @@ final case class ElseUnit(pred: IfOrElseIfThen[Any], branch: Graph)
   }
 }
 
+object ElseGE extends ProductReader[ElseGE] {
+  override def read(in: RefMapIn, key: String, arity: Int): ElseGE = {
+    require (arity == 3)
+    val _pred   = in.readProductT[IfOrElseIfThen[GE]]()
+    val _branch = in.readGraph()
+    val _result = in.readGE()
+    new ElseGE(_pred, _branch, _result)
+  }
+}
 final case class ElseGE(pred: IfOrElseIfThen[GE], branch: Graph, result: GE)
   extends ElseLike[GE] with GE.Lazy {
 

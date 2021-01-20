@@ -14,11 +14,26 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object GimpSlur extends ProductReader[GimpSlur] {
+  override def read(in: RefMapIn, key: String, arity: Int): GimpSlur = {
+    require (arity == 8)
+    val _in           = in.readGE()
+    val _width        = in.readGE()
+    val _height       = in.readGE()
+    val _kernel       = in.readGE()
+    val _kernelWidth  = in.readGE()
+    val _kernelHeight = in.readGE()
+    val _repeat       = in.readGE()
+    val _wrap         = in.readGE()
+    new GimpSlur(_in, _width, _height, _kernel, _kernelWidth, _kernelHeight, _repeat, _wrap)
+  }
+}
 /** A UGen similar to GIMP's Slur image filter. Instead of a hard-coded kernel,
   * the probability table must be provided as a separate input.
   * The kernel width and height should be odd, so that the kernel is considered to be
@@ -40,8 +55,15 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * @param repeat         number of recursive application of the displacement per image. Read once per input image.
   * @param wrap           if great than zero, wraps pixels around the image bounds, otherwise clips.
   */
-final case class GimpSlur(in: GE, width: GE, height: GE, kernel: GE, kernelWidth: GE, kernelHeight: GE,
-                          repeat: GE = 1, wrap: GE = 0)
+final case class GimpSlur(in          : GE,
+                          width       : GE,
+                          height      : GE,
+                          kernel      : GE,
+                          kernelWidth : GE,
+                          kernelHeight: GE,
+                          repeat      : GE = 1,
+                          wrap        : GE = 0,
+                         )
   extends UGenSource.SingleOut {
 
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =

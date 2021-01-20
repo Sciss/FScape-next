@@ -14,11 +14,22 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object Bleach extends ProductReader[Bleach] {
+  override def read(in: RefMapIn, key: String, arity: Int): Bleach = {
+    require (arity == 4)
+    val _in         = in.readGE()
+    val _filterLen  = in.readGE()
+    val _feedback   = in.readGE()
+    val _filterClip = in.readGE()
+    new Bleach(_in, _filterLen, _feedback, _filterClip)
+  }
+}
 final case class Bleach(in: GE, filterLen: GE = 256, feedback: GE = 0.001, filterClip: GE = 8.0)
   extends UGenSource.SingleOut {
 

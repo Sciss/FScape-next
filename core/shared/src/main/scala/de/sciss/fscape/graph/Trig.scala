@@ -14,11 +14,19 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object Trig extends ProductReader[Trig] {
+  override def read(in: RefMapIn, key: String, arity: Int): Trig = {
+    require (arity == 1)
+    val _in = in.readGE()
+    new Trig(_in)
+  }
+}
 /** A UGen that creates a trigger when input changes from non-positive to positive.
   * This is useful when a gate argument of another UGen should indeed be used like
   * a single trigger, as a constant positive input will not produce a held signal.

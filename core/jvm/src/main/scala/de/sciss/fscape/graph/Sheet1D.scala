@@ -14,12 +14,22 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.StreamIn
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object Sheet1D extends ProductReader[Sheet1D] {
+  override def read(in: RefMapIn, key: String, arity: Int): Sheet1D = {
+    require (arity == 3)
+    val _in     = in.readGE()
+    val _size   = in.readGE()
+    val _label  = in.readString()
+    new Sheet1D(_in, _size, _label)
+  }
+}
 /** Debugging utility that displays 1D "windows" of the input data as a spreadsheet or table view.
   *
   * '''Warning:''' window parameter modulation is currently not working correctly (issue #30)

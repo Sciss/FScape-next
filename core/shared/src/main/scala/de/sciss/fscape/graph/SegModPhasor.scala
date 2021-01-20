@@ -14,11 +14,20 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object SegModPhasor extends ProductReader[SegModPhasor] {
+  override def read(in: RefMapIn, key: String, arity: Int): SegModPhasor = {
+    require (arity == 2)
+    val _freqN  = in.readGE()
+    val _phase  = in.readGE()
+    new SegModPhasor(_freqN, _phase)
+  }
+}
 /** A phasor UGen that takes new frequency values at the beginning of each cycle.
   * It can be used to implement the 'segmod' program of Döbereiner and Lorenz.
   * In contrast to `LFSaw` which continuously reads frequency values, its

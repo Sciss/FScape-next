@@ -14,6 +14,7 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
@@ -27,7 +28,7 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   *
   * XXX TODO - need more ops such as conjugate, polar-to-cartesian, ...
   */
-object ComplexUnaryOp {
+object ComplexUnaryOp extends ProductReader[ComplexUnaryOp] {
   object Op {
     def apply(id: Int): Op = (id: @switch) match {
       // case Neg        .id => Neg
@@ -429,6 +430,13 @@ object ComplexUnaryOp {
         out(j) = magSq; j += 1
       }
     }
+  }
+
+  override def read(in: RefMapIn, key: String, arity: Int): ComplexUnaryOp = {
+    require (arity == 2)
+    val _op = in.readInt()
+    val _in = in.readGE()
+    new ComplexUnaryOp(_op, _in)
   }
 }
 final case class ComplexUnaryOp(op: Int, in: GE) extends UGenSource.SingleOut {

@@ -14,22 +14,24 @@
 package de.sciss.fscape
 package graph
 
-import java.net.URI
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 
+import java.net.URI
 import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-//object ImageFileSeqIn {
-//  def formatTemplate(template: File, index: Int): File = {
-//    val name      = template.name.format(index)
-//    val f         = template.parentOption.fold(file(name))(_ / name)
-//    f
-//  }
-//}
-
+object ImageFileSeqIn extends ProductReader[ImageFileSeqIn] {
+  override def read(in: RefMapIn, key: String, arity: Int): ImageFileSeqIn = {
+    require (arity == 3)
+    val _template     = in.readURI()
+    val _numChannels  = in.readInt()
+    val _indices      = in.readGE()
+    new ImageFileSeqIn(_template, _numChannels, _indices)
+  }
+}
 /** Reads a sequence of images, outputting them directly one after the other, determining
   * their file names by formatting a `template` with a numeric argument given through `indices`.
   *

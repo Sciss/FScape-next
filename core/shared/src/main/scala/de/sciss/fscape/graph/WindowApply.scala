@@ -15,11 +15,22 @@ package de.sciss.fscape
 package graph
 
 import akka.stream.Outlet
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{BufElem, Builder, OutI, StreamIn, StreamInElem, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object WindowApply extends ProductReader[WindowApply] {
+  override def read(in: RefMapIn, key: String, arity: Int): WindowApply = {
+    require (arity == 4)
+    val _in     = in.readGE()
+    val _size   = in.readGE()
+    val _index  = in.readGE()
+    val _mode   = in.readGE()
+    new WindowApply(_in, _size, _index, _mode)
+  }
+}
 /** A UGen that extracts for each input window the element at a given index.
   *
   * For example, the first element per window can be extracted with `index = 0`,

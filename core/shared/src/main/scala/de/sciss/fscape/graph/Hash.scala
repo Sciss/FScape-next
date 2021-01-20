@@ -14,11 +14,19 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object Hash extends ProductReader[Hash] {
+  override def read(in: RefMapIn, key: String, arity: Int): Hash = {
+    require (arity == 1)
+    val _in = in.readGE()
+    new Hash(_in)
+  }
+}
 /** A UGen that produces a continuous hash value, useful for comparisons and debugging applications.
   * The hash is produced using the 64-bit Murmur 2 algorithm, however the continuous output is
   * given without "finalising"  the hash, and it is not initialized with the input's length

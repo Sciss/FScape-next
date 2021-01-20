@@ -15,8 +15,8 @@ package de.sciss.fscape.lucre
 package graph
 
 import java.net.URI
-
 import de.sciss.audiofile.AudioFile
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.graph.{ConstantD, ConstantL}
 import de.sciss.fscape.lucre.UGenGraphBuilder.Input
@@ -27,7 +27,14 @@ import de.sciss.lucre.Artifact
 import de.sciss.synth.UGenSource.Vec
 import de.sciss.proc.AudioCue
 
-object AudioFileIn extends AudioFileInPlatform {
+object AudioFileIn extends AudioFileInPlatform with ProductReader[AudioFileIn] {
+  object NumFrames extends ProductReader[NumFrames] {
+    override def read(in: RefMapIn, key: String, arity: Int): NumFrames = {
+      require (arity == 1)
+      val _key = in.readString()
+      new NumFrames(_key)
+    }
+  }
   final case class NumFrames(key: String) extends GE.Lazy {
     override def productPrefix = s"AudioFileIn$$NumFrames"
 
@@ -43,6 +50,13 @@ object AudioFileIn extends AudioFileInPlatform {
     }
   }
 
+  object SampleRate extends ProductReader[SampleRate] {
+    override def read(in: RefMapIn, key: String, arity: Int): SampleRate = {
+      require (arity == 1)
+      val _key = in.readString()
+      new SampleRate(_key)
+    }
+  }
   final case class SampleRate(key: String) extends GE.Lazy {
     override def productPrefix = s"AudioFileIn$$SampleRate"
 
@@ -68,6 +82,16 @@ object AudioFileIn extends AudioFileInPlatform {
     }
   }
 
+  object WithCue extends ProductReader[WithCue] {
+    override def read(in: RefMapIn, key: String, arity: Int): WithCue = {
+      require (arity == 4)
+      val _uri          = in.readURI()
+      val _offset       = in.readLong()
+      val _gain         = in.readDouble()
+      val _numChannels  = in.readInt()
+      new WithCue(_uri, _offset, _gain, _numChannels)
+    }
+  }
   final case class WithCue(uri: URI, offset: Long, gain: Double, numChannels: Int)
     extends UGenSource.MultiOut {
 
@@ -87,6 +111,12 @@ object AudioFileIn extends AudioFileInPlatform {
     }
 
     override def productPrefix: String = s"AudioFileIn$$WithCue"
+  }
+
+  override def read(in: RefMapIn, key: String, arity: Int): AudioFileIn = {
+    require (arity == 1)
+    val _key = in.readString()
+    new AudioFileIn(_key)
   }
 }
 final case class AudioFileIn(key: String) extends GE.Lazy {

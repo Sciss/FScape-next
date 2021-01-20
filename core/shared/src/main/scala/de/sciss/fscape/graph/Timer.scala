@@ -14,11 +14,19 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object Timer extends ProductReader[Timer] {
+  override def read(in: RefMapIn, key: String, arity: Int): Timer = {
+    require (arity == 1)
+    val _trig = in.readGE()
+    new Timer(_trig)
+  }
+}
 /** A UGen that outputs the number of sample frames passed since last triggered.
   * If no trigger is used, it simply outputs a linearly rising ramp.
   *

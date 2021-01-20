@@ -14,10 +14,18 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.stream.{Builder, StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object NumChannels extends ProductReader[NumChannels] {
+  override def read(in: RefMapIn, key: String, arity: Int): NumChannels = {
+    require (arity == 1)
+    val _in = in.readGE()
+    new NumChannels(_in)
+  }
+}
 /** A graph element that produces an integer with number-of-channels of the input element.
   */
 final case class NumChannels(in: GE) extends UGenSource.SingleOut  {

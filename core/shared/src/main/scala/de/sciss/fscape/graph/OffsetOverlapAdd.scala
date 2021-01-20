@@ -14,11 +14,23 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object OffsetOverlapAdd extends ProductReader[OffsetOverlapAdd] {
+  override def read(in: RefMapIn, key: String, arity: Int): OffsetOverlapAdd = {
+    require (arity == 5)
+    val _in         = in.readGE()
+    val _size       = in.readGE()
+    val _step       = in.readGE()
+    val _offset     = in.readGE()
+    val _minOffset  = in.readGE()
+    new OffsetOverlapAdd(_in, _size, _step, _offset, _minOffset)
+  }
+}
 /** Overlapping window summation with offset (fuzziness) that can be modulated.
   */
 final case class OffsetOverlapAdd(in: GE, size: GE, step: GE, offset: GE, minOffset: GE)

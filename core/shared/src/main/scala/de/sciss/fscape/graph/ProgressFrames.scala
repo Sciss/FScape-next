@@ -14,12 +14,22 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.StreamIn
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object ProgressFrames extends ProductReader[ProgressFrames] {
+  override def read(in: RefMapIn, key: String, arity: Int): ProgressFrames = {
+    require (arity == 3)
+    val _in         = in.readGE()
+    val _numFrames  = in.readGE()
+    val _label      = in.readString()
+    new ProgressFrames(_in, _numFrames, _label)
+  }
+}
 /** A variant of progress UGen for the common case where one wants
   * to count the incoming frames of a signal.
   *

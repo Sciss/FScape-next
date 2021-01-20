@@ -14,11 +14,24 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object MelFilter extends ProductReader[MelFilter] {
+  override def read(in: RefMapIn, key: String, arity: Int): MelFilter = {
+    require (arity == 6)
+    val _in         = in.readGE()
+    val _size       = in.readGE()
+    val _minFreq    = in.readGE()
+    val _maxFreq    = in.readGE()
+    val _sampleRate = in.readGE()
+    val _bands      = in.readGE()
+    new MelFilter(_in, _size, _minFreq, _maxFreq, _sampleRate, _bands)
+  }
+}
 /** A UGen that maps short-time Fourier transformed spectra to the mel scale. To obtain
   * the MFCC, one has to take the log of the output of this UGen and decimate it with a `DCT`.
   *
@@ -41,8 +54,13 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * @param maxFreq    upper frequency to sample. Will be clipped between `minFreq` (inclusive) and Nyquist (exclusive).
   * @param bands      number of filter bands output
   */
-final case class MelFilter(in: GE, size: GE, minFreq: GE = 55.0, maxFreq: GE = 18000.0, sampleRate: GE = 44100.0,
-                           bands: GE = 42) extends UGenSource.SingleOut {
+final case class MelFilter(in         : GE,
+                           size       : GE,
+                           minFreq    : GE = 55.0,
+                           maxFreq    : GE = 18000.0,
+                           sampleRate : GE = 44100.0,
+                           bands      : GE = 42,
+                          ) extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
     unwrap(this, Vector(in.expand, size.expand, minFreq.expand, maxFreq.expand, sampleRate.expand, bands.expand))
 

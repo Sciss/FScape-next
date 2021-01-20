@@ -13,6 +13,7 @@
 
 package de.sciss.fscape.lucre.graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenGraph.Builder
 import de.sciss.fscape.graph.{Constant, ConstantD, ConstantI, ConstantL, UGenInGroup}
 import de.sciss.fscape.lucre.UGenGraphBuilder
@@ -22,7 +23,7 @@ import de.sciss.fscape.{GE, UGenGraph, UGenInLike}
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.language.implicitConversions
 
-object Attribute {
+object Attribute extends ProductReader[Attribute] {
   final class Factory(val `this`: String) extends AnyVal { me =>
     import me.{`this` => name}
 
@@ -46,6 +47,14 @@ object Attribute {
 
     def expand: UGenInLike
   }
+
+  object Scalar extends ProductReader[Scalar] {
+    override def read(in: RefMapIn, key: String, arity: Int): Scalar = {
+      require (arity == 1)
+      val _const = in.readProductT[Constant]()
+      new Scalar(_const)
+    }
+  }
   final case class Scalar(const: Constant) extends Default {
     def numChannels = 1
 
@@ -60,6 +69,13 @@ object Attribute {
     override def productPrefix: String = s"Attribute$$Scalar"
   }
 
+  object Vector extends ProductReader[Vector] {
+    override def read(in: RefMapIn, key: String, arity: Int): Vector = {
+      require (arity == 1)
+      val _values = in.readVec(in.readProductT[Constant]())
+      new Vector(_values)
+    }
+  }
   final case class Vector(values: Vec[Constant]) extends Default {
     def numChannels: Int = values.size
 
@@ -90,6 +106,14 @@ object Attribute {
 
   private def mk(key: String, default: Default, fixed: Boolean): Attribute =
     new Attribute(key, Some(default), fixed = if (fixed) default.numChannels else -1)
+
+  override def read(in: RefMapIn, key: String, arity: Int): Attribute = {
+    require (arity == 3)
+    val _key      = in.readString()
+    val _default  = in.readOption(in.readProductT[Attribute.Default]())
+    val _fixed    = in.readInt()
+    new Attribute(_key, _default, _fixed)
+  }
 }
 final case class Attribute(key: String, default: Option[Attribute.Default], fixed: Int)
   extends GE.Lazy {

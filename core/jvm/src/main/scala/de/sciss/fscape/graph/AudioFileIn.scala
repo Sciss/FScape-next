@@ -14,13 +14,22 @@
 package de.sciss.fscape
 package graph
 
-import java.net.URI
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 
+import java.net.URI
 import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object AudioFileIn extends ProductReader[AudioFileIn] {
+  override def read(in: RefMapIn, key: String, arity: Int): AudioFileIn = {
+    require (arity == 2)
+    val _file         = in.readURI()
+    val _numChannels  = in.readInt()
+    new AudioFileIn(_file, _numChannels)
+  }
+}
 final case class AudioFileIn(file: URI, numChannels: Int) extends UGenSource.MultiOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = makeUGen(Vector.empty)
 

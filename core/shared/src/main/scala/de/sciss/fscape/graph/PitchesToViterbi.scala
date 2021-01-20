@@ -14,11 +14,29 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object PitchesToViterbi extends ProductReader[PitchesToViterbi] {
+  override def read(in: RefMapIn, key: String, arity: Int): PitchesToViterbi = {
+    require (arity == 10)
+    val _lags               = in.readGE()
+    val _strengths          = in.readGE()
+    val _numIn              = in.readGE()
+    val _peaks              = in.readGE()
+    val _maxLag             = in.readGE()
+    val _voicingThresh      = in.readGE()
+    val _silenceThresh      = in.readGE()
+    val _octaveCost         = in.readGE()
+    val _octaveJumpCost     = in.readGE()
+    val _voicedUnvoicedCost = in.readGE()
+    new PitchesToViterbi(_lags, _strengths, _numIn, _peaks, _maxLag, _voicingThresh, _silenceThresh,
+      _octaveCost, _octaveJumpCost, _voicedUnvoicedCost)
+  }
+}
 /** A UGen that takes concurrent pitch tracker paths, and conditions them for the
   * Viterbi algorithm. The inputs are typically taken from `AutoCorrelationPitches`,
   * and from this a suitable `add` signal is produced to be used in the `Viterbi` UGen.
@@ -50,7 +68,8 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * see [[StrongestLocalMaxima]]
   * see [[Viterbi]]
   */
-final case class PitchesToViterbi(lags: GE, strengths: GE,
+final case class PitchesToViterbi(lags              : GE,
+                                  strengths         : GE,
                                   numIn             : GE = 14,
                                   peaks             : GE,
                                   maxLag            : GE,
@@ -58,7 +77,7 @@ final case class PitchesToViterbi(lags: GE, strengths: GE,
                                   silenceThresh     : GE = 0.03,
                                   octaveCost        : GE = 0.01,
                                   octaveJumpCost    : GE = 0.35,
-                                  voicedUnvoicedCost: GE = 0.03
+                                  voicedUnvoicedCost: GE = 0.03,
                                  )
   extends UGenSource.SingleOut {
 

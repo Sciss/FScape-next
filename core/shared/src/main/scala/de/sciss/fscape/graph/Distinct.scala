@@ -14,11 +14,19 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object Distinct extends ProductReader[Distinct] {
+  override def read(in: RefMapIn, key: String, arity: Int): Distinct = {
+    require (arity == 1)
+    val _in = in.readGE()
+    new Distinct(_in)
+  }
+}
 /** A UGen that collects distinct values from the input and outputs them
   * in the original order.
   *

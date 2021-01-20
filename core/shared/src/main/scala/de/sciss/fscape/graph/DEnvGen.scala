@@ -14,11 +14,22 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object DEnvGen extends ProductReader[DEnvGen] {
+  override def read(in: RefMapIn, key: String, arity: Int): DEnvGen = {
+    require (arity == 4)
+    val _levels     = in.readGE()
+    val _lengths    = in.readGE()
+    val _shapes     = in.readGE()
+    val _curvatures = in.readGE()
+    new DEnvGen(_levels, _lengths, _shapes, _curvatures)
+  }
+}
 /** An envelope generator UGen similar to SuperCollider's DemandEnvGen.
   *
   * For each parameter of the envelope (levels, durations and shapes), values are

@@ -14,6 +14,16 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
+
+object ChannelProxy extends ProductReader[ChannelProxy] {
+  override def read(in: RefMapIn, key: String, arity: Int): ChannelProxy = {
+    require (arity == 2)
+    val _elem   = in.readGE()
+    val _index  = in.readInt()
+    new ChannelProxy(_elem, _index)
+  }
+}
 /** Straight outta ScalaCollider. */
 final case class ChannelProxy(elem: GE, index: Int) extends GE.Lazy {
   override def toString = s"$elem.\\($index)"

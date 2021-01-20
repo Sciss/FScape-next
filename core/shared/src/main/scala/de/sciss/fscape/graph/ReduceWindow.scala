@@ -13,12 +13,13 @@
 
 package de.sciss.fscape.graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.stream.{BufD, BufI, BufL, StreamIn, StreamOut}
 import de.sciss.fscape.{GE, UGen, UGenGraph, UGenIn, UGenInLike, UGenSource, stream}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-object ReduceWindow {
+object ReduceWindow extends ProductReader[ReduceWindow] {
   import BinaryOp.{And, Or, Xor, Max, Min, Plus, Times}
   def plus  (in: GE, size: GE): ReduceWindow = apply(in, size = size, op = Plus .id)
   def times (in: GE, size: GE): ReduceWindow = apply(in, size = size, op = Times.id)
@@ -27,6 +28,14 @@ object ReduceWindow {
   def and   (in: GE, size: GE): ReduceWindow = apply(in, size = size, op = And  .id)
   def or    (in: GE, size: GE): ReduceWindow = apply(in, size = size, op = Or   .id)
   def xor   (in: GE, size: GE): ReduceWindow = apply(in, size = size, op = Xor  .id)
+
+  override def read(in: RefMapIn, key: String, arity: Int): ReduceWindow = {
+    require (arity == 3)
+    val _in   = in.readGE()
+    val _size = in.readGE()
+    val _op   = in.readInt()
+    new ReduceWindow(_in, _size, _op)
+  }
 }
 
 /** A UGen that reduces all elements in each window to single values, for example

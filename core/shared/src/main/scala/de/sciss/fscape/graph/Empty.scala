@@ -13,11 +13,18 @@
 
 package de.sciss.fscape.graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 import de.sciss.fscape.{UGen, UGenGraph, UGenIn, UGenInLike, UGenSource, stream}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object Empty extends ProductReader[Empty] {
+  override def read(in: RefMapIn, key: String, arity: Int): Empty = {
+    require (arity == 0)
+    new Empty
+  }
+}
 /** A single channel UGen of zero length. */
 final case class Empty() extends UGenSource.SingleOut  {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = makeUGen(Vector.empty)

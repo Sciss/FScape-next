@@ -14,11 +14,20 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object Slices extends ProductReader[Slices] {
+  override def read(in: RefMapIn, key: String, arity: Int): Slices = {
+    require (arity == 2)
+    val _in     = in.readGE()
+    val _spans  = in.readGE()
+    new Slices(_in, _spans)
+  }
+}
 /** A UGen that assembles slices of an input signal in
   * random access fashion. It does so by buffering the
   * input to disk.

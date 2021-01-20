@@ -14,12 +14,22 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.StreamIn
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object Progress extends ProductReader[Progress] {
+  override def read(in: RefMapIn, key: String, arity: Int): Progress = {
+    require (arity == 3)
+    val _in     = in.readGE()
+    val _trig   = in.readGE()
+    val _label  = in.readString()
+    new Progress(_in, _trig, _label)
+  }
+}
 /** A UGen that contributes to the progress monitoring of a graph.
   * It is possible to instantiate multiple instances of this UGen,
   * in which cases their individual progress reports will simply

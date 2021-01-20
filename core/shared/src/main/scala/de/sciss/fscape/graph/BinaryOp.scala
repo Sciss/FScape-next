@@ -14,15 +14,16 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{BufD, BufI, BufL, StreamIn, StreamOut}
-import de.sciss.numbers.{DoubleFunctions => rd, DoubleFunctions2 => rd2, LongFunctions => rl, IntFunctions => ri, IntFunctions2 => ri2, LongFunctions2 => rl2}
+import de.sciss.numbers.{DoubleFunctions => rd, DoubleFunctions2 => rd2, IntFunctions => ri, IntFunctions2 => ri2, LongFunctions => rl, LongFunctions2 => rl2}
 
 import scala.annotation.switch
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-object BinaryOp {
+object BinaryOp extends ProductReader[BinaryOp] {
   object Op {
     def apply(id: Int): Op = (id: @switch) match {
       case Plus               .id => Plus
@@ -574,15 +575,15 @@ object BinaryOp {
     val funLL: (Long  , Long  ) => Long   = (a, b) => rl.wrap2(a, b)
   }
 
-    case object FirstArg extends OpSame {
-      final val id = 46
+  case object FirstArg extends OpSame {
+    final val id = 46
 
-      val funDD: (Double, Double) => Double = (a, _) => a
-      val funII: (Int   , Int   ) => Int    = (a, _) => a
-      val funLL: (Long  , Long  ) => Long   = (a, _) => a
+    val funDD: (Double, Double) => Double = (a, _) => a
+    val funII: (Int   , Int   ) => Int    = (a, _) => a
+    val funLL: (Long  , Long  ) => Long   = (a, _) => a
 
-      override def apply(a: Constant, b: Constant): Constant = a
-    }
+    override def apply(a: Constant, b: Constant): Constant = a
+  }
 
   // case object Rrand          extends Op( 47 )
   // case object ExpRRand       extends Op( 48 )
@@ -605,6 +606,14 @@ object BinaryOp {
     val funDD: (Double, Double) => Double = (a, b) => a % b
     val funII: (Int   , Int   ) => Int    = (a, b) => a % b
     val funLL: (Long  , Long  ) => Long   = (a, b) => a % b
+  }
+
+  override def read(in: RefMapIn, key: String, arity: Int): BinaryOp = {
+    require (arity == 3)
+    val _op = in.readInt()
+    val _a  = in.readGE()
+    val _b  = in.readGE()
+    new BinaryOp(_op, _a, _b)
   }
 }
 

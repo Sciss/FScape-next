@@ -14,11 +14,20 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{BufD, BufI, BufL, StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object Zip extends ProductReader[Zip] {
+  override def read(in: RefMapIn, key: String, arity: Int): Zip = {
+    require (arity == 2)
+    val _a = in.readGE()
+    val _b = in.readGE()
+    new Zip(_a, _b)
+  }
+}
 final case class Zip(a: GE, b: GE) extends UGenSource.SingleOut {
   protected def makeUGens(implicit builder: UGenGraph.Builder): UGenInLike =
     unwrap(this, Vector(a.expand, b.expand))

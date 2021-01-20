@@ -14,11 +14,22 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object DCT_II extends ProductReader[DCT_II] {
+  override def read(in: RefMapIn, key: String, arity: Int): DCT_II = {
+    require (arity == 4)
+    val _in         = in.readGE()
+    val _size       = in.readGE()
+    val _numCoeffs  = in.readGE()
+    val _zero       = in.readGE()
+    new DCT_II(_in, _size, _numCoeffs, _zero)
+  }
+}
 /** A UGen for type II discrete cosine transform.
   *
   * @param in         input signal

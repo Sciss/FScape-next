@@ -14,6 +14,7 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
@@ -55,10 +56,21 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   *
   * @see [[ScanImage]]
   */
-final case class PenImage(src: GE = 1.0, alpha: GE = 1.0, dst: GE = 0.0,
-                          width: GE, height: GE, x: GE = 0, y: GE = 0, next: GE = 0,
-                          rule: GE = PenImage.SrcOver, op: GE = BinaryOp.Plus.id, wrap: GE = 0,
-                          rollOff: GE = 0.86, kaiserBeta: GE = 7.5, zeroCrossings: GE = 0)
+final case class PenImage(src           : GE = 1.0,
+                          alpha         : GE = 1.0,
+                          dst           : GE = 0.0,
+                          width         : GE,
+                          height        : GE,
+                          x             : GE = 0,
+                          y             : GE = 0,
+                          next          : GE = 0,
+                          rule          : GE = PenImage.SrcOver,
+                          op            : GE = BinaryOp.Plus.id,
+                          wrap          : GE = 0,
+                          rollOff       : GE = 0.86,
+                          kaiserBeta    : GE = 7.5,
+                          zeroCrossings : GE = 0,
+                         )
   extends UGenSource.SingleOut {
 
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
@@ -80,7 +92,27 @@ final case class PenImage(src: GE = 1.0, alpha: GE = 1.0, dst: GE = 0.0,
       rollOff = rollOff.toDouble, kaiserBeta = kaiserBeta.toDouble, zeroCrossings = zeroCrossings.toInt)
   }
 }
-object PenImage {
+object PenImage extends ProductReader[PenImage] {
+  override def read(in: RefMapIn, key: String, arity: Int): PenImage = {
+    require (arity == 14)
+    val _src           = in.readGE()
+    val _alpha         = in.readGE()
+    val _dst           = in.readGE()
+    val _width         = in.readGE()
+    val _height        = in.readGE()
+    val _x             = in.readGE()
+    val _y             = in.readGE()
+    val _next          = in.readGE()
+    val _rule          = in.readGE()
+    val _op            = in.readGE()
+    val _wrap          = in.readGE()
+    val _rollOff       = in.readGE()
+    val _kaiserBeta    = in.readGE()
+    val _zeroCrossings = in.readGE()
+    new PenImage(_src, _alpha, _dst, _width, _height, _x, _y, _next, _rule, _op,
+      _wrap, _rollOff, _kaiserBeta, _zeroCrossings)
+  }
+
   final val RuleMin = 1
 
   /**

@@ -14,11 +14,19 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object WhiteNoise extends ProductReader[WhiteNoise] {
+  override def read(in: RefMapIn, key: String, arity: Int): WhiteNoise = {
+    require (arity == 1)
+    val _mul = in.readGE()
+    new WhiteNoise(_mul)
+  }
+}
 /** Nominal signal range is `-mul` to `+mul` (exclusive). */
 final case class WhiteNoise(mul: GE = 1.0) extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = unwrap(this, Vector(mul.expand))

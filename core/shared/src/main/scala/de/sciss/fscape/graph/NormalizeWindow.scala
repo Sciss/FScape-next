@@ -13,13 +13,14 @@
 
 package de.sciss.fscape.graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 import de.sciss.fscape.{GE, UGen, UGenGraph, UGenIn, UGenInLike, UGenSource, stream}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-object NormalizeWindow {
+object NormalizeWindow extends ProductReader[NormalizeWindow] {
   final val Normalize   = 0
   final val FitUnipolar = 1
   final val FitBipolar  = 2
@@ -31,8 +32,15 @@ object NormalizeWindow {
   def fitUnipolar (in: GE, size: GE): GE = NormalizeWindow(in, size, mode = FitUnipolar )
   def fitBipolar  (in: GE, size: GE): GE = NormalizeWindow(in, size, mode = FitBipolar  )
   def zeroMean    (in: GE, size: GE): GE = NormalizeWindow(in, size, mode = ZeroMean    )
-}
 
+  override def read(in: RefMapIn, key: String, arity: Int): NormalizeWindow = {
+    require (arity == 3)
+    val _in   = in.readGE()
+    val _size = in.readGE()
+    val _mode = in.readGE()
+    new NormalizeWindow(_in, _size, _mode)
+  }
+}
 /** A UGen that normalizes each input window according to a mode.
   * It can be used for normalizing the value range or removing DC offset.
   * If the last window is not entirely filled, the output will pad that

@@ -14,11 +14,21 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{BufD, BufI, BufL, StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object ZipWindow extends ProductReader[ZipWindow] {
+  override def read(in: RefMapIn, key: String, arity: Int): ZipWindow = {
+    require (arity == 3)
+    val _a    = in.readGE()
+    val _b    = in.readGE()
+    val _size = in.readGE()
+    new ZipWindow(_a, _b, _size)
+  }
+}
 final case class ZipWindow(a: GE, b: GE, size: GE = 1) extends UGenSource.SingleOut {
   protected def makeUGens(implicit builder: UGenGraph.Builder): UGenInLike =
     unwrap(this, Vector(a.expand, b.expand, size.expand))
@@ -38,6 +48,14 @@ final case class ZipWindow(a: GE, b: GE, size: GE = 1) extends UGenSource.Single
   }
 }
 
+object ZipWindowN extends ProductReader[ZipWindowN] {
+  override def read(in: RefMapIn, key: String, arity: Int): ZipWindowN = {
+    require (arity == 2)
+    val _in   = in.readGE()
+    val _size = in.readGE()
+    new ZipWindowN(_in, _size)
+  }
+}
 final case class ZipWindowN(in: GE, size: GE = 1) extends UGenSource.SingleOut {
   protected def makeUGens(implicit builder: UGenGraph.Builder): UGenInLike =
     unwrap(this, size.expand +: in.expand.outputs)

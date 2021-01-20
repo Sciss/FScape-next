@@ -13,12 +13,25 @@
 
 package de.sciss.fscape.graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 import de.sciss.fscape.{GE, UGen, UGenGraph, UGenIn, UGenInLike, UGenSource, stream}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object Histogram extends ProductReader[Histogram] {
+  override def read(in: RefMapIn, key: String, arity: Int): Histogram = {
+    require (arity == 6)
+    val _in     = in.readGE()
+    val _bins   = in.readGE()
+    val _lo     = in.readGE()
+    val _hi     = in.readGE()
+    val _mode   = in.readGE()
+    val _reset  = in.readGE()
+    new Histogram(_in, _bins, _lo, _hi, _mode, _reset)
+  }
+}
 /** A UGen that calculates running histogram of an input signal with
   * given boundaries and bin-size. The bins are divided linearly,
   * if another mapping (e.g. exponential) is needed, it must be pre-applied to the input signal.

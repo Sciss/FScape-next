@@ -13,12 +13,24 @@
 
 package de.sciss.fscape.graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 import de.sciss.fscape.{GE, UGen, UGenGraph, UGenIn, UGenInLike, UGenSource, stream}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object ExpExp extends ProductReader[ExpExp] {
+  override def read(in: RefMapIn, key: String, arity: Int): ExpExp = {
+    require (arity == 5)
+    val _in       = in.readGE()
+    val _inLow    = in.readGE()
+    val _inHigh   = in.readGE()
+    val _outLow   = in.readGE()
+    val _outHigh  = in.readGE()
+    new ExpExp(_in, _inLow, _inHigh, _outLow, _outHigh)
+  }
+}
 final case class ExpExp(in: GE, inLow: GE, inHigh: GE, outLow: GE, outHigh: GE) extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
     unwrap(this, Vector(in.expand, inLow.expand, inHigh.expand, outLow.expand, outHigh.expand))

@@ -15,6 +15,7 @@ package de.sciss.fscape
 package lucre
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.lucre.UGenGraphBuilder.Input
 import de.sciss.fscape.stream
@@ -22,8 +23,8 @@ import de.sciss.fscape.stream.StreamIn
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-object OnComplete {
-  final case class WithRef(ref: Input.Action.Value) extends UGenSource.ZeroOut {
+object OnComplete extends ProductReader[OnComplete] {
+  final case class WithRef private(ref: Input.Action.Value) extends UGenSource.ZeroOut {
 
     protected def makeUGens(implicit b: UGenGraph.Builder): Unit = makeUGen(Vector.empty)
 
@@ -36,6 +37,12 @@ object OnComplete {
       lucre.stream.OnComplete(ref)
 
     override def productPrefix: String = s"OnComplete$$WithRef"
+  }
+
+  override def read(in: RefMapIn, key: String, arity: Int): OnComplete = {
+    require (arity == 1)
+    val _key = in.readString()
+    new OnComplete(_key)
   }
 }
 /** A UGen that invokes an action once the surrounding graph has completed.

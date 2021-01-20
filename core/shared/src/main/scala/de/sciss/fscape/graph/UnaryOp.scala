@@ -14,6 +14,7 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{BufD, BufI, BufL, StreamIn, StreamOut}
@@ -22,7 +23,7 @@ import de.sciss.numbers.{DoubleFunctions => rd, DoubleFunctions2 => rd2, IntFunc
 import scala.annotation.switch
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-object UnaryOp {
+object UnaryOp extends ProductReader[UnaryOp] {
   object Op {
     def apply(id: Int): Op = (id: @switch) match {
       case Neg            .id => Neg
@@ -474,6 +475,13 @@ object UnaryOp {
       case ConstantI(i) => ConstantL(funIL(i))
       case ConstantL(n) => ConstantL(funLL(n))
     }
+  }
+
+  override def read(in: RefMapIn, key: String, arity: Int): UnaryOp = {
+    require (arity == 2)
+    val _op = in.readInt()
+    val _in = in.readGE()
+    new UnaryOp(_op, _in)
   }
 }
 final case class UnaryOp(op: Int, in: GE) extends UGenSource.SingleOut {

@@ -14,11 +14,23 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object SlidingWindowPercentile extends ProductReader[SlidingWindowPercentile] {
+  override def read(in: RefMapIn, key: String, arity: Int): SlidingWindowPercentile = {
+    require (arity == 5)
+    val _in         = in.readGE()
+    val _winSize    = in.readGE()
+    val _medianLen  = in.readGE()
+    val _frac       = in.readGE()
+    val _interp     = in.readGE()
+    new SlidingWindowPercentile(_in, _winSize, _medianLen, _frac, _interp)
+  }
+}
 /** A UGen that reports a percentile of a sliding window across every cell
   * of a window'ed input (such as an image).
   *

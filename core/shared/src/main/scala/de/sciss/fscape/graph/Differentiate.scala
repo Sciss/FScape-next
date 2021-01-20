@@ -14,11 +14,19 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object Differentiate extends ProductReader[Differentiate] {
+  override def read(in: RefMapIn, key: String, arity: Int): Differentiate = {
+    require (arity == 1)
+    val _in = in.readGE()
+    new Differentiate(_in)
+  }
+}
 /** A UGen that outputs the differences between
   * adjacent input samples.
   *

@@ -14,11 +14,21 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{BufD, BufI, BufL, StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object ArithmSeq extends ProductReader[ArithmSeq] {
+  override def read(in: RefMapIn, key: String, arity: Int): ArithmSeq = {
+    require (arity == 3)
+    val _start  = in.readGE()
+    val _step   = in.readGE()
+    val _length = in.readGE()
+    new ArithmSeq(_start, _step, _length)
+  }
+}
 /** A UGen that produces an arithmetic sequence of values.
   * If both `start` and `step` are of integer type (`Int` or `Long`),
   * this produces an integer output, otherwise it produces a floating point output.

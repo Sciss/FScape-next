@@ -14,11 +14,21 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object Line extends ProductReader[Line] {
+  override def read(in: RefMapIn, key: String, arity: Int): Line = {
+    require (arity == 3)
+    val _start  = in.readGE()
+    val _end    = in.readGE()
+    val _length = in.readGE()
+    new Line(_start, _end, _length)
+  }
+}
 /** A line segment generating UGen. The UGen terminates
   * when the segment has reached the end.
   *

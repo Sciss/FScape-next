@@ -14,11 +14,28 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object ScanImage extends ProductReader[ScanImage] {
+  override def read(in: RefMapIn, key: String, arity: Int): ScanImage = {
+    require (arity == 10)
+    val _in             = in.readGE()
+    val _width          = in.readGE()
+    val _height         = in.readGE()
+    val _x              = in.readGE()
+    val _y              = in.readGE()
+    val _next           = in.readGE()
+    val _wrap           = in.readGE()
+    val _rollOff        = in.readGE()
+    val _kaiserBeta     = in.readGE()
+    val _zeroCrossings  = in.readGE()
+    new ScanImage(_in, _width, _height, _x, _y, _next, _wrap, _rollOff, _kaiserBeta, _zeroCrossings)
+  }
+}
 /** A UGen that scans the pixels of an image using an `x` and `y` input signal.
   * It uses either a sinc-based band-limited resampling algorithm, or
   * bicubic interpolation, depending on the `zeroCrossings` parameter.
@@ -44,8 +61,17 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * @see [[Slices]]
   * @see [[PenImage]]
   */
-final case class ScanImage(in: GE, width: GE, height: GE, x: GE = 0, y: GE = 0, next: GE = 0, wrap: GE = 0,
-                           rollOff: GE = 0.86, kaiserBeta: GE = 7.5, zeroCrossings: GE = 0)
+final case class ScanImage(in           : GE,
+                           width        : GE,
+                           height       : GE,
+                           x            : GE = 0,
+                           y            : GE = 0,
+                           next         : GE = 0,
+                           wrap         : GE = 0,
+                           rollOff      : GE = 0.86,
+                           kaiserBeta   : GE = 7.5,
+                           zeroCrossings: GE = 0,
+                          )
   extends UGenSource.SingleOut {
 
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =

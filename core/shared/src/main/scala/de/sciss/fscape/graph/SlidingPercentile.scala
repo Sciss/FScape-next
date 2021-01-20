@@ -14,11 +14,22 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object SlidingPercentile extends ProductReader[SlidingPercentile] {
+  override def read(in: RefMapIn, key: String, arity: Int): SlidingPercentile = {
+    require (arity == 4)
+    val _in     = in.readGE()
+    val _len    = in.readGE()
+    val _frac   = in.readGE()
+    val _interp = in.readGE()
+    new SlidingPercentile(_in, _len, _frac, _interp)
+  }
+}
 /** A UGen that reports a percentile of a sliding window across its input.
   * The UGen starts outputting values immediately, even if the median window `len`
   * is not yet reached. This is because `len` can be modulated.

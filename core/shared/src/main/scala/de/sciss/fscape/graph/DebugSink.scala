@@ -13,12 +13,20 @@
 
 package de.sciss.fscape.graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{SinkIgnore, StreamIn}
 import de.sciss.fscape.{GE, UGen, UGenGraph, UGenIn, UGenSource, stream}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object DebugSink extends ProductReader[DebugSink] {
+  override def read(in: RefMapIn, key: String, arity: Int): DebugSink = {
+    require (arity == 1)
+    val _in = in.readGE()
+    new DebugSink(_in)
+  }
+}
 /** A debugging UGen that installs a persistent no-op sink,
   * allowing the `in` UGen to remain in the graph even if
   * it does not have a side-effect and it is not connected

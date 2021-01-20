@@ -14,9 +14,18 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
+
 import scala.collection.immutable.{IndexedSeq => Vec}
 
 object Mix {
+  object MonoEqP extends ProductReader[MonoEqP] {
+    override def read(in: RefMapIn, key: String, arity: Int): MonoEqP = {
+      require (arity == 1)
+      val _elem = in.readGE()
+      new MonoEqP(_elem)
+    }
+  }
   final case class MonoEqP(elem: GE) extends GE.Lazy {
     override def productPrefix = s"Mix$$MonoEqP"
 

@@ -14,15 +14,23 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-object DebugThrough {
+object DebugThrough extends ProductReader[DebugThrough] {
   implicit final class DebugThroughOp(private val in: GE) extends AnyVal {
     def <| (label: String): GE = DebugThrough(in, label)
+  }
+
+  override def read(in: RefMapIn, key: String, arity: Int): DebugThrough = {
+    require (arity == 2)
+    val _in     = in.readGE()
+    val _label  = in.readString()
+    new DebugThrough(_in, _label)
   }
 }
 /** A UGen that passes through its input, and upon termination prints

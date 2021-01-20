@@ -14,6 +14,7 @@
 package de.sciss.fscape
 package lucre.graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.lucre.UGenGraphBuilder
@@ -22,8 +23,8 @@ import de.sciss.fscape.stream.StreamIn
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-object Action {
-  final case class WithRef(action: Action, ref: Input.Action.Value) extends UGenSource.ZeroOut {
+object Action extends ProductReader[Action] {
+  final case class WithRef private(action: Action, ref: Input.Action.Value) extends UGenSource.ZeroOut {
 
     protected def makeUGens(implicit b: UGenGraph.Builder): Unit =
       unwrap(this, Vector(action.trig.expand))
@@ -39,6 +40,13 @@ object Action {
     }
 
     override def productPrefix: String = s"Action$$WithRef"
+  }
+
+  override def read(in: RefMapIn, key: String, arity: Int): Action = {
+    require (arity == 2)
+    val _trig = in.readGE()
+    val _key  = in.readString()
+    new Action(_trig, _key)
   }
 }
 /** A graph element that executes an action upon receiving a trigger.

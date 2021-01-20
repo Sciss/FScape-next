@@ -14,11 +14,20 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object MatchLen extends ProductReader[MatchLen] {
+  override def read(in: RefMapIn, key: String, arity: Int): MatchLen = {
+    require (arity == 2)
+    val _in   = in.readGE()
+    val _ref  = in.readGE()
+    new MatchLen(_in, _ref)
+  }
+}
 /** A UGen that extends or truncates its first argument to match
   * the length of the second argument. If `in` is shorter than
   * `ref`, it will be padded with the zero element of its number type.

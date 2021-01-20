@@ -14,11 +14,20 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object OnePole extends ProductReader[OnePole] {
+  override def read(in: RefMapIn, key: String, arity: Int): OnePole = {
+    require (arity == 2)
+    val _in   = in.readGE()
+    val _coef = in.readGE()
+    new OnePole(_in, _coef)
+  }
+}
 /** A one pole (IIR) filter UGen. Implements the formula :
   * {{{
   * out(i) = ((1 - abs(coef)) * in(i)) + (coef * out(i-1))

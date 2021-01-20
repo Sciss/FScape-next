@@ -14,11 +14,25 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object StrongestLocalMaxima extends ProductReader[StrongestLocalMaxima] {
+  override def read(in: RefMapIn, key: String, arity: Int): StrongestLocalMaxima = {
+    require (arity == 7)
+    val _in         = in.readGE()
+    val _size       = in.readGE()
+    val _minLag     = in.readGE()
+    val _maxLag     = in.readGE()
+    val _thresh     = in.readGE()
+    val _octaveCost = in.readGE()
+    val _num        = in.readGE()
+    new StrongestLocalMaxima(_in, _size, _minLag, _maxLag, _thresh, _octaveCost, _num)
+  }
+}
 /** A peak detection UGen, useful for implementing the auto-correlation based pitch detection
   * method of Paul Boersma (1993).
   * Taking an already calculated auto-correlation of size `size`, the UGen looks
@@ -40,8 +54,14 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * see [[PitchesToViterbi]]
   * see [[Viterbi]]
   */
-final case class StrongestLocalMaxima(in: GE, size: GE, minLag: GE, maxLag: GE, thresh: GE = 0.0,
-                                      octaveCost: GE = 0.0, num: GE = 14)
+final case class StrongestLocalMaxima(in        : GE,
+                                      size      : GE,
+                                      minLag    : GE,
+                                      maxLag    : GE,
+                                      thresh    : GE = 0.0,
+                                      octaveCost: GE = 0.0,
+                                      num       : GE = 14,
+                                     )
   extends UGenSource.MultiOut {
 
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =

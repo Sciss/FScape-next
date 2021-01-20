@@ -14,11 +14,22 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object Viterbi extends ProductReader[Viterbi] {
+  override def read(in: RefMapIn, key: String, arity: Int): Viterbi = {
+    require (arity == 4)
+    val _mul        = in.readGE()
+    val _add        = in.readGE()
+    val _numStates  = in.readGE()
+    val _numFrames  = in.readGE()
+    new Viterbi(_mul, _add, _numStates, _numFrames)
+  }
+}
 /** A UGen performing a generalized Viterbi algorithm. The Viterbi algorithm
   * tries to find the best path among sequences of states, by evaluating transition
   * probabilities. It runs over a predefined number of frames, accumulating

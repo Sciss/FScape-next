@@ -14,6 +14,7 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -25,6 +26,13 @@ object ValueSeq {
   def apply(elem0: Double , rest: Double*): GE = ValueDoubleSeq (elem0 +: rest: _*)
 }
 
+object ValueIntSeq extends ProductReader[ValueIntSeq] {
+  override def read(in: RefMapIn, key: String, arity: Int): ValueIntSeq = {
+    require (arity == 1)
+    val _elems = in.readIntVec()
+    new ValueIntSeq(_elems: _*)
+  }
+}
 /** Loops the given values. */
 final case class ValueIntSeq(elems: Int*) extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
@@ -42,6 +50,13 @@ final case class ValueIntSeq(elems: Int*) extends UGenSource.SingleOut {
   }
 }
 
+object ValueLongSeq extends ProductReader[ValueLongSeq] {
+  override def read(in: RefMapIn, key: String, arity: Int): ValueLongSeq = {
+    require (arity == 1)
+    val _elems = in.readVec(in.readLong())
+    new ValueLongSeq(_elems: _*)
+  }
+}
 /** Loops the given values. */
 final case class ValueLongSeq(elems: Long*) extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
@@ -59,6 +74,13 @@ final case class ValueLongSeq(elems: Long*) extends UGenSource.SingleOut {
   }
 }
 
+object ValueDoubleSeq extends ProductReader[ValueDoubleSeq] {
+  override def read(in: RefMapIn, key: String, arity: Int): ValueDoubleSeq = {
+    require (arity == 1)
+    val _elems = in.readDoubleVec()
+    new ValueDoubleSeq(_elems: _*)
+  }
+}
 /** Loops the given values. */
 final case class ValueDoubleSeq(elems: Double*) extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =

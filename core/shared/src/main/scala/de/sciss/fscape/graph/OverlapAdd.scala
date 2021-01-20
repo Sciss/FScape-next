@@ -14,11 +14,21 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object OverlapAdd extends ProductReader[OverlapAdd] {
+  override def read(in: RefMapIn, key: String, arity: Int): OverlapAdd = {
+    require (arity == 3)
+    val _in   = in.readGE()
+    val _size = in.readGE()
+    val _step = in.readGE()
+    new OverlapAdd(_in, _size, _step)
+  }
+}
 /** A UGen that performs overlap-and-add operation on a stream of input windows.
   * The `size` and `step` parameters are demand-rate, polled once per (input) window.
   *

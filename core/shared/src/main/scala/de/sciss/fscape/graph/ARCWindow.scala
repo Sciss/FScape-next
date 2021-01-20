@@ -14,11 +14,23 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object ARCWindow extends ProductReader[ARCWindow] {
+  override def read(in: RefMapIn, key: String, arity: Int): ARCWindow = {
+    require (arity == 5)
+    val _in   = in.readGE()
+    val _size = in.readGE()
+    val _lo   = in.readGE()
+    val _hi   = in.readGE()
+    val _lag  = in.readGE()
+    new ARCWindow(_in, _size, _lo, _hi, _lag)
+  }
+}
 /** Automatic range control UGen. It traces the
   * range of a windowed input signal.
   *

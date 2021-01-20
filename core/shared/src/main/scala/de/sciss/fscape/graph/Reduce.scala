@@ -13,12 +13,13 @@
 
 package de.sciss.fscape.graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 import de.sciss.fscape.{GE, UGenGraph, UGenIn, UGenInLike, UGenSource, stream}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-object Reduce {
+object Reduce extends ProductReader[Reduce] {
   import BinaryOp.{And, Or, Xor, Max, Min, Plus, Times}
   /** Same result as `Mix( _ )` */
   def +  (elem: GE): Reduce = apply(elem, Plus  .id)
@@ -30,6 +31,13 @@ object Reduce {
   def &  (elem: GE): Reduce = apply(elem, And.id)
   def |  (elem: GE): Reduce = apply(elem, Or .id)
   def ^  (elem: GE): Reduce = apply(elem, Xor.id)
+
+  override def read(in: RefMapIn, key: String, arity: Int): Reduce = {
+    require (arity == 2)
+    val _elem = in.readGE()
+    val _op   = in.readInt()
+    new Reduce(_elem, _op)
+  }
 }
 
 final case class Reduce(elem: GE, op: Int) extends UGenSource.SingleOut {

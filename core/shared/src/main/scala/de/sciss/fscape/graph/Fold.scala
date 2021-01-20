@@ -14,11 +14,21 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object Fold extends ProductReader[Fold] {
+  override def read(in: RefMapIn, key: String, arity: Int): Fold = {
+    require (arity == 3)
+    val _in = in.readGE()
+    val _lo = in.readGE()
+    val _hi = in.readGE()
+    new Fold(_in, _lo, _hi)
+  }
+}
 final case class Fold(in: GE, lo: GE, hi: GE) extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
     unwrap(this, Vector(in.expand, lo.expand, hi.expand))

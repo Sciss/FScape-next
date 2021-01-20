@@ -14,18 +14,34 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-object FoldCepstrum {
+object FoldCepstrum extends ProductReader[FoldCepstrum] {
   def minPhase(in: GE, size: GE): FoldCepstrum =
     FoldCepstrum(
       in = in, size = size,
       crr = 1.0, ccr = 1.0, cri = 1.0, cci = -1.0,
       clr = 0.0, car = 0.0, cli = 0.0, cai =  0.0
     )
+
+  override def read(in: RefMapIn, key: String, arity: Int): FoldCepstrum = {
+    require (arity == 10)
+    val _in   = in.readGE()
+    val _size = in.readGE()
+    val _crr  = in.readGE()
+    val _cri  = in.readGE()
+    val _clr  = in.readGE()
+    val _cli  = in.readGE()
+    val _ccr  = in.readGE()
+    val _cci  = in.readGE()
+    val _car  = in.readGE()
+    val _cai  = in.readGE()
+    new FoldCepstrum(_in, _size, _crr, _cri, _clr, _cli, _ccr, _cci, _car, _cai)
+  }
 }
 /**
   * We operate on a complex cepstrum (`size` is the number of complex frames). We distinguish
@@ -47,9 +63,17 @@ object FoldCepstrum {
   * `clr = 0, car = 0, cli = 0, cai = 0`
   * (you can just call `FoldCepstrum.minPhase` for this case)
   */
-final case class FoldCepstrum(in: GE, size: GE,
-            crr: GE, cri: GE, clr: GE, cli: GE,
-            ccr: GE, cci: GE, car: GE, cai: GE) extends UGenSource.SingleOut {
+final case class FoldCepstrum(in  : GE,
+                              size: GE,
+                              crr : GE,
+                              cri : GE,
+                              clr : GE,
+                              cli : GE,
+                              ccr : GE,
+                              cci : GE,
+                              car : GE,
+                              cai : GE,
+                             ) extends UGenSource.SingleOut {
 
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
     unwrap(this, Vector(in.expand, size.expand,

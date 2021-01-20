@@ -14,6 +14,7 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{OutD, OutI, StreamIn, StreamOut}
 
@@ -58,6 +59,16 @@ sealed trait FFT2HalfUGen extends UGenSource.SingleOut {
   }
 }
 
+object Real2FFT extends ProductReader[Real2FFT] {
+  override def read(in: RefMapIn, key: String, arity: Int): Real2FFT = {
+    require (arity == 4)
+    val _in       = in.readGE()
+    val _rows     = in.readGE()
+    val _columns  = in.readGE()
+    val _mode     = in.readGE()
+    new Real2FFT(_in, _rows, _columns, _mode)
+  }
+}
 /** Forward short-time Fourier transform UGen for a real-valued input signal.
   * The FFT size is equal to `rows * columns`. The output is a succession
   * of complex half-spectra, i.e. from DC to Nyquist.
@@ -94,6 +105,16 @@ final case class Real2FFT(in: GE, rows: GE, columns: GE = 0, mode: GE = 0) exten
     stream.Real2FFT(in = in, rows = rows, columns = columns, mode = mode)
 }
 
+object Real2IFFT extends ProductReader[Real2IFFT] {
+  override def read(in: RefMapIn, key: String, arity: Int): Real2IFFT = {
+    require (arity == 4)
+    val _in       = in.readGE()
+    val _rows     = in.readGE()
+    val _columns  = in.readGE()
+    val _mode     = in.readGE()
+    new Real2IFFT(_in, _rows, _columns, _mode)
+  }
+}
 /**
   * '''Warning:''' window parameter modulation is currently not working correctly (issue #30)
   */
@@ -102,6 +123,15 @@ final case class Real2IFFT(in: GE, rows: GE, columns: GE = 0, mode: GE = 0) exte
     stream.Real2IFFT(in = in, rows = rows, columns = columns, mode = mode)
 }
 
+object Real2FullFFT extends ProductReader[Real2FullFFT] {
+  override def read(in: RefMapIn, key: String, arity: Int): Real2FullFFT = {
+    require (arity == 3)
+    val _in       = in.readGE()
+    val _rows     = in.readGE()
+    val _columns  = in.readGE()
+    new Real2FullFFT(_in, _rows, _columns)
+  }
+}
 /**
   * '''Warning:''' window parameter modulation is currently not working correctly (issue #30)
   */
@@ -110,6 +140,15 @@ final case class Real2FullFFT(in: GE, rows: GE, columns: GE = 0) extends FFT2Ful
     stream.Real2FullFFT(in = in, rows = rows, columns = columns)
 }
 
+object Real2FullIFFT extends ProductReader[Real2FullIFFT] {
+  override def read(in: RefMapIn, key: String, arity: Int): Real2FullIFFT = {
+    require (arity == 3)
+    val _in       = in.readGE()
+    val _rows     = in.readGE()
+    val _columns  = in.readGE()
+    new Real2FullIFFT(_in, _rows, _columns)
+  }
+}
 /**
   * '''Warning:''' window parameter modulation is currently not working correctly (issue #30)
   */
@@ -118,6 +157,15 @@ final case class Real2FullIFFT(in: GE, rows: GE, columns: GE = 0) extends FFT2Fu
     stream.Real2FullIFFT(in = in, rows = rows, columns = columns)
 }
 
+object Complex2FFT extends ProductReader[Complex2FFT] {
+  override def read(in: RefMapIn, key: String, arity: Int): Complex2FFT = {
+    require (arity == 3)
+    val _in       = in.readGE()
+    val _rows     = in.readGE()
+    val _columns  = in.readGE()
+    new Complex2FFT(_in, _rows, _columns)
+  }
+}
 /**
   * '''Warning:''' window parameter modulation is currently not working correctly (issue #30)
   */
@@ -126,6 +174,15 @@ final case class Complex2FFT(in: GE, rows: GE, columns: GE = 0) extends FFT2Full
     stream.Complex2FFT(in = in, rows = rows, columns = columns)
 }
 
+object Complex2IFFT extends ProductReader[Complex2IFFT] {
+  override def read(in: RefMapIn, key: String, arity: Int): Complex2IFFT = {
+    require (arity == 3)
+    val _in       = in.readGE()
+    val _rows     = in.readGE()
+    val _columns  = in.readGE()
+    new Complex2IFFT(_in, _rows, _columns)
+  }
+}
 /**
   * '''Warning:''' window parameter modulation is currently not working correctly (issue #30)
   */

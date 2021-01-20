@@ -14,13 +14,22 @@
 package de.sciss.fscape
 package graph
 
-import java.net.URI
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 
+import java.net.URI
 import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object ImageFileIn extends ProductReader[ImageFileIn] {
+  override def read(in: RefMapIn, key: String, arity: Int): ImageFileIn = {
+    require (arity == 2)
+    val _file         = in.readURI()
+    val _numChannels  = in.readInt()
+    new ImageFileIn(_file, _numChannels)
+  }
+}
 final case class ImageFileIn(file: URI, numChannels: Int) extends UGenSource.MultiOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = makeUGen(Vector.empty)
 

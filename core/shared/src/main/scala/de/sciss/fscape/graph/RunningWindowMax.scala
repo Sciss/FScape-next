@@ -14,11 +14,21 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object RunningWindowMax extends ProductReader[RunningWindowMax] {
+  override def read(in: RefMapIn, key: String, arity: Int): RunningWindowMax = {
+    require (arity == 3)
+    val _in     = in.readGE()
+    val _size   = in.readGE()
+    val _gate   = in.readGE()
+    new RunningWindowMax(_in, _size, _gate)
+  }
+}
 /** A UGen that like `RunningMax` calculates the maximum observed value of the
   * running input. However, it operates on entire windows, i.e. it outputs
   * windows that contain the maximum elements of all the past windows observed.

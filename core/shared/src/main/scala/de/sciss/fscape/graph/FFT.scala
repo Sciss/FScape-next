@@ -14,6 +14,7 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{OutD, OutI, StreamIn, StreamOut}
 
@@ -58,6 +59,16 @@ sealed trait FFTHalfUGen extends UGenSource.SingleOut {
   }
 }
 
+object Real1FFT extends ProductReader[Real1FFT] {
+  override def read(in: RefMapIn, key: String, arity: Int): Real1FFT = {
+    require (arity == 4)
+    val _in       = in.readGE()
+    val _size     = in.readGE()
+    val _padding  = in.readGE()
+    val _mode     = in.readGE()
+    new Real1FFT(_in, _size, _padding, _mode)
+  }
+}
 /** Forward short-time Fourier transform UGen for a real-valued input signal.
   * The FFT size is equal to `size + padding`. The output is a succession
   * of complex half-spectra, i.e. from DC to Nyquist. Depending on `mode`,
@@ -90,6 +101,16 @@ final case class Real1FFT(in: GE, size: GE, padding: GE = 0, mode: GE = 0) exten
     stream.Real1FFT(in = in, size = size, padding = padding, mode = mode)
 }
 
+object Real1IFFT extends ProductReader[Real1IFFT] {
+  override def read(in: RefMapIn, key: String, arity: Int): Real1IFFT = {
+    require (arity == 4)
+    val _in       = in.readGE()
+    val _size     = in.readGE()
+    val _padding  = in.readGE()
+    val _mode     = in.readGE()
+    new Real1IFFT(_in, _size, _padding, _mode)
+  }
+}
 /** Backward or inverse short-time Fourier transform UGen for a real-valued output signal.
   * The FFT size is equal to `size`. The output is a succession of time domain signals
   * of length `size - padding`. Depending on `mode`,
@@ -121,21 +142,57 @@ final case class Real1IFFT(in: GE, size: GE, padding: GE = 0, mode: GE = 0) exte
     stream.Real1IFFT(in = in, size = size, padding = padding, mode = mode)
 }
 
+object Real1FullFFT extends ProductReader[Real1FullFFT] {
+  override def read(in: RefMapIn, key: String, arity: Int): Real1FullFFT = {
+    require (arity == 3)
+    val _in       = in.readGE()
+    val _size     = in.readGE()
+    val _padding  = in.readGE()
+    new Real1FullFFT(_in, _size, _padding)
+  }
+}
 final case class Real1FullFFT(in: GE, size: GE, padding: GE = 0) extends FFTFullUGen {
   protected def apply(in: OutD, size: OutI, padding: OutI)(implicit b: stream.Builder): OutD =
     stream.Real1FullFFT(in = in, size = size, padding = padding)
 }
 
+object Real1FullIFFT extends ProductReader[Real1FullIFFT] {
+  override def read(in: RefMapIn, key: String, arity: Int): Real1FullIFFT = {
+    require (arity == 3)
+    val _in       = in.readGE()
+    val _size     = in.readGE()
+    val _padding  = in.readGE()
+    new Real1FullIFFT(_in, _size, _padding)
+  }
+}
 final case class Real1FullIFFT(in: GE, size: GE, padding: GE = 0) extends FFTFullUGen {
   protected def apply(in: OutD, size: OutI, padding: OutI)(implicit b: stream.Builder): OutD =
     stream.Real1FullIFFT(in = in, size = size, padding = padding)
 }
 
+object Complex1FFT extends ProductReader[Complex1FFT] {
+  override def read(in: RefMapIn, key: String, arity: Int): Complex1FFT = {
+    require (arity == 3)
+    val _in       = in.readGE()
+    val _size     = in.readGE()
+    val _padding  = in.readGE()
+    new Complex1FFT(_in, _size, _padding)
+  }
+}
 final case class Complex1FFT(in: GE, size: GE, padding: GE = 0) extends FFTFullUGen {
   protected def apply(in: OutD, size: OutI, padding: OutI)(implicit b: stream.Builder): OutD =
     stream.Complex1FFT(in = in, size = size, padding = padding)
 }
 
+object Complex1IFFT extends ProductReader[Complex1IFFT] {
+  override def read(in: RefMapIn, key: String, arity: Int): Complex1IFFT = {
+    require (arity == 3)
+    val _in       = in.readGE()
+    val _size     = in.readGE()
+    val _padding  = in.readGE()
+    new Complex1IFFT(_in, _size, _padding)
+  }
+}
 final case class Complex1IFFT(in: GE, size: GE, padding: GE = 0) extends FFTFullUGen {
   protected def apply(in: OutD, size: OutI, padding: OutI)(implicit b: stream.Builder): OutD =
     stream.Complex1IFFT(in = in, size = size, padding = padding)

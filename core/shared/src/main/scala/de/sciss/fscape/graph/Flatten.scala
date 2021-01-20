@@ -13,8 +13,16 @@
 
 package de.sciss.fscape.graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.{GE, UGenGraph, UGenInLike}
 
+object Flatten extends ProductReader[Flatten] {
+  override def read(in: RefMapIn, key: String, arity: Int): Flatten = {
+    require (arity == 1)
+    val _elem = in.readGE()
+    new Flatten(_elem)
+  }
+}
 /** A graph element that flattens the channels from a nested multi-channel structure.
   *
   * @param elem the element to flatten

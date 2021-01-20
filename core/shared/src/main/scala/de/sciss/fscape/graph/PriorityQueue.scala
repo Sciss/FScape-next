@@ -15,11 +15,21 @@ package de.sciss.fscape
 package graph
 
 import akka.stream.Outlet
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{BufElem, Builder, OutI, StreamIn, StreamInElem, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object PriorityQueue extends ProductReader[PriorityQueue] {
+  override def read(in: RefMapIn, key: String, arity: Int): PriorityQueue = {
+    require (arity == 3)
+    val _keys   = in.readGE()
+    val _values = in.readGE()
+    val _size   = in.readGE()
+    new PriorityQueue(_keys, _values, _size)
+  }
+}
 /** A sorting UGen that can be thought of as a bounded priority queue.
   * It keeps all data in memory but limits the size to the
   * top `size` items. By its nature, the UGen only starts outputting

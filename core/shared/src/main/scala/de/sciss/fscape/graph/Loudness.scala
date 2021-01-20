@@ -14,11 +14,23 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object Loudness extends ProductReader[Loudness] {
+  override def read(in: RefMapIn, key: String, arity: Int): Loudness = {
+    require (arity == 5)
+    val _in         = in.readGE()
+    val _sampleRate = in.readGE()
+    val _size       = in.readGE()
+    val _spl        = in.readGE()
+    val _diffuse    = in.readGE()
+    new Loudness(_in, _sampleRate, _size, _spl, _diffuse)
+  }
+}
 /** A loudness measurement UGen, using Zwicker bands.
   * One value in Phon per window is output.
   *

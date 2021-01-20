@@ -15,11 +15,21 @@ package de.sciss.fscape
 package graph
 
 import akka.stream.Outlet
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{BufElem, Builder, OutI, StreamIn, StreamInElem, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object SortWindow extends ProductReader[SortWindow] {
+  override def read(in: RefMapIn, key: String, arity: Int): SortWindow = {
+    require (arity == 3)
+    val _keys   = in.readGE()
+    val _values = in.readGE()
+    val _size   = in.readGE()
+    new SortWindow(_keys, _values, _size)
+  }
+}
 /** A UGen that sorts the input data window by window.
   *
   * @param keys   the sorting keys; output will be in ascending order

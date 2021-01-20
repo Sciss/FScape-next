@@ -14,11 +14,24 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.Ops._
 import de.sciss.fscape.stream.{Builder, StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object WPE_ReverbFrame extends ProductReader[WPE_ReverbFrame] {
+  override def read(in: RefMapIn, key: String, arity: Int): WPE_ReverbFrame = {
+    require (arity == 6)
+    val _in     = in.readGE()
+    val _psd    = in.readGE()
+    val _bins   = in.readGE()
+    val _delay  = in.readGE()
+    val _taps   = in.readGE()
+    val _alpha  = in.readGE()
+    new WPE_ReverbFrame(_in, _psd, _bins, _delay, _taps, _alpha)
+  }
+}
 /** A UGen implementation of a single frame Weighted Prediction Error (WPE) de-reverberation
   * algorithm in the frequency domain. It takes a DFT'ed input signal frame by frame
   * and returns the estimated reverberated components. To actually obtain the de-reverberated
@@ -63,6 +76,19 @@ final case class WPE_ReverbFrame(in: GE, psd: GE, bins: GE, delay: GE = 3, taps:
   }
 }
 
+object WPE_Dereverberate extends ProductReader[WPE_Dereverberate] {
+  override def read(in: RefMapIn, key: String, arity: Int): WPE_Dereverberate = {
+    require (arity == 7)
+    val _in       = in.readGE()
+    val _fftSize  = in.readGE()
+    val _winStep  = in.readGE()
+    val _delay    = in.readGE()
+    val _taps     = in.readGE()
+    val _alpha    = in.readGE()
+    val _psdLen   = in.readGE()
+    new WPE_Dereverberate(_in, _fftSize, _winStep, _delay, _taps, _alpha, _psdLen)
+  }
+}
 /** A graph element performing end-to-end blind de-reverberation of an input signal.
   * It performs the FFT/IFFT setup around invocations of `WPE_ReverbFrame`.
   *
@@ -76,9 +102,14 @@ final case class WPE_ReverbFrame(in: GE, psd: GE, bins: GE, delay: GE = 3, taps:
   * @param alpha      the decay factor for the filter coefficients
   * @param psdLen     the number of preceding spectral frames to include as "context" in the psd
   */
-final case class WPE_Dereverberate(in: GE, fftSize: GE = 512, winStep: GE = 128,
-                                   delay: GE = 3, taps: GE = 10, alpha: GE = 0.9999,
-                                   psdLen: GE = 0) extends GE {
+final case class WPE_Dereverberate(in     : GE,
+                                   fftSize: GE = 512,
+                                   winStep: GE = 128,
+                                   delay  : GE = 3,
+                                   taps   : GE = 10,
+                                   alpha  : GE = 0.9999,
+                                   psdLen : GE = 0,
+                                  ) extends GE {
   private[fscape] def expand(implicit b: UGenGraph.Builder): UGenInLike = {
 //    Sheet1D(in, 100)
     val fftSizeH = fftSize / 2

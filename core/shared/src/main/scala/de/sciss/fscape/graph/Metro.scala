@@ -14,11 +14,20 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object Metro extends ProductReader[Metro] {
+  override def read(in: RefMapIn, key: String, arity: Int): Metro = {
+    require (arity == 2)
+    val _period = in.readGE()
+    val _phase  = in.readGE()
+    new Metro(_period, _phase)
+  }
+}
 /** Metronome (repeated dirac) generator.
   * For a single impulse that is never repeated,
   * use a period of zero. Unlike `Impulse` which

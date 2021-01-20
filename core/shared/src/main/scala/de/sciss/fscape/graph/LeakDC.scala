@@ -14,6 +14,16 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
+
+object LeakDC extends ProductReader[LeakDC] {
+  override def read(in: RefMapIn, key: String, arity: Int): LeakDC = {
+    require (arity == 2)
+    val _in     = in.readGE()
+    val _coeff  = in.readGE()
+    new LeakDC(_in, _coeff)
+  }
+}
 /** A filter UGen to remove very low frequency content DC offset.
   *
   * This is a one-pole highpass filter implementing the formula

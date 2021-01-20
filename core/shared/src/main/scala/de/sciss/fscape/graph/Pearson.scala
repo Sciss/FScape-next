@@ -14,11 +14,21 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object Pearson extends ProductReader[Pearson] {
+  override def read(in: RefMapIn, key: String, arity: Int): Pearson = {
+    require (arity == 3)
+    val _x    = in.readGE()
+    val _y    = in.readGE()
+    val _size = in.readGE()
+    new Pearson(_x, _y, _size)
+  }
+}
 /** A UGen that calculates the Pearson product-moment correlation coefficient of
   * two input matrices.
   *

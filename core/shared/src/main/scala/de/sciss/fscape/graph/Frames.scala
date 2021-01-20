@@ -14,11 +14,19 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object Frames extends ProductReader[Frames] {
+  override def read(in: RefMapIn, key: String, arity: Int): Frames = {
+    require (arity == 1)
+    val _in = in.readGE()
+    new Frames(_in)
+  }
+}
 /** A UGen that generates a signal that incrementally counts the frames of its input.
   * The first value output will be `1`, and the last will correspond to the number
   * of frames seen, i.e. `Length(in)`.
@@ -37,6 +45,13 @@ final case class Frames(in: GE) extends UGenSource.SingleOut {
   }
 }
 
+object Indices extends ProductReader[Indices] {
+  override def read(in: RefMapIn, key: String, arity: Int): Indices = {
+    require (arity == 1)
+    val _in = in.readGE()
+    new Indices(_in)
+  }
+}
 /** A UGen that generates a signal that incrementally counts the frames of its input.
   * The first value output will be `0`, and the last will correspond to the number
   * of frames seen minutes one.

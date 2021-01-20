@@ -14,11 +14,22 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object Limiter extends ProductReader[Limiter] {
+  override def read(in: RefMapIn, key: String, arity: Int): Limiter = {
+    require (arity == 4)
+    val _in       = in.readGE()
+    val _attack   = in.readGE()
+    val _release  = in.readGE()
+    val _ceiling  = in.readGE()
+    new Limiter(_in, _attack, _release, _ceiling)
+  }
+}
 /** A UGen that limits the amplitude of its input signal. Modelled after FScape 1.0 limiter module.
   * N.B.: The UGen outputs a gain control signal, so the input must be multiplied
   * by this signal to obtain the actually limited signal.

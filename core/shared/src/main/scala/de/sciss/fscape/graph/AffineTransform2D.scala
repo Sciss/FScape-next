@@ -14,13 +14,14 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.Ops._
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-object AffineTransform2D {
+object AffineTransform2D extends ProductReader[AffineTransform2D] {
   def scale(in: GE, widthIn: GE, heightIn: GE, widthOut: GE = 0, heightOut: GE  = 0,
             sx: GE, sy: GE,
             wrap: GE = 1, rollOff: GE = 0.86, kaiserBeta: GE = 7.5, zeroCrossings: GE = 15): AffineTransform2D = {
@@ -80,6 +81,42 @@ object AffineTransform2D {
       m00 = m00, m10 = m10, m01 = m01, m11 = m11, m02 = m02, m12 = m12,
       wrap = wrap, rollOff = rollOff, kaiserBeta = kaiserBeta, zeroCrossings = zeroCrossings)
   }
+
+  override def read(in: RefMapIn, key: String, arity: Int): AffineTransform2D = {
+    require (arity == 15)
+    val _in             = in.readGE()
+    val _widthIn        = in.readGE()
+    val _heightIn       = in.readGE()
+    val _widthOut       = in.readGE()
+    val _heightOut      = in.readGE()
+    val _m00            = in.readGE()
+    val _m10            = in.readGE()
+    val _m01            = in.readGE()
+    val _m11            = in.readGE()
+    val _m02            = in.readGE()
+    val _m12            = in.readGE()
+    val _wrap           = in.readGE()
+    val _rollOff        = in.readGE()
+    val _kaiserBeta     = in.readGE()
+    val _zeroCrossings  = in.readGE()
+    new AffineTransform2D(
+      _in,
+      _widthIn,
+      _heightIn,
+      _widthOut,
+      _heightOut,
+      _m00,
+      _m10,
+      _m01,
+      _m11,
+      _m02,
+      _m12,
+      _wrap,
+      _rollOff,
+      _kaiserBeta,
+      _zeroCrossings,
+    )
+  }
 }
 
 /** An affine transformation UGen for image rotation, scaling, translation, shearing.
@@ -112,9 +149,22 @@ object AffineTransform2D {
   *
   * @see [[ScanImage]]
   */
-final case class AffineTransform2D(in: GE, widthIn: GE, heightIn: GE, widthOut: GE = 0, heightOut: GE = 0,
-                                   m00: GE, m10: GE, m01: GE, m11: GE, m02: GE, m12: GE, wrap: GE = 1,
-                                   rollOff: GE = 0.86, kaiserBeta: GE = 7.5, zeroCrossings: GE = 15)
+final case class AffineTransform2D(in           : GE,
+                                   widthIn      : GE,
+                                   heightIn     : GE,
+                                   widthOut     : GE = 0,
+                                   heightOut    : GE = 0,
+                                   m00          : GE,
+                                   m10          : GE,
+                                   m01          : GE,
+                                   m11          : GE,
+                                   m02          : GE,
+                                   m12          : GE,
+                                   wrap         : GE = 1,
+                                   rollOff      : GE = 0.86,
+                                   kaiserBeta   : GE = 7.5,
+                                   zeroCrossings: GE = 15,
+                                  )
   extends UGenSource.SingleOut {
 
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =

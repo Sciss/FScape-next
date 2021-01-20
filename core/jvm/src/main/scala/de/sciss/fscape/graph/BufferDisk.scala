@@ -14,11 +14,19 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object BufferDisk extends ProductReader[BufferDisk] {
+  override def read(in: RefMapIn, key: String, arity: Int): BufferDisk = {
+    require (arity == 1)
+    val _in = in.readGE()
+    new BufferDisk(_in)
+  }
+}
 final case class BufferDisk(in: GE) extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
     unwrap(this, Vector(in.expand))

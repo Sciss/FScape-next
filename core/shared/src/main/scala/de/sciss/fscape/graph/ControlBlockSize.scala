@@ -14,10 +14,17 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.stream.StreamIn
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object ControlBlockSize extends ProductReader[ControlBlockSize] {
+  override def read(in: RefMapIn, key: String, arity: Int): ControlBlockSize = {
+    require (arity == 0)
+    new ControlBlockSize
+  }
+}
 /** A scalar information UGen that reports the control block size. */
 final case class ControlBlockSize() extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = makeUGen(Vector.empty)

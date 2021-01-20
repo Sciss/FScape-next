@@ -14,11 +14,20 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object WindowMaxIndex extends ProductReader[WindowMaxIndex] {
+  override def read(in: RefMapIn, key: String, arity: Int): WindowMaxIndex = {
+    require (arity == 2)
+    val _in   = in.readGE()
+    val _size = in.readGE()
+    new WindowMaxIndex(_in, _size)
+  }
+}
 /** A UGen that determines for each input window the index of the maximum element.
   * It outputs one integer value per window; if multiple elements have the same
   * value, the index of the first element is reported (notably zero if the window

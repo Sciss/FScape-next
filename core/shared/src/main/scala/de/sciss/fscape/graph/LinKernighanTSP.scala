@@ -14,11 +14,23 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object LinKernighanTSP extends ProductReader[LinKernighanTSP] {
+  override def read(in: RefMapIn, key: String, arity: Int): LinKernighanTSP = {
+    require (arity == 5)
+    val _init     = in.readGE()
+    val _weights  = in.readGE()
+    val _size     = in.readGE()
+    val _mode     = in.readGE()
+    val _timeOut  = in.readGE()
+    new LinKernighanTSP(_init, _weights, _size, _mode, _timeOut)
+  }
+}
 /** A UGen that solves the traveling salesman problem (TSP) using the Lin-Kernighan heuristic.
   * For each input value of `size`, a corresponding initial tour and edge weight sequence are
   * read, the tour is optimized and output along with the tour's cost.

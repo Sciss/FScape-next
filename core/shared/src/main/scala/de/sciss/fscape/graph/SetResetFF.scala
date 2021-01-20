@@ -14,11 +14,20 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object SetResetFF extends ProductReader[SetResetFF] {
+  override def read(in: RefMapIn, key: String, arity: Int): SetResetFF = {
+    require (arity == 2)
+    val _set    = in.readGE()
+    val _reset  = in.readGE()
+    new SetResetFF(_set, _reset)
+  }
+}
 /** A flip-flop UGen with two inputs, one (set) triggering an output of 1, the other (reset)
   * triggering an output of 0. Subsequent triggers happening within the same input slot have
   * no effect. If both inputs receive a trigger at the same time, the reset input takes precedence.

@@ -14,11 +14,20 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object BufferMemory extends ProductReader[BufferMemory] {
+  override def read(in: RefMapIn, key: String, arity: Int): BufferMemory = {
+    require (arity == 2)
+    val _in   = in.readGE()
+    val _size = in.readGE()
+    new BufferMemory(_in, _size)
+  }
+}
 /** Inserts a buffer into the stream of up to `size` frames. */
 final case class BufferMemory(in: GE, size: GE) extends UGenSource.SingleOut {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =

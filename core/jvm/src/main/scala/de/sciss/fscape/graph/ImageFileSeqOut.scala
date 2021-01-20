@@ -14,14 +14,25 @@
 package de.sciss.fscape
 package graph
 
-import java.net.URI
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 
+import java.net.URI
 import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.StreamIn
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object ImageFileSeqOut extends ProductReader[ImageFileSeqOut] {
+  override def read(in: RefMapIn, key: String, arity: Int): ImageFileSeqOut = {
+    require (arity == 4)
+    val _in       = in.readGE()
+    val _template = in.readURI()
+    val _spec     = in.readProductT[ImageFile.Spec]()
+    val _indices  = in.readGE()
+    new ImageFileSeqOut(_in, _template, _spec, _indices)
+  }
+}
 /** Writes a sequence of images, taken their data one by one from the input `in`, and writing them
   * to individual files, determining
   * their file names by formatting a `template` with a numeric argument given through `indices`.

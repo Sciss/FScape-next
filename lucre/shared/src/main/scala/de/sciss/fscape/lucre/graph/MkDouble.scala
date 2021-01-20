@@ -13,22 +13,22 @@
 
 package de.sciss.fscape.lucre.graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.lucre.UGenGraphBuilder
-import de.sciss.proc.FScape.Output
 import de.sciss.fscape.lucre.UGenGraphBuilder.OutputRef
-import de.sciss.fscape.{GE, Lazy, UGen, UGenGraph, UGenIn, UGenSource, stream}
-import de.sciss.fscape.stream.StreamIn
 import de.sciss.fscape.lucre.stream.{MkDouble => SMKDouble}
-import de.sciss.lucre.DoubleObj
-import de.sciss.lucre.{Obj, Txn, Workspace}
+import de.sciss.fscape.stream.StreamIn
+import de.sciss.fscape.{GE, Lazy, UGen, UGenGraph, UGenIn, UGenSource, stream}
+import de.sciss.lucre.{DoubleObj, Obj, Txn, Workspace}
+import de.sciss.proc.FScape.Output
 import de.sciss.serial.{DataInput, TFormat}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-object MkDouble {
-  final case class WithRef(peer: MkDouble, ref: OutputRef) extends UGenSource.ZeroOut {
+object MkDouble extends ProductReader[MkDouble] {
+  final case class WithRef private(peer: MkDouble, ref: OutputRef) extends UGenSource.ZeroOut {
 
     protected def makeUGens(implicit b: UGenGraph.Builder): Unit =
       unwrap(this, Vector(peer.in.expand))
@@ -44,6 +44,13 @@ object MkDouble {
     }
 
     override def productPrefix: String = s"MkDouble$$WithRef"
+  }
+
+  override def read(in: RefMapIn, key: String, arity: Int): MkDouble = {
+    require (arity == 2)
+    val _key  = in.readString()
+    val _in   = in.readGE()
+    new MkDouble(_key, _in)
   }
 }
 final case class MkDouble(key: String, in: GE) extends Lazy.Expander[Unit] with Output.Reader {

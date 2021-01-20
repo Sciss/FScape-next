@@ -14,11 +14,23 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object Blobs2D extends ProductReader[Blobs2D] {
+  override def read(in: RefMapIn, key: String, arity: Int): Blobs2D = {
+    require (arity == 5)
+    val _in     = in.readGE()
+    val _width  = in.readGE()
+    val _height = in.readGE()
+    val _thresh = in.readGE()
+    val _pad    = in.readGE()
+    new Blobs2D(_in, _width, _height, _thresh, _pad)
+  }
+}
 /** A blob detection UGen. It is based on the meta-balls algorithm by
   * Julien Gachadoat (http://www.v3ga.net/processing/BlobDetection/).
   *

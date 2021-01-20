@@ -14,11 +14,20 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object RunningMax extends ProductReader[RunningMax] {
+  override def read(in: RefMapIn, key: String, arity: Int): RunningMax = {
+    require (arity == 2)
+    val _in   = in.readGE()
+    val _gate = in.readGE()
+    new RunningMax(_in, _gate)
+  }
+}
 /** A UGen that tracks the maximum value seen so far, until a trigger resets it.
   *
   * ''Note:'' This is different from SuperCollider's `RunningMax` UGen which outputs

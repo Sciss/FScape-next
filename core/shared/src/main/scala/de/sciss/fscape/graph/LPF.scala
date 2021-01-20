@@ -14,11 +14,20 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object LPF extends ProductReader[LPF] {
+  override def read(in: RefMapIn, key: String, arity: Int): LPF = {
+    require (arity == 2)
+    val _in     = in.readGE()
+    val _freqN  = in.readGE()
+    new LPF(_in, _freqN)
+  }
+}
 /** A second order low-pass filter UGen.
   * It implements the same type of filter as the SuperCollider equivalent.
   *

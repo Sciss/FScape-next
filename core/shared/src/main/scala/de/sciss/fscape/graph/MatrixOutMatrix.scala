@@ -14,11 +14,26 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object MatrixOutMatrix extends ProductReader[MatrixOutMatrix] {
+  override def read(in: RefMapIn, key: String, arity: Int): MatrixOutMatrix = {
+    require (arity == 8)
+    val _in           = in.readGE()
+    val _rowsInner    = in.readGE()
+    val _columnsInner = in.readGE()
+    val _columnsOuter = in.readGE()
+    val _rowOff       = in.readGE()
+    val _columnOff    = in.readGE()
+    val _rowNum       = in.readGE()
+    val _columnNum    = in.readGE()
+    new MatrixOutMatrix(_in, _rowsInner, _columnsInner, _columnsOuter, _rowOff, _columnOff, _rowNum, _columnNum)
+  }
+}
 /** A UGen that stitches together sequences of sub-matrices to a larger matrix.
   * The matrix dimensions and offsets are updated per "matrix chunk" which is are
   * `columnsOuter/columnNum` input matrices of size `rowsInner * columnsInner`.
@@ -45,9 +60,15 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * @param rowNum       number of rows to copy from each input matrix
   * @param columnNum    number of columns to copy from each input matrix.
   */
-final case class MatrixOutMatrix(in: GE, rowsInner: GE, columnsInner: GE, columnsOuter: GE,
-                                 rowOff: GE = 0, columnOff: GE = 0,
-                                 rowNum: GE = 1, columnNum: GE = 1)
+final case class MatrixOutMatrix(in           : GE,
+                                 rowsInner    : GE,
+                                 columnsInner : GE,
+                                 columnsOuter : GE,
+                                 rowOff       : GE = 0,
+                                 columnOff    : GE = 0,
+                                 rowNum       : GE = 1,
+                                 columnNum    : GE = 1,
+                                )
   extends UGenSource.SingleOut {
 
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =

@@ -14,8 +14,26 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.Ops._
 
+object PitchAC extends ProductReader[PitchAC] {
+  override def read(in: RefMapIn, key: String, arity: Int): PitchAC = {
+    require (arity == 10)
+    val _in                 = in.readGE()
+    val _sampleRate         = in.readGE()
+    val _pitchMin           = in.readGE()
+    val _pitchMax           = in.readGE()
+    val _numCandidates      = in.readGE()
+    val _silenceThresh      = in.readGE()
+    val _voicingThresh      = in.readGE()
+    val _octaveCost         = in.readGE()
+    val _octaveJumpCost     = in.readGE()
+    val _voicedUnvoicedCost = in.readGE()
+    new PitchAC(_in, _sampleRate, _pitchMin, _pitchMax, _numCandidates, _silenceThresh, _voicingThresh,
+      _octaveCost, _octaveJumpCost, _voicedUnvoicedCost)
+  }
+}
 /** A graph element that implements Boersma's auto-correlation based pitch tracking
   * algorithm.
   *
@@ -27,7 +45,8 @@ import de.sciss.fscape.Ops._
   * A future version might implement it directly as a UGen.
   * Currently `stepSize` is automatically given, and windowing is fixed to Hann.
   */
-final case class PitchAC(in: GE, sampleRate: GE,
+final case class PitchAC(in                 : GE,
+                         sampleRate         : GE,
                          pitchMin           : GE = 75.0,
                          pitchMax           : GE = 600.0,
                          numCandidates      : GE = 15,

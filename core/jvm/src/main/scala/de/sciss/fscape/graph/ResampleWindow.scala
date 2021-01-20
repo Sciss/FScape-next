@@ -14,11 +14,25 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object ResampleWindow extends ProductReader[ResampleWindow] {
+  override def read(in: RefMapIn, key: String, arity: Int): ResampleWindow = {
+    require (arity == 7)
+    val _in            = in.readGE()
+    val _size          = in.readGE()
+    val _factor        = in.readGE()
+    val _minFactor     = in.readGE()
+    val _rollOff       = in.readGE()
+    val _kaiserBeta    = in.readGE()
+    val _zeroCrossings = in.readGE()
+    new ResampleWindow(_in, _size, _factor, _minFactor, _rollOff, _kaiserBeta, _zeroCrossings)
+  }
+}
 /** A band-limited resampling UGen for images/matrices.
   * This works like `Resample` but processes each window cell
   * across time. Thus is is not _resampling each window by itself_,
@@ -41,8 +55,14 @@ import scala.collection.immutable.{IndexedSeq => Vec}
   * @param kaiserBeta     the FIR windowing function's parameter
   * @param zeroCrossings  the number of zero-crossings in the truncated and windowed sinc FIR.
   */
-final case class ResampleWindow(in: GE, size: GE, factor: GE, minFactor: GE = 0,
-                                rollOff: GE = 0.86, kaiserBeta: GE = 7.5, zeroCrossings: GE = 15)
+final case class ResampleWindow(in            : GE,
+                                size          : GE,
+                                factor        : GE,
+                                minFactor     : GE = 0,
+                                rollOff       : GE = 0.86,
+                                kaiserBeta    : GE = 7.5,
+                                zeroCrossings : GE = 15,
+                               )
   extends UGenSource.SingleOut {
 
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =

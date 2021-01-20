@@ -14,11 +14,24 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object Biquad extends ProductReader[Biquad] {
+  override def read(in: RefMapIn, key: String, arity: Int): Biquad = {
+    require (arity == 6)
+    val _in = in.readGE()
+    val _b0 = in.readGE()
+    val _b1 = in.readGE()
+    val _b2 = in.readGE()
+    val _a1 = in.readGE()
+    val _a2 = in.readGE()
+    new Biquad(_in, _b0, _b1, _b2, _a1, _a2)
+  }
+}
 /** A second order filter section (biquad) UGen. Filter coefficients are given directly rather than
   * calculated for you. The formula is equivalent to:
   * {{{

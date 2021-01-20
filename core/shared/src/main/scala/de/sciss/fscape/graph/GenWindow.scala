@@ -14,6 +14,7 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 import de.sciss.numbers.TwoPi
@@ -22,7 +23,7 @@ import scala.annotation.switch
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.language.implicitConversions
 
-object GenWindow {
+object GenWindow extends ProductReader[GenWindow] {
   object Shape {
     def apply(id: Int): Shape = (id: @switch) match {
       case Hamming      .id => Hamming
@@ -281,6 +282,14 @@ object GenWindow {
   }
 
   // XXX TODO --- we should add some standard SuperCollider curve shapes like Welch
+
+  override def read(in: RefMapIn, key: String, arity: Int): GenWindow = {
+    require (arity == 3)
+    val _size   = in.readGE()
+    val _shape  = in.readGE()
+    val _param  = in.readGE()
+    new GenWindow(_size, _shape, _param)
+  }
 }
 
 /** A repeated window generator UGen. It repeats the

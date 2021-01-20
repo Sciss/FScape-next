@@ -14,11 +14,23 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object ConstQ extends ProductReader[ConstQ] {
+  override def read(in: RefMapIn, key: String, arity: Int): ConstQ = {
+    require (arity == 5)
+    val _in       = in.readGE()
+    val _fftSize  = in.readGE()
+    val _minFreqN = in.readGE()
+    val _maxFreqN = in.readGE()
+    val _numBands = in.readGE()
+    new ConstQ(_in, _fftSize, _minFreqN, _maxFreqN, _numBands)
+  }
+}
 /** A UGen that performs a constant Q spectral analysis, using an already FFT'ed input signal.
   * For each input window, the output signal consists of `numBands` filter output values.
   * These values are '''squared''', since further processing might need to decimate them again

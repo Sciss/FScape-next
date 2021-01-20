@@ -14,11 +14,21 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object TrigHold extends ProductReader[TrigHold] {
+  override def read(in: RefMapIn, key: String, arity: Int): TrigHold = {
+    require (arity == 3)
+    val _in     = in.readGE()
+    val _length = in.readGE()
+    val _clear  = in.readGE()
+    new TrigHold(_in, _length, _clear)
+  }
+}
 /** A UGen that holds an input trigger signal for a given duration.
   * When a trigger is received from `in`, the output changes from zero
   * to one for the given `length` amount of frames. If a new trigger

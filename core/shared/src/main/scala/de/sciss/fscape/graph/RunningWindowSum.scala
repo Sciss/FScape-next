@@ -14,11 +14,21 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object RunningWindowSum extends ProductReader[RunningWindowSum] {
+  override def read(in: RefMapIn, key: String, arity: Int): RunningWindowSum = {
+    require (arity == 3)
+    val _in     = in.readGE()
+    val _size   = in.readGE()
+    val _gate   = in.readGE()
+    new RunningWindowSum(_in, _size, _gate)
+  }
+}
 /** A UGen that like `RunningSum` calculates the sum of the
   * running input. However, it operates on entire windows, i.e. it outputs
   * windows that contain the sum elements of all the past windows observed.

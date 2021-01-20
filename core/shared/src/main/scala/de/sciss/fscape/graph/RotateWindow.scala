@@ -14,11 +14,21 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object RotateWindow extends ProductReader[RotateWindow] {
+  override def read(in: RefMapIn, key: String, arity: Int): RotateWindow = {
+    require (arity == 3)
+    val _in     = in.readGE()
+    val _size   = in.readGE()
+    val _amount = in.readGE()
+    new RotateWindow(_in, _size, _amount)
+  }
+}
 /** A UGen that rotates the contents of a window, wrapping around its boundaries.
   * For example, it can be used to align the phases prior to FFT so that the sample
   * that was formerly in the centre of the window moves to the beginning of the window.

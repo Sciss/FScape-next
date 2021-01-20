@@ -14,30 +14,35 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object UnzipWindow extends ProductReader[UnzipWindow] {
+  override def read(in: RefMapIn, key: String, arity: Int): UnzipWindow = {
+    require (arity == 3)
+    val _in   = in.readGE()
+    val _size = in.readGE()
+    new UnzipWindow(_in, _size)
+  }
+}
 final case class UnzipWindow(in: GE, size: GE = 1) extends GE.Lazy {
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
     UnzipWindowN(numOutputs = 2, in = in, size = size)
 }
 
-//final case class UnzipWindow(in: GE, size: GE = 1) extends UGenSource.MultiOut {
-//  protected def makeUGens(implicit builder: UGenGraph.Builder): UGenInLike =
-//    unwrap(Vector(in.expand, size.expand))
-//
-//  protected def makeUGen(args: Vec[UGenIn])(implicit b: UGenGraph.Builder): UGenInLike =
-//    UGen.MultiOut(this, args, numOutputs = 2)
-//
-//  private[fscape] def makeStream(args: Vec[StreamIn])(implicit builder: stream.Builder): Vec[StreamOut] = {
-//    val Vec(in, size) = args
-//    stream.UnzipWindowN(numOutputs = 2, in = in.toDouble, size = size.toInt)
-//  }
-//}
-
+object UnzipWindowN extends ProductReader[UnzipWindowN] {
+  override def read(in: RefMapIn, key: String, arity: Int): UnzipWindowN = {
+    require (arity == 3)
+    val _numOutputs = in.readInt()
+    val _in         = in.readGE()
+    val _size       = in.readGE()
+    new UnzipWindowN(_numOutputs, _in, _size)
+  }
+}
 final case class UnzipWindowN(numOutputs: Int, in: GE, size: GE = 1) extends UGenSource.MultiOut {
   protected def makeUGens(implicit builder: UGenGraph.Builder): UGenInLike =
     unwrap(this, Vector(in.expand, size.expand))

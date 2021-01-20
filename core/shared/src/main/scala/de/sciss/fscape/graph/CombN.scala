@@ -14,11 +14,22 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object CombN extends ProductReader[CombN] {
+  override def read(in: RefMapIn, key: String, arity: Int): CombN = {
+    require (arity == 4)
+    val _in         = in.readGE()
+    val _maxLength  = in.readGE()
+    val _length     = in.readGE()
+    val _decay      = in.readGE()
+    new CombN(_in, _maxLength, _length, _decay)
+  }
+}
 /** A comb filter delay line UGen with no interpolation.
   *
   * @param  in        the signal to filter

@@ -86,7 +86,7 @@ object UGenGraphBuilder /*extends UGenGraphBuilderPlatform*/ {
       type Key    = AttributeKey
       type Value  = Attribute.Value
 
-      def key = AttributeKey(name)
+      def key: Key = AttributeKey(name)
 
       override def productPrefix = "Input.Attribute"
     }
@@ -110,7 +110,7 @@ object UGenGraphBuilder /*extends UGenGraphBuilderPlatform*/ {
       type Key    = AttributeKey
       type Value  = Action.Value // .type
 
-      def key = AttributeKey(name)
+      def key: Key = AttributeKey(name)
 
       override def productPrefix = "Input.Action"
     }

@@ -14,11 +14,20 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object WindowIndexWhere extends ProductReader[WindowIndexWhere] {
+  override def read(in: RefMapIn, key: String, arity: Int): WindowIndexWhere = {
+    require (arity == 2)
+    val _p    = in.readGE()
+    val _size = in.readGE()
+    new WindowIndexWhere(_p, _size)
+  }
+}
 /** A UGen that determines for each input window the first index where a predicate holds.
   * It outputs one integer value per window; if the predicate does not hold across the entire
   * window or if the window size is zero, the index will be `-1`.

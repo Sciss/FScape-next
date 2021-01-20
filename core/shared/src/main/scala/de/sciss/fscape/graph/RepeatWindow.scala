@@ -14,11 +14,21 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object RepeatWindow extends ProductReader[RepeatWindow] {
+  override def read(in: RefMapIn, key: String, arity: Int): RepeatWindow = {
+    require (arity == 3)
+    val _in     = in.readGE()
+    val _size   = in.readGE()
+    val _num    = in.readGE()
+    new RepeatWindow(_in, _size, _num)
+  }
+}
 /** A UGen that repeats the contents of input windows a number of times.
   *
   * @param in   the input signal to group into windows of size `size` and

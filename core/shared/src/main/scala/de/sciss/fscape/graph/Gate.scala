@@ -14,11 +14,20 @@
 package de.sciss.fscape
 package graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object Gate extends ProductReader[Gate] {
+  override def read(in: RefMapIn, key: String, arity: Int): Gate = {
+    require (arity == 2)
+    val _in   = in.readGE()
+    val _gate = in.readGE()
+    new Gate(_in, _gate)
+  }
+}
 /** A UGen that passes through its input while the gate is open, and outputs zero while the gate is closed.
   *
   * @see [[FilterSeq]]

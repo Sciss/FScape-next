@@ -16,8 +16,8 @@ package lucre
 package graph
 
 import java.net.URI
-
 import de.sciss.audiofile.{AudioFileType, SampleFormat}
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.lucre.UGenGraphBuilder.{Input, MissingIn}
@@ -27,7 +27,7 @@ import de.sciss.proc.AudioCue
 import scala.annotation.switch
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-object AudioFileOut {
+object AudioFileOut extends ProductReader[AudioFileOut] {
   /** Converts an audio file type to a unique id that can be parsed by the UGen. */
   def id(in: AudioFileType): Int = in match {
     case AudioFileType.AIFF    => 0
@@ -78,6 +78,17 @@ object AudioFileOut {
 
   def maxSampleFormatId: Int = 6
 
+  object WithFile extends ProductReader[WithFile] {
+    override def read(in: RefMapIn, key: String, arity: Int): WithFile = {
+      require (arity == 5)
+      val _uri          = in.readURI()
+      val _in           = in.readGE()
+      val _fileType     = in.readGE()
+      val _sampleFormat = in.readGE()
+      val _sampleRate   = in.readGE()
+      new WithFile(_uri, _in, _fileType, _sampleFormat, _sampleRate)
+    }
+  }
   final case class WithFile(uri: URI, in: GE, fileType: GE,
                             sampleFormat: GE, sampleRate: GE)
     extends UGenSource.SingleOut {
@@ -98,6 +109,16 @@ object AudioFileOut {
     }
 
     override def productPrefix: String = s"AudioFileOut$$WithFile"
+  }
+
+  override def read(in: RefMapIn, key: String, arity: Int): AudioFileOut = {
+    require (arity == 5)
+    val _key          = in.readString()
+    val _in           = in.readGE()
+    val _fileType     = in.readGE()
+    val _sampleFormat = in.readGE()
+    val _sampleRate   = in.readGE()
+    new AudioFileOut(_key, _in, _fileType, _sampleFormat, _sampleRate)
   }
 }
 /** A graph element that creates a UGen writing to a file

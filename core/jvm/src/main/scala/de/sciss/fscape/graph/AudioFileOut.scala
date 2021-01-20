@@ -15,14 +15,23 @@ package de.sciss.fscape
 package graph
 
 import java.net.URI
-
 import de.sciss.audiofile.AudioFileSpec
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object AudioFileOut extends ProductReader[AudioFileOut] {
+  override def read(in: RefMapIn, key: String, arity: Int): AudioFileOut = {
+    require (arity == 2)
+    val _in   = in.readGE()
+    val _file = in.readURI()
+    val _spec = in.readProductT[AudioFileSpec]()
+    new AudioFileOut(_in, _file, _spec)
+  }
+}
 /** A UGen that reads in an audio file. The output signal
   * is the monotonously increasing number of frames written,
   * which can be used to monitor progress or determine the

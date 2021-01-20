@@ -15,8 +15,17 @@ package de.sciss.fscape
 package graph
 package impl
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
+
 import scala.collection.immutable.{IndexedSeq => Vec}
 
+object GESeq extends ProductReader[GESeq] {
+  override def read(in: RefMapIn, key: String, arity: Int): GESeq = {
+    require (arity == 1)
+    val _in = in.readVec(in.readGE())
+    new GESeq(_in)
+  }
+}
 final case class GESeq(elems: Vec[GE]) extends GE {
   private[fscape] def expand(implicit b: UGenGraph.Builder): UGenInLike =
     UGenInGroup(elems.map(_.expand))

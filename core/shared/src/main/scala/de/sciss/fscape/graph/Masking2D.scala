@@ -13,14 +13,36 @@
 
 package de.sciss.fscape.graph
 
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.stream.{StreamIn, StreamOut}
 import de.sciss.fscape.{GE, UGen, UGenGraph, UGenIn, UGenInLike, UGenSource, stream}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-final case class Masking2D(fg: GE, bg: GE, rows: GE, columns: GE, threshNoise: GE, threshMask: GE,
-                         blurRows: GE, blurColumns: GE)
+object Masking2D extends ProductReader[Masking2D] {
+  override def read(in: RefMapIn, key: String, arity: Int): Masking2D = {
+    require (arity == 8)
+    val _fg          = in.readGE()
+    val _bg          = in.readGE()
+    val _rows        = in.readGE()
+    val _columns     = in.readGE()
+    val _threshNoise = in.readGE()
+    val _threshMask  = in.readGE()
+    val _blurRows    = in.readGE()
+    val _blurColumns = in.readGE()
+    new Masking2D(_fg, _bg, _rows, _columns, _threshNoise, _threshMask, _blurRows, _blurColumns)
+  }
+}
+final case class Masking2D(fg         : GE,
+                           bg         : GE,
+                           rows       : GE,
+                           columns    : GE,
+                           threshNoise: GE,
+                           threshMask : GE,
+                           blurRows   : GE,
+                           blurColumns: GE,
+                          )
   extends UGenSource.SingleOut {
 
   protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
