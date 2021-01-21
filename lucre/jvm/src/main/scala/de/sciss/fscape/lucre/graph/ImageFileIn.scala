@@ -15,13 +15,20 @@ package de.sciss.fscape.lucre
 package graph
 
 import java.net.URI
-
 import de.sciss.fscape
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.{GE, UGenGraph, UGenInLike}
-import de.sciss.fscape.graph.ImageFile
+import de.sciss.fscape.graph.{ImageFile, RunningSum}
 import de.sciss.fscape.lucre.UGenGraphBuilder.Input
 
-object ImageFileIn {
+object ImageFileIn extends ProductReader[ImageFileIn] {
+  object Width extends ProductReader[Width] {
+    override def read(in: RefMapIn, key: String, arity: Int): Width = {
+      require (arity == 1)
+      val _key = in.readString()
+      new Width(_key)
+    }
+  }
   final case class Width(key: String) extends GE.Lazy {
     override def productPrefix = s"ImageFileIn$$Width"
 
@@ -31,6 +38,13 @@ object ImageFileIn {
     }
   }
 
+  object Height extends ProductReader[Height] {
+    override def read(in: RefMapIn, key: String, arity: Int): Height = {
+      require (arity == 1)
+      val _key = in.readString()
+      new Height(_key)
+    }
+  }
   final case class Height(key: String) extends GE.Lazy {
     override def productPrefix = s"ImageFileIn$$Height"
 
@@ -50,6 +64,12 @@ object ImageFileIn {
         sys.error(s"ImageFileIn - requires Artifact value, found $other")
     }
     res
+  }
+
+  override def read(in: RefMapIn, key: String, arity: Int): ImageFileIn = {
+    require (arity == 1)
+    val _key = in.readString()
+    new ImageFileIn(_key)
   }
 }
 final case class ImageFileIn(key: String) extends GE.Lazy {

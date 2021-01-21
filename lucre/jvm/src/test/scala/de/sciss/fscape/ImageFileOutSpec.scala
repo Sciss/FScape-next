@@ -13,6 +13,11 @@ import org.scalatest.matchers.should.Matchers
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 
+/*
+
+  sbt 'testOnly de.sciss.fscape.ImageFileOutSpec'
+
+ */
 class ImageFileOutSpec extends FixtureAnyFlatSpec with Matchers {
   type S = Durable
   type T = Durable.Txn

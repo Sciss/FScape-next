@@ -13,8 +13,9 @@
 
 package de.sciss.fscape.lucre.graph
 
-import java.net.URI
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 
+import java.net.URI
 import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.graph.ImageFile.{SampleFormat, Type}
@@ -25,7 +26,7 @@ import de.sciss.fscape.{GE, Lazy, UGen, UGenGraph, UGenIn, UGenSource, Util, luc
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-object ImageFileSeqOut {
+object ImageFileSeqOut extends ProductReader[ImageFileSeqOut] {
   /** Converts an image file type to a unique id that can be parsed by the UGen. */
   def id(in: Type): Int = in.id
 
@@ -42,6 +43,20 @@ object ImageFileSeqOut {
 
   def maxSampleFormatId: Int = ImageFileOut.maxSampleFormatId
 
+  object WithFile extends ProductReader[WithFile] {
+    override def read(in: RefMapIn, key: String, arity: Int): WithFile = {
+      require (arity == 8)
+      val _template     = in.readURI()
+      val _in           = in.readGE()
+      val _width        = in.readGE()
+      val _height       = in.readGE()
+      val _fileType     = in.readGE()
+      val _sampleFormat = in.readGE()
+      val _quality      = in.readGE()
+      val _indices      = in.readGE()
+      new WithFile(_template, _in, _width, _height, _fileType, _sampleFormat, _quality, _indices)
+    }
+  }
   final case class WithFile(template: URI, in: GE, width: GE, height: GE, fileType: GE,
                             sampleFormat: GE, quality: GE, indices: GE)
     extends UGenSource.ZeroOut {
@@ -64,6 +79,19 @@ object ImageFileSeqOut {
     }
 
     override def productPrefix: String = s"ImageFileSeqOut$$WithFile"
+  }
+
+  override def read(in: RefMapIn, key: String, arity: Int): ImageFileSeqOut = {
+    require (arity == 8)
+    val _key          = in.readString()
+    val _in           = in.readGE()
+    val _width        = in.readGE()
+    val _height       = in.readGE()
+    val _fileType     = in.readGE()
+    val _sampleFormat = in.readGE()
+    val _quality      = in.readGE()
+    val _indices      = in.readGE()
+    new ImageFileSeqOut(_key, _in, _width, _height, _fileType, _sampleFormat, _quality, _indices)
   }
 }
 /** A graph element that creates a UGen writing to a file

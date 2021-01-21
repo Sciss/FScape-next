@@ -105,7 +105,7 @@ object MakeWorkspace {
 
     require (!target.exists(), s"Workspace '${target.name}' already exists. Not overwriting.")
     val ds  = BerkeleyDB.factory(target)
-    val ws  = Workspace.Durable.empty(target, ds)
+    val ws  = Workspace.Durable.empty(target.toURI, ds)
     type T  = Durable.Txn
     ws.cursor.step { implicit tx =>
       val r       = ws.root

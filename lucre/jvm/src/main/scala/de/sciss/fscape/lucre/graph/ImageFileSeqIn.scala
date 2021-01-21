@@ -15,16 +15,25 @@ package de.sciss.fscape
 package lucre
 package graph
 
-import java.net.URI
-
 import de.sciss.file._
-import de.sciss.{asyncfile, fscape}
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.graph.{ArithmSeq, Constant, DC, ImageFile}
 import de.sciss.fscape.lucre.UGenGraphBuilder.Input
+import de.sciss.{asyncfile, fscape}
 
+import java.net.URI
 import scala.annotation.tailrec
 
-object ImageFileSeqIn {
+object ImageFileSeqIn extends ProductReader[ImageFileSeqIn] {
+
+  object Width extends ProductReader[Width] {
+    override def read(in: RefMapIn, key: String, arity: Int): Width = {
+      require (arity == 2)
+      val _key      = in.readString()
+      val _indices  = in.readGE()
+      new Width(_key, _indices)
+    }
+  }
   final case class Width(key: String, indices: GE) extends GE.Lazy {
     override def productPrefix = s"ImageFileSeqIn$$Width"
 
@@ -34,6 +43,14 @@ object ImageFileSeqIn {
     }
   }
 
+  object Height extends ProductReader[Height] {
+    override def read(in: RefMapIn, key: String, arity: Int): Height = {
+      require (arity == 2)
+      val _key      = in.readString()
+      val _indices  = in.readGE()
+      new Height(_key, _indices)
+    }
+  }
   final case class Height(key: String, indices: GE) extends GE.Lazy {
     override def productPrefix = s"ImageFileSeqIn$$Height"
 
@@ -85,6 +102,13 @@ object ImageFileSeqIn {
         sys.error(s"ImageFileSeqIn - requires Artifact value, found $other")
     }
     res
+  }
+
+  override def read(in: RefMapIn, key: String, arity: Int): ImageFileSeqIn = {
+    require (arity == 2)
+    val _key      = in.readString()
+    val _indices  = in.readGE()
+    new ImageFileSeqIn(_key, _indices)
   }
 }
 /** Reads a sequence of images, outputting them directly one after the other, determining

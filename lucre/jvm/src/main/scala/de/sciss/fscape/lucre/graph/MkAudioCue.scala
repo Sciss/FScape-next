@@ -24,11 +24,12 @@ import de.sciss.fscape.stream.{StreamIn, StreamOut, Builder => SBuilder}
 import de.sciss.lucre.{Obj, Txn, Workspace}
 import de.sciss.serial.DataInput
 import de.sciss.audiofile.{AudioFileSpec, AudioFileType, SampleFormat}
+import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.proc.AudioCue
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-object MkAudioCue {
+object MkAudioCue extends ProductReader[MkAudioCue] {
   /** Converts an audio file type to a unique id that can be parsed by the UGen. */
   def id(in: AudioFileType): Int = AudioFileOut.id(in)
 
@@ -43,7 +44,7 @@ object MkAudioCue {
 
   // ----
 
-  final case class WithRef(spec: AudioFileSpec, in: GE, ref: OutputRef) extends UGenSource.SingleOut {
+  final case class WithRef private(spec: AudioFileSpec, in: GE, ref: OutputRef) extends UGenSource.SingleOut {
 
     protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike =
       unwrap(this, Vector(in.expand))
@@ -58,6 +59,16 @@ object MkAudioCue {
     }
 
     override def productPrefix: String = s"MkAudioCue$$WithRef"
+  }
+
+  override def read(in: RefMapIn, key: String, arity: Int): MkAudioCue = {
+    require (arity == 5)
+    val _key          = in.readString()
+    val _in           = in.readGE()
+    val _fileType     = in.readGE()
+    val _sampleFormat = in.readGE()
+    val _sampleRate   = in.readGE()
+    new MkAudioCue(_key, _in, _fileType, _sampleFormat, _sampleRate)
   }
 }
 /** A graph element that creates a UGen writing to an audio file

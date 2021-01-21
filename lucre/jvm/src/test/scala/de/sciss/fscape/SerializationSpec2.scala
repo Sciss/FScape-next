@@ -1,10 +1,18 @@
 package de.sciss.fscape
 
+import de.sciss.proc.FScape
 import de.sciss.serial.{DataInput, DataOutput}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
+/*
+
+  sbt 'testOnly de.sciss.fscape.SerializationSpec2'
+
+ */
 class SerializationSpec2 extends AnyFlatSpec with Matchers {
+  FScape.init()
+
   var dfs = Map.empty[String, Graph]
 
   import graph._

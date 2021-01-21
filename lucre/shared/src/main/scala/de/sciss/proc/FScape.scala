@@ -48,7 +48,7 @@ object FScape extends Obj.Type {
 
     Graph.addProductReaderSq({
       import de.sciss.fscape.graph._
-      import de.sciss.fscape.lucre.graph.{AudioFileIn => LAudioFileIn, AudioFileOut => LAudioFileOut, impl => Limpl, _}
+      import de.sciss.fscape.lucre.{graph => l}
       Seq[ProductReader[Product]](
         AffineTransform2D,
         ARCWindow,
@@ -190,16 +190,16 @@ object FScape extends Obj.Type {
         Zip,
         ZipWindow, ZipWindowN,
         // lucre
-        Action,
-        Attribute, Attribute.Scalar, Attribute.Vector,
-        LAudioFileIn, LAudioFileIn.NumFrames, LAudioFileIn.SampleRate, LAudioFileIn.WithCue,
-        LAudioFileOut, LAudioFileOut.WithFile,
-        MkDouble,
-        MkDoubleVector,
-        MkInt,
-        MkIntVector,
-        MkLong,
-        OnComplete,
+        l.Action,
+        l.Attribute, l.Attribute.Scalar, l.Attribute.Vector,
+        l.AudioFileIn, l.AudioFileIn.NumFrames, l.AudioFileIn.SampleRate, l.AudioFileIn.WithCue,
+        l.AudioFileOut, l.AudioFileOut.WithFile,
+        l.MkDouble,
+        l.MkDoubleVector,
+        l.MkInt,
+        l.MkIntVector,
+        l.MkLong,
+        l.OnComplete,
       )
     })
 
