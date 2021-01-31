@@ -169,7 +169,7 @@ The following UGens are currently not available under Scala.js:
 
 On the other hand, the following real-time UGens are available:
 
-- `WebAudioIn`, `WebAudioOut`
+- `PhysicalIn`, `PhysicalOut`
 
 ## notes
 

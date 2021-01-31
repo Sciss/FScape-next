@@ -43,7 +43,7 @@ lazy val commonSettings = Seq(
 
 lazy val deps = new {
   val core = new {
-    val akka            = "2.6.11"  // on the JVM
+    val akka            = "2.6.12"  // on the JVM
     val akkaJs          = "2.2.6.9" // on JS
     val audioFile       = "2.3.2"
     val dom             = "1.1.0"
@@ -67,7 +67,7 @@ lazy val deps = new {
     val lucreSwing      = "2.6.0"
   }
   val modules = new {
-    val scallop         = "4.0.1"
+    val scallop         = "4.0.2"
   }
   val test = new {
     val kollFlitz       = "0.2.4"
