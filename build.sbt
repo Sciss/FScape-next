@@ -8,7 +8,7 @@ lazy val mimaVersion    = "3.6.0"
 lazy val baseDescription = "An audio rendering library"
 
 lazy val commonJvmSettings = Seq(
-  crossScalaVersions := Seq(/* "3.0.0-M2", */ "2.13.4", "2.12.12"),  // no Dotty, because no Akka
+  crossScalaVersions := Seq(/* "3.0.0-M3", */ "2.13.4", "2.12.12"),  // no Dotty, because no Akka
 )
 
 // sonatype plugin requires that these are in global
@@ -45,7 +45,7 @@ lazy val deps = new {
   val core = new {
     val akka            = "2.6.12"  // on the JVM
     val akkaJs          = "2.2.6.9" // on JS
-    val audioFile       = "2.3.2"
+    val audioFile       = "2.3.3"
     val dom             = "1.1.0"
     val dsp             = "2.2.1"
     val fileUtil        = "1.1.5"
