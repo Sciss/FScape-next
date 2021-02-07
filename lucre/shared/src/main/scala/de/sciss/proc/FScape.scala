@@ -200,6 +200,7 @@ object FScape extends Obj.Type {
         l.MkIntVector,
         l.MkLong,
         l.OnComplete,
+        l.PhysicalIn, l.PhysicalOut,
       )
     })
 

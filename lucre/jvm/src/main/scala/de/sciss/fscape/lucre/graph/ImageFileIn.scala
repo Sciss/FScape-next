@@ -14,12 +14,13 @@
 package de.sciss.fscape.lucre
 package graph
 
-import java.net.URI
 import de.sciss.fscape
 import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
-import de.sciss.fscape.{GE, UGenGraph, UGenInLike}
-import de.sciss.fscape.graph.{ImageFile, RunningSum}
+import de.sciss.fscape.graph.ImageFile
 import de.sciss.fscape.lucre.UGenGraphBuilder.Input
+import de.sciss.fscape.{GE, UGenGraph, UGenInLike}
+
+import java.net.URI
 
 object ImageFileIn extends ProductReader[ImageFileIn] {
   object Width extends ProductReader[Width] {

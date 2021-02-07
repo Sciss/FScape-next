@@ -18,8 +18,8 @@ package graph
 import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGen.Adjunct
 import de.sciss.fscape.lucre.UGenGraphBuilder.Input
-import de.sciss.fscape.stream
 import de.sciss.fscape.stream.StreamIn
+import de.sciss.fscape.stream.{Builder => SBuilder}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
@@ -33,7 +33,7 @@ object OnComplete extends ProductReader[OnComplete] {
       ()
     }
 
-    private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit =
+    private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: SBuilder): Unit =
       lucre.stream.OnComplete(ref)
 
     override def productPrefix: String = s"OnComplete$$WithRef"

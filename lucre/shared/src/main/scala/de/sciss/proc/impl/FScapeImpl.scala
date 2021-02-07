@@ -88,7 +88,7 @@ object FScapeImpl extends FScapePlatform {
   }
 
   private sealed trait Base[T <: Txn[T]] {
-    _: FScape[T] =>
+    self: FScape[T] =>
 
     final def tpe: Obj.Type = FScape
 

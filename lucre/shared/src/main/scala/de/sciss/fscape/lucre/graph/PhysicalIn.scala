@@ -12,7 +12,7 @@
  */
 
 package de.sciss.fscape
-package graph
+package lucre.graph
 
 import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGen.Adjunct
@@ -38,5 +38,5 @@ final case class PhysicalIn(indices: GE = 0, numChannels: Int = 1) extends UGenS
       isIndividual = true, hasSideEffect = true)
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Vec[StreamOut] =
-    stream.WebAudioIn(numChannels = numChannels)
+    lucre.stream.PhysicalIn(numChannels = numChannels)
 }

@@ -21,12 +21,13 @@ import de.sciss.fscape.lucre.graph.Attribute
 import de.sciss.fscape.lucre.impl.{AbstractOutputRef, AbstractUGenGraphBuilder}
 import de.sciss.fscape.stream.Control
 import de.sciss.lucre.expr.graph.{Const => ExConst, Var => ExVar}
+import de.sciss.lucre.synth.{RT, Server}
 import de.sciss.lucre.{Artifact, Source, Txn, Workspace}
 import de.sciss.serial.DataInput
 import de.sciss.synth.UGenSource.Vec
 import de.sciss.proc.FScape.Output
 import de.sciss.proc.impl.FScapeOutputImpl
-import de.sciss.proc.{FScape, Runner}
+import de.sciss.proc.{AuralSystem, FScape, Runner, Universe}
 
 import scala.annotation.tailrec
 import scala.util.control.ControlThrowable
@@ -38,7 +39,7 @@ object UGenGraphBuilder /*extends UGenGraphBuilderPlatform*/ {
   }
 
   def build[T <: Txn[T]](context: Context[T], f: FScape[T])(implicit tx: T,
-                                                            workspace: Workspace[T],
+                                                            universe: Universe[T],
                                                             ctrl: Control): State[T] = {
     val b = new BuilderImpl(context, f)
     val g = f.graph.value
@@ -395,8 +396,15 @@ object UGenGraphBuilder /*extends UGenGraphBuilderPlatform*/ {
 
   private final class BuilderImpl[T <: Txn[T]](protected val context: Context[T], fscape: FScape[T])
                                               (implicit tx: T, // cursor: stm.Cursor[T],
-                                               workspace: Workspace[T])
+                                               universe: Universe[T])
     extends AbstractUGenGraphBuilder[T] { builder =>
+
+    override def auralSystem: AuralSystem = universe.auralSystem
+
+//    override def serverOption: Option[Server] = tx match {
+//      case rt: RT => auralSystem.serverOption(rt)
+//      case _      => None
+//    }
 
     // we first check for a named output, and then try to fallback to
     // an `expr.graph.Var` provided attr argument.
@@ -406,6 +414,7 @@ object UGenGraphBuilder /*extends UGenGraphBuilderPlatform*/ {
       outOpt match {
         case Some(out: FScapeOutputImpl[T]) =>
           if (out.valueType.typeId == reader.tpe.typeId) {
+            import universe.workspace
             val res = new ObjOutputRefImpl(reader, tx.newHandle(out))
             Some(res)
           } else {
@@ -453,6 +462,10 @@ trait UGenGraphBuilder extends UGenGraph.Builder {
 //  def requestAttribute(key: String): Option[Any]
 //
 //  def requestAction   (key: String)          : Option[ActionRef]
+
+  def auralSystem: AuralSystem
+
+//  def serverOption: Option[Server]
 
   def requestInput(input: UGenGraphBuilder.Input): input.Value
 

@@ -1,5 +1,5 @@
 /*
- *  WebAudioOut.scala
+ *  PhysicalOut.scala
  *  (FScape)
  *
  *  Copyright (c) 2001-2021 Hanns Holger Rutz. All rights reserved.
@@ -12,34 +12,37 @@
  */
 
 package de.sciss.fscape
-package stream
+package lucre.stream
 
 import akka.stream.Attributes
 import akka.stream.stage.InHandler
 import de.sciss.fscape.Log.{stream => logStream}
 import de.sciss.fscape.stream.impl.shapes.UniformSinkShape
-import de.sciss.fscape.stream.impl.{AudioContextExt, AudioProcessingEvent, NodeHasInitImpl, NodeImpl, ScriptProcessorNode, StageImpl}
-import org.scalajs.dom
-import org.scalajs.dom.AudioContext
+import de.sciss.fscape.stream.impl.{NodeHasInitImpl, NodeImpl, StageImpl}
+import de.sciss.fscape.stream.{BufD, Builder, Control, InD, Layer, OutD}
+import de.sciss.lucre.Disposable
+import de.sciss.lucre.synth.{RT, Server}
+import de.sciss.numbers
+import de.sciss.proc.AuralSystem
 
 import scala.collection.immutable.{Seq => ISeq}
-import scala.scalajs.js
-import scala.scalajs.js.typedarray.Float32Array
+import scala.concurrent.stm.TxnExecutor
 
-object WebAudioOut {
-  def apply(in: ISeq[OutD])(implicit b: Builder): Unit = {
-    val sink = new Stage(layer = b.layer, numChannels = in.size)
+object PhysicalOut {
+  def apply(in: ISeq[OutD], auralSystem: AuralSystem)(implicit b: Builder): Unit = {
+    val sink = new Stage(layer = b.layer, numChannels = in.size, auralSystem = auralSystem)
     val stage = b.add(sink)
     (in zip stage.inlets).foreach { case (output, input) =>
       b.connect(output, input)
     }
   }
 
-  private final val name = "WebAudioOut"
+  private final val name = "PhysicalOut"
 
   private type Shp = UniformSinkShape[BufD]
 
-  private final class Stage(layer: Layer, numChannels: Int)(implicit protected val ctrl: Control)
+  private final class Stage(layer: Layer, numChannels: Int, auralSystem: AuralSystem)
+                           (implicit protected val ctrl: Control)
     extends StageImpl[Shp](name) {
 
     val shape: Shape = UniformSinkShape[BufD](
@@ -47,20 +50,16 @@ object WebAudioOut {
     )
 
     def createLogic(attr: Attributes): NodeImpl[Shape] =
-      new Logic(shape, layer = layer, numChannels = numChannels)
+      new Logic(shape, layer = layer, numChannels = numChannels,
+        auralSystem = auralSystem)
   }
 
-  import scala.language.implicitConversions
-
-  implicit def AudioContextExt(context: AudioContext): AudioContextExt =
-    context.asInstanceOf[AudioContextExt]
-
-  private final class Logic(shape: Shp, layer: Layer, numChannels: Int)
+  private final class Logic(shape: Shp, layer: Layer, numChannels: Int, auralSystem: AuralSystem)
                            (implicit ctrl: Control)
     extends NodeImpl[Shp](name, layer, shape)
       with NodeHasInitImpl { logic =>
 
-//    private[this] var buf     : io.Frames = _
+    //    private[this] var buf     : io.Frames = _
 
     private[this] var pushed        = 0
     private[this] val bufIns        = new Array[BufD](numChannels)
@@ -68,14 +67,12 @@ object WebAudioOut {
     private[this] var shouldStop    = false
     private[this] var _isSuccess    = false
 
-    private[this] var audioContext    : AudioContext        = _
-    private[this] var scriptProcessor : ScriptProcessorNode = _
-
     private[this] val circleSize    = 3
-    private[this] val rtBufCircle   = Array.fill(circleSize)(new Array[Float32Array](numChannels))
+    private[this] val rtBufCircle   = Array.fill(circleSize)(new Array[Array[Float]](numChannels))
     private[this] var writtenCircle = 0
     private[this] var readCircle    = 0
     private[this] var readCircleRT  = 0
+    private[this] var obsAural : Disposable[RT] = _
 
     private[this] var LAST_REP_PROC   = 0L
     private[this] var LAST_REP_PROC_C = 0
@@ -84,40 +81,6 @@ object WebAudioOut {
 
     private[this] val DEBUG = false
     private[this] var okRT  = false
-
-    private[this] val realtimeFun: js.Function1[AudioProcessingEvent, Unit] = { e =>
-      if (okRT) { // there is a weird condition in which the realtime function is still called after `stopped`
-        val b       = e.outputBuffer
-        val numCh   = b.numberOfChannels
-  //      val len     = b.length
-        val rtBuf   = rtBufCircle(readCircleRT % circleSize)
-        val newRead = readCircleRT + 1
-        readCircleRT = newRead
-
-        if (DEBUG) {
-          val NOW = System.currentTimeMillis()
-          val DT  = NOW - LAST_REP_PROC
-          if (DT > 1000) {
-            val len  = rtBuf(0).length
-            val thru = ((newRead - LAST_REP_PROC_C) * len) * 1000.0 / DT
-            println(s"<AudioProcessingEvent> buffers read = $readCircle; through-put is $thru Hz")
-            LAST_REP_PROC   = NOW
-            LAST_REP_PROC_C = newRead
-          }
-        }
-
-        var ch = 0
-        while (ch < numCh) {
-          b.copyToChannel(rtBuf(ch), ch, 0)
-          ch += 1
-        }
-
-        async {
-          readCircle = newRead
-          if (canProcess) process()
-        }
-      }
-    }
 
     {
       val ins = shape.inlets
@@ -132,12 +95,10 @@ object WebAudioOut {
     private final class InH(in: InD /* , ch: Int */) extends InHandler {
       def onPush(): Unit = {
         pushed += 1
-//        if (DEBUG) println(s"<$in> onPush; pushed = $pushed")
         if (canProcess) process()
       }
 
-      override def onUpstreamFinish(): Unit = {
-//        if (DEBUG) println(s"<$in> onUpstreamFinish")
+      override def onUpstreamFinish(): Unit =
         if (isAvailable(in)) {
           shouldStop = true
         } else {
@@ -145,7 +106,6 @@ object WebAudioOut {
           _isSuccess = true
           super.onUpstreamFinish()
         }
-      }
     }
 
     // ---- StageLogic
@@ -155,46 +115,62 @@ object WebAudioOut {
       logStream.info(s"$this - init()")
     }
 
+    private def atomic[A](fun: RT => A): A = TxnExecutor.defaultAtomic { implicit itx =>
+      implicit val rt: RT = RT.wrap(itx)
+      fun(rt)
+    }
+
+    // N.B.: not on the Akka thread
+    private def startRT(s: Server)(implicit tx: RT): Unit = {
+      val bufSizeS = {
+        val bufDur    = 1.5
+        val blockSz   = s.config.blockSize
+        val sr        = s.sampleRate
+        val minSz     = 2 * blockSz
+        val bestSz    = math.max(minSz, (bufDur * sr).toInt)
+        import numbers.Implicits._
+        val bestSzHi  = bestSz.nextPowerOfTwo
+        val bestSzLo  = bestSzHi >> 1
+        if (bestSzHi.toDouble/bestSz < bestSz.toDouble/bestSzLo) bestSzHi else bestSzLo
+      }
+    }
+
     override protected def launch(): Unit = {
       super.launch()
-      audioContext    = new dom.AudioContext
-      scriptProcessor = audioContext.createScriptProcessor(
-        bufferSize              = control.blockSize,  // XXX TODO -- we could and should decouple this
-        numberOfInputChannels   = 0,
-        numberOfOutputChannels  = numChannels,
-      )
-      val bufSize = scriptProcessor.bufferSize
 
-      if (DEBUG) println(s"WebAudioOut launch. WebAudio buffer size is $bufSize; FScape buffer size is ${control.blockSize}")
+      obsAural = atomic { implicit tx =>
+        auralSystem.reactNow { implicit tx => {
+          case AuralSystem.Running(s) => startRT(s)
+          case _ =>
+        }}
+      }
+
+      val bufSize = control.blockSize
 
       var ch = 0
       while (ch < numChannels) {
         var ci = 0
         while (ci < circleSize) {
-          rtBufCircle(ci)(ch) = new Float32Array(bufSize)
+          rtBufCircle(ci)(ch) = new Array[Float](bufSize)
           ci += 1
         }
         ch += 1
       }
+
       okRT = true
-      scriptProcessor.onaudioprocess = realtimeFun
-      scriptProcessor.connect(audioContext.destination)
-//      audioContext.resume()
     }
 
     override protected def stopped(): Unit = {
       logStream.info(s"$this - postStop()")
       okRT = false
-      if (scriptProcessor != null) {
-        scriptProcessor.disconnect(audioContext.destination)
-        scriptProcessor = null
-      }
-      if (audioContext != null) {
-        audioContext.close()
-        audioContext = null
+
+      if (obsAural != null) {
+        atomic { implicit tx =>
+          obsAural.dispose()
+          obsAural = null
+        }
       }
 
-//      buf = null
       var ch = 0
       while (ch < numChannels) {
         bufIns(ch) = null
@@ -222,12 +198,6 @@ object WebAudioOut {
         chunk       = if (ch == 0) bufIn.size else math.min(chunk, bufIn.size)
         ch += 1
       }
-
-//      if (buf == null || buf(0).length < chunk) {
-//        buf = ??? // af.buffer(chunk)
-//      }
-
-//      val pos1 = af.position + 1
 
       val rtBuf = rtBufCircle(writtenCircle % circleSize)
       val newWrite = writtenCircle + 1

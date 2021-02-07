@@ -77,7 +77,7 @@ object FScapeRenderingImpl {
                          force: Boolean)
                         (implicit tx: T, universe: Universe[T]): Rendering[T] = {
     implicit val control: Control = Control(config)
-    import universe.{cursor, workspace}
+    import universe.cursor
     val uState = UGenGraphBuilder.build(ugbContext, fscape)
     withState(uState, force = force)
   }

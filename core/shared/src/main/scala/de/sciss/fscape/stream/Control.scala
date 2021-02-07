@@ -14,12 +14,11 @@
 package de.sciss.fscape
 package stream
 
-import java.util.concurrent.ConcurrentLinkedQueue
-
 import akka.actor.{Actor, ActorContext, ActorRef, ActorSystem, Props}
 import akka.stream.{ActorMaterializer, Materializer}
 import de.sciss.fscape.Log.{control => logControl}
 
+import java.util.concurrent.ConcurrentLinkedQueue
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future, Promise}
@@ -184,7 +183,7 @@ object Control {
 
     var debugWaitLaunch = Option.empty[Future[Unit]]
 
-    def build = Config(
+    def build: Config = Config(
       blockSize         = blockSize,
       nodeBufferSize    = nodeBufferSize,
       useAsync          = useAsync,
