@@ -16,7 +16,7 @@ package de.sciss.fscape.stream.impl
 import akka.stream.Shape
 
 trait ImageFileSingleOutImpl[S <: Shape] extends ImageFileOutImpl[S] {
-  _: Handlers[S] =>
+  this: Handlers[S] =>
 
   protected def tryObtainSpec(): Boolean
 

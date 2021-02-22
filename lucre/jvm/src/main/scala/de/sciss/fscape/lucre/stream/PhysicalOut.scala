@@ -14,24 +14,33 @@
 package de.sciss.fscape
 package lucre.stream
 
-import akka.stream.Attributes
-import akka.stream.stage.InHandler
+import akka.stream.{Attributes, Inlet}
 import de.sciss.fscape.Log.{stream => logStream}
+import de.sciss.fscape.stream.impl.Handlers.InDMain
 import de.sciss.fscape.stream.impl.shapes.UniformSinkShape
-import de.sciss.fscape.stream.impl.{NodeHasInitImpl, NodeImpl, StageImpl}
-import de.sciss.fscape.stream.{BufD, Builder, Control, InD, Layer, OutD}
+import de.sciss.fscape.stream.impl.{Handlers, NodeHasInitImpl, NodeImpl, StageImpl}
+import de.sciss.fscape.stream.{BufD, Builder, Control, InD, Layer, OutD, OutI}
 import de.sciss.lucre.Disposable
-import de.sciss.lucre.synth.{RT, Server}
-import de.sciss.numbers
+import de.sciss.lucre.Txn.{peer => txPeer}
+import de.sciss.lucre.synth.{Buffer, RT, Server, Synth}
+import de.sciss.osc
 import de.sciss.proc.AuralSystem
+import de.sciss.proc.impl.StreamBuffer
+import de.sciss.synth.proc.graph.impl.SendReplyResponder
+import de.sciss.synth.ugen
+import de.sciss.synth.{SynthGraph, intNumberWrapper}
 
+import scala.annotation.tailrec
 import scala.collection.immutable.{Seq => ISeq}
-import scala.concurrent.stm.TxnExecutor
+import scala.concurrent.stm.{Ref, TxnExecutor}
+import scala.math.{max, min}
+import scala.util.control.NonFatal
 
 object PhysicalOut {
-  def apply(in: ISeq[OutD], auralSystem: AuralSystem)(implicit b: Builder): Unit = {
+  def apply(indices: OutI, in: ISeq[OutD], auralSystem: AuralSystem)(implicit b: Builder): Unit = {
     val sink = new Stage(layer = b.layer, numChannels = in.size, auralSystem = auralSystem)
     val stage = b.add(sink)
+    // XXX TODO: handle `indices`
     (in zip stage.inlets).foreach { case (output, input) =>
       b.connect(output, input)
     }
@@ -56,56 +65,31 @@ object PhysicalOut {
 
   private final class Logic(shape: Shp, layer: Layer, numChannels: Int, auralSystem: AuralSystem)
                            (implicit ctrl: Control)
-    extends NodeImpl[Shp](name, layer, shape)
+    extends Handlers(name, layer, shape)
       with NodeHasInitImpl { logic =>
 
-    //    private[this] var buf     : io.Frames = _
-
-    private[this] var pushed        = 0
-    private[this] val bufIns        = new Array[BufD](numChannels)
-
-    private[this] var shouldStop    = false
-    private[this] var _isSuccess    = false
-
-    private[this] val circleSize    = 3
-    private[this] val rtBufCircle   = Array.fill(circleSize)(new Array[Array[Float]](numChannels))
     private[this] var writtenCircle = 0
     private[this] var readCircle    = 0
-    private[this] var readCircleRT  = 0
+    private[this] var circleSizeH   = 0
+    private[this] var circleSize    = 0
+
     private[this] var obsAural : Disposable[RT] = _
 
-    private[this] var LAST_REP_PROC   = 0L
-    private[this] var LAST_REP_PROC_C = 0
-    private[this] var LAST_REP_IN     = 0L
-    private[this] var LAST_REP_IN_C   = 0
+    private[this] val hIns: Array[InDMain] = Array.tabulate(numChannels)(ch => InDMain(this, shape.inlets(ch)))
 
-    private[this] val DEBUG = false
-    private[this] var okRT  = false
+    private[this] final val SAMPLES_PER_BUF_SET = 1608 // ensure < 8K OSC bundle size, divisible by common num-channels
+    private[this] val rtBufSz   = SAMPLES_PER_BUF_SET / numChannels
+    private[this] val rtBufSmp  = rtBufSz * numChannels
+    private[this] val rtBuf     = new Array[Float](rtBufSmp)
+    private[this] var rtBufOff  = 0 // in frames
+    private[this] var _stopped  = false
 
-    {
-      val ins = shape.inlets
-      var ch = 0
-      while (ch < numChannels) {
-        val in = ins(ch)
-        setHandler(in, new InH(in /* , ch */))
-        ch += 1
-      }
-    }
+    private[this] val synBuf    = Ref.make[Buffer.Modifiable]()
+    private[this] val trigResp  = Ref.make[TrigResp]()
 
-    private final class InH(in: InD /* , ch: Int */) extends InHandler {
-      def onPush(): Unit = {
-        pushed += 1
-        if (canProcess) process()
-      }
-
-      override def onUpstreamFinish(): Unit =
-        if (isAvailable(in)) {
-          shouldStop = true
-        } else {
-          logStream.info(s"onUpstreamFinish($in)")
-          _isSuccess = true
-          super.onUpstreamFinish()
-        }
+    override protected def onDone(inlet: Inlet[_]): Unit = {
+//      println(s"onDone($inlet)")
+      completeStage()
     }
 
     // ---- StageLogic
@@ -120,19 +104,77 @@ object PhysicalOut {
       fun(rt)
     }
 
+    private final class TrigResp(protected val synth: Synth) extends SendReplyResponder {
+      override protected def added()(implicit tx: RT): Unit = ()
+
+      private[this] final val replyName = "/$str_fsc" // XXX TODO: make public: StreamBuffer.replyName("fsc")
+      private[this] final val nodeId    = synth.peer.id
+
+      override protected val body: Body = {
+        case osc.Message(`replyName`, `nodeId`, _ /*`idx`*/, trigValF: Float) =>
+//          println(s"RECEIVED TR $trigValF...")
+          // logAural(m.toString)
+          val trigVal = trigValF.toInt
+          async {
+            if (!_stopped) {
+              logStream.debug(s"TrigResp($nodeId): $trigVal")
+              readCircle = (trigVal + 2) * circleSizeH
+              process()
+            }
+          }
+      }
+
+      override def dispose()(implicit tx: RT): Unit = {
+        super.dispose()
+        synth.dispose()
+      }
+    }
+
     // N.B.: not on the Akka thread
     private def startRT(s: Server)(implicit tx: RT): Unit = {
+      val rtBufSz2 = rtBufSz << 1
       val bufSizeS = {
         val bufDur    = 1.5
         val blockSz   = s.config.blockSize
         val sr        = s.sampleRate
-        val minSz     = 2 * blockSz
-        val bestSz    = math.max(minSz, (bufDur * sr).toInt)
-        import numbers.Implicits._
-        val bestSzHi  = bestSz.nextPowerOfTwo
-        val bestSzLo  = bestSzHi >> 1
+        // ensure half a buffer is a multiple of rtBufSz
+        val minSz     = max(rtBufSz2.nextPowerOfTwo, 2 * blockSz)
+        val bestSz    = max(minSz, (bufDur * sr).toInt)
+        val bestSzLo  = bestSz - (bestSz % rtBufSz2)
+        val bestSzHi  = bestSzLo << 1
         if (bestSzHi.toDouble/bestSz < bestSz.toDouble/bestSzLo) bestSzHi else bestSzLo
       }
+      val b = Buffer(s)(numFrames = bufSizeS, numChannels = numChannels)
+      synBuf() = b
+      val g = SynthGraph {
+        import ugen._
+        import de.sciss.synth.Ops.stringToControl
+        val bus     = "out".ir(0)
+        val bufGE   = "buf".ir
+        val sig     = StreamBuffer.makeUGen(key = "fsc", idx = 0, buf = bufGE, numChannels = numChannels,
+          speed = 1.0, interp = 1)
+        Out.ar(bus, sig)  // XXX TODO or use PhysicalOut so eventually we mute exceeding buses?
+      }
+      // note: we can start right away with silent buffer
+      val _syn = Synth.play(g, nameHint = Some(name))(target = s.defaultGroup, args = "buf" -> b.id :: Nil,
+        dependencies = b :: Nil)
+      _syn.onEndTxn { implicit tx => b.dispose() }
+      val _trigResp = new TrigResp(_syn)
+      trigResp() = _trigResp
+
+      tx.afterCommit {
+        async {
+          circleSizeH   = bufSizeS / rtBufSz2
+          circleSize    = circleSizeH << 1
+//          logStream.info(s"$this - startRT. bufSizeS = $bufSizeS, circleSizeH = $circleSizeH")
+          logStream.debug(s"$this - startRT. bufSizeS = $bufSizeS, circleSizeH = $circleSizeH")
+          writtenCircle = circleSizeH
+          readCircle    = circleSize
+          process()
+        }
+      }
+
+      _trigResp.add()
     }
 
     override protected def launch(): Unit = {
@@ -140,111 +182,99 @@ object PhysicalOut {
 
       obsAural = atomic { implicit tx =>
         auralSystem.reactNow { implicit tx => {
-          case AuralSystem.Running(s) => startRT(s)
+          case AuralSystem.Running(s) =>
+            try {
+              startRT(s)
+            } catch {
+              case NonFatal(ex: Exception) =>
+//                ex.printStackTrace()
+                failAsync(ex)
+            }
           case _ =>
         }}
       }
-
-      val bufSize = control.blockSize
-
-      var ch = 0
-      while (ch < numChannels) {
-        var ci = 0
-        while (ci < circleSize) {
-          rtBufCircle(ci)(ch) = new Array[Float](bufSize)
-          ci += 1
-        }
-        ch += 1
-      }
-
-      okRT = true
     }
 
     override protected def stopped(): Unit = {
       logStream.info(s"$this - postStop()")
-      okRT = false
+      _stopped = true
 
       if (obsAural != null) {
         atomic { implicit tx =>
           obsAural.dispose()
           obsAural = null
+          val _trigResp = trigResp.swap(null)
+          if (_trigResp != null) _trigResp.dispose()
         }
-      }
-
-      var ch = 0
-      while (ch < numChannels) {
-        bufIns(ch) = null
-        var ci = 0
-        while (ci < circleSize) {
-          rtBufCircle(ci)(ch) = null
-          ci += 1
-        }
-        ch += 1
       }
     }
 
-    private def canProcess: Boolean =
-      pushed == numChannels && writtenCircle < readCircle
+    @tailrec
+    override protected def process(): Unit = {
+      var stateChanged = false
 
-    private def process(): Unit = {
-      logStream.debug(s"process() $this")
-      pushed = 0
-
-      var ch = 0
-      var chunk = 0
+      var ch      = 0
+      var readSz  = 0
       while (ch < numChannels) {
-        val bufIn = grab(shape.inlets(ch))
-        bufIns(ch)  = bufIn
-        chunk       = if (ch == 0) bufIn.size else math.min(chunk, bufIn.size)
+        val hIn = hIns(ch)
+        readSz  = if (ch == 0) hIn.available else min(readSz, hIn.available)
         ch += 1
       }
 
-      val rtBuf = rtBufCircle(writtenCircle % circleSize)
-      val newWrite = writtenCircle + 1
-      writtenCircle = newWrite
+      val _rtBuf    = rtBuf
+      val _rtBufOff = rtBufOff
+      val chunkRt   = min(readSz, rtBufSz - _rtBufOff)
+      val hasChunk  = chunkRt > 0
 
-      if (DEBUG) {
-        val NOW = System.currentTimeMillis()
-        val DT  = NOW - LAST_REP_IN
-        if (DT > 1000) {
-          val len   = rtBuf(0).length
-          val thru  = ((newWrite - LAST_REP_IN_C) * len) * 1000.0 / DT
-          println(s"<process()> buffers written = $writtenCircle; through-put is $thru Hz")
-          LAST_REP_IN   = NOW
-          LAST_REP_IN_C = newWrite
-        }
-      }
+      logStream.debug(s"process() $this - readSz $readSz, chunkRt $chunkRt, rtBufOff ${_rtBufOff}")
 
-      ch = 0
-      while (ch < numChannels) {
-        var i = 0
-        val a = bufIns(ch).buf
-        val b = rtBuf(ch)
-        val CHUNK = math.min(chunk, b.length)
-        while (i < CHUNK) {
-          b(i) = a(i).toFloat
-          i += 1
-        }
-        ch += 1
-      }
-
-      ch = 0
-      while (ch < numChannels) {
-        bufIns(ch).release()
-        ch += 1
-      }
-
-      if (shouldStop) {
-        _isSuccess = true
-        completeStage()
-      } else {
-        // println("pulling inlets")
+      if (hasChunk) {
+        val numCh   = numChannels
+        var smpOff  = _rtBufOff * numChannels
         ch = 0
         while (ch < numChannels) {
-          pull(shape.inlets(ch))
+          val hIn   = hIns(ch)
+          val a     = hIn.array
+          var i     = hIn.offset
+          val stop  = i + chunkRt
+          var j     = smpOff
+          while (i < stop) {
+            _rtBuf(j) = a(i).toFloat
+            i += 1
+            j += numCh
+          }
           ch += 1
+          smpOff += 1
         }
       }
+
+      val rtBufOffNew = _rtBufOff + chunkRt
+      if (rtBufOffNew == rtBufSz && writtenCircle < readCircle) {
+        val bOff = (writtenCircle % circleSize) * rtBufSmp
+        // XXX TODO: we could optimise this by sending a ByteBuffer directly via OSC
+        // also `toIndexedSeq` creates an unnecessary array copy here
+        logStream.debug(s"b.setn($bOff) - writtenCircle $writtenCircle")
+        atomic { implicit tx =>
+          val b = synBuf()
+          b.setn((bOff, _rtBuf.toIndexedSeq))
+        }
+        writtenCircle += 1
+        rtBufOff       = 0
+        stateChanged   = true
+      } else if (hasChunk) {
+        rtBufOff = rtBufOffNew
+      }
+
+      if (hasChunk) {
+        ch = 0
+        while (ch < numChannels) {
+          hIns(ch).advance(chunkRt)
+          ch += 1
+        }
+        stateChanged = true
+      }
+
+      if (stateChanged) process()
     }
   }
 }

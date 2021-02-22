@@ -8,7 +8,7 @@ lazy val mimaVersion    = "3.6.0"
 lazy val baseDescription = "An audio rendering library"
 
 lazy val commonJvmSettings = Seq(
-  crossScalaVersions := Seq(/* "3.0.0-M3", */ "2.13.4", "2.12.12"),  // no Dotty, because no Akka
+  crossScalaVersions := Seq(/* "3.0.0-RC1", */ "2.13.4", "2.12.13"),  // no Dotty, because no Akka
 )
 
 // sonatype plugin requires that these are in global
@@ -60,18 +60,18 @@ lazy val deps = new {
   }
   val lucre = new {
     val fileCache       = "1.1.1"
-    val lucre           = "4.4.1"
-    val soundProcesses  = "4.7.0"
+    val lucre           = "4.4.3"
+    val soundProcesses  = "4.7.1"
   }
   val views = new {
-    val lucreSwing      = "2.6.1"
+    val lucreSwing      = "2.6.2"
   }
   val modules = new {
     val scallop         = "4.0.2"
   }
   val test = new {
     val kollFlitz       = "0.2.4"
-    val scalaTest       = "3.2.3"
+    val scalaTest       = "3.2.5"
     val scallop: String = modules.scallop
     val submin          = "0.3.4"
   }

@@ -19,7 +19,7 @@ import de.sciss.fscape.stream.{Control, Node}
 
 @deprecated("Should move to using Handlers", since = "2.35.1")
 trait InOutImpl[S <: Shape] extends Node {
-  _: GraphStageLogic =>
+  this: GraphStageLogic =>
 
   // ---- abstract ----
 

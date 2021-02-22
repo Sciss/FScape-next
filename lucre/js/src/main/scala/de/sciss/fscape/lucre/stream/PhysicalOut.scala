@@ -19,8 +19,7 @@ import akka.stream.stage.InHandler
 import de.sciss.fscape.Log.{stream => logStream}
 import de.sciss.fscape.stream.impl.shapes.UniformSinkShape
 import de.sciss.fscape.stream.impl.{AudioContextExt, AudioProcessingEvent, NodeHasInitImpl, NodeImpl, ScriptProcessorNode, StageImpl}
-import de.sciss.fscape.stream.{BufD, Builder, Control, InD, Layer, OutD}
-import de.sciss.lucre.synth.Server
+import de.sciss.fscape.stream.{BufD, Builder, Control, InD, Layer, OutD, OutI}
 import de.sciss.proc.AuralSystem
 import org.scalajs.dom
 import org.scalajs.dom.AudioContext
@@ -30,9 +29,10 @@ import scala.scalajs.js
 import scala.scalajs.js.typedarray.Float32Array
 
 object PhysicalOut {
-  def apply(in: ISeq[OutD], auralSystem: AuralSystem)(implicit b: Builder): Unit = {
+  def apply(indices: OutI, in: ISeq[OutD], auralSystem: AuralSystem)(implicit b: Builder): Unit = {
     val sink = new Stage(layer = b.layer, numChannels = in.size)
     val stage = b.add(sink)
+    // XXX TODO: handle `indices`
     (in zip stage.inlets).foreach { case (output, input) =>
       b.connect(output, input)
     }

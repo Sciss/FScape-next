@@ -28,7 +28,7 @@ import scala.math.min
 trait WindowedInA1A2OutB[A1, E1 <: BufElem[A1], A2, E2 <: BufElem[A2], B, F <: BufElem[B], C]
   extends Node {
 
-  _: Handlers[_] =>
+  this: Handlers[_] =>
 
   // ---- abstract ----
 

@@ -26,7 +26,7 @@ import scala.math.max
 
 /** Base class for 2-dimensional FFT transforms. */
 trait FFT2LogicImpl extends WindowedInDOutD {
-  _: Handlers[_] =>
+  this: Handlers[_] =>
 
   // ---- abstract ----
 
@@ -177,7 +177,7 @@ abstract class FFT2HalfLogicImpl(name: String, shape: FanInShape4[BufD, BufI, Bu
 }
 
 trait FFT2RealLogicImpl {
-  _: FFT2HalfLogicImpl=>
+  this: FFT2HalfLogicImpl=>
 
   final protected def tryObtainWinParams(): Boolean = {
     val ok = hRows.hasNext && hCols.hasNext && hMode.hasNext
@@ -240,7 +240,7 @@ final class Real2IFFTLogicImpl(name: String, shape: FanInShape4[BufD, BufI, BufI
         ???
         fftBuf(1) = 0.0
     }
-    fft.realInverse(fftBuf, false)
+    fft.realInverse(fftBuf, scale = false)
     // if (gain != 1.0) Util.mul(fftBuf, 0, fftSize, gain)
   }
 }
@@ -296,7 +296,7 @@ final class Real1FullIFFT2LogicImpl(name: String, shape: FanInShape3[BufD, BufI,
   protected def performFFT(): Unit = {
     val fftBuf = winBuf
     // fft.realInverseFull(fftBuf, false)
-    fft.complexInverse(fftBuf, false)
+    fft.complexInverse(fftBuf, scale = false)
     var i = 0
     var j = 0
     val g = gain
@@ -335,7 +335,7 @@ final class Complex2IFFT2LogicImpl(name: String, shape: FanInShape3[BufD, BufI, 
 
   protected def performFFT(): Unit = {
     val fftBuf = winBuf
-    fft.complexInverse(fftBuf, false)
+    fft.complexInverse(fftBuf, scale = false)
     // if (gain != 1.0) Util.mul(fftBuf, 0, fftSize, gain)
   }
 }

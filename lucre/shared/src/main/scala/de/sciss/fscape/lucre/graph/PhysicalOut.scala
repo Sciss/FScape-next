@@ -17,7 +17,7 @@ package lucre.graph
 import de.sciss.fscape.Graph.{ProductReader, RefMapIn}
 import de.sciss.fscape.UGenSource.unwrap
 import de.sciss.fscape.lucre.UGenGraphBuilder
-import de.sciss.fscape.stream.StreamIn
+import de.sciss.fscape.stream.{SinkIgnore, StreamIn}
 import de.sciss.proc.AuralSystem
 
 import scala.collection.immutable.{IndexedSeq => Vec}
@@ -43,8 +43,10 @@ object PhysicalOut extends ProductReader[PhysicalOut] {
       ()
     }
 
-    private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit =
-      lucre.stream.PhysicalOut(in = args.map(_.toDouble), auralSystem = auralSystem)
+    private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit = {
+      val in = args
+      lucre.stream.PhysicalOut(indices = null /*indices.toInt*/, in = in.map(_.toDouble), auralSystem = auralSystem)
+    }
   }
 }
 // XXX TODO: `indices` currently unused

@@ -26,7 +26,7 @@ import scala.math.min
   * one hot inlet, but other inlets are needed for filling the window buffer.
   */
 trait WindowedMultiInOut extends Node {
-  _: Handlers[_] =>
+  this: Handlers[_] =>
 
   // ---- abstract ----
 

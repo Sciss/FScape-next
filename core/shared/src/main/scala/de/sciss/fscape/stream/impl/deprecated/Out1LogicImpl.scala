@@ -20,7 +20,7 @@ import de.sciss.fscape.stream.BufLike
 @deprecated("Should move to using Handlers", since = "2.35.1")
 trait Out1LogicImpl[Out <: BufLike, S <: Shape] extends InOutImpl[S] {
 
-  _: GraphStageLogic =>
+  this: GraphStageLogic =>
 
   protected def allocOutBuf0(): Out
 

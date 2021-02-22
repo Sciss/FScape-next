@@ -21,7 +21,7 @@ import de.sciss.fscape.Log.{stream => logStream}
 import scala.concurrent.Future
 
 trait Node {
-  _: GraphStageLogic =>
+  this: GraphStageLogic =>
 
   // ---- abstract ----
 
@@ -61,7 +61,7 @@ trait Node {
 }
 
 trait NodeHasInit extends Node {
-  _: GraphStageLogic =>
+  this: GraphStageLogic =>
 
   def initAsync(): Future[Unit]
 }

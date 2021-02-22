@@ -22,7 +22,7 @@ import scala.annotation.tailrec
 import scala.math.min
 
 trait AbstractClipFoldWrap[A1, E <: BufElem[A1]] {
-  _: Handlers[FanInShape3[E, E, E, E]] =>
+  this: Handlers[FanInShape3[E, E, E, E]] =>
 
   type A = A1
 

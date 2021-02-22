@@ -25,7 +25,7 @@ import scala.math.min
   * `winSize` and possibly others, and will be polled per window.
   */
 trait WindowedInAOutB[A, E <: BufElem[A], B, F <: BufElem[B], C] extends Node {
-  _: Handlers[_] =>
+  this: Handlers[_] =>
 
   // ---- abstract ----
 
@@ -177,7 +177,7 @@ trait WindowedInAOutB[A, E <: BufElem[A], B, F <: BufElem[B], C] extends Node {
   * `winSize` and possibly others, and will be polled per window.
   */
 trait WindowedInAOutA[A, E <: BufElem[A]] extends WindowedInAOutB[A, E, A, E, A] {
-  _: Handlers[_] =>
+  this: Handlers[_] =>
 
   protected def tpe: StreamType[A, E]
 
@@ -214,7 +214,7 @@ trait WindowedInAOutA[A, E <: BufElem[A]] extends WindowedInAOutB[A, E, A, E, A]
 
 /** Windowed logic for double I/O */
 trait WindowedInDOutD extends WindowedInAOutA[Double, BufD] {
-  _: Handlers[_] =>
+  this: Handlers[_] =>
 
   protected final val tpe: StreamType[Double, BufD] = StreamType.double
 }

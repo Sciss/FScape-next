@@ -26,7 +26,7 @@ import scala.math.max
 
 /** Base class for 1-dimensional FFT transforms. */
 trait FFTLogicImpl extends WindowedInDOutD {
-  _: Handlers[_] =>
+  this: Handlers[_] =>
 
   // ---- abstract ----
 
@@ -244,7 +244,7 @@ abstract class FFTFullLogicImpl(name: String, shape: FanInShape3[BufD, BufI, Buf
 }
 
 trait FFTFullForwardLogicImpl {
-  _: FFTFullLogicImpl =>
+  this: FFTFullLogicImpl =>
 
   final protected def tryObtainWinParams(): Boolean = {
     val ok = hSize.hasNext && hPadding.hasNext
@@ -259,7 +259,7 @@ trait FFTFullForwardLogicImpl {
 }
 
 trait FFTFullBackwardLogicImpl {
-  _: FFTFullLogicImpl =>
+  this: FFTFullLogicImpl =>
 
   protected def tryObtainWinParams(): Boolean = {
     val ok = hSize.hasNext && hPadding.hasNext

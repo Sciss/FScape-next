@@ -33,7 +33,7 @@ import scala.math.min
 
 /** Common building block for `ImageFileOut` and `ImageFileSeqOut` */
 trait ImageFileOutImpl[S <: Shape] extends NodeHasInitImpl with WindowedMultiInOut {
-  _: Handlers[S] =>
+  this: Handlers[S] =>
 
   // ---- abstract ----
 

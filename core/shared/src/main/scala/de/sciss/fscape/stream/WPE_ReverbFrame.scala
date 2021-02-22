@@ -80,7 +80,7 @@ object WPE_ReverbFrame {
   private final class Logic(shape: Shp, layer: Layer, numChannels: Int)(implicit ctrl: Control)
     extends NodeImpl[Shp](name, layer = layer, shape = shape) {
 
-    _: GraphStageLogic =>
+    this: GraphStageLogic =>
 
     private[this] val inletsSignal: Vec[InD]  = shape.ins0 :+ shape.in1 // last is psd
 //    private[this] val inletPSD        : InD   = shape.in1

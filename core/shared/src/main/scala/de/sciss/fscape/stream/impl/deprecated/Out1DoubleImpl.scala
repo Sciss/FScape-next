@@ -19,7 +19,7 @@ import de.sciss.fscape.stream.BufD
 
 @deprecated("Should move to using Handlers", since = "2.35.1")
 trait Out1DoubleImpl[S <: Shape] extends InOutImpl[S] {
-  _: GraphStageLogic =>
+  this: GraphStageLogic =>
 
   protected final def allocOutBuf0(): BufD = control.borrowBufD()
 }

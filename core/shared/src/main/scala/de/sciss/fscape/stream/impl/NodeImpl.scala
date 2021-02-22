@@ -205,7 +205,7 @@ abstract class NodeImpl[+S <: Shape](protected final val name: String, val layer
 }
 
 trait NodeHasInitImpl extends NodeHasInit {
-  _: GraphStageLogic =>
+  this: GraphStageLogic =>
 
   private[this] var _init = false
 

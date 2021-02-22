@@ -45,7 +45,7 @@ object PhysicalIn {
     def createLogic(attr: Attributes): NodeImpl[Shape] =
       new Logic(shape, layer = layer, numChannels = numChannels)
   }
-  
+
   private final class Logic(shape: Shp, layer: Layer, numChannels: Int)
                            (implicit ctrl: Control)
     extends NodeImpl[Shp](name, layer, shape)
