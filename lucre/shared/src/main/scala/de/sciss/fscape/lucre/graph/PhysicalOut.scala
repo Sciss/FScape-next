@@ -45,7 +45,7 @@ object PhysicalOut extends ProductReader[PhysicalOut] {
 
     private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Unit = {
       val in = args
-      lucre.stream.PhysicalOut(indices = null /*indices.toInt*/, in = in.map(_.toDouble), auralSystem = auralSystem)
+      lucre.stream.PhysicalOut(index = null /*indices.toInt*/, in = in.map(_.toDouble), auralSystem = auralSystem)
     }
   }
 }

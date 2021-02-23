@@ -19,13 +19,14 @@ import akka.stream.stage.OutHandler
 import de.sciss.fscape.Log.{stream => logStream}
 import de.sciss.fscape.stream.impl.shapes.UniformSourceShape
 import de.sciss.fscape.stream.impl.{NodeHasInitImpl, NodeImpl, StageImpl}
-import de.sciss.fscape.stream.{BufD, Builder, Control, Layer, OutD}
+import de.sciss.fscape.stream.{BufD, Builder, Control, Layer, OutD, OutI}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.math.min
 
 object PhysicalIn {
-  def apply(numChannels: Int)(implicit b: Builder): Vec[OutD] = {
+  // XXX TODO: `index` currently unused
+  def apply(index: OutI, numChannels: Int)(implicit b: Builder): Vec[OutD] = {
     val source  = new Stage(layer = b.layer, numChannels = numChannels)
     val stage   = b.add(source)
     stage.outlets.toIndexedSeq

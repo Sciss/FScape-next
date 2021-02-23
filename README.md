@@ -2,7 +2,7 @@
 
 [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/Sciss/FScape?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![Build Status](https://github.com/Sciss/FScape-next/workflows/Scala%20CI/badge.svg?branch=main)](https://github.com/Sciss/FScape-next/actions?query=workflow%3A%22Scala+CI%22)
-[![Maven Central](https://maven-badges.herokuapp.com/maven-central/de.sciss/fscape_2.13/badge.svg)](https://maven-badges.herokuapp.com/maven-central/de.sciss/fscape_2.13)
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/de.sciss/fscape-core_2.13/badge.svg)](https://maven-badges.herokuapp.com/maven-central/de.sciss/fscape-core_2.13)
 
 ## statement
 
@@ -10,7 +10,7 @@ An audio rendering (offline signal processing) library. Although not optimised f
 process still images and image sequences (aka videos). This project should eventually become the next major version of
 [FScape](https://git.iem.at/sciss/FScape), an experimental music and sound signal processing workbench. As of
 this writing, the library is still experimental, so you may want to stick to "classic" FScape for common tasks. 
-It has basic integration with [Mellite](http://sciss.de/mellite/), increasingly providing adaptations of the classical
+It has basic integration with [Mellite](https://sciss.de/mellite/), increasingly providing adaptations of the classical
 FScape modules, using Mellite's widget object for a user interface similar to FScape 1. See below for instructions
 on how to generate these "standard modules".
 
@@ -94,7 +94,7 @@ reads in a monophonic sound file and outputs a logarithmic gray scale sonogram P
 
 ```scala
 import de.sciss.fscape._
-import de.sciss.synth.io.AudioFile
+import de.sciss.audiofile.AudioFile
 
 val fIn       = new java.io.File("input.aif")
 val specIn    = AudioFile.readSpec(fIn)
@@ -109,7 +109,7 @@ val dbMax     = -18.0
 
 val g = Graph {
   import graph._
-  val in        = AudioFileIn(file = fIn, numChannels = 1)
+  val in        = AudioFileIn(file = fIn.toURI, numChannels = 1)
   val slid      = Sliding(in, fftSize, winStep)
   val winFun    = GenWindow(size = fftSize, shape = GenWindow.Hann)
   val windowed  = slid * winFun
@@ -119,7 +119,7 @@ val g = Graph {
   val norm      = constQ.ampDb.linLin(dbMin * 2, dbMax * 2, 0.0, 1.0).clip()
   val rotImg    = RotateFlipMatrix(norm, rows = numWin, columns = numBands, mode = RotateFlipMatrix.Rot90CCW)
   val specOut   = ImageFile.Spec(width = numWin, height = numBands, numChannels = 1)
-  ImageFileOut(file = fOut, spec = specOut, in = rotImg)
+  ImageFileOut(file = fOut.toURI, spec = specOut, in = rotImg)
 }
 
 val ctrl  = stream.Control()
@@ -153,7 +153,7 @@ ImageFileOut(file = fOut, spec = specOut, in = Seq(rotImg.out(0), rotImg.out(1),
 ```
 
 For more examples, browse the 'test' sources. Also see
-the [API Documentation](http://sciss.de/mellite/latest/api/de/sciss/fscape/).
+the [API Documentation](https://sciss.de/mellite/latest/api/de/sciss/fscape/).
 
 ## Scala.js limitations
 
@@ -164,10 +164,6 @@ The following UGens are currently not available under Scala.js:
 - `Slices` _(high priority to get it working)_
 - `Fourier` (file based long FFT; regular FFT is available)
 - `ResampleWindow`
-
-On the other hand, the following real-time UGens are available:
-
-- `PhysicalIn`, `PhysicalOut`
 
 ## notes
 

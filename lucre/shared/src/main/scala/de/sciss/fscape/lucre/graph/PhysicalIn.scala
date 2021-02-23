@@ -38,5 +38,5 @@ final case class PhysicalIn(indices: GE = 0, numChannels: Int = 1) extends UGenS
       isIndividual = true, hasSideEffect = true)
 
   private[fscape] def makeStream(args: Vec[StreamIn])(implicit b: stream.Builder): Vec[StreamOut] =
-    lucre.stream.PhysicalIn(numChannels = numChannels)
+    lucre.stream.PhysicalIn(index = null, numChannels = numChannels)
 }

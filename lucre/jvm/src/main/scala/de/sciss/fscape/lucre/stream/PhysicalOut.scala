@@ -37,7 +37,8 @@ import scala.math.{max, min}
 import scala.util.control.NonFatal
 
 object PhysicalOut {
-  def apply(indices: OutI, in: ISeq[OutD], auralSystem: AuralSystem)(implicit b: Builder): Unit = {
+  // XXX TODO: `index` currently unused
+  def apply(index: OutI, in: ISeq[OutD], auralSystem: AuralSystem)(implicit b: Builder): Unit = {
     val sink = new Stage(layer = b.layer, numChannels = in.size, auralSystem = auralSystem)
     val stage = b.add(sink)
     // XXX TODO: handle `indices`
