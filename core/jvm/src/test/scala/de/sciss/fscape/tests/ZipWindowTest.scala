@@ -22,14 +22,14 @@ object ZipWindowTest extends App {
   println(s"fftSizeA = $fftSizeA, fftSizeB = $fftSizeB")
 
   object Gain {
-    val immediate  = Gain( 0.0.dbAmp, normalized = false)
-    val normalized = Gain(-0.2.dbAmp, normalized = true )
+    val immediate : Gain = Gain( 0.0.dbAmp, normalized = false)
+    val normalized: Gain = Gain(-0.2.dbAmp, normalized = true )
   }
 
   object OutputSpec {
-    val aiffFloat = AudioFileSpec(AudioFileType.AIFF, SampleFormat.Float, 1, 44100.0)
+    val aiffFloat : AudioFileSpec = AudioFileSpec(AudioFileType.AIFF, SampleFormat.Float, 1, 44100.0)
     // numCh, sr not used
-    val aiffInt   = AudioFileSpec(AudioFileType.AIFF, SampleFormat.Int24, 1, 44100.0)
+    val aiffInt   : AudioFileSpec = AudioFileSpec(AudioFileType.AIFF, SampleFormat.Int24, 1, 44100.0)
   }
 
   case class Gain(value: Double, normalized: Boolean = false) {

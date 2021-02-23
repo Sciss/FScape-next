@@ -10,6 +10,7 @@ import de.sciss.numbers.Implicits._
 
 import scala.swing.Swing
 
+// XXX TODO: this hangs while it should fail as we're trying to write to non-existing directory
 object NormalizeTest2 extends App {
 //  val fIn   = file("/data") / "projects" / "Imperfect" / "anemone" / "rec" / "capture.aif"
 //  val fOut  = File.createTemp(suffix = "_killme.aif")

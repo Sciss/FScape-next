@@ -35,7 +35,7 @@ The following dependency is necessary:
 
 The current version `v` is `"3.6.0"`.
 
-The following sub modules are available:
+The following sub-modules are available:
 
     "de.sciss" %% "fscape-core"    % v  // core library
     "de.sciss" %% "fscape-lucre"   % v  // integration with SoundProcesses
@@ -67,7 +67,7 @@ The goals of this project are:
 - reformulate modules as a graph of small modular DSP blocks
 - DSP blocks are modelled as UGens similar to those in [ScalaCollider](https://git.iem.at/sciss/ScalaCollider),
   with the crucial difference that in FScape processes run in non-realtime and usually will have a bounded duration
-- currently UGens graphs will be translated into an Akka Stream graph, hopefully providing a robust
+- currently, UGens graphs will be translated into an Akka Stream graph, hopefully providing a robust
   streaming API and the possibility to customise parallelism
 - provide a simple DSL similar to ScalaCollider for users to write their own DSP graphs
 - integrate these graphs into [Mellite](https://git.iem.at/sciss/Mellite)
@@ -160,12 +160,10 @@ the [API Documentation](http://sciss.de/mellite/latest/api/de/sciss/fscape/).
 The following UGens are currently not available under Scala.js:
 
 - `ImageFileIn`, `ImageFileOut`, `ImageFileSeqIn`, `ImageFileSeqOut`
-- `BufferDisk` _(high priority to get it working)_
 - `Plot1D`, `Sheet1D`
 - `Slices` _(high priority to get it working)_
 - `Fourier` (file based long FFT; regular FFT is available)
 - `ResampleWindow`
-- `PitchAC`, `WPE_ReverbFrame`
 
 On the other hand, the following real-time UGens are available:
 

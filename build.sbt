@@ -8,7 +8,7 @@ lazy val mimaVersion    = "3.6.0"
 lazy val baseDescription = "An audio rendering library"
 
 lazy val commonJvmSettings = Seq(
-  crossScalaVersions := Seq(/* "3.0.0-RC1", */ "2.13.4", "2.12.13"),  // no Dotty, because no Akka
+  crossScalaVersions := Seq(/* "3.0.0-RC1", */ "2.13.5", "2.12.13"),  // no Dotty, because no Akka
 )
 
 // sonatype plugin requires that these are in global
@@ -19,7 +19,7 @@ lazy val commonSettings = Seq(
 //  version            := projectVersion,
 //  organization       := "de.sciss",
   description        := baseDescription,
-  scalaVersion       := "2.13.4",
+  scalaVersion       := "2.13.5",
   licenses           := Seq("AGPL v3+" -> url("http://www.gnu.org/licenses/agpl-3.0.txt")),
   homepage           := Some(url(s"https://git.iem.at/sciss/$gitRepo")),
   scalacOptions     ++= Seq("-deprecation", "-unchecked", "-feature", "-encoding", "utf8"),
@@ -43,8 +43,9 @@ lazy val commonSettings = Seq(
 
 lazy val deps = new {
   val core = new {
-    val akka            = "2.6.12"  // on the JVM
+    val akka            = "2.6.13"  // on the JVM
     val akkaJs          = "2.2.6.9" // on JS
+    val asyncFile       = "0.1.3"
     val audioFile       = "2.3.3"
     val dom             = "1.1.0"
     val dsp             = "2.2.2"
@@ -118,6 +119,7 @@ lazy val core = crossProject(JVMPlatform, JSPlatform).in(file("core"))
     ),
     buildInfoPackage := "de.sciss.fscape",
     libraryDependencies ++= Seq(
+      "de.sciss"          %%%  "asyncfile"            % deps.core.asyncFile,
       "de.sciss"          %%%  "audiofile"            % deps.core.audioFile,
       "de.sciss"          %%%  "scissdsp"             % deps.core.dsp,
       "de.sciss"          %%%  "transform4s"          % deps.core.transform4s,

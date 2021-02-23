@@ -105,10 +105,18 @@ final case class PitchAC(in                 : GE,
     val octaveJumpCostC     = octaveJumpCost      * timeStepCorr
     val voicedUnvoicedCostC = voicedUnvoicedCost  * timeStepCorr
 
-    val vitIn     = PitchesToViterbi(lags = lags, strengths = strengths, numIn = numCandidatesM,
-      peaks = peaks, maxLag = maxLag,
-      voicingThresh = voicingThresh, silenceThresh = silenceThresh, octaveCost = octaveCost,
-      octaveJumpCost = octaveJumpCostC, voicedUnvoicedCost = voicedUnvoicedCostC)
+    val vitIn = PitchesToViterbi(
+      lags                = lags,
+      strengths           = strengths,
+      numIn               = numCandidatesM,
+      peaks               = peaks,
+      maxLag              = maxLag,
+      voicingThresh       = voicingThresh,
+      silenceThresh       = silenceThresh,
+      octaveCost          = octaveCost,
+      octaveJumpCost      = octaveJumpCostC,
+      voicedUnvoicedCost  = voicedUnvoicedCostC,
+    )
 
     val states    = Viterbi(add = vitIn, numStates = numCandidates)
 //    val lagsB     = BufferMemory(lags, numSteps * NumCandidates)
