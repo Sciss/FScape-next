@@ -110,7 +110,7 @@ object PhysicalOut {
     private final class TrigResp(protected val synth: Synth) extends SendReplyResponder {
       override protected def added()(implicit tx: RT): Unit = ()
 
-      private[this] final val nodeId    = synth.peer.id
+      private[this] final val nodeId = synth.peer.id
 
       override protected val body: Body = {
         case osc.Message(`replyName`, `nodeId`, _ /*`idx`*/, trigValF: Float) =>
@@ -121,6 +121,7 @@ object PhysicalOut {
             if (!_stopped) {
               logStream.debug(s"TrigResp($nodeId): $trigVal")
               serverCircle = (trigVal + 2) * circleSizeH
+              // println(s"Out TR: serverCircle now $serverCircle, clientCircle $clientCircle")
               process()
             }
           }

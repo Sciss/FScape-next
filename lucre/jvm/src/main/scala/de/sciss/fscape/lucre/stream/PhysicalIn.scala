@@ -118,7 +118,7 @@ object PhysicalIn {
     private final class TrigResp(protected val synth: Synth) extends SendReplyResponder {
       override protected def added()(implicit tx: RT): Unit = ()
 
-      private[this] final val nodeId    = synth.peer.id
+      private[this] final val nodeId = synth.peer.id
 
       override protected val body: Body = {
         case osc.Message(`replyName`, `nodeId`, _ /*`idx`*/, trigValF: Float) =>
@@ -129,6 +129,7 @@ object PhysicalIn {
             if (!_stopped) {
               logStream.debug(s"TrigResp($nodeId): $trigVal")
               serverCircle = trigVal * circleSizeH
+              // println(s"In TR: serverCircle now $serverCircle, clientCircle $clientCircle")
               process()
             }
           }
@@ -267,16 +268,16 @@ object PhysicalIn {
 
       val rtBufOffNew = _rtBufOff + chunkRt
       if (rtBufOffNew == rtBufSz && clientCircle < serverCircle && !taskBusy) {
+        rtBufOff = rtBufOffNew
         val bOff = (clientCircle % circleSize) * rtBufSmp
         logStream.debug(s"b.getn($bOff) - clientCircle $clientCircle")
         val b = synBufPeer
         task("getn") {
           b.server.!!(b.getnMsg(bOff until (bOff + rtBufSmp))) {
-            case BufferSetn(b.id, (`bOff`, xs)) if xs.length == rtBufSmp =>
-              xs.copyToArray(rtBuf, 0, xs.length)
-              ()
+            case BufferSetn(b.id, (`bOff`, xs)) if xs.length == rtBufSmp => xs
           }
-        } { _ =>
+        } { xs =>
+          xs.copyToArray(rtBuf, 0, xs.length)
           clientCircle  += 1
           rtBufOff       = 0
         }
