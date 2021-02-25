@@ -78,8 +78,10 @@ object PhysicalOut {
     private[this] val hIns: Array[InDMain] = Array.tabulate(numChannels)(ch => InDMain(this, shape.inlets(ch)))
 
     private[this] final val SAMPLES_PER_BUF_SET = 1608 // ensure < 8K OSC bundle size, divisible by common num-channels
-    private[this] val rtBufSz   = SAMPLES_PER_BUF_SET / numChannels
-    private[this] val rtBufSmp  = rtBufSz * numChannels
+    private[this] val oscBufSz  = SAMPLES_PER_BUF_SET / numChannels
+    private[this] val oscBufSmp = oscBufSz * numChannels
+    private[this] val rtBufSz   = oscBufSz
+    private[this] val rtBufSmp  = oscBufSmp
     private[this] val rtBuf     = new Array[Float](rtBufSmp)
     private[this] var rtBufOff  = 0 // in frames
     private[this] var _stopped  = false
@@ -111,6 +113,7 @@ object PhysicalOut {
       override protected def added()(implicit tx: RT): Unit = ()
 
       private[this] final val nodeId = synth.peer.id
+      private[this] var trigAdd = 2
 
       override protected val body: Body = {
         case osc.Message(`replyName`, `nodeId`, _ /*`idx`*/, trigValF: Float) =>
@@ -120,7 +123,12 @@ object PhysicalOut {
           async {
             if (!_stopped) {
               logStream.debug(s"TrigResp($nodeId): $trigVal")
-              serverCircle = (trigVal + 2) * circleSizeH
+              serverCircle = (trigVal + trigAdd) * circleSizeH
+              // "handle" underflow, by simply readjusting the pointers
+              while (clientCircle + circleSize < serverCircle) {
+                trigAdd -= 1
+                serverCircle -= circleSize
+              }
               // println(s"Out TR: serverCircle now $serverCircle, clientCircle $clientCircle")
               process()
             }
@@ -135,15 +143,15 @@ object PhysicalOut {
 
     // N.B.: not on the Akka thread
     private def startRT(s: Server)(implicit tx: RT): Unit = {
-      val rtBufSz2 = rtBufSz << 1
+      val oscBufSz2 = oscBufSz << 1
       val bufSizeS = {
         val bufDur    = 1.5
         val blockSz   = s.config.blockSize
         val sr        = s.sampleRate
-        // ensure half a buffer is a multiple of rtBufSz
-        val minSz     = max(rtBufSz2.nextPowerOfTwo, 2 * blockSz)
+        // ensure half a buffer is a multiple of oscBufSz
+        val minSz     = max(oscBufSz2.nextPowerOfTwo, 2 * blockSz)
         val bestSz    = max(minSz, (bufDur * sr).toInt)
-        val bestSzLo  = bestSz - (bestSz % rtBufSz2)
+        val bestSzLo  = bestSz - (bestSz % oscBufSz2)
         val bestSzHi  = bestSzLo << 1
         if (bestSzHi.toDouble/bestSz < bestSz.toDouble/bestSzLo) bestSzHi else bestSzLo
       }
@@ -167,7 +175,7 @@ object PhysicalOut {
 
       tx.afterCommit {
         async {
-          circleSizeH   = bufSizeS / rtBufSz2
+          circleSizeH   = bufSizeS / oscBufSz2
           circleSize    = circleSizeH << 1
 //          logStream.info(s"$this - startRT. bufSizeS = $bufSizeS, circleSizeH = $circleSizeH")
           logStream.debug(s"$this - startRT. bufSizeS = $bufSizeS, circleSizeH = $circleSizeH")
@@ -231,6 +239,7 @@ object PhysicalOut {
       val hasChunk  = chunkRt > 0
 
       logStream.debug(s"process() $this - copySz $copySz, chunkRt $chunkRt, rtBufOff ${_rtBufOff}")
+      // println(s"Out process() - copySz $copySz, chunkRt $chunkRt, rtBufOff ${_rtBufOff}")
 
       if (hasChunk) {
         val numCh   = numChannels
@@ -254,10 +263,11 @@ object PhysicalOut {
 
       val rtBufOffNew = _rtBufOff + chunkRt
       if (rtBufOffNew == rtBufSz && clientCircle < serverCircle) {
-        val bOff = (clientCircle % circleSize) * rtBufSmp
+        val bOff = (clientCircle % circleSize) * oscBufSmp
         // XXX TODO: we could optimise this by sending a ByteBuffer directly via OSC
         // also `toIndexedSeq` creates an unnecessary array copy here
         logStream.debug(s"b.setn($bOff) - clientCircle $clientCircle")
+        // println(s"b.setn($bOff) - cci $clientCircle")
         val b = synBufPeer
         b.server.!(b.setnMsg((bOff, _rtBuf.toIndexedSeq)))
         clientCircle  += 1

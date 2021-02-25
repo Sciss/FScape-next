@@ -33,6 +33,7 @@ import de.sciss.synth.{SynthGraph, ugen, Buffer => SBuffer}
 
 import scala.annotation.tailrec
 import scala.collection.immutable.{IndexedSeq => Vec}
+import scala.concurrent.Future
 import scala.concurrent.stm.{Ref, TxnExecutor}
 import scala.math.{max, min}
 import scala.util.control.NonFatal
@@ -77,8 +78,11 @@ object PhysicalIn {
     private[this] val hOuts: Array[OutDMain] = Array.tabulate(numChannels)(ch => OutDMain(this, shape.outlets(ch)))
 
     private[this] final val SAMPLES_PER_BUF_SET = 1608 // ensure < 8K OSC bundle size, divisible by common num-channels
-    private[this] val rtBufSz   = SAMPLES_PER_BUF_SET / numChannels
-    private[this] val rtBufSmp  = rtBufSz * numChannels
+    private[this] val oscBufSz  = SAMPLES_PER_BUF_SET / numChannels
+    private[this] val oscBufSmp = oscBufSz * numChannels
+    private[this] val oscNumBuf = 4 // 8 // XXX TODO justify that number. Should it be hard-coded?
+    private[this] var rtBufSz   = 0
+    private[this] val rtBufSmp  = oscBufSmp * oscNumBuf
     private[this] val rtBuf     = new Array[Float](rtBufSmp)
     private[this] var rtBufOff  = rtBufSz // in frames
     private[this] var _stopped  = false
@@ -119,6 +123,7 @@ object PhysicalIn {
       override protected def added()(implicit tx: RT): Unit = ()
 
       private[this] final val nodeId = synth.peer.id
+      private[this] var trigAdd = 0
 
       override protected val body: Body = {
         case osc.Message(`replyName`, `nodeId`, _ /*`idx`*/, trigValF: Float) =>
@@ -128,7 +133,12 @@ object PhysicalIn {
           async {
             if (!_stopped) {
               logStream.debug(s"TrigResp($nodeId): $trigVal")
-              serverCircle = trigVal * circleSizeH
+              serverCircle = (trigVal + trigAdd) * circleSizeH
+              // "handle" overflow, by simply readjusting the pointers
+              while (clientCircle + circleSize < serverCircle) {
+                trigAdd -= 1
+                serverCircle -= circleSize
+              }
               // println(s"In TR: serverCircle now $serverCircle, clientCircle $clientCircle")
               process()
             }
@@ -143,15 +153,15 @@ object PhysicalIn {
 
     // N.B.: not on the Akka thread
     private def startRT(s: Server)(implicit tx: RT): Unit = {
-      val rtBufSz2 = rtBufSz << 1
+      val oscBufSz2 = oscBufSz << 1
       val bufSizeS = {
         val bufDur    = 1.5
         val blockSz   = s.config.blockSize
         val sr        = s.sampleRate
-        // ensure half a buffer is a multiple of rtBufSz
-        val minSz     = max(rtBufSz2.nextPowerOfTwo, 2 * blockSz)
+        // ensure half a buffer is a multiple of oscBufSz
+        val minSz     = max(oscBufSz2.nextPowerOfTwo, 2 * blockSz)
         val bestSz    = max(minSz, (bufDur * sr).toInt)
-        val bestSzLo  = bestSz - (bestSz % rtBufSz2)
+        val bestSzLo  = bestSz - (bestSz % oscBufSz2)
         val bestSzHi  = bestSzLo << 1
         if (bestSzHi.toDouble/bestSz < bestSz.toDouble/bestSzLo) bestSzHi else bestSzLo
       }
@@ -175,7 +185,7 @@ object PhysicalIn {
 
       tx.afterCommit {
         async {
-          circleSizeH   = bufSizeS / rtBufSz2
+          circleSizeH   = bufSizeS / oscBufSz2
           circleSize    = circleSizeH << 1
           //          logStream.info(s"$this - startRT. bufSizeS = $bufSizeS, circleSizeH = $circleSizeH")
           logStream.debug(s"$this - startRT. bufSizeS = $bufSizeS, circleSizeH = $circleSizeH")
@@ -245,6 +255,7 @@ object PhysicalIn {
       val hasChunk  = chunkRt > 0
 
       logStream.debug(s"process() $this - copySz $copySz, chunkRt $chunkRt, rtBufOff ${_rtBufOff}")
+      // println(s"In process() - copySz $copySz, chunkRt $chunkRt, rtBufOff ${_rtBufOff}")
 
       if (hasChunk) {
         val numCh   = numChannels
@@ -269,17 +280,33 @@ object PhysicalIn {
       val rtBufOffNew = _rtBufOff + chunkRt
       if (rtBufOffNew == rtBufSz && clientCircle < serverCircle && !taskBusy) {
         rtBufOff = rtBufOffNew
-        val bOff = (clientCircle % circleSize) * rtBufSmp
-        logStream.debug(s"b.getn($bOff) - clientCircle $clientCircle")
-        val b = synBufPeer
+        val numCircle = min(oscNumBuf, serverCircle - clientCircle)
+        logStream.debug(s"b.getn(${(clientCircle % circleSize) * oscBufSmp}) - clientCircle $clientCircle, numCircle $numCircle")
+        // println(s"b.getn(), numCircle $numCircle")
         task("getn") {
-          b.server.!!(b.getnMsg(bOff until (bOff + rtBufSmp))) {
-            case BufferSetn(b.id, (`bOff`, xs)) if xs.length == rtBufSmp => xs
+          val futSq = Vector.tabulate(numCircle) { ci =>
+            val cci  = clientCircle + ci
+            val bOff = (cci % circleSize) * oscBufSmp
+            // println(s"b.getn($bOff) - cci $cci")
+            val b = synBufPeer
+            b.server.!!(b.getnMsg(bOff until (bOff + oscBufSmp))) {
+              case BufferSetn(b.id, (`bOff`, xs)) if xs.length == oscBufSmp => xs
+            }
           }
-        } { xs =>
-          xs.copyToArray(rtBuf, 0, xs.length)
-          clientCircle  += 1
+          Future.sequence(futSq)
+        } { xss =>
+          var ci = 0
+          var off = 0
+          while (ci < numCircle) {
+            val xs = xss(ci)
+            xs.copyToArray(rtBuf, off, oscBufSmp)
+            ci += 1
+            off += oscBufSmp
+          }
+          clientCircle  += numCircle
           rtBufOff       = 0
+          rtBufSz        = numCircle * oscBufSz
+          // println(s"b.getn() - done. clientCircle $clientCircle, rtBufSz $rtBufSz")
         }
 
       } else if (hasChunk) {
