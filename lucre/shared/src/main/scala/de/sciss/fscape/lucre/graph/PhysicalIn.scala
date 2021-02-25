@@ -47,7 +47,32 @@ object PhysicalIn extends ProductReader[PhysicalIn] {
       lucre.stream.PhysicalIn(index = null, numChannels = numChannels, auralSystem = auralSystem)
   }
 }
-// XXX TODO: `indices` currently unused
+/** An unusual UGen that couples FScape to a real-time audio interface input.
+  * It is similar to the standard (ScalaCollider) `PhysicalIn` UGen, and it was
+  * added to be able to work-around limitations of SuperCollider on WebAssembly
+  * (such as missing audio file output). It is also useful for testing
+  * FScape processes by directly feeding in signals, possibly playing them
+  * back in real-time with the corresponding `PhysicalOut` UGen.
+  *
+  * This UGen should be considered experimental, and it is probably not suited
+  * to run in permanently a sound installation. It is important to know that the
+  * implementation is different between the JVM (desktop) platform and the
+  * JS (browser) platform. On the desktop, the input signal comes from SuperCollider
+  * (transferring buffer data between SuperCollider and FScape), whereas in the browser,
+  * the Web Audio API is used directly. This also leads to different behaviour in terms
+  * of latency and drop-out stability.
+  *
+  * For drop-out free combined use of `PhysicalIn` and `PhysicalOut`, consider inserting
+  * a delay by prepending a `DC(0.0)` of 0.5 to 1.0 seconds duration to the output.
+  *
+  * @param  indices     the zero-based channel offset. '''Note:''' this is currently not
+  *                     implemented, therefore leave it at the default of zero.
+  * @param  numChannels the number of channels to stream. The UGen has been tested
+  *                     with mono and stereo signals, and bandwidth seems to be sufficient
+  *                     in these cases. Higher values have not been battle-tested.
+  *
+  * @see [[PhysicalOut]]
+  */
 final case class PhysicalIn(indices: GE = 0, numChannels: Int = 1) extends GE.Lazy {
   override protected def makeUGens(implicit b: UGenGraph.Builder): UGenInLike = {
     val ub = UGenGraphBuilder.get(b)
