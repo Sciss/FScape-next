@@ -17,10 +17,9 @@ package stream
 import akka.stream.stage.{InHandler, OutHandler}
 import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
 import de.sciss.fscape.Log.{stream => logStream}
-import de.sciss.fscape.stream.impl.{NodeHasInitImpl, NodeImpl, StageImpl}
+import de.sciss.fscape.stream.impl.{AsyncTaskLogic, NodeHasInitImpl, NodeImpl, StageImpl}
 
-import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success}
+import scala.concurrent.Future
 
 // XXX TODO --- we could use a "quasi-circular"
 // structure? this is, overwrite parts of the file
@@ -51,7 +50,7 @@ object BufferDisk {
 
   private final class Logic[A, E <: BufElem[A]](shape: Shp[E], layer: Layer)
                                                (implicit ctrl: Control, tpe: StreamType[A, E])
-    extends NodeImpl(name, layer, shape) with NodeHasInitImpl with InHandler with OutHandler {
+    extends NodeImpl(name, layer, shape) with NodeHasInitImpl with AsyncTaskLogic with InHandler with OutHandler {
 
     private[this] var futAF: Future[AsyncFileBuffer[A]]  = _
     private[this] var afReady         = false
@@ -61,7 +60,6 @@ object BufferDisk {
     private[this] var framesWritten = 0L
     private[this] var framesRead    = 0L
 
-    private[this] var taskBusy        = false
     private[this] var taskPendingPush = false
     private[this] var taskPendingPull = false
 
@@ -79,14 +77,6 @@ object BufferDisk {
 //      onPull()  // needed for asynchronous logic
     }
 
-    // be sure that `map` on async file buffer futures are
-    // always executed on the stream thread
-    implicit val exec: ExecutionContext = new ExecutionContext {
-      override def execute(runnable: Runnable): Unit = async(runnable.run())
-
-      override def reportFailure(cause: Throwable): Unit = cause.printStackTrace()
-    }
-
     override protected def stopped(): Unit = {
       super.stopped()
       if (futAF != null) {
@@ -98,36 +88,7 @@ object BufferDisk {
       }
     }
 
-    private def task[B](name: String)(body: => Future[B])(cont: B => Unit): Future[B] = {
-      require (!taskBusy)
-      // println(s"$this - task($name)")
-      val fut = body
-      if (fut.isCompleted) {  // check immediately, do not penalise underlying synchronous API
-        // println(s"$this - task($name) immediately")
-        val tr = fut.value.get
-        if (tr.isSuccess) cont(tr.get)
-        else {
-          val ex = tr.failed.get
-          failStage(ex)
-        }
-      } else {
-        taskBusy = true
-        fut.onComplete {
-          case Success(res) =>
-            // println(s"$this - task($name) onSuccess")
-            taskBusy = false
-            cont(res)
-            taskPending()
-          case Failure(ex) =>
-            logStream.debug(s"$this - task($name) onFailure")
-            taskBusy = false
-            failStage(ex)
-        }
-      }
-      fut
-    }
-
-    private def taskPending(): Unit = {
+    protected def taskPending(): Unit = {
       if (!taskBusy && taskPendingPush) onPush()
       if (!taskBusy && taskPendingPull) onPull()
     }

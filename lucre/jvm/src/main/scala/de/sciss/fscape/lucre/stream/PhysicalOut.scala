@@ -23,12 +23,12 @@ import de.sciss.fscape.stream.{BufD, Builder, Control, InD, Layer, OutD, OutI}
 import de.sciss.lucre.Disposable
 import de.sciss.lucre.Txn.{peer => txPeer}
 import de.sciss.lucre.synth.{Buffer, RT, Server, Synth}
+import de.sciss.numbers.Implicits._
 import de.sciss.osc
 import de.sciss.proc.AuralSystem
 import de.sciss.proc.impl.StreamBuffer
 import de.sciss.synth.proc.graph.impl.SendReplyResponder
-import de.sciss.synth.ugen
-import de.sciss.synth.{SynthGraph, intNumberWrapper}
+import de.sciss.synth.{SynthGraph, ugen, Buffer => SBuffer}
 
 import scala.annotation.tailrec
 import scala.collection.immutable.{Seq => ISeq}
@@ -60,8 +60,7 @@ object PhysicalOut {
     )
 
     def createLogic(attr: Attributes): NodeImpl[Shape] =
-      new Logic(shape, layer = layer, numChannels = numChannels,
-        auralSystem = auralSystem)
+      new Logic(shape, layer = layer, numChannels = numChannels, auralSystem = auralSystem)
   }
 
   private final class Logic(shape: Shp, layer: Layer, numChannels: Int, auralSystem: AuralSystem)
@@ -69,8 +68,8 @@ object PhysicalOut {
     extends Handlers(name, layer, shape)
       with NodeHasInitImpl { logic =>
 
-    private[this] var writtenCircle = 0
-    private[this] var readCircle    = 0
+    private[this] var clientCircle  = 0
+    private[this] var serverCircle  = 0
     private[this] var circleSizeH   = 0
     private[this] var circleSize    = 0
 
@@ -87,6 +86,7 @@ object PhysicalOut {
 
     private[this] val synBuf    = Ref.make[Buffer.Modifiable]()
     private[this] val trigResp  = Ref.make[TrigResp]()
+    private[this] var synBufPeer: SBuffer = _
 
     override protected def onDone(inlet: Inlet[_]): Unit = {
 //      println(s"onDone($inlet)")
@@ -105,10 +105,11 @@ object PhysicalOut {
       fun(rt)
     }
 
+    private[this] final val replyName = "/$fsc"
+
     private final class TrigResp(protected val synth: Synth) extends SendReplyResponder {
       override protected def added()(implicit tx: RT): Unit = ()
 
-      private[this] final val replyName = "/$str_fsc" // XXX TODO: make public: StreamBuffer.replyName("fsc")
       private[this] final val nodeId    = synth.peer.id
 
       override protected val body: Body = {
@@ -119,7 +120,7 @@ object PhysicalOut {
           async {
             if (!_stopped) {
               logStream.debug(s"TrigResp($nodeId): $trigVal")
-              readCircle = (trigVal + 2) * circleSizeH
+              serverCircle = (trigVal + 2) * circleSizeH
               process()
             }
           }
@@ -148,13 +149,13 @@ object PhysicalOut {
       val b = Buffer(s)(numFrames = bufSizeS, numChannels = numChannels)
       synBuf() = b
       val g = SynthGraph {
-        import ugen._
         import de.sciss.synth.Ops.stringToControl
+        import ugen._
         val bus     = "out".ir(0)
         val bufGE   = "buf".ir
-        val sig     = StreamBuffer.makeUGen(key = "fsc", idx = 0, buf = bufGE, numChannels = numChannels,
-          speed = 1.0, interp = 1)
-        Out.ar(bus, sig)  // XXX TODO or use PhysicalOut so eventually we mute exceeding buses?
+        val phasor  = StreamBuffer.makeIndex(replyName = replyName, buf = bufGE)
+        val sig     = BufRd.ar(numChannels, buf = bufGE, index = phasor, loop = 0, interp = 1)
+        ugen.PhysicalOut.ar(bus, sig)
       }
       // note: we can start right away with silent buffer
       val _syn = Synth.play(g, nameHint = Some(name))(target = s.defaultGroup, args = "buf" -> b.id :: Nil,
@@ -169,8 +170,9 @@ object PhysicalOut {
           circleSize    = circleSizeH << 1
 //          logStream.info(s"$this - startRT. bufSizeS = $bufSizeS, circleSizeH = $circleSizeH")
           logStream.debug(s"$this - startRT. bufSizeS = $bufSizeS, circleSizeH = $circleSizeH")
-          writtenCircle = circleSizeH
-          readCircle    = circleSize
+          clientCircle  = circleSizeH
+          serverCircle  = circleSize
+          synBufPeer    = b.peer
           process()
         }
       }
@@ -215,19 +217,19 @@ object PhysicalOut {
       var stateChanged = false
 
       var ch      = 0
-      var readSz  = 0
+      var copySz  = 0
       while (ch < numChannels) {
         val hIn = hIns(ch)
-        readSz  = if (ch == 0) hIn.available else min(readSz, hIn.available)
+        copySz  = if (ch == 0) hIn.available else min(copySz, hIn.available)
         ch += 1
       }
 
       val _rtBuf    = rtBuf
       val _rtBufOff = rtBufOff
-      val chunkRt   = min(readSz, rtBufSz - _rtBufOff)
+      val chunkRt   = min(copySz, rtBufSz - _rtBufOff)
       val hasChunk  = chunkRt > 0
 
-      logStream.debug(s"process() $this - readSz $readSz, chunkRt $chunkRt, rtBufOff ${_rtBufOff}")
+      logStream.debug(s"process() $this - copySz $copySz, chunkRt $chunkRt, rtBufOff ${_rtBufOff}")
 
       if (hasChunk) {
         val numCh   = numChannels
@@ -250,16 +252,14 @@ object PhysicalOut {
       }
 
       val rtBufOffNew = _rtBufOff + chunkRt
-      if (rtBufOffNew == rtBufSz && writtenCircle < readCircle) {
-        val bOff = (writtenCircle % circleSize) * rtBufSmp
+      if (rtBufOffNew == rtBufSz && clientCircle < serverCircle) {
+        val bOff = (clientCircle % circleSize) * rtBufSmp
         // XXX TODO: we could optimise this by sending a ByteBuffer directly via OSC
         // also `toIndexedSeq` creates an unnecessary array copy here
-        logStream.debug(s"b.setn($bOff) - writtenCircle $writtenCircle")
-        atomic { implicit tx =>
-          val b = synBuf()
-          b.setn((bOff, _rtBuf.toIndexedSeq))
-        }
-        writtenCircle += 1
+        logStream.debug(s"b.setn($bOff) - clientCircle $clientCircle")
+        val b = synBufPeer
+        b.server.!(b.setnMsg((bOff, _rtBuf.toIndexedSeq)))
+        clientCircle  += 1
         rtBufOff       = 0
         stateChanged   = true
       } else if (hasChunk) {
@@ -269,7 +269,8 @@ object PhysicalOut {
       if (hasChunk) {
         ch = 0
         while (ch < numChannels) {
-          hIns(ch).advance(chunkRt)
+          val hIn = hIns(ch)
+          hIn.advance(chunkRt)
           ch += 1
         }
         stateChanged = true

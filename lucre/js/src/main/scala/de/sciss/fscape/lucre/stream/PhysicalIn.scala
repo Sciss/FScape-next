@@ -20,6 +20,7 @@ import de.sciss.fscape.Log.{stream => logStream}
 import de.sciss.fscape.stream.impl.shapes.UniformSourceShape
 import de.sciss.fscape.stream.impl.{AudioContextExt, AudioProcessingEvent, NodeHasInitImpl, NodeImpl, ScriptProcessorNode, StageImpl}
 import de.sciss.fscape.stream.{BufD, Builder, Control, Layer, OutD, OutI}
+import de.sciss.proc.AuralSystem
 import org.scalajs.dom
 import org.scalajs.dom.AudioContext
 import org.scalajs.dom.experimental.mediastream.MediaStreamConstraints
@@ -35,7 +36,7 @@ import scala.util.{Failure, Success}
 
 object PhysicalIn {
   // XXX TODO: `index` currently unused
-  def apply(index: OutI, numChannels: Int)(implicit b: Builder): Vec[OutD] = {
+  def apply(index: OutI, numChannels: Int, auralSystem: AuralSystem)(implicit b: Builder): Vec[OutD] = {
     val source  = new Stage(layer = b.layer, numChannels = numChannels)
     val stage   = b.add(source)
     stage.outlets.toIndexedSeq
