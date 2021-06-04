@@ -2,13 +2,13 @@ lazy val baseName   = "FScape"
 lazy val baseNameL  = baseName.toLowerCase
 lazy val gitRepo    = "FScape-next"
 
-lazy val projectVersion = "3.6.0"
+lazy val projectVersion = "3.6.1-SNAPSHOT"
 lazy val mimaVersion    = "3.6.0"
 
 lazy val baseDescription = "An audio rendering library"
 
 lazy val commonJvmSettings = Seq(
-  crossScalaVersions := Seq(/* "3.0.0-RC1", */ "2.13.5", "2.12.13"),  // no Dotty, because no Akka
+  crossScalaVersions := Seq(/* "3.0.0", */ "2.13.6", "2.12.14"),  // no Dotty, because no Akka
 )
 
 // sonatype plugin requires that these are in global
@@ -19,9 +19,9 @@ lazy val commonSettings = Seq(
 //  version            := projectVersion,
 //  organization       := "de.sciss",
   description        := baseDescription,
-  scalaVersion       := "2.13.5",
+  scalaVersion       := "2.13.6",
   licenses           := Seq("AGPL v3+" -> url("http://www.gnu.org/licenses/agpl-3.0.txt")),
-  homepage           := Some(url(s"https://git.iem.at/sciss/$gitRepo")),
+  homepage           := Some(url(s"https://github.com/Sciss/$gitRepo")),
   scalacOptions     ++= Seq("-deprecation", "-unchecked", "-feature", "-encoding", "utf8"),
   scalacOptions ++= {
     if (isDotty.value) Nil else Seq("-Xlint", "-Xsource:2.13"),
@@ -43,8 +43,8 @@ lazy val commonSettings = Seq(
 
 lazy val deps = new {
   val core = new {
-    val akka            = "2.6.13"  // on the JVM
-    val akkaJs          = "2.2.6.9" // on JS
+    val akka            = "2.6.14"  // on the JVM
+    val akkaJs          = "2.2.6.14" // on JS
     val asyncFile       = "0.1.3"
     val audioFile       = "2.3.3"
     val dom             = "1.1.0"
@@ -61,18 +61,18 @@ lazy val deps = new {
   }
   val lucre = new {
     val fileCache       = "1.1.1"
-    val lucre           = "4.4.3"
-    val soundProcesses  = "4.7.2"
+    val lucre           = "4.4.4"
+    val soundProcesses  = "4.7.6"
   }
   val views = new {
-    val lucreSwing      = "2.6.2"
+    val lucreSwing      = "2.6.3"
   }
   val modules = new {
-    val scallop         = "4.0.2"
+    val scallop         = "4.0.3"
   }
   val test = new {
     val kollFlitz       = "0.2.4"
-    val scalaTest       = "3.2.5"
+    val scalaTest       = "3.2.9"
     val scallop: String = modules.scallop
     val submin          = "0.3.4"
   }
@@ -257,8 +257,8 @@ lazy val publishSettings = Seq(
     )
   ),
   scmInfo := {
-    val h = "git.iem.at"
-    val a = s"sciss/$gitRepo"
+    val h = "github.com"
+    val a = s"Sciss/$gitRepo"
     Some(ScmInfo(url(s"https://$h/$a"), s"scm:git@$h:$a.git"))
   },
 )

@@ -42,7 +42,7 @@ object ModRemoveDC extends Module {
     import de.sciss.fscape.GE
     import de.sciss.fscape.lucre.MacroImplicits._
     f.setGraph {
-      // version: 02-Oct-2019
+      // version: 01-Jun-2021
       val in0       = AudioFileIn("in")
       val sr        = in0.sampleRate
       val numFrames = in0.numFrames
@@ -54,8 +54,7 @@ object ModRemoveDC extends Module {
       val time60ms  = "time-ms"   .attr(30.0)
 
       val time60    = time60ms * 0.001
-      val SR        = 44100.0
-      val len60     = (time60 * SR).floor.max(1)
+      val len60     = (time60 * sr).floor.max(1)
       val floor     = 0.001 // -60.0.dbAmp
       val coef      = (math.log(floor) / len60).exp
 
