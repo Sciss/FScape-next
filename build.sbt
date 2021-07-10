@@ -2,8 +2,8 @@ lazy val baseName   = "FScape"
 lazy val baseNameL  = baseName.toLowerCase
 lazy val gitRepo    = "FScape-next"
 
-lazy val projectVersion = "3.6.1-SNAPSHOT"
-lazy val mimaVersion    = "3.6.0"
+lazy val projectVersion = "3.7.0"
+lazy val mimaVersion    = "3.7.0"
 
 lazy val baseDescription = "An audio rendering library"
 
@@ -11,41 +11,40 @@ lazy val commonJvmSettings = Seq(
   crossScalaVersions := Seq(/* "3.0.0", */ "2.13.6", "2.12.14"),  // no Dotty, because no Akka
 )
 
-// sonatype plugin requires that these are in global
-ThisBuild / version      := projectVersion
-ThisBuild / organization := "de.sciss"
+ThisBuild / version       := projectVersion
+ThisBuild / organization  := "de.sciss"
+ThisBuild / versionScheme := Some("pvp")
 
 lazy val commonSettings = Seq(
-//  version            := projectVersion,
-//  organization       := "de.sciss",
   description        := baseDescription,
   scalaVersion       := "2.13.6",
   licenses           := Seq("AGPL v3+" -> url("http://www.gnu.org/licenses/agpl-3.0.txt")),
   homepage           := Some(url(s"https://github.com/Sciss/$gitRepo")),
   scalacOptions     ++= Seq("-deprecation", "-unchecked", "-feature", "-encoding", "utf8"),
   scalacOptions ++= {
-    if (isDotty.value) Nil else Seq("-Xlint", "-Xsource:2.13"),
+    // if (isDotty.value) Nil else 
+    Seq("-Xlint", "-Xsource:2.13"),
   },
-  scalacOptions in (Compile, compile) ++= {
-    val dot = isDotty.value
-    val xs  = (if (!dot && scala.util.Properties.isJavaAtLeast("9")) Seq("-release", "8") else Nil)  // JDK >8 breaks API; skip scala-doc
+  Compile / compile / scalacOptions ++= {
+    // val dot = isDotty.value
+    val xs  = (if (/* !dot && */ scala.util.Properties.isJavaAtLeast("9")) Seq("-release", "8") else Nil)  // JDK >8 breaks API; skip scala-doc
     val sv  = scalaVersion.value
     if (sv.startsWith("2.13.")) xs :+ "-Wvalue-discard" else xs
   },
   updateOptions       := updateOptions.value.withLatestSnapshots(false),
   javacOptions        := commonJavaOptions ++ Seq("-target", "1.8", "-g", "-Xlint:deprecation" /*, "-Xlint:unchecked" */),
-  javacOptions in doc := commonJavaOptions,
-  parallelExecution in Test := false,
-  concurrentRestrictions in Global ++= Seq(
+  doc / javacOptions  := commonJavaOptions,
+  Test / parallelExecution := false,
+  Global / concurrentRestrictions ++= Seq(
     Tags.limitAll(2), Tags.limit(Tags.Test, 1) // with cross-builds we otherwise get OutOfMemoryError
   ),
 ) ++ publishSettings
 
 lazy val deps = new {
   val core = new {
-    val akka            = "2.6.14"  // on the JVM
+    val akka            = "2.6.15"   // on the JVM
     val akkaJs          = "2.2.6.14" // on JS
-    val asyncFile       = "0.1.3"
+    val asyncFile       = "0.1.4"
     val audioFile       = "2.3.3"
     val dom             = "1.1.0"
     val dsp             = "2.2.2"
@@ -61,8 +60,8 @@ lazy val deps = new {
   }
   val lucre = new {
     val fileCache       = "1.1.1"
-    val lucre           = "4.4.4"
-    val soundProcesses  = "4.7.6"
+    val lucre           = "4.4.5"
+    val soundProcesses  = "4.8.0"
   }
   val views = new {
     val lucreSwing      = "2.6.3"
@@ -84,7 +83,7 @@ lazy val testSettings = Seq(
   libraryDependencies += {
     "org.scalatest" %%% "scalatest" % deps.test.scalaTest % Test
   },
-  concurrentRestrictions in Global += Tags.limit(Tags.Test, 1),
+  Global / concurrentRestrictions += Tags.limit(Tags.Test, 1),
 )
 
 // ---- projects ----
@@ -132,7 +131,7 @@ lazy val core = crossProject(JVMPlatform, JSPlatform).in(file("core"))
       "org.rogach"        %%%  "scallop"              % deps.test.scallop    % Test,
     ),
     mimaPreviousArtifacts := Set("de.sciss" %% s"$baseNameL-core" % mimaVersion),
-    mainClass in Test := Some("de.sciss.fscape.FramesTest")
+    Test / mainClass := Some("de.sciss.fscape.FramesTest")
   )
   .jvmSettings(
     libraryDependencies ++= Seq(
@@ -246,7 +245,7 @@ lazy val cdp = project
 
 lazy val publishSettings = Seq(
   publishMavenStyle := true,
-  publishArtifact in Test := false,
+  Test / publishArtifact := false,
   pomIncludeRepository := { _ => false },
   developers := List(
     Developer(
